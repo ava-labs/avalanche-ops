@@ -1,0 +1,107 @@
+name: Build + test + release
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  run_unit_tests:
+    name: Unit tests with Rust stable
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+
+      - name: Run unit tests
+        run: scripts/tests.unit.sh
+
+  release:
+    name: ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    needs: run_unit_tests
+    strategy:
+      matrix:
+        job:
+          - os: ubuntu-latest
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+            arch: amd64
+          - os: macos-latest
+            platform: darwin
+            target: x86_64-apple-darwin
+            arch: amd64
+
+          # takes >13-min, too long for free-tier github action
+          # TODO: comment out
+          # - os: macos-latest
+          #   platform: darwin
+          #   target: aarch64-apple-darwin
+          #   arch: arm64
+
+          # NOT WORKING WITH openssl
+          # - os: windows-latest
+          #   platform: win32
+          #   target: x86_64-pc-windows-msvc
+          #   arch: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.job.target }}
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+
+      # ref. https://github.com/gakonst/foundry/blob/708f48f8681fea3a42a34a0eed52090b3e37563e/.github/workflows/release.yml#L109
+      - name: Apple M1 setup
+        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+        run: |
+          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+
+      - name: Compile binaries
+        env:
+          RUSTFLAGS: -C link-args=-s
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --bin avalanche-ops-nodes-aws --bin avalanched-aws --target ${{ matrix.job.target }}
+
+      - name: Compress binaries
+        id: binaries
+        env:
+          PLATFORM_NAME: ${{ matrix.job.platform }}
+          TARGET: ${{ matrix.job.target }}
+          ARCH: ${{ matrix.job.arch }}
+        shell: bash
+        run: |
+          if [ "$PLATFORM_NAME" == "linux" ]; then
+            ./target/${TARGET}/release/avalanche-ops-nodes-aws
+            ./target/${TARGET}/release/avalanched-aws
+          elif [ "$PLATFORM_NAME" == "darwin" ]; then
+            echo "skipping darwin"
+          else
+            echo "skipping $PLATFORM_NAME"
+          fi
