@@ -23,6 +23,8 @@ openssl = "0.10.38"
 rand = "0.8.4"
 ripemd = "0.1.0"
 rust-embed = "6.3.0"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_yaml = "0.8.23"
 thiserror = "1.0.30"
 tokio = { version = "1.16.1", features = ["full"] }
 url = "2.2.2"

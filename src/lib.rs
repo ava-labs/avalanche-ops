@@ -11,6 +11,7 @@ pub mod crypto;
 pub mod http;
 pub mod humanize;
 pub mod id;
+pub mod network;
 pub mod random;
 
 mod time;
