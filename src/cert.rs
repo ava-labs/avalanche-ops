@@ -80,7 +80,10 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
     cert_file.write_all(&cert_contents[..])?;
     info!("saved cert {}", cert_path);
 
-    // e.g., "crypto/x509.MarshalPKCS8PrivateKey"
+    // OpenSSL 0.9.8 generates PKCS #1 private keys by default
+    // while OpenSSL 1.0.0 generates PKCS #8 keys.
+    // ref. "crypto/tls.parsePrivateKey"
+    // ref. "crypto/x509.MarshalPKCS8PrivateKey"
     let key_contents = priv_key.private_key_to_pem_pkcs8().unwrap();
     let mut key_file = File::create(key_path)?;
     key_file.write_all(&key_contents[..])?;
@@ -111,14 +114,10 @@ fn test_cert() {
 
     let key_contents = fs::read(key_path).unwrap();
     let key_contents = String::from_utf8(key_contents.to_vec()).unwrap();
-    info!("key: {}", key_contents);
+    info!("key: {} bytes", key_contents.len());
 
     // openssl x509 -in [cert_path] -text -noout
     let cert_contents = fs::read(cert_path).unwrap();
     let cert_contents = String::from_utf8(cert_contents.to_vec()).unwrap();
-    info!("cert: {}", cert_contents);
-
-    // let ret = create("a.key", "a.cert");
-    // assert!(ret.is_ok());
-    // openssl x509 -in a.cert -text -noout
+    info!("cert: {} bytes", cert_contents.len());
 }
