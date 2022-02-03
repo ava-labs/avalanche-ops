@@ -10,7 +10,7 @@ use crate::aws::{
 
 use aws_sdk_cloudformation::{
     error::{DeleteStackError, DescribeStacksError},
-    model::{Capability, OnFailure, Parameter, StackStatus, Tag},
+    model::{Capability, OnFailure, Output, Parameter, StackStatus, Tag},
     Client, SdkError,
 };
 use log::{info, warn};
@@ -71,6 +71,7 @@ impl Manager {
             stack_name,
             stack_id,
             StackStatus::CreateInProgress,
+            None,
         ))
     }
 
@@ -89,11 +90,21 @@ impl Manager {
                     });
                 }
                 warn!("stack already deleted ({})", e);
-                return Ok(Stack::new(stack_name, "", StackStatus::DeleteComplete));
+                return Ok(Stack::new(
+                    stack_name,
+                    "",
+                    StackStatus::DeleteComplete,
+                    None,
+                ));
             }
         };
 
-        Ok(Stack::new(stack_name, "", StackStatus::DeleteInProgress))
+        Ok(Stack::new(
+            stack_name,
+            "",
+            StackStatus::DeleteInProgress,
+            None,
+        ))
     }
 
     /// Polls CloudFormation stack status.
@@ -131,7 +142,7 @@ impl Manager {
                         && desired_status.eq(&StackStatus::DeleteComplete)
                     {
                         info!("stack already deleted as desired");
-                        return Ok(Stack::new(stack_name, "", desired_status));
+                        return Ok(Stack::new(stack_name, "", desired_status, None));
                     }
                     return Err(API {
                         message: format!("failed describe_stacks {:?}", e),
@@ -181,7 +192,15 @@ impl Manager {
             }
 
             if current_status.eq(&desired_status) {
-                let current_stack = Stack::new(stack_name, current_id, current_status.clone());
+                let outputs = stack.outputs();
+                let outputs = outputs.unwrap();
+                let outputs = Vec::from(outputs);
+                let current_stack = Stack::new(
+                    stack_name,
+                    current_id,
+                    current_status.clone(),
+                    Some(outputs),
+                );
                 return Ok(current_stack);
             }
         }
@@ -199,15 +218,17 @@ pub struct Stack {
     pub name: String,
     pub id: String,
     pub status: StackStatus,
+    pub outputs: Option<Vec<Output>>,
 }
 
 impl Stack {
-    pub fn new(name: &str, id: &str, status: StackStatus) -> Self {
+    pub fn new(name: &str, id: &str, status: StackStatus, outputs: Option<Vec<Output>>) -> Self {
         // ref. https://doc.rust-lang.org/1.0.0/style/ownership/constructors.html
         Self {
             name: String::from(name),
             id: String::from(id),
             status,
+            outputs,
         }
     }
 }
