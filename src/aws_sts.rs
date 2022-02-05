@@ -43,7 +43,7 @@ impl Manager {
 }
 
 /// Represents the caller identity.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Identity {
     pub account_id: String,
     pub role_arn: String,
