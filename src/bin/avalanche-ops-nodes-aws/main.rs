@@ -161,25 +161,6 @@ fn create_default_config_command() -> App<'static> {
         .arg(arg!(<NETWORK_ID>).required(true).allow_invalid_utf8(false))
 }
 
-fn get_status_path(p: &str) -> String {
-    let path = Path::new(p);
-    let parent_dir = path.parent().unwrap();
-    let name = path.file_stem().unwrap();
-    let ext = path.extension().unwrap();
-    let new_name = format!(
-        "{}-status.{}",
-        name.to_str().unwrap(),
-        ext.to_str().unwrap()
-    );
-    String::from(
-        parent_dir
-            .join(Path::new(new_name.as_str()))
-            .as_path()
-            .to_str()
-            .unwrap(),
-    )
-}
-
 fn create_apply_command() -> App<'static> {
     App::new(SUBCOMMAND_APPLY)
         .about("Applies/creates resources based on configuration")
@@ -231,4 +212,23 @@ fn create_delete_command() -> App<'static> {
                 .required(true)
                 .allow_invalid_utf8(false),
         )
+}
+
+fn get_status_path(p: &str) -> String {
+    let path = Path::new(p);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let ext = path.extension().unwrap();
+    let new_name = format!(
+        "{}-status.{}",
+        name.to_str().unwrap(),
+        ext.to_str().unwrap()
+    );
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
 }

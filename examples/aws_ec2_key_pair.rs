@@ -27,6 +27,10 @@ fn main() {
     let mut key_name = id::generate("test");
     key_name.push_str("-key");
 
+    // error should be ignored if it does not exist
+    let ret = ab!(manager.delete_key_pair(&key_name));
+    assert!(ret.is_ok());
+
     let f = tempfile::NamedTempFile::new().unwrap();
     let key_path = f.path().to_str().unwrap();
     fs::remove_file(key_path).unwrap();

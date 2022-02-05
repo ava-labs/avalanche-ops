@@ -1,7 +1,9 @@
+use std::env::args;
+
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::cert;
+use avalanche_ops::{cert, id};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -11,9 +13,13 @@ fn main() {
 
     info!("generating certs");
 
-    let ret = cert::generate("artifacts/test.insecure.key", "artifacts/test.insecure.crt");
-    assert!(ret.is_ok());
+    let key_path = args().nth(1).expect("no key path given");
+    let cert_path = args().nth(2).expect("no cert path given");
 
+    let ret = cert::generate(key_path.as_str(), cert_path.as_str());
+    assert!(ret.is_ok());
     // openssl x509 -in artifacts/staker1.insecure.crt -text -noout
     // openssl x509 -in artifacts/test.insecure.crt -text -noout
+
+    println!("Node ID: {}", id::load_node_id(cert_path.as_str()).unwrap());
 }

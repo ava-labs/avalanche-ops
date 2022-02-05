@@ -33,5 +33,5 @@ func main() {
 	// "go run main.go ../../artifacts/staker1.key ../../artifacts/staker1.crt"
 	// should return "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"
 	// ref. https://docs.avax.network/build/tutorials/platform/create-a-local-test-network/#manually
-	fmt.Println(nodeID.PrefixedString(constants.NodeIDPrefix))
+	fmt.Println("Node ID:", nodeID.PrefixedString(constants.NodeIDPrefix))
 }

@@ -27,7 +27,7 @@ fn main() {
     let mut key_desc = id::generate("test");
     key_desc.push_str("-cmk");
 
-    // error should be ignored
+    // error should be ignored if it does not exist
     let ret = ab!(manager.schedule_to_delete("invalid_id"));
     assert!(ret.is_ok());
 
@@ -55,6 +55,12 @@ fn main() {
 
     thread::sleep(time::Duration::from_secs(5));
 
+    let ret = ab!(manager.schedule_to_delete(&key.id));
+    assert!(ret.is_ok());
+
+    thread::sleep(time::Duration::from_secs(5));
+
+    // error should be ignored if it's already scheduled for delete
     let ret = ab!(manager.schedule_to_delete(&key.id));
     assert!(ret.is_ok());
 }

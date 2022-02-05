@@ -6,7 +6,7 @@ use crate::aws::{
 };
 
 use aws_sdk_s3::{
-    error::{CreateBucketError, CreateBucketErrorKind},
+    error::{CreateBucketError, CreateBucketErrorKind, DeleteBucketError},
     model::{
         BucketCannedAcl, BucketLocationConstraint, CreateBucketConfiguration, Delete, Object,
         ObjectCannedAcl, ObjectIdentifier, PublicAccessBlockConfiguration, ServerSideEncryption,
@@ -130,10 +130,13 @@ impl Manager {
         match ret {
             Ok(_) => {}
             Err(e) => {
-                return Err(API {
-                    message: format!("failed delete_bucket {:?}", e),
-                    is_retryable: is_error_retryable(&e),
-                });
+                if !is_error_bucket_does_not_exist(&e) {
+                    return Err(API {
+                        message: format!("failed delete_bucket {:?}", e),
+                        is_retryable: is_error_retryable(&e),
+                    });
+                }
+                warn!("bucket already deleted or does not exist ({})", e);
             }
         };
         info!("deleted S3 bucket '{}'", bucket_name);
@@ -402,6 +405,17 @@ fn is_error_bucket_already_exist(e: &SdkError<CreateBucketError>) -> bool {
                 CreateBucketErrorKind::BucketAlreadyExists(_)
                     | CreateBucketErrorKind::BucketAlreadyOwnedByYou(_)
             )
+        }
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
+    match e {
+        SdkError::ServiceError { err, .. } => {
+            let msg = format!("{:?}", err);
+            msg.contains("bucket does not exist")
         }
         _ => false,
     }

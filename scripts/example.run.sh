@@ -13,6 +13,11 @@ cargo run --example aws_ec2_key_pair
 cargo run --example aws_kms
 cargo run --example aws_s3
 cargo run --example aws_sts
-cargo run --example cert
+
+rm -f /tmp/test.insecure.key /tmp/test.insecure.cert
+cargo run --example cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
+pushd ./avalanchego-compatibility
+go run ./load-node-id/main.go /tmp/test.insecure.key /tmp/test.insecure.cert
+popd
 
 echo "ALL SUCCESS!"

@@ -8,7 +8,7 @@ use avalanche_ops::{aws, aws_s3, id, random};
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
     macro_rules! ab {
@@ -26,6 +26,12 @@ fn main() {
 
     let mut bucket_name = id::generate("test");
     bucket_name.push_str("-bucket");
+
+    // error should be ignored if it does not exist
+    let ret = ab!(manager.delete_bucket(&bucket_name));
+    assert!(ret.is_ok());
+
+    thread::sleep(time::Duration::from_secs(5));
 
     let ret = ab!(manager.create_bucket(&bucket_name));
     assert!(ret.is_ok());
@@ -73,6 +79,8 @@ fn main() {
 
     let ret = ab!(manager.delete_objects(&bucket_name, None));
     assert!(ret.is_ok());
+
+    thread::sleep(time::Duration::from_secs(2));
 
     let ret = ab!(manager.delete_bucket(&bucket_name));
     assert!(ret.is_ok());

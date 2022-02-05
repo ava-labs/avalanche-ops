@@ -5,9 +5,9 @@ use crate::aws::{
     Result,
 };
 
-use aws_sdk_ec2::{model::Tag, Client, SdkError};
+use aws_sdk_ec2::{error::DeleteKeyPairError, model::Tag, Client, SdkError};
 use hyper::{Body, Method, Request};
-use log::info;
+use log::{info, warn};
 
 /// Implements AWS EC2 manager.
 pub struct Manager {
@@ -80,10 +80,14 @@ impl Manager {
         match ret {
             Ok(_) => {}
             Err(e) => {
-                return Err(API {
-                    message: format!("failed delete_key_pair {:?}", e),
-                    is_retryable: is_error_retryable(&e),
-                });
+                info!("hey! {}", e);
+                if !is_error_delete_key_pair_does_not_exist(&e) {
+                    return Err(API {
+                        message: format!("failed delete_key_pair {:?}", e),
+                        is_retryable: is_error_retryable(&e),
+                    });
+                }
+                warn!("key already deleted ({})", e);
             }
         };
 
@@ -161,6 +165,18 @@ pub fn is_error_retryable<E>(e: &SdkError<E>) -> bool {
     match e {
         SdkError::TimeoutError(_) | SdkError::ResponseError { .. } => true,
         SdkError::DispatchFailure(e) => e.is_timeout() || e.is_io(),
+        _ => false,
+    }
+}
+
+/// EC2 does not return any error for non-existing key deletes, just in case...
+#[inline]
+fn is_error_delete_key_pair_does_not_exist(e: &SdkError<DeleteKeyPairError>) -> bool {
+    match e {
+        SdkError::ServiceError { err, .. } => {
+            let msg = format!("{:?}", err);
+            msg.contains("does not exist")
+        }
         _ => false,
     }
 }

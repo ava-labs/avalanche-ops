@@ -76,13 +76,21 @@ impl Manager {
         let deleted = match ret {
             Ok(_) => true,
             Err(e) => {
-                if !is_error_key_does_not_exist(&e) {
+                let mut ignore_err: bool = false;
+                if is_error_schedule_key_deletion_does_not_exist(&e) {
+                    warn!("KMS CMK '{}' does not exist", key_id);
+                    ignore_err = true
+                }
+                if is_error_schedule_key_deletion_already_scheduled(&e) {
+                    warn!("KMS CMK '{}' already scheduled for deletion", key_id);
+                    ignore_err = true
+                }
+                if !ignore_err {
                     return Err(API {
                         message: format!("failed schedule_key_deletion {:?}", e),
                         is_retryable: is_error_retryable(&e),
                     });
                 }
-                warn!("KMS CMK '{}' does not exist", key_id);
                 false
             }
         };
@@ -301,10 +309,23 @@ pub fn is_error_retryable_decrypt(e: &SdkError<DecryptError>) -> bool {
 }
 
 #[inline]
-fn is_error_key_does_not_exist(e: &SdkError<ScheduleKeyDeletionError>) -> bool {
+fn is_error_schedule_key_deletion_does_not_exist(e: &SdkError<ScheduleKeyDeletionError>) -> bool {
     match e {
         SdkError::ServiceError { err, .. } => {
             matches!(err.kind, ScheduleKeyDeletionErrorKind::NotFoundException(_))
+        }
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_error_schedule_key_deletion_already_scheduled(
+    e: &SdkError<ScheduleKeyDeletionError>,
+) -> bool {
+    match e {
+        SdkError::ServiceError { err, .. } => {
+            let msg = format!("{:?}", err);
+            msg.contains("pending deletion")
         }
         _ => false,
     }
