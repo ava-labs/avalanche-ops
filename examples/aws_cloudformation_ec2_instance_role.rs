@@ -86,7 +86,11 @@ fn main() {
     assert_eq!(stack.status, StackStatus::CreateComplete);
     let outputs = stack.outputs.unwrap();
     for o in outputs {
-        info!("output {:?} {:?}", o.output_key, o.output_value)
+        info!(
+            "output key=[{}], value=[{}]",
+            o.output_key.unwrap(),
+            o.output_value.unwrap()
+        )
     }
 
     thread::sleep(time::Duration::from_secs(5));

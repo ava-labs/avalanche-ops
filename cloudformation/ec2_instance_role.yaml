@@ -23,6 +23,8 @@ Mappings:
       ec2: ec2.amazonaws.com
 
 Resources:
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
   InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -93,7 +95,20 @@ Resources:
                       ],
                     ]
 
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: !Join ["-", [!Ref Id, "instance-profile"]]
+      InstanceProfileName: 
+      Path: "/"
+      Roles:
+        - !Ref InstanceRole
+
 Outputs:
   InstanceRoleARN:
     Value: !GetAtt InstanceRole.Arn
     Description: Role ARN
+
+  InstanceProfileARN:
+    Value: !GetAtt InstanceProfile.Arn
+    Description: Instance profile ARN
