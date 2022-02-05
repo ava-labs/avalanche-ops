@@ -88,9 +88,7 @@ fn main() {
             let status_path = sub_matches
                 .value_of("status")
                 .unwrap_or(&default_status_path);
-            let status = status::Status {
-                config: cfg.clone(),
-            };
+            let status = status::Status { config: cfg };
             status.sync(status_path).unwrap();
 
             info!("creating resources (with status path {})", status_path);
