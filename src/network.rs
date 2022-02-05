@@ -7,18 +7,45 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-/// Represents network-level configuration.
+/// Default snow sample size.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_SNOW_SAMPLE_SIZE: u32 = 20;
+
+/// Default snow quorum size.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_SNOW_QUORUM_SIZE: u32 = 15;
+
+/// Default HTTP port.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_HTTP_PORT: u32 = 9650;
+
+/// Default staking port.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_STAKING_PORT: u32 = 9651;
+
+/// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
 /// bootstrap process (e.g., certificates) and not defined
-/// in this "Config".
-#[derive(Debug, Serialize, Deserialize)]
+/// in this cluster-level "Config".
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct Config {
+    // User-provided ID of the cluster/test.
+    // This is NOT the avalanche node ID.
+    // This is NOT the avalanche network ID.
+    #[serde(default)]
+    pub id: String,
+
+    // Network ID (e.g., fuji, custom).
     #[serde(default)]
     pub network_id: String,
 
+    // The sample size k, snowball.Parameters.K.
+    // If zero, use the default value set via avalanche node code.
     #[serde(default)]
     pub snow_sample_size: u32,
+    // The quorum size α, snowball.Parameters.Alpha.
+    // If zero, use the default value set via avalanche node code.
     #[serde(default)]
     pub snow_quorum_size: u32,
 
@@ -32,7 +59,7 @@ pub struct Config {
     pub beacon_nodes: Option<Vec<BeaconNode>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct BeaconNode {
     #[serde(default)]
@@ -69,8 +96,11 @@ fn test_load_config() {
     let _ = env_logger::builder().is_test(true).try_init();
     use std::io::Write;
 
-    let contents = r#"
+    let id = crate::random::string(10);
+    let contents = format!(
+        r#"
 
+id: {}
 network_id: custom
 
 snow_sample_size: 100
@@ -87,7 +117,9 @@ beacon_nodes:
 - ip: 1.2.3.6
   id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY
 
-"#;
+"#,
+        id
+    );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
     assert!(ret.is_ok());
@@ -96,7 +128,36 @@ beacon_nodes:
     let ret = load_config(p);
     assert!(ret.is_ok());
 
+    let orig = Config {
+        id: id.clone(),
+        network_id: String::from("custom"),
+
+        snow_sample_size: 100,
+        snow_quorum_size: 100,
+
+        http_port: 9650,
+        staking_port: 9651,
+
+        beacon_nodes: Some(vec![
+            BeaconNode {
+                ip: String::from("1.2.3.4"),
+                id: String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"),
+            },
+            BeaconNode {
+                ip: String::from("1.2.3.5"),
+                id: String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX"),
+            },
+            BeaconNode {
+                ip: String::from("1.2.3.6"),
+                id: String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY"),
+            },
+        ]),
+    };
     let cfg = ret.unwrap();
+    assert_eq!(cfg, orig);
+
+    // manually check to make sure the serde deserializer works
+    assert_eq!(cfg.id, id);
     assert_eq!(cfg.network_id, "custom");
     assert_eq!(cfg.snow_sample_size, 100);
     assert_eq!(cfg.snow_quorum_size, 100);
