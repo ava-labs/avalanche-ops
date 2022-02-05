@@ -98,8 +98,8 @@ jobs:
         shell: bash
         run: |
           if [ "$PLATFORM_NAME" == "linux" ]; then
-            ./target/${TARGET}/release/avalanche-ops-nodes-aws
-            ./target/${TARGET}/release/avalanched-aws
+            ./target/${TARGET}/release/avalanche-ops-nodes-aws --help
+            ./target/${TARGET}/release/avalanched-aws --help
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
             echo "skipping darwin"
           else

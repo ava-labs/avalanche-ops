@@ -12,4 +12,5 @@ cargo build \
 --bin avalanche-ops-nodes-aws \
 --bin avalanched-aws
 
-./target/release/avalanche-ops-nodes-aws
+./target/release/avalanche-ops-nodes-aws --help
+./target/release/avalanched-aws --help

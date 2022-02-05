@@ -1,11 +1,23 @@
 use std::{
     fs::File,
-    io::{self, Error, ErrorKind},
+    io::{self, Error, ErrorKind, Write},
     path::Path,
     string::String,
 };
 
+use log::info;
 use serde::{Deserialize, Serialize};
+
+pub const MIN_TOPOLOGY_BEACON_NODES: u32 = 1; // only required for custom networks
+pub const MAX_TOPOLOGY_BEACON_NODES: u32 = 10; // TODO: support higher number
+pub const MIN_TOPOLOGY_NON_BEACON_NODES: u32 = 1;
+pub const MAX_TOPOLOGY_NON_BEACON_NODES: u32 = 20; // TODO: support higher number
+
+/// Default topology beacon nodes size.
+pub const DEFAULT_TOPOLOGY_BEACON_NODES: u32 = 3;
+
+/// Default topology non-beacon nodes size.
+pub const DEFAULT_TOPOLOGY_NON_BEACON_NODES: u32 = 2;
 
 /// Default snow sample size.
 /// NOTE: keep this in sync with "avalanchego/config/flags.go".
@@ -27,38 +39,69 @@ pub const DEFAULT_STAKING_PORT: u32 = 9651;
 /// The node-level configuration is generated during each
 /// bootstrap process (e.g., certificates) and not defined
 /// in this cluster-level "Config".
+/// At the beginning, the user is expected to provide this configuration.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct Config {
-    // User-provided ID of the cluster/test.
-    // This is NOT the avalanche node ID.
-    // This is NOT the avalanche network ID.
+    /// User-provided ID of the cluster/test.
+    /// This is NOT the avalanche node ID.
+    /// This is NOT the avalanche network ID.
     #[serde(default)]
     pub id: String,
 
-    // Network ID (e.g., fuji, custom).
+    /// Defines how network is set up.
+    /// MUST BE NON-EMPTY.
+    pub topology: Topology,
+
+    /// Network ID.
+    /// Only supports: "mainnet" and custom name.
+    /// MUST NOT BE EMPTY.
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#NetworkName
     #[serde(default)]
     pub network_id: String,
 
-    // The sample size k, snowball.Parameters.K.
-    // If zero, use the default value set via avalanche node code.
+    /// The sample size k, snowball.Parameters.K.
+    /// If zero, use the default value set via avalanche node code.
     #[serde(default)]
-    pub snow_sample_size: u32,
-    // The quorum size α, snowball.Parameters.Alpha.
-    // If zero, use the default value set via avalanche node code.
+    pub snow_sample_size: Option<u32>,
+    /// The quorum size α, snowball.Parameters.Alpha.
+    /// If zero, use the default value set via avalanche node code.
     #[serde(default)]
-    pub snow_quorum_size: u32,
+    pub snow_quorum_size: Option<u32>,
 
+    /// HTTP port.
+    /// If zero, default to the value set via avalanche node code.
     #[serde(default)]
-    pub http_port: u32,
+    pub http_port: Option<u32>,
+    /// Staking port.
+    /// If zero, default to the value set via avalanche node code.
     #[serde(default)]
-    pub staking_port: u32,
+    pub staking_port: Option<u32>,
 
-    // Empty if the node is a beacon node.
-    // Non-empty to specify pre-provisioned beacon nodes in the network.
+    /// Empty if the node itself is a beacon node.
+    /// Non-empty to specify pre-provisioned beacon nodes in the network.
+    /// This is read-only and should not be manually configured by the user.
+    /// The node provisioner should update this field, so that
+    /// the node agent can download and use this for its "--bootstrap-ips"
+    /// and "--bootstrap-ids" flags.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub beacon_nodes: Option<Vec<BeaconNode>>,
 }
 
+/// Defines how network is set up.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct Topology {
+    #[serde(default)]
+    pub region: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beacon_nodes: Option<u32>,
+    #[serde(default)]
+    pub non_beacon_nodes: u32,
+}
+
+/// Represents each beacon node.
+/// Only required for custom networks.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct BeaconNode {
@@ -66,6 +109,141 @@ pub struct BeaconNode {
     pub ip: String,
     #[serde(default)]
     pub id: String,
+}
+
+impl Config {
+    pub fn default(network_id: &str) -> Self {
+        let beacon_nodes = match network_id {
+            "mainnet" => 0,
+            _ => MIN_TOPOLOGY_BEACON_NODES,
+        };
+        Self {
+            id: crate::id::generate("test"),
+            topology: Topology {
+                region: String::from("us-west-2"),
+                beacon_nodes: Some(beacon_nodes),
+                non_beacon_nodes: MIN_TOPOLOGY_NON_BEACON_NODES,
+            },
+
+            network_id: String::from(network_id),
+
+            snow_sample_size: Some(DEFAULT_SNOW_SAMPLE_SIZE),
+            snow_quorum_size: Some(DEFAULT_SNOW_QUORUM_SIZE),
+
+            http_port: Some(DEFAULT_HTTP_PORT),
+            staking_port: Some(DEFAULT_STAKING_PORT),
+
+            beacon_nodes: None,
+        }
+    }
+
+    /// Saves the current configuration to disk
+    /// and overwrites the file.
+    pub fn sync(&self, file_path: &str) -> io::Result<()> {
+        info!("syncing network Config to '{}'", file_path);
+        let ret = serde_yaml::to_vec(self);
+        let d = match ret {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize Config to YAML {}", e),
+                ));
+            }
+        };
+        let mut f = File::create(file_path)?;
+        f.write_all(&d)?;
+
+        Ok(())
+    }
+
+    /// Validates the configuration.
+    pub fn validate(&self) -> io::Result<()> {
+        info!("validating the network configuration");
+
+        if self.id.is_empty() {
+            return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
+        }
+        if self.network_id.is_empty() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "'network_id' cannot be empty",
+            ));
+        }
+
+        if self.topology.region.is_empty() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "'topology.region' cannot be empty",
+            ));
+        }
+
+        // network specific validations
+        match self.network_id.as_str() {
+            "mainnet" => {
+                if self.topology.beacon_nodes.unwrap_or(0) > 0 {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "cannot specify non-zero 'topology.beacon_nodes' for mainnet",
+                    ));
+                }
+                if self.beacon_nodes.is_some() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "cannot specify 'beacon_nodes' for mainnet",
+                    ));
+                }
+            }
+            "cascade" | "denali" | "everest" | "fuji" | "testnet" | "testing" | "local" => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "network '{}' is not supported yet in this tooling",
+                        self.network_id
+                    ),
+                ));
+            }
+            _ => {
+                if self.topology.beacon_nodes.unwrap_or(0) == 0 {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "cannot specify 0 for 'topology.beacon_nodes' for custom network",
+                    ));
+                }
+                if self.topology.beacon_nodes.unwrap_or(0) > MAX_TOPOLOGY_BEACON_NODES {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!(
+                            "'topology.beacon_nodes' {} exceeds limit {}",
+                            self.topology.beacon_nodes.unwrap_or(0),
+                            MAX_TOPOLOGY_BEACON_NODES
+                        ),
+                    ));
+                }
+            }
+        }
+
+        if self.topology.non_beacon_nodes < MIN_TOPOLOGY_NON_BEACON_NODES {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "'topology.non_beacon_nodes' {} <minimum {}",
+                    self.topology.non_beacon_nodes, MIN_TOPOLOGY_NON_BEACON_NODES
+                ),
+            ));
+        }
+        if self.topology.non_beacon_nodes > MAX_TOPOLOGY_NON_BEACON_NODES {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "'topology.non_beacon_nodes' {} >maximum {}",
+                    self.topology.non_beacon_nodes, MAX_TOPOLOGY_NON_BEACON_NODES
+                ),
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 pub fn load_config(file_path: &str) -> io::Result<Config> {
@@ -92,19 +270,26 @@ pub fn load_config(file_path: &str) -> io::Result<Config> {
 }
 
 #[test]
-fn test_load_config() {
+fn test_config() {
     let _ = env_logger::builder().is_test(true).try_init();
-    use std::io::Write;
+
+    assert!(Config::default("mainnet").validate().is_ok());
+    assert!(Config::default("mycustom").validate().is_ok());
 
     let id = crate::random::string(10);
     let contents = format!(
         r#"
 
 id: {}
-network_id: custom
+topology:
+  region: us-west-2
+  beacon_nodes: 10
+  non_beacon_nodes: 20
 
-snow_sample_size: 100
-snow_quorum_size: 100
+network_id: hello
+
+snow_sample_size: 20
+snow_quorum_size: 15
 
 http_port: 9650
 staking_port: 9651
@@ -128,15 +313,25 @@ beacon_nodes:
     let ret = load_config(p);
     assert!(ret.is_ok());
 
+    let cfg = ret.unwrap();
+    let ret = cfg.sync(p);
+    assert!(ret.is_ok());
+
     let orig = Config {
         id: id.clone(),
-        network_id: String::from("custom"),
+        topology: Topology {
+            region: String::from("us-west-2"),
+            beacon_nodes: Some(10),
+            non_beacon_nodes: 20,
+        },
 
-        snow_sample_size: 100,
-        snow_quorum_size: 100,
+        network_id: String::from("hello"),
 
-        http_port: 9650,
-        staking_port: 9651,
+        snow_sample_size: Some(20),
+        snow_quorum_size: Some(15),
+
+        http_port: Some(9650),
+        staking_port: Some(9651),
 
         beacon_nodes: Some(vec![
             BeaconNode {
@@ -153,16 +348,21 @@ beacon_nodes:
             },
         ]),
     };
-    let cfg = ret.unwrap();
+
     assert_eq!(cfg, orig);
+    assert!(cfg.validate().is_ok());
+    assert!(orig.validate().is_ok());
 
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
-    assert_eq!(cfg.network_id, "custom");
-    assert_eq!(cfg.snow_sample_size, 100);
-    assert_eq!(cfg.snow_quorum_size, 100);
-    assert_eq!(cfg.http_port, 9650);
-    assert_eq!(cfg.staking_port, 9651);
+    assert_eq!(cfg.topology.region, "us-west-2");
+    assert_eq!(cfg.topology.beacon_nodes.unwrap_or(0), 10);
+    assert_eq!(cfg.topology.non_beacon_nodes, 20);
+    assert_eq!(cfg.network_id, "hello");
+    assert_eq!(cfg.snow_sample_size.unwrap_or(0), 20);
+    assert_eq!(cfg.snow_quorum_size.unwrap_or(0), 15);
+    assert_eq!(cfg.http_port.unwrap_or(0), 9650);
+    assert_eq!(cfg.staking_port.unwrap_or(0), 9651);
     assert!(cfg.beacon_nodes.is_some());
     let beacons = match cfg.beacon_nodes {
         Some(v) => v,
@@ -174,4 +374,31 @@ beacon_nodes:
     assert_eq!(beacons[1].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX");
     assert_eq!(beacons[2].ip, "1.2.3.6");
     assert_eq!(beacons[2].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY");
+}
+
+/// Defines the node type.
+/// Must be either "beacon" or "non-beacon"
+pub enum NodeType {
+    Beacon,
+    NonBeacon,
+}
+
+impl NodeType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NodeType::Beacon => "beacon",
+            NodeType::NonBeacon => "non-beacon",
+        }
+    }
+    pub fn from_str(&self, s: &str) -> io::Result<Self> {
+        match s {
+            "beacon" => Ok(NodeType::Beacon),
+            "non-beacon" => Ok(NodeType::NonBeacon),
+            "non_beacon" => Ok(NodeType::NonBeacon),
+            _ => Err(Error::new(
+                ErrorKind::Other,
+                format!("unknown node type '{}'", s),
+            )),
+        }
+    }
 }

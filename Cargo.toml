@@ -16,6 +16,9 @@ aws-sdk-sts = "0.6.0"
 aws-smithy-types = "0.36.0"
 bitcoin = "0.27.1"
 chrono = "0.4.19"
+clap = { version = "3.0.14", features = ["derive"] }
+crossterm = "0.22.1"
+dialoguer = "0.9.0"
 env_logger = "0.9.0"
 hyper = { version = "0.14.16", features = ["full"] }
 log = "0.4.14"
