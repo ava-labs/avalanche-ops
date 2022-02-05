@@ -1,4 +1,3 @@
-#![feature(path_file_prefix)]
 use std::{io::stdout, path::Path};
 
 use clap::{arg, App, AppSettings};
@@ -41,10 +40,6 @@ fn main() {
             let cfg = avalanche_ops::network::Config::default(network_id);
             let config_path = sub_matches.value_of("config").unwrap();
             cfg.sync(config_path).unwrap();
-
-            let status = status::Status { config: cfg };
-            let status_path = get_status_path(config_path);
-            status.sync(status_path.as_str()).unwrap();
 
             info!("saved to '{}' for network '{}'", config_path, network_id);
         }
@@ -89,7 +84,16 @@ fn main() {
                 }
             }
 
-            info!("creating resources...")
+            let default_status_path = get_status_path(config_path);
+            let status_path = sub_matches
+                .value_of("status")
+                .unwrap_or(&default_status_path);
+            let status = status::Status {
+                config: cfg.clone(),
+            };
+            status.sync(status_path).unwrap();
+
+            info!("creating resources (with status path {})", status_path);
             // TODO
         }
 
@@ -162,7 +166,7 @@ fn create_default_config_command() -> App<'static> {
 fn get_status_path(p: &str) -> String {
     let path = Path::new(p);
     let parent_dir = path.parent().unwrap();
-    let name = path.file_prefix().unwrap();
+    let name = path.file_stem().unwrap();
     let ext = path.extension().unwrap();
     let new_name = format!(
         "{}-status.{}",
@@ -198,6 +202,11 @@ fn create_apply_command() -> App<'static> {
         .arg(
             arg!(-c --config <FILE> "The config file to load")
                 .required(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            arg!(-s --status <FILE> "The status file to write (always overwrites)")
+                .required(false)
                 .allow_invalid_utf8(false),
         )
 }

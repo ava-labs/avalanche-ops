@@ -33,17 +33,17 @@ avalanche-ops-nodes-aws default-config custom \
 --config /tmp/test.yaml
 
 cat /tmp/test.yaml
-cat /tmp/test-status.yaml
 ```
 
 ```bash
 avalanche-ops-nodes-aws apply \
---config /tmp/test.yaml
+--config /tmp/test.yaml \
+--status /tmp/test-status.yaml
 ```
 
 ```bash
 avalanche-ops-nodes-aws delete \
---status /tmp/test.yaml
+--status /tmp/test-status.yaml
 ```
 
 ### `avalanched-aws`

@@ -40,7 +40,7 @@ pub const DEFAULT_STAKING_PORT: u32 = 9651;
 /// bootstrap process (e.g., certificates) and not defined
 /// in this cluster-level "Config".
 /// At the beginning, the user is expected to provide this configuration.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Config {
     /// User-provided ID of the cluster/test.
@@ -89,7 +89,7 @@ pub struct Config {
 }
 
 /// Defines how network is set up.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Topology {
     #[serde(default)]
@@ -102,7 +102,7 @@ pub struct Topology {
 
 /// Represents each beacon node.
 /// Only required for custom networks.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct BeaconNode {
     #[serde(default)]
