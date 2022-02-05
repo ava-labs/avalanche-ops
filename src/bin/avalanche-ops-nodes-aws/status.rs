@@ -16,6 +16,19 @@ pub struct Status {
 }
 
 impl Status {
+    /// Converts to string.
+    pub fn to_string(&self) -> io::Result<String> {
+        match serde_yaml::to_string(&self) {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize Config to YAML {}", e),
+                ));
+            }
+        }
+    }
+
     /// Saves the current status to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {

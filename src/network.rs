@@ -40,7 +40,7 @@ pub const DEFAULT_STAKING_PORT: u32 = 9651;
 /// bootstrap process (e.g., certificates) and not defined
 /// in this cluster-level "Config".
 /// At the beginning, the user is expected to provide this configuration.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Config {
     /// User-provided ID of the cluster/test.
@@ -48,6 +48,14 @@ pub struct Config {
     /// This is NOT the avalanche network ID.
     #[serde(default)]
     pub id: String,
+
+    /// Name of the bucket to store (or download from)
+    /// the configuration and resources (e.g., S3).
+    /// If not exists, it creates automatically.
+    /// If exists, it skips creation and uses the existing one.
+    /// MUST BE NON-EMPTY.
+    #[serde(default)]
+    pub bucket: String,
 
     /// Defines how network is set up.
     /// MUST BE NON-EMPTY.
@@ -89,7 +97,7 @@ pub struct Config {
 }
 
 /// Defines how network is set up.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Topology {
     #[serde(default)]
@@ -102,7 +110,7 @@ pub struct Topology {
 
 /// Represents each beacon node.
 /// Only required for custom networks.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct BeaconNode {
     #[serde(default)]
@@ -117,8 +125,16 @@ impl Config {
             "mainnet" => 0,
             _ => MIN_TOPOLOGY_BEACON_NODES,
         };
+
+        // [year][month]
+        let bucket_name = format!(
+            "avalanche-ops-{}-{}",
+            crate::time::get(6),
+            crate::random::string(5),
+        );
         Self {
             id: crate::id::generate("test"),
+            bucket: bucket_name,
             topology: Topology {
                 region: String::from("us-west-2"),
                 beacon_nodes: Some(beacon_nodes),
@@ -134,6 +150,19 @@ impl Config {
             staking_port: Some(DEFAULT_STAKING_PORT),
 
             beacon_nodes: None,
+        }
+    }
+
+    /// Converts to string.
+    pub fn to_string(&self) -> io::Result<String> {
+        match serde_yaml::to_string(&self) {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize Config to YAML {}", e),
+                ));
+            }
         }
     }
 
@@ -277,10 +306,13 @@ fn test_config() {
     assert!(Config::default("mycustom").validate().is_ok());
 
     let id = crate::random::string(10);
+    let bucket = format!("test-{}", crate::time::get(8));
+
     let contents = format!(
         r#"
 
 id: {}
+bucket: {}
 topology:
   region: us-west-2
   beacon_nodes: 10
@@ -303,7 +335,7 @@ beacon_nodes:
   id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY
 
 "#,
-        id
+        id, bucket,
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
@@ -319,6 +351,7 @@ beacon_nodes:
 
     let orig = Config {
         id: id.clone(),
+        bucket: bucket.clone(),
         topology: Topology {
             region: String::from("us-west-2"),
             beacon_nodes: Some(10),
@@ -355,6 +388,7 @@ beacon_nodes:
 
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
+    assert_eq!(cfg.bucket, bucket);
     assert_eq!(cfg.topology.region, "us-west-2");
     assert_eq!(cfg.topology.beacon_nodes.unwrap_or(0), 10);
     assert_eq!(cfg.topology.non_beacon_nodes, 20);

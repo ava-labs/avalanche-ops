@@ -63,7 +63,7 @@ fn main() {
             )
             .unwrap();
 
-            let d = serde_yaml::to_string(&cfg).unwrap();
+            let d = cfg.to_string().unwrap();
             println!("\n{}\n", d);
 
             let enable_prompt = sub_matches.value_of("prompt").unwrap_or("true");
@@ -114,7 +114,7 @@ fn main() {
             )
             .unwrap();
 
-            let d = serde_yaml::to_string(&status).unwrap();
+            let d = status.to_string().unwrap();
             println!("\n{}\n", d);
 
             let enable_prompt = sub_matches.value_of("prompt").unwrap_or("true");
