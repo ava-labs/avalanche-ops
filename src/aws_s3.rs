@@ -1,10 +1,5 @@
 use std::path::Path;
 
-use crate::aws::{
-    Error::{Other, API},
-    Result,
-};
-
 use aws_sdk_s3::{
     error::{CreateBucketError, CreateBucketErrorKind, DeleteBucketError},
     model::{
@@ -18,6 +13,11 @@ use log::{debug, info, warn};
 use tokio::{
     fs::File,
     io::{AsyncReadExt, AsyncWriteExt},
+};
+
+use crate::aws::{
+    Error::{Other, API},
+    Result,
 };
 
 /// Implements AWS S3 manager.

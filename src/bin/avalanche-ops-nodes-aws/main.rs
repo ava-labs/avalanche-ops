@@ -8,12 +8,12 @@ use crossterm::{
 use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 
+mod status;
+
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
 const SUBCOMMAND_DEFAULT_CONFIG: &str = "default-config";
 const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
-
-mod status;
 
 fn main() {
     let matches = App::new(APP_NAME)

@@ -3,17 +3,17 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::aws::{
-    Error::{Other, API},
-    Result,
-};
-
 use aws_sdk_cloudformation::{
     error::{DeleteStackError, DescribeStacksError},
     model::{Capability, OnFailure, Output, Parameter, StackStatus, Tag},
     Client, SdkError,
 };
 use log::{info, warn};
+
+use crate::aws::{
+    Error::{Other, API},
+    Result,
+};
 
 /// Implements AWS CloudFormation manager.
 pub struct Manager {

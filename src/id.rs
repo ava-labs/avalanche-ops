@@ -4,12 +4,12 @@ use std::{
     path::Path,
 };
 
-use crate::{random, time};
-
 use bitcoin::util::base58;
 use log::info;
 use openssl::{sha::sha256, x509::X509};
 use ripemd::{Digest, Ripemd160};
+
+use crate::{random, time};
 
 /// Generates a random ID with the prefix followed by a
 /// timestamp and random characters.

@@ -1,7 +1,7 @@
-use crate::aws::{Error::API, Result};
-
 use aws_sdk_sts::{Client, SdkError};
 use log::info;
+
+use crate::aws::{Error::API, Result};
 
 /// Implements AWS STS manager.
 pub struct Manager {

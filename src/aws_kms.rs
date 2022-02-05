@@ -1,8 +1,3 @@
-use crate::aws::{
-    Error::{Other, API},
-    Result,
-};
-
 use aws_sdk_kms::{
     error::{
         CreateKeyError, CreateKeyErrorKind, DecryptError, DecryptErrorKind, EncryptError,
@@ -14,6 +9,11 @@ use aws_sdk_kms::{
 };
 use aws_smithy_types::Blob;
 use log::{info, warn};
+
+use crate::aws::{
+    Error::{Other, API},
+    Result,
+};
 
 /// Implements AWS KMS manager.
 pub struct Manager {

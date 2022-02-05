@@ -1,13 +1,13 @@
 use std::{fs::File, io::prelude::*, path::Path, time::Duration};
 
+use aws_sdk_ec2::{error::DeleteKeyPairError, model::Tag, Client, SdkError};
+use hyper::{Body, Method, Request};
+use log::{info, warn};
+
 use crate::aws::{
     Error::{Other, API},
     Result,
 };
-
-use aws_sdk_ec2::{error::DeleteKeyPairError, model::Tag, Client, SdkError};
-use hyper::{Body, Method, Request};
-use log::{info, warn};
 
 /// Implements AWS EC2 manager.
 pub struct Manager {
