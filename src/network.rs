@@ -40,6 +40,7 @@ pub const DEFAULT_STAKING_PORT: u32 = 9651;
 /// bootstrap process (e.g., certificates) and not defined
 /// in this cluster-level "Config".
 /// At the beginning, the user is expected to provide this configuration.
+/// "Clone" is for deep-copying.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Config {
@@ -120,6 +121,7 @@ pub struct BeaconNode {
 }
 
 impl Config {
+    /// Creates a default Status based on the network ID.
     pub fn default(network_id: &str) -> Self {
         let beacon_nodes = match network_id {
             "mainnet" => 0,
@@ -153,6 +155,11 @@ impl Config {
         }
     }
 
+    /// Returns true if the topology is mainnet.
+    pub fn is_mainnet(&self) -> bool {
+        self.network_id == "mainnet"
+    }
+
     /// Converts to string.
     pub fn to_string(&self) -> io::Result<String> {
         match serde_yaml::to_string(&self) {
@@ -170,6 +177,7 @@ impl Config {
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing network Config to '{}'", file_path);
+
         let ret = serde_yaml::to_vec(self);
         let d = match ret {
             Ok(d) => d,
@@ -276,6 +284,8 @@ impl Config {
 }
 
 pub fn load_config(file_path: &str) -> io::Result<Config> {
+    info!("loading config from {}", file_path);
+
     let path = Path::new(file_path);
     if !path.exists() {
         return Err(Error::new(

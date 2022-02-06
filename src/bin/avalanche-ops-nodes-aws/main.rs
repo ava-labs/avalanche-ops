@@ -7,6 +7,9 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
+use tokio::runtime::Runtime;
+
+use avalanche_ops::{aws, aws_sts, network};
 
 mod status;
 
@@ -16,6 +19,8 @@ const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
 
 fn main() {
+    let rt = Runtime::new().unwrap();
+
     let matches = App::new(APP_NAME)
         .about("Avalanche node operations on AWS")
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -37,7 +42,7 @@ fn main() {
             );
 
             let network_id = sub_matches.value_of("NETWORK_ID").unwrap_or("custom");
-            let cfg = avalanche_ops::network::Config::default(network_id);
+            let cfg = network::Config::default(network_id);
             let config_path = sub_matches.value_of("config").unwrap();
             cfg.sync(config_path).unwrap();
 
@@ -52,9 +57,36 @@ fn main() {
             );
 
             let config_path = sub_matches.value_of("config").unwrap();
-            let cfg = avalanche_ops::network::load_config(config_path).unwrap();
+            let cfg = network::load_config(config_path).unwrap();
 
-            println!("\n\n");
+            let ret = rt.block_on(aws::load_config(Some(cfg.topology.region.clone())));
+            assert!(ret.is_ok());
+            let shared_config = ret.unwrap();
+            let sts_manager = aws_sts::Manager::new(&shared_config);
+
+            let ret = rt.block_on(sts_manager.get_identity());
+            assert!(ret.is_ok());
+            let current_identity = ret.unwrap();
+
+            let mut status = status::Status::default(&cfg, &current_identity);
+
+            let default_status_path = get_status_path(config_path);
+            let status_path = sub_matches
+                .value_of("status")
+                .unwrap_or(&default_status_path);
+            if Path::new(status_path).exists() {
+                let ret = status::load_status(status_path);
+                status = ret.unwrap();
+                // always overwrite with original config
+                // in case we suppport update and reconcile
+                status.config = cfg.clone();
+            }
+            status.sync(status_path).unwrap();
+
+            let config_contents = cfg.to_string().unwrap();
+            let status_contents = status.to_string().unwrap();
+
+            println!("\n");
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Blue),
@@ -62,13 +94,29 @@ fn main() {
                 ResetColor
             )
             .unwrap();
+            println!("\n{}\n", config_contents);
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Blue),
+                Print(format!("Loaded status: '{}'", status_path)),
+                ResetColor
+            )
+            .unwrap();
+            println!("\n{}\n", status_contents);
 
-            let d = cfg.to_string().unwrap();
-            println!("\n{}\n", d);
+            // configuration must be valid
+            cfg.validate().unwrap();
+            println!("\n");
 
-            let enable_prompt = sub_matches.value_of("prompt").unwrap_or("true");
+            // AWS calls must be made from the same caller
+            if status.identity != current_identity {
+                panic!(
+                    "status identity {:?} != currently loaded identity {:?}",
+                    status.identity, current_identity
+                );
+            }
 
-            if enable_prompt == "true" {
+            if sub_matches.value_of("prompt").unwrap_or("true") == "true" {
                 let options = &[
                     "No, I am not ready to create resources!",
                     "Yes, let's create resources!",
@@ -84,13 +132,6 @@ fn main() {
                 }
             }
 
-            let default_status_path = get_status_path(config_path);
-            let status_path = sub_matches
-                .value_of("status")
-                .unwrap_or(&default_status_path);
-            let status = status::Status { config: cfg };
-            status.sync(status_path).unwrap();
-
             info!("creating resources (with status path {})", status_path);
             // TODO
         }
@@ -105,7 +146,17 @@ fn main() {
             let status_path = sub_matches.value_of("status").unwrap();
             let status = status::load_status(status_path).unwrap();
 
-            println!("\n\n");
+            let ret = rt.block_on(aws::load_config(Some(
+                status.config.topology.region.clone(),
+            )));
+            assert!(ret.is_ok());
+            let shared_config = ret.unwrap();
+            let sts_manager = aws_sts::Manager::new(&shared_config);
+            let ret = rt.block_on(sts_manager.get_identity());
+            assert!(ret.is_ok());
+            let current_identity = ret.unwrap();
+
+            println!("\n");
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Blue),
@@ -113,13 +164,10 @@ fn main() {
                 ResetColor
             )
             .unwrap();
+            let status_contents = status.to_string().unwrap();
+            println!("\n{}\n", status_contents);
 
-            let d = status.to_string().unwrap();
-            println!("\n{}\n", d);
-
-            let enable_prompt = sub_matches.value_of("prompt").unwrap_or("true");
-
-            if enable_prompt == "true" {
+            if sub_matches.value_of("prompt").unwrap_or("true") == "true" {
                 let options = &[
                     "No, I am not ready to delete resources!",
                     "Yes, let's delete resources!",
@@ -133,6 +181,14 @@ fn main() {
                 if selected == 0 {
                     return;
                 }
+            }
+
+            // AWS calls must be made from the same caller
+            if status.identity != current_identity {
+                panic!(
+                    "status identity {:?} != currently loaded identity {:?}",
+                    status.identity, current_identity
+                );
             }
 
             info!("deleting resources...")

@@ -29,6 +29,11 @@ TBD
 A single command to create a new Avalanche node from scratch and join any network of choice (e.g., test, fuji, main) or a custom Avalanche network with multiple nodes. Provisions all AWS resources required to run a node or network with recommended setups (configurable):
 
 ```bash
+# optional
+./scripts/build.sh
+```
+
+```bash
 avalanche-ops-nodes-aws default-config custom \
 --config /tmp/test.yaml
 

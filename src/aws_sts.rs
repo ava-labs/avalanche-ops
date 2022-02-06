@@ -1,5 +1,6 @@
 use aws_sdk_sts::{Client, SdkError};
 use log::info;
+use serde::{Deserialize, Serialize};
 
 use crate::aws::{Error::API, Result};
 
@@ -43,7 +44,7 @@ impl Manager {
 }
 
 /// Represents the caller identity.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Identity {
     pub account_id: String,
     pub role_arn: String,

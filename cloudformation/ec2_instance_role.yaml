@@ -2,6 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS IAM instance role"
 
+# takes about 3-minute
 Parameters:
   Id:
     Type: String
@@ -23,7 +24,6 @@ Mappings:
       ec2: ec2.amazonaws.com
 
 Resources:
-
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
   InstanceRole:
     Type: AWS::IAM::Role
@@ -98,8 +98,8 @@ Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
-    Properties: !Join ["-", [!Ref Id, "instance-profile"]]
-      InstanceProfileName: 
+    Properties:
+      InstanceProfileName: !Join ["-", [!Ref Id, "instance-profile"]]
       Path: "/"
       Roles:
         - !Ref InstanceRole
