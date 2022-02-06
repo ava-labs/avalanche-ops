@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{fs, path::Path};
 
 use aws_sdk_s3::{
     error::{CreateBucketError, CreateBucketErrorKind, DeleteBucketError},
@@ -10,10 +10,7 @@ use aws_sdk_s3::{
     ByteStream, Client, SdkError,
 };
 use log::{debug, info, warn};
-use tokio::{
-    fs::File,
-    io::{AsyncReadExt, AsyncWriteExt},
-};
+use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::aws::{
     Error::{Other, API},
@@ -275,25 +272,22 @@ impl Manager {
 
     /// Writes an object to a S3 bucket.
     pub async fn put_object(&self, bucket_name: &str, file_path: &str, s3_key: &str) -> Result<()> {
-        let path = Path::new(file_path);
-        if !path.exists() {
+        if !Path::new(file_path).exists() {
             return Err(Other {
                 message: format!("file path {} does not exist", file_path),
                 is_retryable: false,
             });
         }
 
-        let mut file = File::open(file_path).await.map_err(|e| Other {
-            message: format!("failed open {}", e),
-            is_retryable: false,
-        })?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .await
-            .map_err(|e| Other {
-                message: format!("failed read_to_string {}", e),
-                is_retryable: false,
-            })?;
+        let contents = match fs::read(file_path) {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed read {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
 
         info!(
             "writing '{}' to '{}/{}' (size {})",
@@ -307,7 +301,7 @@ impl Manager {
             .put_object()
             .bucket(bucket_name)
             .key(s3_key)
-            .body(ByteStream::from(contents.as_bytes().to_vec()))
+            .body(ByteStream::from(contents))
             .acl(ObjectCannedAcl::Private)
             .send()
             .await;
@@ -320,15 +314,14 @@ impl Manager {
                 });
             }
         };
-        info!("created S3 bucket '{}'", bucket_name);
+        info!("uploaded {} to S3 bucket '{}'", file_path, bucket_name);
 
         Ok(())
     }
 
     /// Downloads an object from a S3 bucket.
     pub async fn get_object(&self, bucket_name: &str, s3_key: &str, file_path: &str) -> Result<()> {
-        let path = Path::new(file_path);
-        if path.exists() {
+        if Path::new(file_path).exists() {
             return Err(Other {
                 message: format!("file path {} already not exists", file_path),
                 is_retryable: false,

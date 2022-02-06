@@ -1,3 +1,9 @@
+use std::{
+    fs::{self, File},
+    io::Write,
+    string::String,
+};
+
 use aws_sdk_kms::{
     error::{
         CreateKeyError, CreateKeyErrorKind, DecryptError, DecryptErrorKind, EncryptError,
@@ -139,6 +145,53 @@ impl Manager {
             cipher.clone().into_inner(),
             plain.clone().into_inner(),
         ))
+    }
+
+    /// Encrypts data from a file and save the ciphertext to the other file.
+    pub async fn encrypt_file(
+        &self,
+        key_id: &str,
+        spec: Option<EncryptionAlgorithmSpec>,
+        src_file: &str,
+        dst_file: &str,
+    ) -> Result<()> {
+        let d = match fs::read(src_file) {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed read {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+
+        let ciphertext = match self.encrypt(key_id, spec, d).await {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        let mut f = match File::create(dst_file) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed File::create {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+        match f.write_all(&ciphertext) {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed File::write_all {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+
+        Ok(())
     }
 
     /// Encrypts data.

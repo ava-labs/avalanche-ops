@@ -21,15 +21,13 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
         "creating certs with key path {} and cert path {}",
         key_path, cert_path
     );
-    let path = Path::new(key_path);
-    if path.exists() {
+    if Path::new(key_path).exists() {
         return Err(Error::new(
             ErrorKind::Other,
             format!("key path {} already exists", key_path),
         ));
     }
-    let path = Path::new(cert_path);
-    if path.exists() {
+    if Path::new(cert_path).exists() {
         return Err(Error::new(
             ErrorKind::Other,
             format!("cert path {} already exists", cert_path),

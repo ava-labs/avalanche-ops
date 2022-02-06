@@ -36,15 +36,15 @@ fn main() {
 
     let ret = ab!(aws::load_config(None));
     let shared_config = ret.unwrap();
-    let manager = aws_cloudformation::Manager::new(&shared_config);
+    let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
 
     let stack_name = id::generate("test");
 
     // error should be ignored if it does not exist
-    let ret = ab!(manager.delete_stack(&stack_name));
+    let ret = ab!(cloudformation_manager.delete_stack(&stack_name));
     assert!(ret.is_ok());
 
-    let ret = ab!(manager.create_stack(
+    let ret = ab!(cloudformation_manager.create_stack(
         &stack_name,
         Capability::CapabilityNamedIam,
         OnFailure::Delete,
@@ -71,7 +71,7 @@ fn main() {
     let stack = ret.unwrap();
     assert_eq!(stack.name, stack_name);
     assert_eq!(stack.status, StackStatus::CreateInProgress);
-    let ret = ab!(manager.poll_stack(
+    let ret = ab!(cloudformation_manager.poll_stack(
         &stack_name,
         StackStatus::CreateComplete,
         Duration::from_secs(300),
@@ -91,9 +91,9 @@ fn main() {
 
     thread::sleep(time::Duration::from_secs(5));
 
-    let ret = ab!(manager.delete_stack(&stack_name));
+    let ret = ab!(cloudformation_manager.delete_stack(&stack_name));
     assert!(ret.is_ok());
-    let ret = ab!(manager.poll_stack(
+    let ret = ab!(cloudformation_manager.poll_stack(
         &stack_name,
         StackStatus::DeleteComplete,
         Duration::from_secs(300),

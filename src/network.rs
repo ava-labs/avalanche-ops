@@ -125,11 +125,15 @@ pub struct AWSResources {
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kms_cmk_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kms_cmk_arn: Option<String>,
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ec2_key_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ec2_key_path: Option<String>,
 
     /// CloudFormation stack name for EC2 instance role.
     /// Read-only.
@@ -211,7 +215,9 @@ impl Config {
 
                 identity: None,
                 kms_cmk_id: None,
+                kms_cmk_arn: None,
                 ec2_key_name: None,
+                ec2_key_path: None,
                 cloudformation_ec2_instance_role: None,
                 cloudformation_vpc: None,
                 cloudformation_asg_beacon_nodes: None,
@@ -361,8 +367,7 @@ impl Config {
 pub fn load_config(file_path: &str) -> io::Result<Config> {
     info!("loading config from {}", file_path);
 
-    let path = Path::new(file_path);
-    if !path.exists() {
+    if !Path::new(file_path).exists() {
         return Err(Error::new(
             ErrorKind::NotFound,
             format!("file {} does not exists", file_path),
@@ -466,7 +471,9 @@ aws_resources:
 
             identity: None,
             kms_cmk_id: None,
+            kms_cmk_arn: None,
             ec2_key_name: None,
+            ec2_key_path: None,
             cloudformation_ec2_instance_role: None,
             cloudformation_vpc: None,
             cloudformation_asg_beacon_nodes: None,

@@ -21,24 +21,24 @@ fn main() {
 
     let ret = ab!(aws::load_config(None));
     let shared_config = ret.unwrap();
-    let manager = aws_s3::Manager::new(&shared_config);
+    let s3_manager = aws_s3::Manager::new(&shared_config);
 
     let mut bucket_name = id::generate("test");
     bucket_name.push_str("-bucket");
 
     // error should be ignored if it does not exist
-    let ret = ab!(manager.delete_bucket(&bucket_name));
+    let ret = ab!(s3_manager.delete_bucket(&bucket_name));
     assert!(ret.is_ok());
 
     thread::sleep(time::Duration::from_secs(5));
 
-    let ret = ab!(manager.create_bucket(&bucket_name));
+    let ret = ab!(s3_manager.create_bucket(&bucket_name));
     assert!(ret.is_ok());
 
     thread::sleep(time::Duration::from_secs(5));
 
     // already exists so should just succeed with warnings
-    let ret = ab!(manager.create_bucket(&bucket_name));
+    let ret = ab!(s3_manager.create_bucket(&bucket_name));
     assert!(ret.is_ok());
 
     let text = "Hello World!";
@@ -51,18 +51,18 @@ fn main() {
     let p2 = tmp_dir.path().join(random::string(10));
     let p2 = p2.as_os_str().to_str().unwrap();
 
-    let ret = ab!(manager.put_object(&bucket_name, p1, "directory/aaa.txt"));
+    let ret = ab!(s3_manager.put_object(&bucket_name, p1, "directory/aaa.txt"));
     assert!(ret.is_ok());
-    let ret = ab!(manager.put_object(&bucket_name, p1, "directory/bbb.txt"));
+    let ret = ab!(s3_manager.put_object(&bucket_name, p1, "directory/bbb.txt"));
     assert!(ret.is_ok());
 
-    let ret = ab!(manager.get_object(&bucket_name, "directory/aaa.txt", &p2));
+    let ret = ab!(s3_manager.get_object(&bucket_name, "directory/aaa.txt", &p2));
     match ret {
         Ok(_) => {}
         Err(e) => panic!("failed!!!! {}", e.message()),
     }
 
-    let ret = ab!(manager.list_objects(&bucket_name, Some(String::from("directory/"))));
+    let ret = ab!(s3_manager.list_objects(&bucket_name, Some(String::from("directory/"))));
     let objects = ret.unwrap();
     for o in objects {
         info!(
@@ -75,11 +75,11 @@ fn main() {
 
     thread::sleep(time::Duration::from_secs(5));
 
-    let ret = ab!(manager.delete_objects(&bucket_name, None));
+    let ret = ab!(s3_manager.delete_objects(&bucket_name, None));
     assert!(ret.is_ok());
 
     thread::sleep(time::Duration::from_secs(2));
 
-    let ret = ab!(manager.delete_bucket(&bucket_name));
+    let ret = ab!(s3_manager.delete_bucket(&bucket_name));
     assert!(ret.is_ok());
 }

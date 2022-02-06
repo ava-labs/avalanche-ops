@@ -21,13 +21,13 @@ fn main() {
 
     let ret = ab!(aws::load_config(None));
     let shared_config = ret.unwrap();
-    let manager = aws_ec2::Manager::new(&shared_config);
+    let ec2_manager = aws_ec2::Manager::new(&shared_config);
 
     let mut key_name = id::generate("test");
     key_name.push_str("-key");
 
     // error should be ignored if it does not exist
-    let ret = ab!(manager.delete_key_pair(&key_name));
+    let ret = ab!(ec2_manager.delete_key_pair(&key_name));
     assert!(ret.is_ok());
 
     let f = tempfile::NamedTempFile::new().unwrap();
@@ -35,11 +35,11 @@ fn main() {
     fs::remove_file(key_path).unwrap();
     info!("created file path {}", key_path);
 
-    let ret = ab!(manager.create_key_pair(&key_name, key_path));
+    let ret = ab!(ec2_manager.create_key_pair(&key_name, key_path));
     assert!(ret.is_ok());
 
     thread::sleep(time::Duration::from_secs(5));
 
-    let ret = ab!(manager.delete_key_pair(&key_name));
+    let ret = ab!(ec2_manager.delete_key_pair(&key_name));
     assert!(ret.is_ok());
 }

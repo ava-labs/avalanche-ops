@@ -34,8 +34,7 @@ fn test_generate() {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/node#Node.Initialize
 pub fn load_node_id(cert_path: &str) -> io::Result<String> {
     info!("loading node ID from certificate {}", cert_path);
-    let path = Path::new(cert_path);
-    if !path.exists() {
+    if !Path::new(cert_path).exists() {
         return Err(Error::new(
             ErrorKind::NotFound,
             format!("cert path {} does not exists", cert_path),

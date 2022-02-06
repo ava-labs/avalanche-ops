@@ -19,8 +19,9 @@ fn main() {
 
     let ret = ab!(aws::load_config(None));
     let shared_config = ret.unwrap();
-    let manager = aws_sts::Manager::new(&shared_config);
-    let ret = ab!(manager.get_identity());
+    let sts_manager = aws_sts::Manager::new(&shared_config);
+
+    let ret = ab!(sts_manager.get_identity());
     let identity1 = ret.unwrap();
     info!("identity1: {:?}", identity1);
 
