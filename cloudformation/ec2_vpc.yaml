@@ -2,6 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS VPC"
 
+# takes about 6-minute
 Parameters:
   Id:
     Type: String

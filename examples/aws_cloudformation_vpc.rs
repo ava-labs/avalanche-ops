@@ -89,8 +89,8 @@ fn main() {
     let ret = ab!(manager.poll_stack(
         &stack_name,
         StackStatus::CreateComplete,
-        Duration::from_secs(180),
-        Duration::from_secs(5),
+        Duration::from_secs(500),
+        Duration::from_secs(30),
     ));
     assert!(ret.is_ok());
     let stack = ret.unwrap();
@@ -108,8 +108,8 @@ fn main() {
     let ret = ab!(manager.poll_stack(
         &stack_name,
         StackStatus::DeleteComplete,
-        Duration::from_secs(120),
-        Duration::from_secs(5),
+        Duration::from_secs(500),
+        Duration::from_secs(30),
     ));
     assert!(ret.is_ok());
     let stack = ret.unwrap();
