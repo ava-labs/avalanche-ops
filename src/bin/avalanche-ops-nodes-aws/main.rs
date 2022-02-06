@@ -100,6 +100,7 @@ fn create_apply_command() -> App<'static> {
         )
 }
 
+// TODO: add "--delete-bucket" flag
 fn create_delete_command() -> App<'static> {
     App::new(SUBCOMMAND_DELETE)
         .about("Deletes resources based on configuration")
@@ -240,6 +241,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
     let _ret = rt
         .block_on(s3_manager.create_bucket(&aws_resources.bucket))
         .unwrap();
+
     // wait some time for bucket creation complete
     thread::sleep(time::Duration::from_secs(2));
 
@@ -294,7 +296,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\nSTEP 6: create ASG for non-beacon nodes\n"),
+        Print("\n\nSTEP 7: create ASG for non-beacon nodes\n"),
         ResetColor
     )
     .unwrap();
@@ -370,6 +372,70 @@ fn run_delete(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()
     let _kms_manager = aws_kms::Manager::new(&shared_config);
     let _ec2_manager = aws_ec2::Manager::new(&shared_config);
     let _cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\nSTEP 1: delete ASG for non-beacon nodes\n"),
+        ResetColor
+    )
+    .unwrap();
+    // TODO
+
+    if config.machine.beacon_nodes.unwrap_or(0) > 0 {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\nSTEP 2: delete ASG for beacon nodes\n"),
+            ResetColor
+        )
+        .unwrap();
+        // TODO
+    }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\nSTEP 3: create VPC\n"),
+        ResetColor
+    )
+    .unwrap();
+    // TODO
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\nSTEP 4: delete EC2 instance role\n"),
+        ResetColor
+    )
+    .unwrap();
+    // TODO
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\nSTEP 5: delete EC2 key pair\n"),
+        ResetColor
+    )
+    .unwrap();
+    // TODO
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\nSTEP 6: delete KMS key\n"),
+        ResetColor
+    )
+    .unwrap();
+    // TODO
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\nSTEP 7: delete S3 bucket\n"),
+        ResetColor
+    )
+    .unwrap();
 
     Ok(())
 }
