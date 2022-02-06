@@ -34,21 +34,15 @@ A single command to create a new Avalanche node from scratch and join any networ
 ```
 
 ```bash
-avalanche-ops-nodes-aws default-config custom \
---config /tmp/test.yaml
-
-cat /tmp/test.yaml
+avalanche-ops-nodes-aws default-config custom --config /tmp/test.yaml
 ```
 
 ```bash
-avalanche-ops-nodes-aws apply \
---config /tmp/test.yaml \
---status /tmp/test-status.yaml
+avalanche-ops-nodes-aws apply --config /tmp/test.yaml
 ```
 
 ```bash
-avalanche-ops-nodes-aws delete \
---status /tmp/test-status.yaml
+avalanche-ops-nodes-aws delete --config /tmp/test.yaml
 ```
 
 ### `avalanched-aws`

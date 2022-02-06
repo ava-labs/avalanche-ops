@@ -20,7 +20,6 @@ fn main() {
     info!("creating AWS S3 resources!");
 
     let ret = ab!(aws::load_config(None));
-    assert!(ret.is_ok());
     let shared_config = ret.unwrap();
     let manager = aws_s3::Manager::new(&shared_config);
 
@@ -64,7 +63,6 @@ fn main() {
     }
 
     let ret = ab!(manager.list_objects(&bucket_name, Some(String::from("directory/"))));
-    assert!(ret.is_ok());
     let objects = ret.unwrap();
     for o in objects {
         info!(

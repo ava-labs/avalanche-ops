@@ -31,12 +31,10 @@ fn main() {
 
     let ec2_instance_role_yaml = Asset::get("cloudformation/ec2_instance_role.yaml").unwrap();
     let ret = std::str::from_utf8(ec2_instance_role_yaml.data.as_ref());
-    assert!(ret.is_ok());
     let template_body = ret.unwrap();
     info!("{:?}", template_body);
 
     let ret = ab!(aws::load_config(None));
-    assert!(ret.is_ok());
     let shared_config = ret.unwrap();
     let manager = aws_cloudformation::Manager::new(&shared_config);
 
@@ -70,7 +68,6 @@ fn main() {
                 .build(),
         ])),
     ));
-    assert!(ret.is_ok());
     let stack = ret.unwrap();
     assert_eq!(stack.name, stack_name);
     assert_eq!(stack.status, StackStatus::CreateInProgress);
@@ -80,7 +77,6 @@ fn main() {
         Duration::from_secs(300),
         Duration::from_secs(20),
     ));
-    assert!(ret.is_ok());
     let stack = ret.unwrap();
     assert_eq!(stack.name, stack_name);
     assert_eq!(stack.status, StackStatus::CreateComplete);
@@ -103,7 +99,6 @@ fn main() {
         Duration::from_secs(300),
         Duration::from_secs(20),
     ));
-    assert!(ret.is_ok());
     let stack = ret.unwrap();
     assert_eq!(stack.name, stack_name);
     assert_eq!(stack.status, StackStatus::DeleteComplete);

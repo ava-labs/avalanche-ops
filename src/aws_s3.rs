@@ -58,8 +58,8 @@ impl Manager {
             .acl(BucketCannedAcl::Private)
             .send()
             .await;
-        let created = match ret {
-            Ok(_) => true,
+        let already_created = match ret {
+            Ok(_) => false,
             Err(e) => {
                 if !is_error_bucket_already_exist(&e) {
                     return Err(API {
@@ -68,10 +68,10 @@ impl Manager {
                     });
                 }
                 warn!("bucket already exists ({})", e);
-                false
+                true
             }
         };
-        if !created {
+        if already_created {
             return Ok(());
         }
         info!("created S3 bucket '{}'", bucket_name);

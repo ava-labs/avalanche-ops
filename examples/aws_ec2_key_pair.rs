@@ -20,7 +20,6 @@ fn main() {
     info!("creating AWS EC2 key-pair resources!");
 
     let ret = ab!(aws::load_config(None));
-    assert!(ret.is_ok());
     let shared_config = ret.unwrap();
     let manager = aws_ec2::Manager::new(&shared_config);
 

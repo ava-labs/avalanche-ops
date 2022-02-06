@@ -20,7 +20,6 @@ fn main() {
     info!("creating AWS KMS resources!");
 
     let ret = ab!(aws::load_config(None));
-    assert!(ret.is_ok());
     let shared_config = ret.unwrap();
     let manager = aws_kms::Manager::new(&shared_config);
 
@@ -32,23 +31,18 @@ fn main() {
     assert!(ret.is_ok());
 
     let ret = ab!(manager.create_key(&key_desc));
-    assert!(ret.is_ok());
     let key = ret.unwrap();
 
     let ret = ab!(manager.generate_data_key(&key.id, None));
-    assert!(ret.is_ok());
     let dek = ret.unwrap();
 
     let ret = ab!(manager.decrypt(&key.id, None, dek.cipher));
-    assert!(ret.is_ok());
     let plain1 = ret.unwrap();
     assert_eq!(dek.plain, plain1);
 
     let ret = ab!(manager.encrypt(&key.id, None, dek.plain.clone()));
-    assert!(ret.is_ok());
     let cipher = ret.unwrap();
     let ret = ab!(manager.decrypt(&key.id, None, cipher));
-    assert!(ret.is_ok());
     let plain2 = ret.unwrap();
     assert_eq!(dek.plain, plain2);
     assert_eq!(plain1, plain2);

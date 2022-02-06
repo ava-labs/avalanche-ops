@@ -18,21 +18,16 @@ fn main() {
     info!("connecting to AWS STS!");
 
     let ret = ab!(aws::load_config(None));
-    assert!(ret.is_ok());
     let shared_config = ret.unwrap();
     let manager = aws_sts::Manager::new(&shared_config);
     let ret = ab!(manager.get_identity());
-    assert!(ret.is_ok());
-
     let identity1 = ret.unwrap();
     info!("identity1: {:?}", identity1);
 
     let ret = ab!(aws::load_config(None));
-    assert!(ret.is_ok());
     let shared_config = ret.unwrap();
     let manager = aws_sts::Manager::new(&shared_config);
     let ret = ab!(manager.get_identity());
-
     let identity2 = ret.unwrap();
     info!("identity2: {:?}", identity2);
 
