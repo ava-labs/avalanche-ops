@@ -331,7 +331,7 @@ fn test_config() {
 
 id: {}
 bucket: {}
-infrastructure:
+machine:
   region: us-west-2
   beacon_nodes: 10
   non_beacon_nodes: 20
