@@ -1,0 +1,309 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS Auto Scaling Groups for amd64"
+
+# takes about X-minute
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+Parameters:
+  Id:
+    Type: String
+    Description: Unique identifier, prefix for all resources created below.
+
+  NodeType:
+    Type: String
+    AllowedValues: ["beacon", "non-beacon"]
+    Description: Node type.
+
+  S3BucketName:
+    Type: String
+    Description: S3 bucket name.
+
+  EC2KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 SSH key name
+
+  InstanceProfileArn:
+    Type: String
+    Description: Instance profile ARN
+
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: The public subnet IDs where node instances are to be created.
+
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: EC2 security group ID
+
+  ImageID:
+    Type: String
+    Default: ""
+    Description: (Optional) Custom image ID. This value overrides any AWS Systems Manager Parameter Store value specified above.
+
+  # https://ubuntu.com/server/docs/cloud-images/amazon-ec2
+  # TODO: support arm64
+  ImageIDSSMParameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+    Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
+
+  # Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
+  # Avalanche test net runs "c5.2xlarge".
+  #
+  # https://aws.amazon.com/ec2/instance-types/m5/
+  # m5.large:   2 vCPU + 8  GiB RAM
+  # m5.xlarge:  4 vCPU + 16 GiB RAM
+  # m5.2xlarge: 8 vCPU + 32 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/c5/
+  # c5.large:   2 vCPU + 4  GiB RAM
+  # c5.xlarge:  4 vCPU + 8  GiB RAM
+  # c5.2xlarge: 8 vCPU + 16 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/r5/
+  # r5.large:   2 vCPU + 16 GiB RAM
+  # r5.xlarge:  4 vCPU + 32 GiB RAM
+  # r5.2xlarge: 8 vCPU + 64 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/t3/
+  # t3.large:   2 vCPU + 8 GiB RAM
+  # t3.xlarge:  4 vCPU + 16 GiB RAM
+  # t3.2xlarge: 8 vCPU + 32 GiB RAM
+  #
+  InstanceTypes:
+    Type: CommaDelimitedList
+    Default: m5.large,c5.large,r5.large,t3.large
+    # Default: m5.xlarge,c5.xlarge,r5.xlarge,t3.xlarge
+    # Default: m5.2xlarge,c5.2xlarge,r5.2xlarge,t3.2xlarge
+    Description: EC2 instance types
+
+  InstanceTypesCount:
+    Type: Number
+    Default: 4
+    MinValue: 1
+    MaxValue: 4
+    Description: The number of instance types
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumetype
+  VolumeType:
+    Type: String
+    Default: gp3
+    Description: Volume type.
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
+  VolumeSize:
+    Type: Number
+    Default: 100
+    MinValue: 40
+    MaxValue: 1024
+    Description: Size of the root disk for the EC2 instances, in GiB.
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-iops
+  VolumeIops:
+    Type: Number
+    Default: 3000
+    Description: The number of I/O operations per second (IOPS).
+
+  # only for gp3
+  # https://aws.amazon.com/ebs/volume-types/
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-throughput
+  VolumeThroughput:
+    Type: Number
+    Default: 1000
+    Description: The throughput to provision for a gp3 volume, with a maximum of 1,000 MiB/s.
+
+  ASGMinSize:
+    Type: Number
+    Description: Minimum size auto scaling group
+    Default: 1
+    MinValue: 1
+    MaxValue: 1000
+
+  ASGMaxSize:
+    Type: Number
+    Description: Maximum size auto scaling group
+    Default: 10
+    MinValue: 1
+    MaxValue: 1000
+
+  ASGDesiredCapacity:
+    Type: Number
+    Description: Desired size auto scaling group
+    Default: 5
+    MinValue: 1
+    MaxValue: 1000
+
+Conditions:
+  HasImageID:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: ImageID
+          - ""
+
+  Has2InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 2
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 3
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 4
+
+  Has3InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 3
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 4
+
+  Has4InstanceTypes:
+    Fn::Equals:
+      - Ref: InstanceTypesCount
+      - 4
+
+Resources:
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
+  ASGLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName:
+        !Join ["-", [!Ref Id, "asg-launch-template", !Ref NodeType, "amd64"]]
+      LaunchTemplateData:
+        IamInstanceProfile: !Ref InstanceProfileArn
+        ImageId:
+          Fn::If:
+            - HasImageID
+            - !Ref ImageID
+            - !Ref ImageIDSSMParameter
+        KeyName: !Ref EC2KeyPairName
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
+            Ebs:
+              VolumeType: !Ref VolumeType
+              VolumeSize: !Ref VolumeSize
+              Iops: !Ref VolumeIops
+              Throughput: !Ref VolumeThroughput
+              DeleteOnTermination: true
+              Encrypted: true
+        Monitoring:
+          Enabled: true
+        # need this for public DNS + SSH access
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeleteOnTermination: true
+            DeviceIndex: 0
+            Groups:
+              - !Ref SecurityGroupId
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - { Key: Name, Value: !Sub "${Id}-instance-${NodeType}-amd64" }
+          - ResourceType: volume
+            Tags:
+              - { Key: Name, Value: !Sub "${Id}-volume-${NodeType}-amd64" }
+    Metadata:
+      Comment: Install and configure AWS CLI
+      AWS::CloudFormation::Init:
+        configSets:
+          default:
+            - AWSCLI
+            - SSMCLI
+        AWSCLI:
+          packages:
+            yum:
+              unzip: []
+              zsh: []
+              wget: []
+          commands: |
+            curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+            unzip awscli-bundle.zip
+            sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+            which aws
+            rm -r awscli*
+        SSMCLI:
+          packages:
+            apt:
+              ssm:
+                # https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_arm64/amazon-ssm-agent.deb
+                # https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb
+                - Fn::Sub: "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb"
+    # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
+    UserData:
+      Fn::Base64:
+        Fn::Sub: |
+          #!/bin/bash
+          set -xeu
+
+          sudo apt-get update -y \
+            && sudo apt-get upgrade -y \
+            && sudo apt-get install -y \
+            curl wget zip gzip tar \
+            libssl-dev
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: !Ref ASGMinSize
+        MaxBatchSize: 1
+        SuspendProcesses:
+          - HealthCheck
+          - ReplaceUnhealthy
+          - AZRebalance
+          - AlarmNotification
+          - ScheduledActions
+    Properties:
+      AutoScalingGroupName:
+        !Join ["-", [!Ref Id, "asg", !Ref NodeType, "amd64"]]
+      MinSize: !Ref ASGMinSize
+      MaxSize: !Ref ASGMaxSize
+      DesiredCapacity: !Ref ASGDesiredCapacity
+      VPCZoneIdentifier: !Ref PublicSubnetIds
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+      MetricsCollection:
+        - Granularity: "1Minute"
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: !Join ["-", [!Ref Id, "asg", !Ref NodeType, "amd64"]]
+        - Key: BUCKET
+          PropagateAtLaunch: true
+          Value: !Ref S3BucketName
+        - Key: NODE_TYPE
+          PropagateAtLaunch: true
+          Value: !Ref NodeType
+      # specify "MixedInstancesPolicy" or "LaunchConfiguration"
+      MixedInstancesPolicy:
+        InstancesDistribution:
+          OnDemandAllocationStrategy: "prioritized"
+        LaunchTemplate:
+          LaunchTemplateSpecification:
+            LaunchTemplateId: !Ref ASGLaunchTemplate
+            Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+          Overrides:
+            - InstanceType: !Select [0, !Ref InstanceTypes]
+            - Fn::If:
+                - Has2InstanceTypes
+                - !Select [1, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has3InstanceTypes
+                - !Select [2, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has4InstanceTypes
+                - !Select [3, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+
+Outputs:
+  ASGName:
+    Value: !Ref ASG
