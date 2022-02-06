@@ -3,6 +3,8 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS IAM instance role"
 
 # takes about 3-minute
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Parameters:
   Id:
     Type: String
@@ -109,6 +111,6 @@ Outputs:
     Value: !GetAtt InstanceRole.Arn
     Description: Role ARN
 
-  InstanceProfileARN:
+  InstanceProfileArn:
     Value: !GetAtt InstanceProfile.Arn
     Description: Instance profile ARN

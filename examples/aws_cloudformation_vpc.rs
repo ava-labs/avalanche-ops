@@ -77,8 +77,16 @@ fn main() {
                 .parameter_value("10.0.192.0/19")
                 .build(),
             Parameter::builder()
-                .parameter_key("SSHIngressIPv4Range")
+                .parameter_key("IngressEgressIPv4Range")
                 .parameter_value("0.0.0.0/0")
+                .build(),
+            Parameter::builder()
+                .parameter_key("HttpPort")
+                .parameter_value("9650")
+                .build(),
+            Parameter::builder()
+                .parameter_key("StakingPort")
+                .parameter_value("9651")
                 .build(),
         ])),
     ));
