@@ -59,7 +59,7 @@ fn main() {
             let config_path = sub_matches.value_of("config").unwrap();
             let cfg = network::load_config(config_path).unwrap();
 
-            let ret = rt.block_on(aws::load_config(Some(cfg.topology.region.clone())));
+            let ret = rt.block_on(aws::load_config(Some(cfg.machine.region.clone())));
             assert!(ret.is_ok());
             let shared_config = ret.unwrap();
             let sts_manager = aws_sts::Manager::new(&shared_config);
@@ -146,9 +146,7 @@ fn main() {
             let status_path = sub_matches.value_of("status").unwrap();
             let status = status::load_status(status_path).unwrap();
 
-            let ret = rt.block_on(aws::load_config(Some(
-                status.config.topology.region.clone(),
-            )));
+            let ret = rt.block_on(aws::load_config(Some(status.config.machine.region.clone())));
             assert!(ret.is_ok());
             let shared_config = ret.unwrap();
             let sts_manager = aws_sts::Manager::new(&shared_config);

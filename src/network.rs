@@ -58,9 +58,9 @@ pub struct Config {
     #[serde(default)]
     pub bucket: String,
 
-    /// Defines how network is set up.
+    /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
-    pub topology: Topology,
+    pub machine: Machine,
 
     /// Network ID.
     /// Only supports: "mainnet" and custom name.
@@ -97,16 +97,18 @@ pub struct Config {
     pub beacon_nodes: Option<Vec<BeaconNode>>,
 }
 
-/// Defines how network is set up.
+/// Defines how the underlying infrastructure is set up.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct Topology {
+pub struct Machine {
     #[serde(default)]
     pub region: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub beacon_nodes: Option<u32>,
     #[serde(default)]
     pub non_beacon_nodes: u32,
+    #[serde(default)]
+    pub instance_types: Option<Vec<String>>,
 }
 
 /// Represents each beacon node.
@@ -137,10 +139,16 @@ impl Config {
         Self {
             id: crate::id::generate("test"),
             bucket: bucket_name,
-            topology: Topology {
+            machine: Machine {
                 region: String::from("us-west-2"),
                 beacon_nodes: Some(beacon_nodes),
                 non_beacon_nodes: MIN_TOPOLOGY_NON_BEACON_NODES,
+                instance_types: Some(vec![
+                    String::from("m5.large"),
+                    String::from("c5.large"),
+                    String::from("r5.large"),
+                    String::from("t3.large"),
+                ]),
             },
 
             network_id: String::from(network_id),
@@ -208,7 +216,7 @@ impl Config {
             ));
         }
 
-        if self.topology.region.is_empty() {
+        if self.machine.region.is_empty() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "'topology.region' cannot be empty",
@@ -218,7 +226,7 @@ impl Config {
         // network specific validations
         match self.network_id.as_str() {
             "mainnet" => {
-                if self.topology.beacon_nodes.unwrap_or(0) > 0 {
+                if self.machine.beacon_nodes.unwrap_or(0) > 0 {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
                         "cannot specify non-zero 'topology.beacon_nodes' for mainnet",
@@ -241,18 +249,18 @@ impl Config {
                 ));
             }
             _ => {
-                if self.topology.beacon_nodes.unwrap_or(0) == 0 {
+                if self.machine.beacon_nodes.unwrap_or(0) == 0 {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
                         "cannot specify 0 for 'topology.beacon_nodes' for custom network",
                     ));
                 }
-                if self.topology.beacon_nodes.unwrap_or(0) > MAX_TOPOLOGY_BEACON_NODES {
+                if self.machine.beacon_nodes.unwrap_or(0) > MAX_TOPOLOGY_BEACON_NODES {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
                         format!(
                             "'topology.beacon_nodes' {} exceeds limit {}",
-                            self.topology.beacon_nodes.unwrap_or(0),
+                            self.machine.beacon_nodes.unwrap_or(0),
                             MAX_TOPOLOGY_BEACON_NODES
                         ),
                     ));
@@ -260,21 +268,21 @@ impl Config {
             }
         }
 
-        if self.topology.non_beacon_nodes < MIN_TOPOLOGY_NON_BEACON_NODES {
+        if self.machine.non_beacon_nodes < MIN_TOPOLOGY_NON_BEACON_NODES {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "'topology.non_beacon_nodes' {} <minimum {}",
-                    self.topology.non_beacon_nodes, MIN_TOPOLOGY_NON_BEACON_NODES
+                    self.machine.non_beacon_nodes, MIN_TOPOLOGY_NON_BEACON_NODES
                 ),
             ));
         }
-        if self.topology.non_beacon_nodes > MAX_TOPOLOGY_NON_BEACON_NODES {
+        if self.machine.non_beacon_nodes > MAX_TOPOLOGY_NON_BEACON_NODES {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "'topology.non_beacon_nodes' {} >maximum {}",
-                    self.topology.non_beacon_nodes, MAX_TOPOLOGY_NON_BEACON_NODES
+                    self.machine.non_beacon_nodes, MAX_TOPOLOGY_NON_BEACON_NODES
                 ),
             ));
         }
@@ -323,10 +331,15 @@ fn test_config() {
 
 id: {}
 bucket: {}
-topology:
+infrastructure:
   region: us-west-2
   beacon_nodes: 10
   non_beacon_nodes: 20
+  instance_types:
+  - m5.large
+  - c5.large
+  - r5.large
+  - t3.large
 
 network_id: hello
 
@@ -362,10 +375,16 @@ beacon_nodes:
     let orig = Config {
         id: id.clone(),
         bucket: bucket.clone(),
-        topology: Topology {
+        machine: Machine {
             region: String::from("us-west-2"),
             beacon_nodes: Some(10),
             non_beacon_nodes: 20,
+            instance_types: Some(vec![
+                String::from("m5.large"),
+                String::from("c5.large"),
+                String::from("r5.large"),
+                String::from("t3.large"),
+            ]),
         },
 
         network_id: String::from("hello"),
@@ -399,9 +418,15 @@ beacon_nodes:
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
     assert_eq!(cfg.bucket, bucket);
-    assert_eq!(cfg.topology.region, "us-west-2");
-    assert_eq!(cfg.topology.beacon_nodes.unwrap_or(0), 10);
-    assert_eq!(cfg.topology.non_beacon_nodes, 20);
+    assert_eq!(cfg.machine.region, "us-west-2");
+    assert_eq!(cfg.machine.beacon_nodes.unwrap_or(0), 10);
+    assert_eq!(cfg.machine.non_beacon_nodes, 20);
+    assert!(cfg.machine.instance_types.is_some());
+    let instance_types = cfg.machine.instance_types.unwrap();
+    assert_eq!(instance_types[0], "m5.large");
+    assert_eq!(instance_types[1], "c5.large");
+    assert_eq!(instance_types[2], "r5.large");
+    assert_eq!(instance_types[3], "t3.large");
     assert_eq!(cfg.network_id, "hello");
     assert_eq!(cfg.snow_sample_size.unwrap_or(0), 20);
     assert_eq!(cfg.snow_quorum_size.unwrap_or(0), 15);
