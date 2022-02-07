@@ -475,32 +475,20 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .clone()
             .unwrap();
 
-        rt.block_on(
-            cloudformation_manager.create_stack(
-                ec2_instance_role_stack_name.as_str(),
-                Some(vec![Capability::CapabilityNamedIam]),
-                OnFailure::Delete,
-                ec2_instance_role_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("kind")
-                    .value("avalanche-ops")
-                    .build()])),
-                Some(Vec::from([
-                    Parameter::builder()
-                        .parameter_key("Id")
-                        .parameter_value(&config.id)
-                        .build(),
-                    Parameter::builder()
-                        .parameter_key("KmsKeyArn")
-                        .parameter_value(aws_resources.kms_cmk_arn.clone().unwrap())
-                        .build(),
-                    Parameter::builder()
-                        .parameter_key("S3BucketName")
-                        .parameter_value(aws_resources.bucket.clone())
-                        .build(),
-                ])),
-            ),
-        )
+        rt.block_on(cloudformation_manager.create_stack(
+            ec2_instance_role_stack_name.as_str(),
+            Some(vec![Capability::CapabilityNamedIam]),
+            OnFailure::Delete,
+            ec2_instance_role_tmpl,
+            Some(Vec::from([
+                Tag::builder().key("kind").value("avalanche-ops").build(),
+            ])),
+            Some(Vec::from([
+                build_param("Id", &config.id),
+                build_param("KmsKeyArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
+                build_param("S3BucketName", &aws_resources.bucket),
+            ])),
+        ))
         .unwrap();
 
         thread::sleep(time::Duration::from_secs(10));
@@ -551,45 +539,21 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         let vpc_stack_name = aws_resources.cloudformation_vpc.clone().unwrap();
 
         let mut parameters = Vec::from([
-            Parameter::builder()
-                .parameter_key("Id")
-                .parameter_value(&config.id)
-                .build(),
-            Parameter::builder()
-                .parameter_key("VpcCidr")
-                .parameter_value("10.0.0.0/16")
-                .build(),
-            Parameter::builder()
-                .parameter_key("PublicSubnetCidr1")
-                .parameter_value("10.0.64.0/19")
-                .build(),
-            Parameter::builder()
-                .parameter_key("PublicSubnetCidr2")
-                .parameter_value("10.0.128.0/19")
-                .build(),
-            Parameter::builder()
-                .parameter_key("PublicSubnetCidr3")
-                .parameter_value("10.0.192.0/19")
-                .build(),
-            Parameter::builder()
-                .parameter_key("IngressEgressIPv4Range")
-                .parameter_value("0.0.0.0/0")
-                .build(),
+            build_param("Id", &config.id),
+            build_param("VpcCidr", "10.0.0.0/16"),
+            build_param("PublicSubnetCidr1", "10.0.64.0/19"),
+            build_param("PublicSubnetCidr2", "10.0.128.0/19"),
+            build_param("PublicSubnetCidr3", "10.0.192.0/19"),
+            build_param("IngressEgressIpv4Range", "0.0.0.0/0"),
         ]);
         if config.http_port.is_some() {
             let http_port = config.http_port.unwrap();
-            let param = Parameter::builder()
-                .parameter_key("HttpPort")
-                .parameter_value(format!("{}", http_port))
-                .build();
+            let param = build_param("HttpPort", format!("{}", http_port).as_str());
             parameters.push(param);
         }
         if config.staking_port.is_some() {
             let staking_port = config.staking_port.unwrap();
-            let param = Parameter::builder()
-                .parameter_key("StakingPort")
-                .parameter_value(format!("{}", staking_port))
-                .build();
+            let param = build_param("StakingPort", format!("{}", staking_port).as_str());
             parameters.push(param);
         }
 
@@ -673,69 +637,47 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .unwrap();
 
         let mut parameters = Vec::from([
-            Parameter::builder()
-                .parameter_key("Id")
-                .parameter_value(&config.id)
-                .build(),
-            Parameter::builder()
-                .parameter_key("NodeType")
-                .parameter_value("beacon")
-                .build(),
-            Parameter::builder()
-                .parameter_key("S3BucketName")
-                .parameter_value(aws_resources.bucket.clone())
-                .build(),
-            Parameter::builder()
-                .parameter_key("Ec2KeyPairName")
-                .parameter_value(aws_resources.ec2_key_name.clone().unwrap())
-                .build(),
-            Parameter::builder()
-                .parameter_key("InstanceProfileArn")
-                .parameter_value(
-                    aws_resources
-                        .cloudformation_ec2_instance_profile_arn
-                        .clone()
-                        .unwrap(),
-                )
-                .build(),
-            Parameter::builder()
-                .parameter_key("PublicSubnetIds")
-                .parameter_value(
-                    aws_resources
-                        .cloudformation_vpc_public_subnet_ids
-                        .clone()
-                        .unwrap()
-                        .join(","),
-                )
-                .build(),
-            Parameter::builder()
-                .parameter_key("SecurityGroupId")
-                .parameter_value(
-                    aws_resources
-                        .cloudformation_vpc_security_group_id
-                        .clone()
-                        .unwrap(),
-                )
-                .build(),
-            Parameter::builder()
-                .parameter_key("AsgDesiredCapacity")
-                .parameter_value(format!("{}", config.machine.beacon_nodes.unwrap()))
-                .build(),
+            build_param("Id", &config.id),
+            build_param("NodeType", "beacon"),
+            build_param("S3BucketName", &aws_resources.bucket),
+            build_param(
+                "Ec2KeyPairName",
+                &aws_resources.ec2_key_name.clone().unwrap(),
+            ),
+            build_param(
+                "InstanceProfileArn",
+                &aws_resources
+                    .cloudformation_ec2_instance_profile_arn
+                    .clone()
+                    .unwrap(),
+            ),
+            build_param(
+                "PublicSubnetIds",
+                &aws_resources
+                    .cloudformation_vpc_public_subnet_ids
+                    .clone()
+                    .unwrap()
+                    .join(","),
+            ),
+            build_param(
+                "SecurityGroupId",
+                &aws_resources
+                    .cloudformation_vpc_security_group_id
+                    .clone()
+                    .unwrap(),
+            ),
+            build_param(
+                "AsgDesiredCapacity",
+                format!("{}", config.machine.beacon_nodes.unwrap()).as_str(),
+            ),
         ]);
         if config.machine.instance_types.is_some() {
             let instance_types = config.machine.instance_types.clone().unwrap();
-            parameters.push(
-                Parameter::builder()
-                    .parameter_key("InstanceTypes")
-                    .parameter_value(instance_types.join(","))
-                    .build(),
-            );
-            parameters.push(
-                Parameter::builder()
-                    .parameter_key("InstanceTypesCount")
-                    .parameter_value(format!("{}", instance_types.len()))
-                    .build(),
-            );
+            parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
+            parameters.push(build_param(
+                "InstanceTypesCount",
+                format!("{}", instance_types.len()).as_str(),
+            ));
         }
 
         rt.block_on(cloudformation_manager.create_stack(
@@ -1059,6 +1001,13 @@ fn run_delete(
     }
 
     Ok(())
+}
+
+fn build_param(k: &str, v: &str) -> Parameter {
+    Parameter::builder()
+        .parameter_key(k)
+        .parameter_value(v)
+        .build()
 }
 
 fn get_ec2_key_path(config_path: &str) -> String {
