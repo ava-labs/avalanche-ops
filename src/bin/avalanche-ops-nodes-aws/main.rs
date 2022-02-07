@@ -661,8 +661,10 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             ResetColor
         )
         .unwrap();
+
         // TODO
         // get all IPs and IDs, update config path
+        info!("not implemented...");
 
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
@@ -688,7 +690,9 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             ResetColor
         )
         .unwrap();
+
         // TODO
+        info!("not implemented...");
 
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
