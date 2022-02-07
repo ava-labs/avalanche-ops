@@ -208,6 +208,18 @@ Resources:
           - ResourceType: volume
             Tags:
               - { Key: Name, Value: !Sub "${Id}-volume-${NodeType}-amd64" }
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
+        UserData:
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash
+              set -xeu
+
+              sudo apt-get update -y \
+              && sudo apt-get upgrade -y \
+              && sudo apt-get install -y \
+              curl wget zip gzip tar \
+              libssl-dev
     Metadata:
       Comment: Install and configure AWS CLI
       AWS::CloudFormation::Init:
@@ -234,18 +246,6 @@ Resources:
                 # https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_arm64/amazon-ssm-agent.deb
                 # https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb
                 - Fn::Sub: "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb"
-    # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
-    UserData:
-      Fn::Base64:
-        Fn::Sub: |
-          #!/bin/bash
-          set -xeu
-
-          sudo apt-get update -y \
-            && sudo apt-get upgrade -y \
-            && sudo apt-get install -y \
-            curl wget zip gzip tar \
-            libssl-dev
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:
@@ -305,5 +305,5 @@ Resources:
                 - !Ref AWS::NoValue
 
 Outputs:
-  ASGName:
+  AsgLogicalId:
     Value: !Ref ASG

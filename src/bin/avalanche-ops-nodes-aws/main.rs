@@ -342,6 +342,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         format!("{}/installation/avalanchego.zstd", config.id).as_str(),
     ))
     .unwrap();
+
     if config.plugins_dir.is_some() {
         let plugins_dir = config.plugins_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
@@ -662,9 +663,114 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         )
         .unwrap();
 
+        let cloudformation_asg_beacon_nodes_yaml =
+            Asset::get("cloudformation/ec2_asg_amd64.yaml").unwrap();
+        let cloudformation_asg_beacon_nodes_tmpl =
+            std::str::from_utf8(cloudformation_asg_beacon_nodes_yaml.data.as_ref()).unwrap();
+        let cloudformation_asg_beacon_nodes_stack_name = aws_resources
+            .cloudformation_asg_beacon_nodes
+            .clone()
+            .unwrap();
+
+        let mut parameters = Vec::from([
+            Parameter::builder()
+                .parameter_key("Id")
+                .parameter_value(&config.id)
+                .build(),
+            Parameter::builder()
+                .parameter_key("NodeType")
+                .parameter_value("beacon")
+                .build(),
+            Parameter::builder()
+                .parameter_key("S3BucketName")
+                .parameter_value(aws_resources.bucket.clone())
+                .build(),
+            Parameter::builder()
+                .parameter_key("EC2KeyPairName")
+                .parameter_value(aws_resources.ec2_key_name.clone().unwrap())
+                .build(),
+            Parameter::builder()
+                .parameter_key("InstanceProfileArn")
+                .parameter_value(
+                    aws_resources
+                        .cloudformation_ec2_instance_profile_arn
+                        .clone()
+                        .unwrap(),
+                )
+                .build(),
+            Parameter::builder()
+                .parameter_key("PublicSubnetIds")
+                .parameter_value(
+                    aws_resources
+                        .cloudformation_vpc_public_subnet_ids
+                        .clone()
+                        .unwrap()
+                        .join(","),
+                )
+                .build(),
+            Parameter::builder()
+                .parameter_key("SecurityGroupId")
+                .parameter_value(
+                    aws_resources
+                        .cloudformation_vpc_security_group_id
+                        .clone()
+                        .unwrap(),
+                )
+                .build(),
+            Parameter::builder()
+                .parameter_key("ASGDesiredCapacity")
+                .parameter_value(format!("{}", config.machine.beacon_nodes.unwrap()))
+                .build(),
+        ]);
+        if config.machine.instance_types.is_some() {
+            let instance_types = config.machine.instance_types.clone().unwrap();
+            parameters.push(
+                Parameter::builder()
+                    .parameter_key("InstanceTypes")
+                    .parameter_value(instance_types.join(","))
+                    .build(),
+            );
+            parameters.push(
+                Parameter::builder()
+                    .parameter_key("InstanceTypesCount")
+                    .parameter_value(format!("{}", instance_types.len()))
+                    .build(),
+            );
+        }
+
+        rt.block_on(cloudformation_manager.create_stack(
+            cloudformation_asg_beacon_nodes_stack_name.as_str(),
+            None,
+            OnFailure::Delete,
+            cloudformation_asg_beacon_nodes_tmpl,
+            Some(Vec::from([
+                Tag::builder().key("kind").value("avalanche-ops").build(),
+            ])),
+            Some(parameters),
+        ))
+        .unwrap();
+
+        // TODO: adjust timeouts based on the capacity
+        thread::sleep(time::Duration::from_secs(10));
+        let stack = rt
+            .block_on(cloudformation_manager.poll_stack(
+                cloudformation_asg_beacon_nodes_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(300),
+                Duration::from_secs(20),
+            ))
+            .unwrap();
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("AsgLogicalId") {
+                aws_resources.cloudformation_asg_beacon_nodes_logical_id = Some(v);
+            }
+        }
         // TODO
         // get all IPs and IDs, update config path
-        info!("not implemented...");
 
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
