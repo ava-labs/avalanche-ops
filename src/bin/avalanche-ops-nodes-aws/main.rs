@@ -491,7 +491,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                         .parameter_value(&config.id)
                         .build(),
                     Parameter::builder()
-                        .parameter_key("KMSKeyArn")
+                        .parameter_key("KmsKeyArn")
                         .parameter_value(aws_resources.kms_cmk_arn.clone().unwrap())
                         .build(),
                     Parameter::builder()
@@ -686,7 +686,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 .parameter_value(aws_resources.bucket.clone())
                 .build(),
             Parameter::builder()
-                .parameter_key("EC2KeyPairName")
+                .parameter_key("Ec2KeyPairName")
                 .parameter_value(aws_resources.ec2_key_name.clone().unwrap())
                 .build(),
             Parameter::builder()
@@ -718,7 +718,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 )
                 .build(),
             Parameter::builder()
-                .parameter_key("ASGDesiredCapacity")
+                .parameter_key("AsgDesiredCapacity")
                 .parameter_value(format!("{}", config.machine.beacon_nodes.unwrap()))
                 .build(),
         ]);
@@ -769,8 +769,14 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 aws_resources.cloudformation_asg_beacon_nodes_logical_id = Some(v);
             }
         }
+
         // TODO
         // get all IPs and IDs, update config path
+        // e.g.,
+        // chmod 400 /tmp/test-ec2-access-key
+        // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@34.209.244.108
+        // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@ec2-34-209-244-108.us-west-2.compute.amazonaws.com
+        // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
 
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();

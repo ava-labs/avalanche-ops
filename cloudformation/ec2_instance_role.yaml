@@ -10,7 +10,7 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
-  KMSKeyArn:
+  KmsKeyArn:
     Type: String
     Description: The CMK ARN that de/encrypts resources in S3.
 
@@ -58,7 +58,7 @@ Resources:
                   - kms:Encrypt # to generate TLS key and encrypt
                   - kms:GenerateDataKey* # to encrypt TLS key
                   - kms:DescribeKey # to describe the CMK
-                Resource: { Ref: KMSKeyArn }
+                Resource: { Ref: KmsKeyArn }
               - Effect: Allow
                 Action:
                   - s3:GetObject # to download avalanched-aws binary

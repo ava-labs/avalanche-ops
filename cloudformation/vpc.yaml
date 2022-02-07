@@ -223,7 +223,7 @@ Resources:
       VpcId: !Ref VPC
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-ingress.html
-  SSHIngress:
+  SshIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       GroupId: !Ref SecurityGroup

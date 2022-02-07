@@ -19,7 +19,7 @@ Parameters:
     Type: String
     Description: S3 bucket name.
 
-  EC2KeyPairName:
+  Ec2KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
     Description: EC2 SSH key name
 
@@ -35,14 +35,14 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
     Description: EC2 security group ID
 
-  ImageID:
+  ImageId:
     Type: String
     Default: ""
     Description: (Optional) Custom image ID. This value overrides any AWS Systems Manager Parameter Store value specified above.
 
   # https://ubuntu.com/server/docs/cloud-images/amazon-ec2
   # TODO: support arm64
-  ImageIDSSMParameter:
+  ImageIdSsmParameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
@@ -107,26 +107,27 @@ Parameters:
   # only for gp3
   # https://aws.amazon.com/ebs/volume-types/
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-throughput
+  # "1000" does not work -- "InvalidParameterValue - Throughput (MiBps) to iops ratio of 0.333333 is too high; maximum is 0.250000 MiBps per iops."
   VolumeThroughput:
     Type: Number
-    Default: 1000
+    Default: 500
     Description: The throughput to provision for a gp3 volume, with a maximum of 1,000 MiB/s.
 
-  ASGMinSize:
+  AsgMinSize:
     Type: Number
     Description: Minimum size auto scaling group
     Default: 1
     MinValue: 1
     MaxValue: 1000
 
-  ASGMaxSize:
+  AsgMaxSize:
     Type: Number
     Description: Maximum size auto scaling group
     Default: 10
     MinValue: 1
     MaxValue: 1000
 
-  ASGDesiredCapacity:
+  AsgDesiredCapacity:
     Type: Number
     Description: Desired size auto scaling group
     Default: 5
@@ -134,10 +135,10 @@ Parameters:
     MaxValue: 1000
 
 Conditions:
-  HasImageID:
+  HasImageId:
     Fn::Not:
       - Fn::Equals:
-          - Ref: ImageID
+          - Ref: ImageId
           - ""
 
   Has2InstanceTypes:
@@ -174,13 +175,15 @@ Resources:
       LaunchTemplateName:
         !Join ["-", [!Ref Id, "asg-launch-template", !Ref NodeType, "amd64"]]
       LaunchTemplateData:
-        IamInstanceProfile: !Ref InstanceProfileArn
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
+        IamInstanceProfile:
+          Arn: !Ref InstanceProfileArn
         ImageId:
           Fn::If:
-            - HasImageID
-            - !Ref ImageID
-            - !Ref ImageIDSSMParameter
-        KeyName: !Ref EC2KeyPairName
+            - HasImageId
+            - !Ref ImageId
+            - !Ref ImageIdSsmParameter
+        KeyName: !Ref Ec2KeyPairName
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
@@ -252,7 +255,7 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     UpdatePolicy:
       AutoScalingRollingUpdate:
-        MinInstancesInService: !Ref ASGMinSize
+        MinInstancesInService: !Ref AsgMinSize
         MaxBatchSize: 1
         SuspendProcesses:
           - HealthCheck
@@ -263,9 +266,9 @@ Resources:
     Properties:
       AutoScalingGroupName:
         !Join ["-", [!Ref Id, "asg", !Ref NodeType, "amd64"]]
-      MinSize: !Ref ASGMinSize
-      MaxSize: !Ref ASGMaxSize
-      DesiredCapacity: !Ref ASGDesiredCapacity
+      MinSize: !Ref AsgMinSize
+      MaxSize: !Ref AsgMaxSize
+      DesiredCapacity: !Ref AsgDesiredCapacity
       VPCZoneIdentifier: !Ref PublicSubnetIds
       HealthCheckType: EC2
       HealthCheckGracePeriod: 300
@@ -293,15 +296,15 @@ Resources:
             - InstanceType: !Select [0, !Ref InstanceTypes]
             - Fn::If:
                 - Has2InstanceTypes
-                - !Select [1, !Ref InstanceTypes]
+                - InstanceType: !Select [1, !Ref InstanceTypes]
                 - !Ref AWS::NoValue
             - Fn::If:
                 - Has3InstanceTypes
-                - !Select [2, !Ref InstanceTypes]
+                - InstanceType: !Select [2, !Ref InstanceTypes]
                 - !Ref AWS::NoValue
             - Fn::If:
                 - Has4InstanceTypes
-                - !Select [3, !Ref InstanceTypes]
+                - InstanceType: !Select [3, !Ref InstanceTypes]
                 - !Ref AWS::NoValue
 
 Outputs:
