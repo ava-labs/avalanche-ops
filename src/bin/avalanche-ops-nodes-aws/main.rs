@@ -230,7 +230,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
     }
 
     // set defaults
-    if aws_resources.ec2_key_name.is_some() {
+    if aws_resources.ec2_key_name.is_none() {
         aws_resources.ec2_key_name = Some(format!("{}-ec2-key", config.id));
     }
     if aws_resources.cloudformation_ec2_instance_role.is_none() {
@@ -850,7 +850,7 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
         ResetColor
     )
     .unwrap();
-    if aws_resources.ec2_key_path.is_some() {
+    if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
         let ec2_key_path = aws_resources.ec2_key_path.unwrap();
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
@@ -863,8 +863,6 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
         if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
             fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
         }
-    }
-    if aws_resources.ec2_key_name.is_some() {
         rt.block_on(ec2_manager.delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str()))
             .unwrap();
     }
