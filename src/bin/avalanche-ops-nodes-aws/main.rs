@@ -7,7 +7,7 @@ use std::{
 };
 
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
-use clap::{arg, App, AppSettings};
+use clap::{arg, App, AppSettings, Arg};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
@@ -41,27 +41,27 @@ fn main() {
 
     match matches.subcommand() {
         Some((SUBCOMMAND_DEFAULT_CONFIG, sub_matches)) => {
-            let bin_path = sub_matches.value_of("bin").unwrap();
-            let plugins_dir = sub_matches.value_of("plugins").unwrap_or("");
-            let log_level = sub_matches.value_of("log").unwrap_or("info");
-            let config_path = sub_matches.value_of("config").unwrap();
+            let bin_path = sub_matches.value_of("AVALANCHEGO_BIN").unwrap();
+            let plugins_dir = sub_matches.value_of("PLUGINS_DIR").unwrap_or("");
+            let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
+            let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
             let network_id = sub_matches.value_of("NETWORK_ID").unwrap_or("custom");
             run_default_config(bin_path, plugins_dir, log_level, config_path, network_id).unwrap();
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
-            let log_level = sub_matches.value_of("log").unwrap_or("info");
-            let config_path = sub_matches.value_of("config").unwrap();
-            let prompt = sub_matches.value_of("prompt").unwrap_or("true") == "true";
-            run_apply(log_level, config_path, prompt).unwrap();
+            let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
+            let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
+            let skip_prompt = sub_matches.is_present("SKIP_PROMPT");
+            run_apply(log_level, config_path, skip_prompt).unwrap();
         }
 
         Some((SUBCOMMAND_DELETE, sub_matches)) => {
-            let log_level = sub_matches.value_of("log").unwrap_or("info");
-            let config_path = sub_matches.value_of("config").unwrap();
-            let all = sub_matches.value_of("all").unwrap_or("true") == "true";
-            let prompt = sub_matches.value_of("prompt").unwrap_or("true") == "true";
-            run_delete(log_level, config_path, all, prompt).unwrap();
+            let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
+            let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
+            let delete_all = sub_matches.is_present("DELETE_ALL");
+            let skip_prompt = sub_matches.is_present("SKIP_PROMPT");
+            run_delete(log_level, config_path, delete_all, skip_prompt).unwrap();
         }
 
         _ => unreachable!("unknown subcommand"),
@@ -72,25 +72,41 @@ fn create_default_config_command() -> App<'static> {
     App::new(SUBCOMMAND_DEFAULT_CONFIG)
         .about("Writes a default configuration")
         .arg(
-            arg!(-b --bin <BIN> "Sets the Avalanche node binary path to be shared with remote machines")
+            Arg::new("AVALANCHEGO_BIN") 
+                .long("avalanchego-bin")
+                .short('b')
+                .help("Sets the Avalanche node binary path to be shared with remote machines")
                 .required(true)
+                .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-p --plugins <PLUGINS> "Sets 'plugins' directory in the local machine to be shared with remote machines")
+            Arg::new("PLUGINS_DIR") 
+                .long("plugins-dir")
+                .short('p')
+                .help("Sets 'plugins' directory in the local machine to be shared with remote machines")
                 .required(false)
+                .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-l --log <LOG_LEVEL> "Sets the log level")
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
                 .required(false)
+                .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-c --config <FILE> "Sets a config file to write")
+            Arg::new("CONFIG_FILE_PATH")
+                .long("config")
+                .short('c')
+                .help("The config file to create")
                 .required(true)
+                .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(arg!(<NETWORK_ID>).required(true).allow_invalid_utf8(false))
@@ -100,22 +116,32 @@ fn create_apply_command() -> App<'static> {
     App::new(SUBCOMMAND_APPLY)
         .about("Applies/creates resources based on configuration")
         .arg(
-            arg!(-l --log <LOG_LEVEL> "Sets the log level")
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
                 .required(false)
+                .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-c --config <FILE> "The config file to load and update")
+            Arg::new("CONFIG_FILE_PATH")
+                .long("config")
+                .short('c')
+                .help("The config file to load and update")
                 .required(true)
+                .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-p --prompt <PROMPT> "Enables prompt mode")
+            Arg::new("SKIP_PROMPT")
+                .long("skip-prompt")
+                .short('s')
+                .help("Skips prompt mode")
                 .required(false)
-                .possible_value("true")
-                .possible_value("false")
+                .takes_value(false)
                 .allow_invalid_utf8(false),
         )
 }
@@ -124,29 +150,41 @@ fn create_delete_command() -> App<'static> {
     App::new(SUBCOMMAND_DELETE)
         .about("Deletes resources based on configuration")
         .arg(
-            arg!(-l --log <LOG_LEVEL> "Sets the log level")
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
                 .required(false)
+                .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-c --config <FILE> "The config file to load")
+            Arg::new("CONFIG_FILE_PATH")
+                .long("config")
+                .short('c')
+                .help("The config file to load")
                 .required(true)
+                .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-a --all <ALL> "Enables delete all mode (e.g., delete S3 bucket)")
+            Arg::new("DELETE_ALL")
+                .long("delete-all")
+                .short('a')
+                .help("Enables delete all mode (e.g., delete S3 bucket)")
                 .required(false)
-                .possible_value("true")
-                .possible_value("false")
+                .takes_value(false)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            arg!(-p --prompt <PROMPT> "Enables prompt mode")
+            Arg::new("SKIP_PROMPT")
+                .long("skip-prompt")
+                .short('s')
+                .help("Skips prompt mode")
                 .required(false)
-                .possible_value("true")
-                .possible_value("false")
+                .takes_value(false)
                 .allow_invalid_utf8(false),
         )
 }
@@ -185,7 +223,7 @@ fn run_default_config(
 }
 
 /// TODO: better error handling rather than just panic with "unwrap"
-fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()> {
+fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -261,7 +299,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
     let config_contents = config.to_string().unwrap();
     println!("{}\n", config_contents);
 
-    if prompt {
+    if !skip_prompt {
         let options = &[
             "No, I am not ready to create resources!",
             "Yes, let's create resources!",
@@ -668,7 +706,12 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
 }
 
 /// TODO: better error handling rather than just panic with "unwrap"
-fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io::Result<()> {
+fn run_delete(
+    log_level: &str,
+    config_path: &str,
+    delete_all: bool,
+    skip_prompt: bool,
+) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -714,7 +757,7 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
     let config_contents = config.to_string().unwrap();
     println!("{}\n", config_contents);
 
-    if prompt {
+    if !skip_prompt {
         let options = &[
             "No, I am not ready to delete resources!",
             "Yes, let's delete resources!",
@@ -883,7 +926,7 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
             .unwrap();
     }
 
-    if all {
+    if delete_all {
         thread::sleep(time::Duration::from_secs(2));
         execute!(
             stdout(),

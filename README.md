@@ -43,8 +43,8 @@ find /tmp/avalanchego-v${VERSION}
 
 ```bash
 avalanche-ops-nodes-aws default-config custom \
---bin /tmp/avalanchego-v1.7.4/avalanchego \
---plugins /tmp/avalanchego-v1.7.4/plugins \
+--avalanchego-bin /tmp/avalanchego-v1.7.4/avalanchego \
+--plugins-dir /tmp/avalanchego-v1.7.4/plugins \
 --config /tmp/test.yaml
 ```
 
