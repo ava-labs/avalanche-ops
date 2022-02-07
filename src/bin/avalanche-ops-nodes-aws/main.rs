@@ -842,15 +842,16 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
         .unwrap();
     }
 
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Red),
-        Print("\n\n\nSTEP: delete EC2 key pair\n"),
-        ResetColor
-    )
-    .unwrap();
     if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete EC2 key pair\n"),
+            ResetColor
+        )
+        .unwrap();
+
         let ec2_key_path = aws_resources.ec2_key_path.unwrap();
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
