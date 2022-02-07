@@ -279,6 +279,22 @@ impl Manager {
             });
         }
 
+        // this will fail with
+        // "failed read_to_string stream did not contain valid UTF-8"
+        //
+        // tokio::io::AsyncReadExt
+        // let mut file = File::open(file_path).await.map_err(|e| Other {
+        //     message: format!("failed open {}", e),
+        //     is_retryable: false,
+        // })?;
+        // let mut contents = String::new();
+        // file.read_to_string(&mut contents)
+        //     .await
+        //     .map_err(|e| Other {
+        //         message: format!("failed read_to_string {}", e),
+        //         is_retryable: false,
+        //     })?;
+
         let contents = match fs::read(file_path) {
             Ok(d) => d,
             Err(e) => {
