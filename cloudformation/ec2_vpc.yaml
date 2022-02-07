@@ -273,9 +273,13 @@ Resources:
       CidrIp: !Ref IngressEgressIPv4Range
 
 Outputs:
-  VPCId:
+  VpcId:
     Value: !Ref VPC
     Description: VPC ID
+
+  SecurityGroupId:
+    Value: !Ref SecurityGroup
+    Description: Security group ID
 
   PublicSubnetIds:
     Value:
@@ -287,7 +291,3 @@ Outputs:
           ]
         - !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
     Description: All public subnet IDs in the VPC
-
-  SecurityGroupId:
-    Value: !Ref SecurityGroup
-    Description: Security group ID

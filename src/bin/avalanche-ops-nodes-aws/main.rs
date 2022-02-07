@@ -57,8 +57,9 @@ fn main() {
         Some((SUBCOMMAND_DELETE, sub_matches)) => {
             let log_level = sub_matches.value_of("log").unwrap_or("info");
             let config_path = sub_matches.value_of("config").unwrap();
+            let all = sub_matches.value_of("all").unwrap_or("true") == "true";
             let prompt = sub_matches.value_of("prompt").unwrap_or("true") == "true";
-            run_delete(log_level, config_path, prompt).unwrap();
+            run_delete(log_level, config_path, all, prompt).unwrap();
         }
 
         _ => unreachable!("unknown subcommand"),
@@ -120,6 +121,13 @@ fn create_delete_command() -> App<'static> {
         .arg(
             arg!(-c --config <FILE> "The config file to load")
                 .required(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            arg!(-a --all <ALL> "Enables delete all mode (e.g., delete S3 bucket)")
+                .required(false)
+                .possible_value("true")
+                .possible_value("false")
                 .allow_invalid_utf8(false),
         )
         .arg(
@@ -200,7 +208,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
     }
 
     // set defaults
-    if aws_resources.ec2_key_name.is_none() {
+    if aws_resources.ec2_key_name.is_some() {
         aws_resources.ec2_key_name = Some(format!("{}-ec2-key", config.id));
     }
     if aws_resources.cloudformation_ec2_instance_role.is_none() {
@@ -257,154 +265,243 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\nSTEP 1: create S3 bucket\n"),
+        Print("\n\n\nSTEP: create S3 bucket\n"),
         ResetColor
     )
     .unwrap();
     rt.block_on(s3_manager.create_bucket(&aws_resources.bucket))
         .unwrap();
 
-    if aws_resources.kms_cmk_id.is_none() {
+    if aws_resources.kms_cmk_id.is_none() && aws_resources.kms_cmk_arn.is_none() {
         thread::sleep(time::Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\nSTEP 2: create KMS key\n"),
+            Print("\n\n\nSTEP: create KMS key\n"),
             ResetColor
         )
         .unwrap();
         let key = rt
             .block_on(kms_manager.create_key(format!("{}-cmk", config.id).as_str()))
             .unwrap();
+
         aws_resources.kms_cmk_id = Some(key.id);
         aws_resources.kms_cmk_arn = Some(key.arn);
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
+
+        thread::sleep(time::Duration::from_secs(1));
+        rt.block_on(s3_manager.put_object(
+            aws_resources.bucket.as_str(),
+            config_path,
+            format!("{}/config.yaml", config.id).as_str(),
+        ))
+        .unwrap();
     }
 
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\nSTEP 3: create EC2 key pair\n"),
-        ResetColor
-    )
-    .unwrap();
-    let ec2_key_path = get_ec2_key_path(config_path);
-    rt.block_on(ec2_manager.create_key_pair(
-        aws_resources.ec2_key_name.unwrap().as_str(),
-        ec2_key_path.as_str(),
-    ))
-    .unwrap();
-    aws_resources.ec2_key_path = Some(ec2_key_path.clone());
-    config.sync(config_path).unwrap();
-    let ec2_key_path_compressed = get_zstd_path(ec2_key_path.as_str());
-    compress::compress_zstd(
-        ec2_key_path.as_str(),
-        ec2_key_path_compressed.as_str(),
-        None,
-    )
-    .unwrap();
-    let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
-    rt.block_on(kms_manager.encrypt_file(
-        aws_resources.kms_cmk_id.unwrap().as_str(),
-        None,
-        ec2_key_path_compressed.as_str(),
-        ec2_key_path_compressed_encrypted.as_str(),
-    ))
-    .unwrap();
-    rt.block_on(s3_manager.put_object(
-        aws_resources.bucket.as_str(),
-        ec2_key_path_compressed_encrypted.as_str(),
-        format!("{}/ec2.key-compressed.zstd.encrypted", config.id).as_str(),
-    ))
-    .unwrap();
-
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\nSTEP 4: create EC2 instance role\n"),
-        ResetColor
-    )
-    .unwrap();
-    let ec2_instance_role_yaml = Asset::get("cloudformation/ec2_instance_role.yaml").unwrap();
-    let ec2_instance_role_tmpl = std::str::from_utf8(ec2_instance_role_yaml.data.as_ref()).unwrap();
-    let ec2_instance_role_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
-    rt.block_on(
-        cloudformation_manager.create_stack(
-            ec2_instance_role_name.as_str(),
-            Capability::CapabilityNamedIam,
-            OnFailure::Delete,
-            ec2_instance_role_tmpl,
-            Some(Vec::from([Tag::builder()
-                .key("kind")
-                .value("avalanche-ops")
-                .build()])),
-            Some(Vec::from([
-                Parameter::builder()
-                    .parameter_key("Id")
-                    .parameter_value(config.id)
-                    .build(),
-                Parameter::builder()
-                    .parameter_key("KMSKeyArn")
-                    .parameter_value(aws_resources.kms_cmk_arn.unwrap())
-                    .build(),
-                Parameter::builder()
-                    .parameter_key("S3BucketName")
-                    .parameter_value(aws_resources.bucket)
-                    .build(),
-            ])),
-        ),
-    )
-    .unwrap();
-    thread::sleep(time::Duration::from_secs(10));
-    rt.block_on(cloudformation_manager.poll_stack(
-        ec2_instance_role_name.as_str(),
-        StackStatus::CreateComplete,
-        Duration::from_secs(300),
-        Duration::from_secs(20),
-    ))
-    .unwrap();
-
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\nSTEP 5: create VPC\n"),
-        ResetColor
-    )
-    .unwrap();
-    // TODO
-
-    if config.machine.beacon_nodes.unwrap_or(0) > 0 {
+    if aws_resources.ec2_key_path.is_none() {
         thread::sleep(time::Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\nSTEP 6: create ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: create EC2 key pair\n"),
+            ResetColor
+        )
+        .unwrap();
+        let ec2_key_path = get_ec2_key_path(config_path);
+        rt.block_on(ec2_manager.create_key_pair(
+            aws_resources.ec2_key_name.clone().unwrap().as_str(),
+            ec2_key_path.as_str(),
+        ))
+        .unwrap();
+
+        let ec2_key_path_compressed = format!("{}.zstd", ec2_key_path);
+        compress::compress_zstd(
+            ec2_key_path.as_str(),
+            ec2_key_path_compressed.as_str(),
+            None,
+        )
+        .unwrap();
+        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
+        rt.block_on(kms_manager.encrypt_file(
+            aws_resources.kms_cmk_id.clone().unwrap().as_str(),
+            None,
+            ec2_key_path_compressed.as_str(),
+            ec2_key_path_compressed_encrypted.as_str(),
+        ))
+        .unwrap();
+        rt.block_on(s3_manager.put_object(
+            aws_resources.bucket.as_str(),
+            ec2_key_path_compressed_encrypted.as_str(),
+            format!("{}/ec2-key.zstd.encrypted", config.id).as_str(),
+        ))
+        .unwrap();
+
+        aws_resources.ec2_key_path = Some(ec2_key_path);
+        config.aws_resources = Some(aws_resources.clone());
+        config.sync(config_path).unwrap();
+
+        thread::sleep(time::Duration::from_secs(1));
+        rt.block_on(s3_manager.put_object(
+            aws_resources.bucket.as_str(),
+            config_path,
+            format!("{}/config.yaml", config.id).as_str(),
+        ))
+        .unwrap();
+    }
+
+    if aws_resources
+        .cloudformation_ec2_instance_profile_arn
+        .is_none()
+    {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: create EC2 instance role\n"),
+            ResetColor
+        )
+        .unwrap();
+        let ec2_instance_role_yaml = Asset::get("cloudformation/ec2_instance_role.yaml").unwrap();
+        let ec2_instance_role_tmpl =
+            std::str::from_utf8(ec2_instance_role_yaml.data.as_ref()).unwrap();
+        let ec2_instance_role_name = aws_resources
+            .cloudformation_ec2_instance_role
+            .clone()
+            .unwrap();
+        rt.block_on(
+            cloudformation_manager.create_stack(
+                ec2_instance_role_name.as_str(),
+                Capability::CapabilityNamedIam,
+                OnFailure::Delete,
+                ec2_instance_role_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("kind")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(Vec::from([
+                    Parameter::builder()
+                        .parameter_key("Id")
+                        .parameter_value(config.id.clone())
+                        .build(),
+                    Parameter::builder()
+                        .parameter_key("KMSKeyArn")
+                        .parameter_value(aws_resources.kms_cmk_arn.clone().unwrap())
+                        .build(),
+                    Parameter::builder()
+                        .parameter_key("S3BucketName")
+                        .parameter_value(aws_resources.bucket.clone())
+                        .build(),
+                ])),
+            ),
+        )
+        .unwrap();
+        thread::sleep(time::Duration::from_secs(10));
+        rt.block_on(cloudformation_manager.poll_stack(
+            ec2_instance_role_name.as_str(),
+            StackStatus::CreateComplete,
+            Duration::from_secs(300),
+            Duration::from_secs(20),
+        ))
+        .unwrap();
+
+        config.aws_resources = Some(aws_resources.clone());
+        config.sync(config_path).unwrap();
+
+        thread::sleep(time::Duration::from_secs(1));
+        rt.block_on(s3_manager.put_object(
+            aws_resources.bucket.as_str(),
+            config_path,
+            format!("{}/config.yaml", config.id).as_str(),
+        ))
+        .unwrap();
+    }
+
+    if aws_resources.cloudformation_vpc_id.is_none()
+        && aws_resources.cloudformation_vpc_security_group_id.is_none()
+        && aws_resources.cloudformation_vpc_public_subnet_ids.is_none()
+    {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: create VPC\n"),
+            ResetColor
+        )
+        .unwrap();
+        // TODO
+
+        config.aws_resources = Some(aws_resources.clone());
+        config.sync(config_path).unwrap();
+
+        thread::sleep(time::Duration::from_secs(1));
+        rt.block_on(s3_manager.put_object(
+            aws_resources.bucket.as_str(),
+            config_path,
+            format!("{}/config.yaml", config.id).as_str(),
+        ))
+        .unwrap();
+    }
+
+    if config.machine.beacon_nodes.unwrap_or(0) > 0
+        && aws_resources
+            .cloudformation_asg_beacon_nodes_logical_id
+            .is_none()
+    {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: create ASG for beacon nodes\n"),
             ResetColor
         )
         .unwrap();
         // TODO
         // get all IPs and IDs, update config path
+
+        config.aws_resources = Some(aws_resources.clone());
+        config.sync(config_path).unwrap();
+
+        thread::sleep(time::Duration::from_secs(1));
+        rt.block_on(s3_manager.put_object(
+            aws_resources.bucket.as_str(),
+            config_path,
+            format!("{}/config.yaml", config.id).as_str(),
+        ))
+        .unwrap();
     }
 
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\nSTEP 7: create ASG for non-beacon nodes\n"),
-        ResetColor
-    )
-    .unwrap();
-    // TODO
+    if aws_resources
+        .cloudformation_asg_non_beacon_nodes_logical_id
+        .is_none()
+    {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: create ASG for non-beacon nodes\n"),
+            ResetColor
+        )
+        .unwrap();
+        // TODO
+
+        config.aws_resources = Some(aws_resources.clone());
+        config.sync(config_path).unwrap();
+
+        thread::sleep(time::Duration::from_secs(1));
+        rt.block_on(s3_manager.put_object(
+            aws_resources.bucket.as_str(),
+            config_path,
+            format!("{}/config.yaml", config.id).as_str(),
+        ))
+        .unwrap();
+    }
 
     Ok(())
 }
 
 /// TODO: better error handling rather than just panic with "unwrap"
-fn run_delete(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()> {
+fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -472,63 +569,82 @@ fn run_delete(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()
     let ec2_manager = aws_ec2::Manager::new(&shared_config);
     let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
 
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Red),
-        Print("\n\nSTEP 1: delete ASG for non-beacon nodes\n"),
-        ResetColor
-    )
-    .unwrap();
-    // TODO
-
-    if config.machine.beacon_nodes.unwrap_or(0) > 0 {
+    if aws_resources
+        .cloudformation_asg_non_beacon_nodes_logical_id
+        .is_some()
+    {
         thread::sleep(time::Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\nSTEP 2: delete ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: delete ASG for non-beacon nodes\n"),
             ResetColor
         )
         .unwrap();
         // TODO
     }
 
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Red),
-        Print("\n\nSTEP 3: delete VPC\n"),
-        ResetColor
-    )
-    .unwrap();
-    // TODO
-
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Red),
-        Print("\n\nSTEP 4: delete EC2 instance role\n"),
-        ResetColor
-    )
-    .unwrap();
-    let ec2_instance_role_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
-    rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_name.as_str()))
+    if config.machine.beacon_nodes.unwrap_or(0) > 0
+        && aws_resources
+            .cloudformation_asg_beacon_nodes_logical_id
+            .is_some()
+    {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete ASG for beacon nodes\n"),
+            ResetColor
+        )
         .unwrap();
-    thread::sleep(time::Duration::from_secs(10));
-    rt.block_on(cloudformation_manager.poll_stack(
-        ec2_instance_role_name.as_str(),
-        StackStatus::DeleteComplete,
-        Duration::from_secs(300),
-        Duration::from_secs(20),
-    ))
-    .unwrap();
+        // TODO
+    }
+
+    if aws_resources.cloudformation_vpc_id.is_some()
+        && aws_resources.cloudformation_vpc_security_group_id.is_some()
+        && aws_resources.cloudformation_vpc_public_subnet_ids.is_some()
+    {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete VPC\n"),
+            ResetColor
+        )
+        .unwrap();
+        // TODO
+    }
+
+    if aws_resources
+        .cloudformation_ec2_instance_profile_arn
+        .is_some()
+    {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete EC2 instance role\n"),
+            ResetColor
+        )
+        .unwrap();
+        let ec2_instance_role_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_name.as_str()))
+            .unwrap();
+        thread::sleep(time::Duration::from_secs(10));
+        rt.block_on(cloudformation_manager.poll_stack(
+            ec2_instance_role_name.as_str(),
+            StackStatus::DeleteComplete,
+            Duration::from_secs(300),
+            Duration::from_secs(20),
+        ))
+        .unwrap();
+    }
 
     thread::sleep(time::Duration::from_secs(2));
     execute!(
         stdout(),
         SetForegroundColor(Color::Red),
-        Print("\n\nSTEP 5: delete EC2 key pair\n"),
+        Print("\n\n\nSTEP: delete EC2 key pair\n"),
         ResetColor
     )
     .unwrap();
@@ -537,7 +653,7 @@ fn run_delete(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
-        let ec2_key_path_compressed = get_zstd_path(ec2_key_path.as_str());
+        let ec2_key_path_compressed = format!("{}.zstd", ec2_key_path);
         if Path::new(ec2_key_path_compressed.as_str()).exists() {
             fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
         }
@@ -551,12 +667,12 @@ fn run_delete(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()
             .unwrap();
     }
 
-    if aws_resources.kms_cmk_id.is_some() {
+    if aws_resources.kms_cmk_id.is_some() && aws_resources.kms_cmk_arn.is_some() {
         thread::sleep(time::Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\nSTEP 6: delete KMS key\n"),
+            Print("\n\n\nSTEP: delete KMS key\n"),
             ResetColor
         )
         .unwrap();
@@ -565,19 +681,20 @@ fn run_delete(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()
             .unwrap();
     }
 
-    // TODO: add "--delete-bucket" flag to skip delete
-    thread::sleep(time::Duration::from_secs(2));
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Red),
-        Print("\n\nSTEP 7: delete S3 bucket\n"),
-        ResetColor
-    )
-    .unwrap();
-    rt.block_on(s3_manager.delete_objects(aws_resources.bucket.as_str(), None))
+    if all {
+        thread::sleep(time::Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete S3 bucket\n"),
+            ResetColor
+        )
         .unwrap();
-    rt.block_on(s3_manager.delete_bucket(aws_resources.bucket.as_str()))
-        .unwrap();
+        rt.block_on(s3_manager.delete_objects(aws_resources.bucket.as_str(), None))
+            .unwrap();
+        rt.block_on(s3_manager.delete_bucket(aws_resources.bucket.as_str()))
+            .unwrap();
+    }
 
     Ok(())
 }
@@ -586,21 +703,7 @@ fn get_ec2_key_path(config_path: &str) -> String {
     let path = Path::new(config_path);
     let parent_dir = path.parent().unwrap();
     let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ec2.key", name.to_str().unwrap(),);
-    String::from(
-        parent_dir
-            .join(Path::new(new_name.as_str()))
-            .as_path()
-            .to_str()
-            .unwrap(),
-    )
-}
-
-fn get_zstd_path(p: &str) -> String {
-    let path = Path::new(p);
-    let parent_dir = path.parent().unwrap();
-    let name = path.file_stem().unwrap();
-    let new_name = format!("{}-compressed.zstd", name.to_str().unwrap(),);
+    let new_name = format!("{}-ec2-access-key", name.to_str().unwrap(),);
     String::from(
         parent_dir
             .join(Path::new(new_name.as_str()))

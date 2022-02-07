@@ -125,6 +125,8 @@ pub struct AWSResources {
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kms_cmk_id: Option<String>,
+    /// Only updated after creation.
+    /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kms_cmk_arn: Option<String>,
 
@@ -132,6 +134,8 @@ pub struct AWSResources {
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ec2_key_name: Option<String>,
+    /// Only updated after creation.
+    /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ec2_key_path: Option<String>,
 
@@ -139,11 +143,31 @@ pub struct AWSResources {
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_ec2_instance_role: Option<String>,
+    /// Instance profile ARN from "cloudformation_ec2_instance_role".
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ec2_instance_profile_arn: Option<String>,
 
     /// CloudFormation stack name for VPC.
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_vpc: Option<String>,
+    /// VPC ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_id: Option<String>,
+    /// Security group ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_security_group_id: Option<String>,
+    /// Public subnet IDs from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
 
     /// CloudFormation stack name of Auto Scaling Group (ASG)
     /// for beacon nodes.
@@ -151,12 +175,20 @@ pub struct AWSResources {
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_beacon_nodes: Option<String>,
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_beacon_nodes_logical_id: Option<String>,
 
     /// CloudFormation stack name of Auto Scaling Group (ASG)
     /// for non-beacon nodes.
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_non_beacon_nodes: Option<String>,
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_non_beacon_nodes_logical_id: Option<String>,
 
     /// Empty if the node itself is a beacon node.
     /// Non-empty to specify pre-provisioned beacon nodes in the network.
@@ -214,14 +246,27 @@ impl Config {
                 bucket: format!("avalanche-ops-{}", crate::time::get(8)), // [year][month][date]
 
                 identity: None,
+
                 kms_cmk_id: None,
                 kms_cmk_arn: None,
+
                 ec2_key_name: None,
                 ec2_key_path: None,
+
                 cloudformation_ec2_instance_role: None,
+                cloudformation_ec2_instance_profile_arn: None,
+
                 cloudformation_vpc: None,
+                cloudformation_vpc_id: None,
+                cloudformation_vpc_security_group_id: None,
+                cloudformation_vpc_public_subnet_ids: None,
+
                 cloudformation_asg_beacon_nodes: None,
+                cloudformation_asg_beacon_nodes_logical_id: None,
+
                 cloudformation_asg_non_beacon_nodes: None,
+                cloudformation_asg_non_beacon_nodes_logical_id: None,
+
                 beacon_nodes: None,
             }),
         }
@@ -470,14 +515,26 @@ aws_resources:
             bucket: bucket.clone(),
 
             identity: None,
+
             kms_cmk_id: None,
             kms_cmk_arn: None,
+
             ec2_key_name: None,
             ec2_key_path: None,
+
             cloudformation_ec2_instance_role: None,
+            cloudformation_ec2_instance_profile_arn: None,
+
             cloudformation_vpc: None,
+            cloudformation_vpc_id: None,
+            cloudformation_vpc_security_group_id: None,
+            cloudformation_vpc_public_subnet_ids: None,
+
             cloudformation_asg_beacon_nodes: None,
+            cloudformation_asg_beacon_nodes_logical_id: None,
+
             cloudformation_asg_non_beacon_nodes: None,
+            cloudformation_asg_non_beacon_nodes_logical_id: None,
 
             beacon_nodes: Some(vec![
                 BeaconNode {
