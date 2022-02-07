@@ -2,7 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS Auto Scaling Groups for amd64"
 
-# takes about X-minute
+# takes about 2-minute for 3 nodes
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Parameters:
