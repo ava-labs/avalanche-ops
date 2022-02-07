@@ -107,7 +107,7 @@ Resources:
         - !Ref InstanceRole
 
 Outputs:
-  InstanceRoleARN:
+  InstanceRoleArn:
     Value: !GetAtt InstanceRole.Arn
     Description: Role ARN
 

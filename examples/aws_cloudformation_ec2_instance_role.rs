@@ -46,7 +46,7 @@ fn main() {
 
     let ret = ab!(cloudformation_manager.create_stack(
         &stack_name,
-        Capability::CapabilityNamedIam,
+        Some(vec![Capability::CapabilityNamedIam]),
         OnFailure::Delete,
         template_body,
         Some(Vec::from([

@@ -52,6 +52,22 @@ pub struct Config {
     #[serde(default)]
     pub id: String,
 
+    /// AvalancheGo binary path in the local environment.
+    /// The file is uploaded to the remote storage to be shared
+    /// with remote machines.
+    ///
+    ///  build
+    ///    ├── avalanchego (the binary from compiling the app directory)
+    ///    └── plugins
+    ///        └── evm
+    #[serde(default)]
+    pub avalanchego_bin: String,
+    /// Plugin directories in the local environment.
+    /// Files (if any) are uploaded to the remote storage to be shared
+    /// with remote machiens.
+    #[serde(default)]
+    pub plugins_dir: Option<String>,
+
     /// Network ID.
     /// Only supports: "mainnet" and custom name.
     /// MUST NOT BE EMPTY.
@@ -214,7 +230,11 @@ pub struct BeaconNode {
 
 impl Config {
     /// Creates a default Status based on the network ID.
-    pub fn default_aws(network_id: &str) -> Self {
+    pub fn default_aws(
+        avalanchego_bin: &str,
+        plugins_dir: Option<String>,
+        network_id: &str,
+    ) -> Self {
         let beacon_nodes = match network_id {
             "mainnet" => 0,
             _ => DEFAULT_MACHINE_BEACON_NODES,
@@ -222,6 +242,9 @@ impl Config {
 
         Self {
             id: crate::id::generate("avalanche-ops"),
+            avalanchego_bin: avalanchego_bin.to_string(),
+            plugins_dir,
+
             network_id: String::from(network_id),
 
             snow_sample_size: Some(DEFAULT_SNOW_SAMPLE_SIZE),
@@ -318,6 +341,26 @@ impl Config {
         if self.id.is_empty() {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
         }
+
+        if !Path::new(&self.avalanchego_bin).exists() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "avalanchego_bin path {} does not exist",
+                    self.avalanchego_bin
+                ),
+            ));
+        }
+        if self.plugins_dir.is_some() && !Path::new(&self.plugins_dir.clone().unwrap()).exists() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "plugins_dir path {} does not exist",
+                    self.plugins_dir.clone().unwrap()
+                ),
+            ));
+        }
+
         if self.network_id.is_empty() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -435,10 +478,39 @@ pub fn load_config(file_path: &str) -> io::Result<Config> {
 
 #[test]
 fn test_config() {
+    use std::fs;
+
     let _ = env_logger::builder().is_test(true).try_init();
 
-    assert!(Config::default_aws("mainnet").validate().is_ok());
-    assert!(Config::default_aws("mycustom").validate().is_ok());
+    let mut f = tempfile::NamedTempFile::new().unwrap();
+    let ret = f.write_all(&vec![0]);
+    assert!(ret.is_ok());
+    let avalanchego_bin = f.path().to_str().unwrap();
+
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let plugin_path = tmp_dir.path().join(crate::random::string(10));
+    let mut f = File::create(&plugin_path).unwrap();
+    let ret = f.write_all(&vec![0]);
+    assert!(ret.is_ok());
+    let plugins_dir = tmp_dir.path().as_os_str().to_str().unwrap();
+
+    // test just to see how "read_dir" works in Rust
+    for entry in fs::read_dir(plugins_dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        info!("read_dir: {:?}", path);
+    }
+
+    assert!(
+        Config::default_aws(avalanchego_bin, Some(String::from(plugins_dir)), "mainnet")
+            .validate()
+            .is_ok()
+    );
+    assert!(
+        Config::default_aws(avalanchego_bin, Some(String::from(plugins_dir)), "mycustom")
+            .validate()
+            .is_ok()
+    );
 
     let id = crate::random::string(10);
     let bucket = format!("test-{}", crate::time::get(8));
@@ -447,6 +519,10 @@ fn test_config() {
         r#"
 
 id: {}
+
+avalanchego_bin: {}
+plugins_dir: {}
+
 network_id: hello
 
 snow_sample_size: 20
@@ -476,22 +552,25 @@ aws_resources:
     id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY
 
 "#,
-        id, bucket,
+        id, avalanchego_bin, plugins_dir, bucket,
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
     assert!(ret.is_ok());
-    let p = f.path().to_str().unwrap();
+    let config_path = f.path().to_str().unwrap();
 
-    let ret = load_config(p);
+    let ret = load_config(config_path);
     assert!(ret.is_ok());
     let cfg = ret.unwrap();
 
-    let ret = cfg.sync(p);
+    let ret = cfg.sync(config_path);
     assert!(ret.is_ok());
 
     let orig = Config {
         id: id.clone(),
+        avalanchego_bin: avalanchego_bin.to_string(),
+        plugins_dir: Some(String::from(plugins_dir)),
+
         network_id: String::from("hello"),
 
         snow_sample_size: Some(20),
@@ -559,6 +638,13 @@ aws_resources:
 
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
+
+    assert_eq!(cfg.avalanchego_bin, avalanchego_bin);
+    assert_eq!(
+        cfg.plugins_dir.unwrap_or(String::from("")),
+        plugins_dir.to_string()
+    );
+
     assert_eq!(cfg.network_id, "hello");
     assert_eq!(cfg.snow_sample_size.unwrap_or(0), 20);
     assert_eq!(cfg.snow_quorum_size.unwrap_or(0), 15);

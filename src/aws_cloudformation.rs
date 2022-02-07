@@ -37,7 +37,7 @@ impl Manager {
     pub async fn create_stack(
         &self,
         stack_name: &str,
-        capability: Capability,
+        capabilities: Option<Vec<Capability>>,
         on_failure: OnFailure,
         template_body: &str,
         tags: Option<Vec<Tag>>,
@@ -48,7 +48,7 @@ impl Manager {
             .cli
             .create_stack()
             .stack_name(stack_name)
-            .capabilities(capability)
+            .set_capabilities(capabilities)
             .on_failure(on_failure)
             .template_body(template_body)
             .set_tags(tags)

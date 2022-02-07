@@ -3,7 +3,7 @@ use std::{
     time::{self, Duration},
 };
 
-use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_cloudformation::model::{OnFailure, Parameter, StackStatus, Tag};
 use log::info;
 use rust_embed::RustEmbed;
 
@@ -29,8 +29,8 @@ fn main() {
     #[prefix = "cloudformation/"]
     struct Asset;
 
-    let ec2_vpc_yaml = Asset::get("cloudformation/ec2_vpc.yaml").unwrap();
-    let ret = std::str::from_utf8(ec2_vpc_yaml.data.as_ref());
+    let vpc_yaml = Asset::get("cloudformation/vpc.yaml").unwrap();
+    let ret = std::str::from_utf8(vpc_yaml.data.as_ref());
     let template_body = ret.unwrap();
     info!("{:?}", template_body);
 
@@ -46,7 +46,7 @@ fn main() {
 
     let ret = ab!(cloudformation_manager.create_stack(
         &stack_name,
-        Capability::CapabilityNamedIam,
+        None,
         OnFailure::Delete,
         template_body,
         Some(Vec::from([

@@ -41,10 +41,12 @@ fn main() {
 
     match matches.subcommand() {
         Some((SUBCOMMAND_DEFAULT_CONFIG, sub_matches)) => {
+            let bin_path = sub_matches.value_of("bin").unwrap();
+            let plugins_dir = sub_matches.value_of("plugins").unwrap_or("");
             let log_level = sub_matches.value_of("log").unwrap_or("info");
             let config_path = sub_matches.value_of("config").unwrap();
             let network_id = sub_matches.value_of("NETWORK_ID").unwrap_or("custom");
-            run_default_config(log_level, config_path, network_id).unwrap();
+            run_default_config(bin_path, plugins_dir, log_level, config_path, network_id).unwrap();
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
@@ -69,6 +71,16 @@ fn main() {
 fn create_default_config_command() -> App<'static> {
     App::new(SUBCOMMAND_DEFAULT_CONFIG)
         .about("Writes a default configuration")
+        .arg(
+            arg!(-b --bin <BIN> "Sets the Avalanche node binary path to be shared with remote machines")
+                .required(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            arg!(-p --plugins <PLUGINS> "Sets 'plugins' directory in the local machine to be shared with remote machines")
+                .required(false)
+                .allow_invalid_utf8(false),
+        )
         .arg(
             arg!(-l --log <LOG_LEVEL> "Sets the log level")
                 .required(false)
@@ -140,13 +152,23 @@ fn create_delete_command() -> App<'static> {
 }
 
 /// TODO: better error handling rather than just panic with "unwrap"
-fn run_default_config(log_level: &str, config_path: &str, network_id: &str) -> io::Result<()> {
+fn run_default_config(
+    bin_path: &str,
+    plugins_dir: &str,
+    log_level: &str,
+    config_path: &str,
+    network_id: &str,
+) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let config = network::Config::default_aws(network_id);
+    let mut pdir = Some(String::from(plugins_dir));
+    if plugins_dir.is_empty() {
+        pdir = None;
+    }
+    let config = network::Config::default_aws(bin_path, pdir, network_id);
     config.sync(config_path).unwrap();
 
     execute!(
@@ -272,6 +294,49 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
     rt.block_on(s3_manager.create_bucket(&aws_resources.bucket))
         .unwrap();
 
+    thread::sleep(time::Duration::from_secs(1));
+    let tempf = tempfile::NamedTempFile::new().unwrap();
+    let tempf_path = tempf.path().to_str().unwrap();
+    crate::compress::compress_zstd(&config.avalanchego_bin, tempf_path, None).unwrap();
+    rt.block_on(s3_manager.put_object(
+        &aws_resources.bucket,
+        tempf_path,
+        format!("{}/installation/avalanchego.zstd", config.id).as_str(),
+    ))
+    .unwrap();
+    if config.plugins_dir.is_some() {
+        let plugins_dir = config.plugins_dir.clone().unwrap();
+        for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
+            let entry = entry.unwrap();
+            let entry_path = entry.path();
+
+            let file_path = entry_path.to_str().unwrap();
+            let file_name = entry.file_name();
+            let file_name = file_name.as_os_str().to_str().unwrap();
+
+            let tempf = tempfile::NamedTempFile::new().unwrap();
+            let tempf_path = tempf.path().to_str().unwrap();
+            crate::compress::compress_zstd(file_path, tempf_path, None).unwrap();
+
+            info!(
+                "uploading {} (compressed from {}) from plugins directory {}",
+                tempf_path, file_path, plugins_dir,
+            );
+            rt.block_on(s3_manager.put_object(
+                &aws_resources.bucket,
+                tempf_path,
+                format!("{}/installation/plugins/{}.zstd", config.id, file_name).as_str(),
+            ))
+            .unwrap();
+        }
+    }
+    rt.block_on(s3_manager.put_object(
+        &aws_resources.bucket,
+        config_path,
+        format!("{}/config.yaml", config.id).as_str(),
+    ))
+    .unwrap();
+
     if aws_resources.kms_cmk_id.is_none() && aws_resources.kms_cmk_arn.is_none() {
         thread::sleep(time::Duration::from_secs(2));
         execute!(
@@ -292,7 +357,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
 
         thread::sleep(time::Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            aws_resources.bucket.as_str(),
+            &aws_resources.bucket,
             config_path,
             format!("{}/config.yaml", config.id).as_str(),
         ))
@@ -331,7 +396,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
         ))
         .unwrap();
         rt.block_on(s3_manager.put_object(
-            aws_resources.bucket.as_str(),
+            &aws_resources.bucket,
             ec2_key_path_compressed_encrypted.as_str(),
             format!("{}/ec2-key.zstd.encrypted", config.id).as_str(),
         ))
@@ -343,7 +408,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
 
         thread::sleep(time::Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            aws_resources.bucket.as_str(),
+            &aws_resources.bucket,
             config_path,
             format!("{}/config.yaml", config.id).as_str(),
         ))
@@ -362,17 +427,19 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
             ResetColor
         )
         .unwrap();
+
         let ec2_instance_role_yaml = Asset::get("cloudformation/ec2_instance_role.yaml").unwrap();
         let ec2_instance_role_tmpl =
             std::str::from_utf8(ec2_instance_role_yaml.data.as_ref()).unwrap();
-        let ec2_instance_role_name = aws_resources
+        let ec2_instance_role_stack_name = aws_resources
             .cloudformation_ec2_instance_role
             .clone()
             .unwrap();
+
         rt.block_on(
             cloudformation_manager.create_stack(
-                ec2_instance_role_name.as_str(),
-                Capability::CapabilityNamedIam,
+                ec2_instance_role_stack_name.as_str(),
+                Some(vec![Capability::CapabilityNamedIam]),
                 OnFailure::Delete,
                 ec2_instance_role_tmpl,
                 Some(Vec::from([Tag::builder()
@@ -382,7 +449,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
                 Some(Vec::from([
                     Parameter::builder()
                         .parameter_key("Id")
-                        .parameter_value(config.id.clone())
+                        .parameter_value(&config.id)
                         .build(),
                     Parameter::builder()
                         .parameter_key("KMSKeyArn")
@@ -396,21 +463,31 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
             ),
         )
         .unwrap();
-        thread::sleep(time::Duration::from_secs(10));
-        rt.block_on(cloudformation_manager.poll_stack(
-            ec2_instance_role_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(300),
-            Duration::from_secs(20),
-        ))
-        .unwrap();
 
+        thread::sleep(time::Duration::from_secs(10));
+        let stack = rt
+            .block_on(cloudformation_manager.poll_stack(
+                ec2_instance_role_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(300),
+                Duration::from_secs(20),
+            ))
+            .unwrap();
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("InstanceProfileArn") {
+                aws_resources.cloudformation_ec2_instance_profile_arn = Some(v)
+            }
+        }
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
         thread::sleep(time::Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            aws_resources.bucket.as_str(),
+            &aws_resources.bucket,
             config_path,
             format!("{}/config.yaml", config.id).as_str(),
         ))
@@ -429,14 +506,104 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
             ResetColor
         )
         .unwrap();
-        // TODO
 
+        let vpc_yaml = Asset::get("cloudformation/vpc.yaml").unwrap();
+        let vpc_tmpl = std::str::from_utf8(vpc_yaml.data.as_ref()).unwrap();
+        let vpc_stack_name = aws_resources.cloudformation_vpc.clone().unwrap();
+
+        let mut parameters = Vec::from([
+            Parameter::builder()
+                .parameter_key("Id")
+                .parameter_value(&config.id)
+                .build(),
+            Parameter::builder()
+                .parameter_key("VpcCidr")
+                .parameter_value("10.0.0.0/16")
+                .build(),
+            Parameter::builder()
+                .parameter_key("PublicSubnetCidr1")
+                .parameter_value("10.0.64.0/19")
+                .build(),
+            Parameter::builder()
+                .parameter_key("PublicSubnetCidr2")
+                .parameter_value("10.0.128.0/19")
+                .build(),
+            Parameter::builder()
+                .parameter_key("PublicSubnetCidr3")
+                .parameter_value("10.0.192.0/19")
+                .build(),
+            Parameter::builder()
+                .parameter_key("IngressEgressIPv4Range")
+                .parameter_value("0.0.0.0/0")
+                .build(),
+        ]);
+        if config.http_port.is_some() {
+            let http_port = config.http_port.unwrap();
+            let param = Parameter::builder()
+                .parameter_key("HttpPort")
+                .parameter_value(format!("{}", http_port))
+                .build();
+            parameters.push(param);
+        }
+        if config.staking_port.is_some() {
+            let staking_port = config.staking_port.unwrap();
+            let param = Parameter::builder()
+                .parameter_key("StakingPort")
+                .parameter_value(format!("{}", staking_port))
+                .build();
+            parameters.push(param);
+        }
+
+        rt.block_on(cloudformation_manager.create_stack(
+            vpc_stack_name.as_str(),
+            None,
+            OnFailure::Delete,
+            vpc_tmpl,
+            Some(Vec::from([
+                Tag::builder().key("kind").value("avalanche-ops").build(),
+            ])),
+            Some(parameters),
+        ))
+        .unwrap();
+
+        thread::sleep(time::Duration::from_secs(10));
+        let stack = rt
+            .block_on(cloudformation_manager.poll_stack(
+                vpc_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(300),
+                Duration::from_secs(20),
+            ))
+            .unwrap();
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("VpcId") {
+                aws_resources.cloudformation_vpc_id = Some(v);
+                continue;
+            }
+            if k.eq("SecurityGroupId") {
+                aws_resources.cloudformation_vpc_security_group_id = Some(v);
+                continue;
+            }
+            if k.eq("PublicSubnetIds") {
+                let splits: Vec<&str> = v.split(',').collect();
+                let mut pub_subnets: Vec<String> = vec![];
+                for s in splits {
+                    info!("public subnet {}", s);
+                    pub_subnets.push(String::from(s));
+                }
+                aws_resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
+            }
+        }
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
         thread::sleep(time::Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            aws_resources.bucket.as_str(),
+            &aws_resources.bucket,
             config_path,
             format!("{}/config.yaml", config.id).as_str(),
         ))
@@ -464,7 +631,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
 
         thread::sleep(time::Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            aws_resources.bucket.as_str(),
+            &aws_resources.bucket,
             config_path,
             format!("{}/config.yaml", config.id).as_str(),
         ))
@@ -490,7 +657,7 @@ fn run_apply(log_level: &str, config_path: &str, prompt: bool) -> io::Result<()>
 
         thread::sleep(time::Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            aws_resources.bucket.as_str(),
+            &aws_resources.bucket,
             config_path,
             format!("{}/config.yaml", config.id).as_str(),
         ))
@@ -581,7 +748,19 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
             ResetColor
         )
         .unwrap();
-        // TODO
+
+        let asg_non_beacon_nodes_stack_name =
+            aws_resources.cloudformation_asg_non_beacon_nodes.unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(asg_non_beacon_nodes_stack_name.as_str()))
+            .unwrap();
+        thread::sleep(time::Duration::from_secs(10));
+        rt.block_on(cloudformation_manager.poll_stack(
+            asg_non_beacon_nodes_stack_name.as_str(),
+            StackStatus::DeleteComplete,
+            Duration::from_secs(300),
+            Duration::from_secs(20),
+        ))
+        .unwrap();
     }
 
     if config.machine.beacon_nodes.unwrap_or(0) > 0
@@ -597,7 +776,18 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
             ResetColor
         )
         .unwrap();
-        // TODO
+
+        let asg_beacon_nodes_stack_name = aws_resources.cloudformation_asg_beacon_nodes.unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(asg_beacon_nodes_stack_name.as_str()))
+            .unwrap();
+        thread::sleep(time::Duration::from_secs(10));
+        rt.block_on(cloudformation_manager.poll_stack(
+            asg_beacon_nodes_stack_name.as_str(),
+            StackStatus::DeleteComplete,
+            Duration::from_secs(300),
+            Duration::from_secs(20),
+        ))
+        .unwrap();
     }
 
     if aws_resources.cloudformation_vpc_id.is_some()
@@ -612,7 +802,18 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
             ResetColor
         )
         .unwrap();
-        // TODO
+
+        let vpc_stack_name = aws_resources.cloudformation_vpc.unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(vpc_stack_name.as_str()))
+            .unwrap();
+        thread::sleep(time::Duration::from_secs(10));
+        rt.block_on(cloudformation_manager.poll_stack(
+            vpc_stack_name.as_str(),
+            StackStatus::DeleteComplete,
+            Duration::from_secs(300),
+            Duration::from_secs(20),
+        ))
+        .unwrap();
     }
 
     if aws_resources
@@ -627,12 +828,13 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
             ResetColor
         )
         .unwrap();
-        let ec2_instance_role_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_name.as_str()))
+
+        let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
             .unwrap();
         thread::sleep(time::Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
-            ec2_instance_role_name.as_str(),
+            ec2_instance_role_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(300),
             Duration::from_secs(20),
@@ -676,6 +878,7 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
             ResetColor
         )
         .unwrap();
+
         let cmk_id = aws_resources.kms_cmk_id.unwrap();
         rt.block_on(kms_manager.schedule_to_delete(cmk_id.as_str()))
             .unwrap();
@@ -690,9 +893,10 @@ fn run_delete(log_level: &str, config_path: &str, all: bool, prompt: bool) -> io
             ResetColor
         )
         .unwrap();
-        rt.block_on(s3_manager.delete_objects(aws_resources.bucket.as_str(), None))
+
+        rt.block_on(s3_manager.delete_objects(&aws_resources.bucket, None))
             .unwrap();
-        rt.block_on(s3_manager.delete_bucket(aws_resources.bucket.as_str()))
+        rt.block_on(s3_manager.delete_bucket(&aws_resources.bucket))
             .unwrap();
     }
 

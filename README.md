@@ -31,10 +31,21 @@ A single command to create a new Avalanche node from scratch and join any networ
 ```bash
 # optional
 ./scripts/build.sh
+
+# https://github.com/ava-labs/avalanchego/releases
+VERSION=1.7.4
+DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
+rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
+curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
+tar xzvf /tmp/avalanchego.tar.gz -C /tmp
+find /tmp/avalanchego-v${VERSION}
 ```
 
 ```bash
-avalanche-ops-nodes-aws default-config custom --config /tmp/test.yaml
+avalanche-ops-nodes-aws default-config custom \
+--bin /tmp/avalanchego-v1.7.4/avalanchego \
+--plugins /tmp/avalanchego-v1.7.4/plugins \
+--config /tmp/test.yaml
 ```
 
 ```bash

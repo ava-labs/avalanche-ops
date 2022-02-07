@@ -6,21 +6,24 @@ use std::{
 use log::info;
 use zstd::stream;
 
-pub fn compress_zstd(filename: &str, dst_path: &str, level: Option<i32>) -> io::Result<()> {
+/// Compresses the contents in "src_path" using "Zstandard" compression
+/// and saves it to "dst_path". Note that even if "dst_path" already exists,
+/// it truncates (overwrites).
+pub fn compress_zstd(src_path: &str, dst_path: &str, level: Option<i32>) -> io::Result<()> {
     let lvl = level.unwrap_or(3);
 
-    let meta = fs::metadata(filename)?;
+    let meta = fs::metadata(src_path)?;
     let size = meta.len() as f64;
 
     info!(
         "compressing {} to {} (level {}, original size {})",
-        filename,
+        src_path,
         dst_path,
         lvl,
         crate::humanize::bytes(size),
     );
 
-    let contents = fs::read(filename)?;
+    let contents = fs::read(src_path)?;
     let compressed = stream::encode_all(Cursor::new(&contents[..]), lvl)?;
     let mut f = File::create(dst_path)?;
     f.write_all(&compressed[..])?;
@@ -29,7 +32,7 @@ pub fn compress_zstd(filename: &str, dst_path: &str, level: Option<i32>) -> io::
     let size = meta.len() as f64;
     info!(
         "compressed {} to {} (new size {})",
-        filename,
+        src_path,
         dst_path,
         crate::humanize::bytes(size),
     );
@@ -37,18 +40,21 @@ pub fn compress_zstd(filename: &str, dst_path: &str, level: Option<i32>) -> io::
     Ok(())
 }
 
-pub fn decompress_zstd(filename: &str, dst_path: &str) -> io::Result<()> {
-    let meta = fs::metadata(filename)?;
+/// Decompresses the contents in "src_path" using "Zstandard" and saves it
+/// to "dst_path". Note that even if "dst_path" already exists, it truncates
+/// (overwrites).
+pub fn decompress_zstd(src_path: &str, dst_path: &str) -> io::Result<()> {
+    let meta = fs::metadata(src_path)?;
     let size = meta.len() as f64;
 
     info!(
         "decompressing {} to {} (original size {})",
-        filename,
+        src_path,
         dst_path,
         crate::humanize::bytes(size),
     );
 
-    let contents = fs::read(filename)?;
+    let contents = fs::read(src_path)?;
     let decompressed = stream::decode_all(Cursor::new(&contents[..]))?;
     let mut f = File::create(dst_path)?;
     f.write_all(&decompressed[..])?;
@@ -57,7 +63,7 @@ pub fn decompress_zstd(filename: &str, dst_path: &str) -> io::Result<()> {
     let size = meta.len() as f64;
     info!(
         "decompressed {} to {} (new size {})",
-        filename,
+        src_path,
         dst_path,
         crate::humanize::bytes(size),
     );
