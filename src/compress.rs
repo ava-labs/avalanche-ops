@@ -9,17 +9,16 @@ use zstd::stream;
 /// Compresses the contents in "src_path" using "Zstandard" compression
 /// and saves it to "dst_path". Note that even if "dst_path" already exists,
 /// it truncates (overwrites).
-pub fn compress_zstd(src_path: &str, dst_path: &str, level: Option<i32>) -> io::Result<()> {
+pub fn to_zstd(src_path: &str, dst_path: &str, level: Option<i32>) -> io::Result<()> {
     let lvl = level.unwrap_or(3);
 
     let meta = fs::metadata(src_path)?;
     let size = meta.len() as f64;
 
     info!(
-        "compressing {} to {} (level {}, original size {})",
+        "compressing {} to {} (current size {})",
         src_path,
         dst_path,
-        lvl,
         crate::humanize::bytes(size),
     );
 
@@ -43,12 +42,12 @@ pub fn compress_zstd(src_path: &str, dst_path: &str, level: Option<i32>) -> io::
 /// Decompresses the contents in "src_path" using "Zstandard" and saves it
 /// to "dst_path". Note that even if "dst_path" already exists, it truncates
 /// (overwrites).
-pub fn decompress_zstd(src_path: &str, dst_path: &str) -> io::Result<()> {
+pub fn from_zstd(src_path: &str, dst_path: &str) -> io::Result<()> {
     let meta = fs::metadata(src_path)?;
     let size = meta.len() as f64;
 
     info!(
-        "decompressing {} to {} (original size {})",
+        "decompressing {} to {} (current size {})",
         src_path,
         dst_path,
         crate::humanize::bytes(size),
@@ -90,7 +89,7 @@ fn test_compress() {
     let p3 = tmp_dir.path().join(crate::random::string(20));
     let p3 = p3.as_os_str().to_str().unwrap();
 
-    let ret = compress_zstd(p1, p2, None);
+    let ret = to_zstd(p1, p2, None);
     assert!(ret.is_ok());
 
     // compressed file should be smaller
@@ -98,7 +97,7 @@ fn test_compress() {
     let meta2 = fs::metadata(p2).unwrap();
     assert!(meta1.len() > meta2.len());
 
-    let ret = decompress_zstd(p2, p3);
+    let ret = from_zstd(p2, p3);
     assert!(ret.is_ok());
 
     // decompressed file should be same as original
