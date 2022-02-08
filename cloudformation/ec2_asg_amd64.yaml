@@ -192,6 +192,7 @@ Resources:
             - !Ref ImageId
             - !Ref ImageIdSsmParameter
         KeyName: !Ref Ec2KeyPairName
+
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
@@ -205,6 +206,7 @@ Resources:
               Encrypted: true
         Monitoring:
           Enabled: true
+
         # need this for public DNS + SSH access
         NetworkInterfaces:
           - AssociatePublicIpAddress: true
@@ -219,49 +221,98 @@ Resources:
           - ResourceType: volume
             Tags:
               - { Key: Name, Value: !Sub "${Id}-volume-${NodeType}-amd64" }
+
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
-        # check "/var/log/cloud-init.log" and "/var/log/cloud-init-output.log"
+        # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
+        # /var/log/cloud-init-output.log
         UserData:
           Fn::Base64:
             Fn::Sub: |
               #!/bin/bash
               set -xeu
 
+              export DEBIAN_FRONTEND=noninteractive
               sudo apt-get update -y \
               && sudo apt-get upgrade -y \
               && sudo apt-get install -y \
-              curl wget zip gzip tar \
-              libssl-dev
+                  curl wget zip gzip tar \
+                  libssl-dev \
+                  python-pip python-setuptools
 
+              # curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
+              # unzip awscli.v2.zip
+              # sudo ./aws/install
+              curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
+              unzip awscli-bundle.zip
+              sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+              which aws
+              aws --version
               aws s3 ls || true
 
+              curl https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb -o /tmp/amazon-ssm-agent.deb
+              sudo dpkg -i /tmp/amazon-ssm-agent.deb
+              sudo systemctl enable amazon-ssm-agent
+              mkdir -p /etc/systemd/system/amazon-ssm-agent.service.d
+              cat <<EOF > /etc/systemd/system/amazon-ssm-agent.service.d/10-restart-always.conf
+              [Service]
+              Restart=always
+              RestartSec=60s
+              EOF
+              sudo systemctl restart amazon-ssm-agent
+
+              sudo find /etc/systemd/system/
+              sudo find /lib/systemd/system/
+              cat /etc/systemd/system/avalanched.service || true
+
+              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
+              curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
+              sudo python ./awslogs-agent-setup.py --region ${AWS::Region}
+
+              curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
+              pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+              if [ $? -ne 0 ]; then
+                /usr/local/bin/cfn-signal --resource AutoScalingGroup \
+                  --stack ${AWS::StackName} \
+                  --region ${AWS::Region} \
+                  --success false
+              else
+                /usr/local/bin/cfn-signal -e $? --resource AutoScalingGroup \
+                  --stack ${AWS::StackName} \
+                  --region ${AWS::Region}
+              fi
+
     Metadata:
-      Comment: Install and configure AWS CLI
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
       AWS::CloudFormation::Init:
         configSets:
-          default:
-            - AWSCLI
-            - SSMCLI
-        AWSCLI:
-          packages:
-            yum:
-              unzip: []
-              zsh: []
-              wget: []
-          commands: |
-            curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
-            unzip awscli-bundle.zip
-            sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
-            which aws
-            rm -r awscli*
-        SSMCLI:
-          packages:
-            apt:
-              ssm:
-                # https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_arm64/amazon-ssm-agent.deb
-                # https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb
-                - Fn::Sub: "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb"
+          fullSetup:
+            - AvalanchedSystemdFiles
+        AvalanchedSystemdFiles:
+          files:
+            /etc/systemd/system/avalanched.service:
+              content: |
+                [Unit]
+                Description=avalanche agent
+
+                [Service]
+                Type=notify
+                Restart=always
+                RestartSec=5s
+                LimitNOFILE=40000
+                ExecStart=/bin/ping -c 3 google.com
+
+                [Install]
+                WantedBy=multi-user.target
+          commands:
+            # sudo systemctl status avalanched.service -l --no-pager
+            # sudo journalctl -u avalanched.service -l --no-pager|less
+            # sudo journalctl -f -u avalanched.service
+            00reload_avalanched:
+              command: systemctl daemon-reload
+            01enable_avalanched:
+              command: systemctl enable avalanched.service
+            02start_avalanched:
+              command: systemctl start avalanched.service
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:

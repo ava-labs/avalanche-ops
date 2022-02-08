@@ -253,24 +253,15 @@ Resources:
       CidrIp: !Ref IngressEgressIpv4Range
 
   # TODO: can this be more strict
-  HttpEgress:
+  # allow all outbound traffic
+  Egress:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
       GroupId: !Ref SecurityGroup
-      IpProtocol: tcp
-      FromPort: !Ref HttpPort
-      ToPort: !Ref HttpPort
-      CidrIp: !Ref IngressEgressIpv4Range
-
-  # TODO: can this be more strict
-  StakingEgress:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      GroupId: !Ref SecurityGroup
-      IpProtocol: tcp
-      FromPort: !Ref StakingPort
-      ToPort: !Ref StakingPort
-      CidrIp: !Ref IngressEgressIpv4Range
+      IpProtocol: "-1"
+      FromPort: "1"
+      ToPort: "65535"
+      CidrIp: "0.0.0.0/0"
 
 Outputs:
   VpcId:

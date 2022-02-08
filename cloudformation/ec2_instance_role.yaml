@@ -43,6 +43,9 @@ Resources:
                     - ec2
             Action:
               - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
       Path: /
       Policies:
         - PolicyName: avalanche-ops-instance-role-policy
