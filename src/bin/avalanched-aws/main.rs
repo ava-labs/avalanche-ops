@@ -4,7 +4,7 @@ use clap::{App, Arg};
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_ops::{aws, aws_ec2, aws_kms, aws_s3, cert, compress};
+use avalanche_ops::{aws, aws_ec2, aws_kms, aws_s3, cert, compress, id, network};
 
 const APP_NAME: &str = "avalanched-aws";
 
@@ -148,6 +148,22 @@ fn main() {
             &s3_bucket_name,
             tmpf_encrypted_path,
             format!("{}/pki/{}.key.zstd.encrypted", id, instance_id).as_str(),
+        ))
+        .unwrap();
+    }
+
+    let node_id = id::load_node_id(tls_cert_path).unwrap();
+    info!("loaded node ID: {}", node_id);
+
+    if node_type.eq("beacon") {
+        let beacon_node = network::BeaconNode::new(public_ipv4, node_id);
+        let tmpf_beacon_node = tempfile::NamedTempFile::new().unwrap();
+        let tmpf_beacon_node_path = tmpf_beacon_node.path().to_str().unwrap();
+        beacon_node.sync(tmpf_beacon_node_path).unwrap();
+        rt.block_on(s3_manager.put_object(
+            &s3_bucket_name,
+            tmpf_beacon_node_path,
+            format!("{}/beacon-nodes/{}.yaml", id, instance_id).as_str(),
         ))
         .unwrap();
     }

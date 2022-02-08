@@ -223,17 +223,6 @@ pub struct AWSResources {
     pub beacon_nodes: Option<Vec<BeaconNode>>,
 }
 
-/// Represents each beacon node.
-/// Only required for custom networks.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct BeaconNode {
-    #[serde(default)]
-    pub ip: String,
-    #[serde(default)]
-    pub id: String,
-}
-
 impl Config {
     /// Creates a default Status based on the network ID.
     pub fn default_aws(
@@ -702,6 +691,101 @@ aws_resources:
     assert_eq!(beacons[1].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX");
     assert_eq!(beacons[2].ip, "1.2.3.6");
     assert_eq!(beacons[2].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY");
+}
+
+/// Represents each beacon node.
+/// Only required for custom networks.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct BeaconNode {
+    #[serde(default)]
+    pub ip: String,
+    #[serde(default)]
+    pub id: String,
+}
+
+impl BeaconNode {
+    pub fn new(ip: String, id: String) -> Self {
+        Self { ip, id }
+    }
+
+    /// Saves the current beacon node to disk
+    /// and overwrites the file.
+    pub fn sync(&self, file_path: &str) -> io::Result<()> {
+        info!("syncing network BeaconNode to '{}'", file_path);
+
+        let ret = serde_yaml::to_vec(self);
+        let d = match ret {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize BeaconNode to YAML {}", e),
+                ));
+            }
+        };
+        let mut f = File::create(file_path)?;
+        f.write_all(&d)?;
+
+        Ok(())
+    }
+}
+
+pub fn load_beacon_node(file_path: &str) -> io::Result<BeaconNode> {
+    info!("loading beacon node from {}", file_path);
+
+    if !Path::new(file_path).exists() {
+        return Err(Error::new(
+            ErrorKind::NotFound,
+            format!("file {} does not exists", file_path),
+        ));
+    }
+
+    let f = match File::open(&file_path) {
+        Ok(f) => f,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", file_path, e),
+            ));
+        }
+    };
+    serde_yaml::from_reader(f).map_err(|e| {
+        return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
+    })
+}
+
+#[test]
+fn test_beacon_node() {
+    let d = r#"
+ip: 1.2.3.4
+id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
+    
+"#;
+    let mut f = tempfile::NamedTempFile::new().unwrap();
+    let ret = f.write_all(d.as_bytes());
+    assert!(ret.is_ok());
+    let beacon_node_path = f.path().to_str().unwrap();
+
+    let ret = load_beacon_node(beacon_node_path);
+    assert!(ret.is_ok());
+    let beacon_node = ret.unwrap();
+
+    let ret = beacon_node.sync(beacon_node_path);
+    assert!(ret.is_ok());
+
+    let orig = BeaconNode::new(
+        String::from("1.2.3.4"),
+        String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"),
+    );
+
+    assert_eq!(beacon_node, orig);
+    // manually check to make sure the serde deserializer works
+    assert_eq!(beacon_node.ip, String::from("1.2.3.4"));
+    assert_eq!(
+        beacon_node.id,
+        String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg")
+    );
 }
 
 /// Defines the node type.
