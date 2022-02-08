@@ -1,10 +1,10 @@
-use std::{path::Path, thread, time::Duration};
+use std::{fs, io::Write, path::Path, thread, time::Duration};
 
 use clap::{App, Arg};
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_ops::{aws, aws_ec2, aws_kms, aws_s3, cert, compress, id, network};
+use avalanche_ops::{aws, aws_ec2, aws_kms, aws_s3, bash, cert, compress, id, network};
 
 const APP_NAME: &str = "avalanched-aws";
 
@@ -20,6 +20,15 @@ fn main() {
                 .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("REGION")
+                .long("region")
+                .short('r')
+                .help("AWS region")
+                .required(true)
+                .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
@@ -41,17 +50,8 @@ fn main() {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .short('r')
-                .help("AWS region")
-                .required(true)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("AVALANCHEGO_BIN")
-                .long("avalanchego-bin")
+            Arg::new("AVALANCHE_BIN")
+                .long("avalanche-bin")
                 .short('b')
                 .help("Sets the Avalanche node binary path to locate the downloaded file")
                 .required(true)
@@ -194,27 +194,43 @@ fn main() {
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading avalanche binary from S3");
-    let tmpf_avalanchego_bin_compressed = tempfile::NamedTempFile::new().unwrap();
-    let tmpf_avalanchego_bin_compressed_path =
-        tmpf_avalanchego_bin_compressed.path().to_str().unwrap();
+    let tmpf_avalanche_bin_compressed = tempfile::NamedTempFile::new().unwrap();
+    let tmpf_avalanche_bin_compressed_path = tmpf_avalanche_bin_compressed.path().to_str().unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
         format!("{}/install/avalanchego.zstd", id).as_str(),
-        tmpf_avalanchego_bin_compressed_path,
+        tmpf_avalanche_bin_compressed_path,
     ))
     .unwrap();
-    let avalanchego_bin = matches.value_of("AVALANCHEGO_BIN").unwrap();
-    compress::from_zstd(tmpf_avalanchego_bin_compressed_path, avalanchego_bin).unwrap();
+    let avalanche_bin = matches.value_of("AVALANCHE_BIN").unwrap();
+    compress::from_zstd(tmpf_avalanche_bin_compressed_path, avalanche_bin).unwrap();
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading plugins from S3");
-    // TODO
+    let plugins_dir = get_plugins_dir(avalanche_bin);
+    fs::create_dir_all(plugins_dir.clone()).unwrap();
+    let objects = rt
+        .block_on(
+            s3_manager.list_objects(&s3_bucket_name, Some(format!("{}/install/plugins/", id))),
+        )
+        .unwrap();
+    for obj in objects.iter() {
+        let s3_key = obj.key().unwrap();
+        let file_name = extract_filename(s3_key);
+        let file_path = format!("{}/{}", plugins_dir, file_name);
+
+        let tmpf = tempfile::NamedTempFile::new().unwrap();
+        let tmpf_path = tmpf.path().to_str().unwrap();
+        rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, tmpf_path))
+            .unwrap();
+        compress::from_zstd(tmpf_path, &file_path).unwrap();
+    }
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: setting up avalanche node service file");
     let mut avalanche_node_cmd = format!(
         "{} --network-id={} --public-ip={}",
-        avalanchego_bin,
+        avalanche_bin,
         config.network_id,
         public_ipv4.as_str(),
     );
@@ -249,7 +265,6 @@ fn main() {
                 s3_manager.list_objects(&s3_bucket_name, Some(format!("{}/beacon-nodes/", id))),
             )
             .unwrap();
-
         if !objects.is_empty() {
             let mut bootstrap_ips: Vec<String> = vec![];
             let mut bootstrap_ids: Vec<String> = vec![];
@@ -271,9 +286,61 @@ fn main() {
                 .push_str(format!(" --bootstrap-ids={}", bootstrap_ids.join(",")).as_str());
         }
     }
-    info!("command TODO: {}", avalanche_node_cmd);
+    let avalanche_service_file_contents = format!(
+        "[Unit]
+Description=avalanche agent
+[Service]
+Type=notify
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+ExecStart={}
+[Install]
+WantedBy=multi-user.target",
+        avalanche_node_cmd
+    );
+    info!("{}", avalanche_service_file_contents);
+    let mut avalanche_service_file = tempfile::NamedTempFile::new().unwrap();
+    avalanche_service_file
+        .write_all(avalanche_service_file_contents.as_bytes())
+        .unwrap();
+    let avalanche_service_file_path = avalanche_service_file.path().to_str().unwrap();
+    fs::copy(
+        avalanche_service_file_path,
+        "/etc/systemd/system/avalanche.service",
+    )
+    .unwrap();
+    bash::run("sudo systemctl daemon-reload").unwrap();
+    bash::run("sudo systemctl enable avalanche.service").unwrap();
+    bash::run("sudo systemctl restart avalanche.service").unwrap();
+    // sudo systemctl status avalanche.service -l --no-pager
+    // sudo journalctl -u avalanche.service -l --no-pager|less
+    // sudo journalctl -f -u avalanche.service
 
     // TODO: run avalanche node in systemd
+}
+
+///  build
+///    ├── avalanchego (the binary from compiling the app directory)
+///    └── plugins
+///        └── evm
+fn get_plugins_dir(avalanche_bin: &str) -> String {
+    let path = Path::new(avalanche_bin);
+    let parent_dir = path.parent().unwrap();
+    String::from(
+        parent_dir
+            .join(Path::new("plugins"))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
+}
+
+/// returns "hello" from "a/b/c/hello.zstd"
+fn extract_filename(p: &str) -> String {
+    let path = Path::new(p);
+    let file_stemp = path.file_stem().unwrap();
+    String::from(file_stemp.to_str().unwrap())
 }
 
 // TODO: periodically upload beacon information to S3 as health check

@@ -258,9 +258,10 @@ Resources:
               LimitNOFILE=40000
               ExecStart=/usr/local/bin/avalanched \
                 --log-level info \
+                --region ${AWS::Region} \
                 --tls-key-path /etc/pki/tls/certs/avalanched.pki.key \
                 --tls-cert-path /etc/pki/tls/certs/avalanched.pki.crt \
-                --region ${AWS::Region}
+                --avalanche-bin /usr/local/bin/avalanche
               [Install]
               WantedBy=multi-user.target
               EOF

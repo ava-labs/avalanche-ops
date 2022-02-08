@@ -52,28 +52,6 @@ pub struct Config {
     #[serde(default)]
     pub id: String,
 
-    /// "avalanched" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "install/avalanched" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    #[serde(default)]
-    pub avalanched_bin: String,
-    /// AvalancheGo binary path in the local environment.
-    /// The file is "compressed" and uploaded to remote storage
-    /// to be shared with remote machines.
-    ///
-    ///  build
-    ///    ├── avalanchego (the binary from compiling the app directory)
-    ///    └── plugins
-    ///        └── evm
-    #[serde(default)]
-    pub avalanchego_bin: String,
-    /// Plugin directories in the local environment.
-    /// Files (if any) are uploaded to the remote storage to be shared
-    /// with remote machiens.
-    #[serde(default)]
-    pub plugins_dir: Option<String>,
-
     /// Network ID.
     /// Only supports: "mainnet" and custom name.
     /// MUST NOT BE EMPTY.
@@ -99,13 +77,42 @@ pub struct Config {
     #[serde(default)]
     pub staking_port: Option<u32>,
 
+    /// Install artifacts to share with remote machines.
+    pub install_artifacts: InstallArtifacts,
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
     pub machine: Machine,
-
-    /// Specified AWS resources if run in AWS.
+    /// AWS resources if run in AWS.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub aws_resources: Option<AWSResources>,
+}
+
+/// Represents artifacts for installation, to be shared with
+/// remote machines. All paths are local.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct InstallArtifacts {
+    /// "avalanched" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "install/avalanched" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    #[serde(default)]
+    pub avalanched_bin: String,
+    /// AvalancheGo binary path in the local environment.
+    /// The file is "compressed" and uploaded to remote storage
+    /// to be shared with remote machines.
+    ///
+    ///  build
+    ///    ├── avalanchego (the binary from compiling the app directory)
+    ///    └── plugins
+    ///        └── evm
+    #[serde(default)]
+    pub avalanchego_bin: String,
+    /// Plugin directories in the local environment.
+    /// Files (if any) are uploaded to the remote storage to be shared
+    /// with remote machiens.
+    #[serde(default)]
+    pub plugins_dir: Option<String>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -239,10 +246,6 @@ impl Config {
         Self {
             id: crate::id::generate("avalanche-ops"),
 
-            avalanched_bin: avalanched_bin.to_string(),
-            avalanchego_bin: avalanchego_bin.to_string(),
-            plugins_dir,
-
             network_id: String::from(network_id),
 
             snow_sample_size: Some(DEFAULT_SNOW_SAMPLE_SIZE),
@@ -250,6 +253,12 @@ impl Config {
 
             http_port: Some(DEFAULT_HTTP_PORT),
             staking_port: Some(DEFAULT_STAKING_PORT),
+
+            install_artifacts: InstallArtifacts {
+                avalanched_bin: avalanched_bin.to_string(),
+                avalanchego_bin: avalanchego_bin.to_string(),
+                plugins_dir,
+            },
 
             machine: Machine {
                 beacon_nodes: Some(beacon_nodes),
@@ -340,24 +349,32 @@ impl Config {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
         }
 
-        if !Path::new(&self.avalanched_bin).exists() {
+        if !Path::new(&self.install_artifacts.avalanched_bin).exists() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("avalanched_bin {} does not exist", self.avalanched_bin),
+                format!(
+                    "avalanched_bin {} does not exist",
+                    self.install_artifacts.avalanched_bin
+                ),
             ));
         }
-        if !Path::new(&self.avalanchego_bin).exists() {
+        if !Path::new(&self.install_artifacts.avalanchego_bin).exists() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("avalanchego_bin {} does not exist", self.avalanchego_bin),
+                format!(
+                    "avalanchego_bin {} does not exist",
+                    self.install_artifacts.avalanchego_bin
+                ),
             ));
         }
-        if self.plugins_dir.is_some() && !Path::new(&self.plugins_dir.clone().unwrap()).exists() {
+        if self.install_artifacts.plugins_dir.is_some()
+            && !Path::new(&self.install_artifacts.plugins_dir.clone().unwrap()).exists()
+        {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "plugins_dir {} does not exist",
-                    self.plugins_dir.clone().unwrap()
+                    self.install_artifacts.plugins_dir.clone().unwrap()
                 ),
             ));
         }
@@ -532,10 +549,6 @@ fn test_config() {
 
 id: {}
 
-avalanched_bin: {}
-avalanchego_bin: {}
-plugins_dir: {}
-
 network_id: hello
 
 snow_sample_size: 20
@@ -543,6 +556,11 @@ snow_quorum_size: 15
 
 http_port: 9650
 staking_port: 9651
+
+install_artifacts:
+  avalanched_bin: {}
+  avalanchego_bin: {}
+  plugins_dir: {}
 
 machine:
   beacon_nodes: 10
@@ -582,10 +600,6 @@ aws_resources:
     let orig = Config {
         id: id.clone(),
 
-        avalanched_bin: avalanched_bin.to_string(),
-        avalanchego_bin: avalanchego_bin.to_string(),
-        plugins_dir: Some(String::from(plugins_dir)),
-
         network_id: String::from("hello"),
 
         snow_sample_size: Some(20),
@@ -593,6 +607,12 @@ aws_resources:
 
         http_port: Some(9650),
         staking_port: Some(9651),
+
+        install_artifacts: InstallArtifacts {
+            avalanched_bin: avalanched_bin.to_string(),
+            avalanchego_bin: avalanchego_bin.to_string(),
+            plugins_dir: Some(String::from(plugins_dir)),
+        },
 
         machine: Machine {
             beacon_nodes: Some(10),
@@ -654,18 +674,20 @@ aws_resources:
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
 
-    assert_eq!(cfg.avalanched_bin, avalanched_bin);
-    assert_eq!(cfg.avalanchego_bin, avalanchego_bin);
-    assert_eq!(
-        cfg.plugins_dir.unwrap_or(String::from("")),
-        plugins_dir.to_string()
-    );
-
     assert_eq!(cfg.network_id, "hello");
     assert_eq!(cfg.snow_sample_size.unwrap_or(0), 20);
     assert_eq!(cfg.snow_quorum_size.unwrap_or(0), 15);
     assert_eq!(cfg.http_port.unwrap_or(0), 9650);
     assert_eq!(cfg.staking_port.unwrap_or(0), 9651);
+
+    assert_eq!(cfg.install_artifacts.avalanched_bin, avalanched_bin);
+    assert_eq!(cfg.install_artifacts.avalanchego_bin, avalanchego_bin);
+    assert_eq!(
+        cfg.install_artifacts
+            .plugins_dir
+            .unwrap_or(String::from("")),
+        plugins_dir.to_string()
+    );
 
     assert_eq!(cfg.machine.beacon_nodes.unwrap_or(0), 10);
     assert_eq!(cfg.machine.non_beacon_nodes, 20);

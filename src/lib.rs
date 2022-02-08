@@ -5,6 +5,7 @@ pub mod aws_kms;
 pub mod aws_s3;
 pub mod aws_sts;
 
+pub mod bash;
 pub mod cert;
 pub mod compress;
 pub mod crypto;

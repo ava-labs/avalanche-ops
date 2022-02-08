@@ -244,6 +244,8 @@ fn run_default_config(
     Ok(())
 }
 
+// TODO: define helper functions for s3 paths
+
 /// TODO: better error handling rather than just panic with "unwrap"
 fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -365,7 +367,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
 
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
-        &config.avalanched_bin,
+        &config.install_artifacts.avalanched_bin,
         format!("{}/install/avalanched", config.id).as_str(),
     ))
     .unwrap();
@@ -374,7 +376,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     let tmpf_avalanchego_bin_compressed_path =
         tmpf_avalanchego_bin_compressed.path().to_str().unwrap();
     crate::compress::to_zstd(
-        &config.avalanchego_bin,
+        &config.install_artifacts.avalanchego_bin,
         tmpf_avalanchego_bin_compressed_path,
         None,
     )
@@ -382,12 +384,12 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         tmpf_avalanchego_bin_compressed_path,
-        format!("{}/install/avalanchego.zstd", config.id).as_str(),
+        format!("{}/install/avalanche.zstd", config.id).as_str(),
     ))
     .unwrap();
 
-    if config.plugins_dir.is_some() {
-        let plugins_dir = config.plugins_dir.clone().unwrap();
+    if config.install_artifacts.plugins_dir.is_some() {
+        let plugins_dir = config.install_artifacts.plugins_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
             let entry = entry.unwrap();
             let entry_path = entry.path();
