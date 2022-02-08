@@ -4,6 +4,10 @@ Description: "AWS Auto Scaling Groups for amd64"
 
 # takes about 2-minute for 3 nodes
 
+# TODO: support CloudWatch logs
+# ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
+# ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AgentReference.html
+
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Parameters:
   Id:
