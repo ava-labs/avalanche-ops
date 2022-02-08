@@ -478,7 +478,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             tmpf_encrypted_path,
-            format!("{}/ec2-key.zstd.encrypted", config.id).as_str(),
+            format!("{}/ec2-access-key.zstd.encrypted", config.id).as_str(),
         ))
         .unwrap();
 
@@ -709,7 +709,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         .unwrap();
 
         let cloudformation_asg_beacon_nodes_yaml =
-            Asset::get("cloudformation/ec2_asg_amd64.yaml").unwrap();
+            Asset::get("cloudformation/asg_ubuntu_amd64.yaml").unwrap();
         let cloudformation_asg_beacon_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_beacon_nodes_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_beacon_nodes_stack_name = aws_resources
@@ -777,14 +777,14 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
         println!("\nchmod 400 {}\n", ec2_key_path);
         for d in droplets {
-            // e.g.,
-            // chmod 400 /tmp/test-ec2-access-key
-            // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@34.209.244.108
-            // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@ec2-34-209-244-108.us-west-2.compute.amazonaws.com
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             println!(
-                "# instance '{}' in {}\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\n",
-                d.instance_id, d.availability_zone, ec2_key_path, d.public_ipv4
+                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\n",
+                d.instance_id,
+                d.instance_state_name,
+                d.availability_zone,
+                ec2_key_path,
+                d.public_ipv4
             );
         }
 
@@ -815,7 +815,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         .unwrap();
 
         let cloudformation_asg_non_beacon_nodes_yaml =
-            Asset::get("cloudformation/ec2_asg_amd64.yaml").unwrap();
+            Asset::get("cloudformation/asg_ubuntu_amd64.yaml").unwrap();
         let cloudformation_asg_non_beacon_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_non_beacon_nodes_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_non_beacon_nodes_stack_name = aws_resources

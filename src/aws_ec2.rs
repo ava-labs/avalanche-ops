@@ -323,148 +323,68 @@ fn is_error_delete_key_pair_does_not_exist(e: &SdkError<DeleteKeyPairError>) -> 
     }
 }
 
-/// Serves instance id for instance metadata service v2.
-/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
-/// e.g., curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id
-const IMDS_V2_INSTANCE_ID_URI: &str = "http://169.254.169.254/latest/meta-data/instance-id";
-
 /// Fetches the instance ID on the host EC2 machine.
-/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 pub async fn fetch_instance_id() -> Result<String> {
-    info!("fetching the local instance ID");
-
-    let token = fetch_token().await?;
-    let req = match Request::builder()
-        .method(Method::GET)
-        .uri(IMDS_V2_INSTANCE_ID_URI)
-        .header("X-aws-ec2-metadata-token", token)
-        .body(Body::empty())
-    {
-        Ok(r) => r,
-        Err(e) => {
-            return Err(API {
-                message: format!("failed to build GET meta-data/instance-id {:?}", e),
-                is_retryable: false,
-            });
-        }
-    };
-
-    let ret = crate::http::read_bytes(req, Duration::from_secs(5)).await;
-    let id = match ret {
-        Ok(bytes) => {
-            let s = match String::from_utf8(bytes.to_vec()) {
-                Ok(text) => text,
-                Err(e) => {
-                    return Err(API {
-                        message: format!(
-                            "GET meta-data/instance-id returned unexpected bytes {:?} ({})",
-                            bytes, e
-                        ),
-                        is_retryable: false,
-                    });
-                }
-            };
-            s
-        }
-        Err(e) => {
-            return Err(API {
-                message: format!("failed GET meta-data/instance-id {:?}", e),
-                is_retryable: false,
-            })
-        }
-    };
-    Ok(id)
+    fetch_metadata("instance-id").await
 }
-
-/// Serves public-hostname for instance metadata service v2.
-/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
-/// e.g., curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/public-hostname
-const IMDS_V2_PUBLIC_HOSTNAME_URI: &str = "http://169.254.169.254/latest/meta-data/public-hostname";
 
 /// Fetches the public hostname of the host EC2 machine.
-/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 pub async fn fetch_public_hostname() -> Result<String> {
-    info!("fetching the public hostname");
-
-    let token = fetch_token().await?;
-    let req = match Request::builder()
-        .method(Method::GET)
-        .uri(IMDS_V2_PUBLIC_HOSTNAME_URI)
-        .header("X-aws-ec2-metadata-token", token)
-        .body(Body::empty())
-    {
-        Ok(r) => r,
-        Err(e) => {
-            return Err(API {
-                message: format!("failed to build GET meta-data/public-ipv4 {:?}", e),
-                is_retryable: false,
-            });
-        }
-    };
-
-    let ret = crate::http::read_bytes(req, Duration::from_secs(5)).await;
-    let hostname = match ret {
-        Ok(bytes) => {
-            let s = match String::from_utf8(bytes.to_vec()) {
-                Ok(text) => text,
-                Err(e) => {
-                    return Err(API {
-                        message: format!(
-                            "GET meta-data/public-hostname returned unexpected bytes {:?} ({})",
-                            bytes, e
-                        ),
-                        is_retryable: false,
-                    });
-                }
-            };
-            s
-        }
-        Err(e) => {
-            return Err(API {
-                message: format!("failed GET meta-data/public-hostname {:?}", e),
-                is_retryable: false,
-            })
-        }
-    };
-    Ok(hostname)
+    fetch_metadata("public-hostname").await
 }
 
-/// Serves public-ipv4 for instance metadata service v2.
+/// Fetches the public IPv4 address of the host EC2 machine.
+pub async fn fetch_public_ipv4() -> Result<String> {
+    fetch_metadata("public-ipv4").await
+}
+
+/// Fetches the availability of the host EC2 machine.
+pub async fn fetch_availability_zone() -> Result<String> {
+    fetch_metadata("placement/availability-zone").await
+}
+
+/// Fetches the region of the host EC2 machine.
+/// TODO: fix this...
+pub async fn fetch_region() -> Result<String> {
+    let mut az = fetch_availability_zone().await?;
+    az.truncate(az.len() - 1);
+    Ok(az)
+}
+
+/// Fetches instance metadata service v2 with the "path".
+/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
 /// e.g., curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/public-ipv4
-const IMDS_V2_PUBLIC_IPV4_URI: &str = "http://169.254.169.254/latest/meta-data/public-ipv4";
+async fn fetch_metadata(path: &str) -> Result<String> {
+    info!("fetching meta-data/{}", path);
 
-/// Fetches the public IPv4 address of the host EC2 machine.
-/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
-pub async fn fetch_public_ipv4() -> Result<String> {
-    info!("fetching the public ipv4");
-
+    let uri = format!("http://169.254.169.254/latest/meta-data/{}", path);
     let token = fetch_token().await?;
     let req = match Request::builder()
         .method(Method::GET)
-        .uri(IMDS_V2_PUBLIC_IPV4_URI)
+        .uri(uri)
         .header("X-aws-ec2-metadata-token", token)
         .body(Body::empty())
     {
         Ok(r) => r,
         Err(e) => {
             return Err(API {
-                message: format!("failed to build GET meta-data/public-ipv4 {:?}", e),
+                message: format!("failed to build GET meta-data/{} {:?}", path, e),
                 is_retryable: false,
             });
         }
     };
 
     let ret = crate::http::read_bytes(req, Duration::from_secs(5)).await;
-    let ipv4 = match ret {
+    let rs = match ret {
         Ok(bytes) => {
             let s = match String::from_utf8(bytes.to_vec()) {
                 Ok(text) => text,
                 Err(e) => {
                     return Err(API {
                         message: format!(
-                            "GET meta-data/public-ipv4 returned unexpected bytes {:?} ({})",
-                            bytes, e
+                            "GET meta-data/{} returned unexpected bytes {:?} ({})",
+                            path, bytes, e
                         ),
                         is_retryable: false,
                     });
@@ -474,12 +394,12 @@ pub async fn fetch_public_ipv4() -> Result<String> {
         }
         Err(e) => {
             return Err(API {
-                message: format!("failed GET meta-data/public-ipv4 {:?}", e),
+                message: format!("failed GET meta-data/{} {:?}", path, e),
                 is_retryable: false,
             })
         }
     };
-    Ok(ipv4)
+    Ok(rs)
 }
 
 /// Serves session token for instance metadata service v2.

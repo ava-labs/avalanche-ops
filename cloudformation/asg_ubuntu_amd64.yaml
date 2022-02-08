@@ -232,45 +232,65 @@ Resources:
               set -xeu
 
               export DEBIAN_FRONTEND=noninteractive
-              sudo apt-get update -y \
-              && sudo apt-get upgrade -y \
+              sudo apt-get update -y && sudo apt-get upgrade -y \
               && sudo apt-get install -y \
-                  curl wget zip gzip tar \
-                  libssl-dev \
-                  python-pip python-setuptools
+                  curl wget unzip zip gzip tar libssl-dev \
+                  python3-pip python-setuptools
 
-              # curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
-              # unzip awscli.v2.zip
-              # sudo ./aws/install
-              curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
-              unzip awscli-bundle.zip
-              sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
-              which aws
-              aws --version
-              aws s3 ls || true
+              curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
+              unzip awscli.v2.zip
+              sudo ./aws/install
+              /usr/local/bin/aws --version
+              aws s3 ls s3://${S3BucketName}/${Id}/
+              aws s3 cp s3://${S3BucketName}/${Id}/install/avalanched /tmp/avalanched
+              chmod +x /tmp/avalanched
+              mv /tmp/avalanched /usr/local/bin/avalanched
 
-              curl https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb -o /tmp/amazon-ssm-agent.deb
-              sudo dpkg -i /tmp/amazon-ssm-agent.deb
-              sudo systemctl enable amazon-ssm-agent
-              mkdir -p /etc/systemd/system/amazon-ssm-agent.service.d
-              cat <<EOF > /etc/systemd/system/amazon-ssm-agent.service.d/10-restart-always.conf
+              mkdir -p /etc/pki/tls/certs
+              chmod 755 /etc/pki/tls/certs
+              cat > /tmp/avalanched.service <<EOF
+              [Unit]
+              Description=avalanche agent
+              [Service]
+              Type=notify
+              Restart=always
+              RestartSec=5s
+              LimitNOFILE=40000
+              ExecStart=/usr/local/bin/avalanched \
+                --log-level info \
+                --tls-key-path /etc/pki/tls/certs/avalanched.pki.key \
+                --tls-cert-path /etc/pki/tls/certs/avalanched.pki.crt \
+                --region ${AWS::Region}
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+              sudo mv /tmp/avalanched.service /etc/systemd/system/avalanched.service
+              # sudo systemctl status avalanched.service -l --no-pager
+              # sudo journalctl -u avalanched.service -l --no-pager|less
+              # sudo journalctl -f -u avalanched.service
+              sudo systemctl daemon-reload
+              sudo systemctl enable avalanched.service
+              sudo systemctl restart avalanched.service
+
+              # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
+              sudo snap install amazon-ssm-agent --classic
+              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+              mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
+              cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
               [Service]
               Restart=always
               RestartSec=60s
               EOF
-              sudo systemctl restart amazon-ssm-agent
-
-              sudo find /etc/systemd/system/
-              sudo find /lib/systemd/system/
-              cat /etc/systemd/system/avalanched.service || true
+              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
-              curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
-              sudo python ./awslogs-agent-setup.py --region ${AWS::Region}
+              curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -o /tmp/awslogs-agent-setup.py
+              sudo python3 /tmp/awslogs-agent-setup.py --region ${AWS::Region}
 
               curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
               pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
-              if [ $? -ne 0 ]; then
+              if [[ $? -ne 0 ]]; then
                 /usr/local/bin/cfn-signal --resource AutoScalingGroup \
                   --stack ${AWS::StackName} \
                   --region ${AWS::Region} \
@@ -280,39 +300,6 @@ Resources:
                   --stack ${AWS::StackName} \
                   --region ${AWS::Region}
               fi
-
-    Metadata:
-      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
-      AWS::CloudFormation::Init:
-        configSets:
-          fullSetup:
-            - AvalanchedSystemdFiles
-        AvalanchedSystemdFiles:
-          files:
-            /etc/systemd/system/avalanched.service:
-              content: |
-                [Unit]
-                Description=avalanche agent
-
-                [Service]
-                Type=notify
-                Restart=always
-                RestartSec=5s
-                LimitNOFILE=40000
-                ExecStart=/bin/ping -c 3 google.com
-
-                [Install]
-                WantedBy=multi-user.target
-          commands:
-            # sudo systemctl status avalanched.service -l --no-pager
-            # sudo journalctl -u avalanched.service -l --no-pager|less
-            # sudo journalctl -f -u avalanched.service
-            00reload_avalanched:
-              command: systemctl daemon-reload
-            01enable_avalanched:
-              command: systemctl enable avalanched.service
-            02start_avalanched:
-              command: systemctl start avalanched.service
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:

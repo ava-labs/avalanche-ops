@@ -197,6 +197,7 @@ impl Manager {
     /// Encrypts data.
     /// The maximum size of the data to encrypt is 4096 bytes to
     /// "SYMMETRIC_DEFAULT".
+    /// To specify a KMS key, use its key ID, key ARN, alias name, or alias ARN.
     /// ref. https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html
     pub async fn encrypt(
         &self,
