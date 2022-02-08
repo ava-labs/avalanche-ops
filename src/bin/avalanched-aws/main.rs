@@ -245,10 +245,9 @@ fn main() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading beacon node information");
         let objects = rt
-            .block_on(s3_manager.list_objects(
-                &s3_bucket_name,
-                Some(String::from(format!("{}/beacon-nodes/", id))),
-            ))
+            .block_on(
+                s3_manager.list_objects(&s3_bucket_name, Some(format!("{}/beacon-nodes/", id))),
+            )
             .unwrap();
 
         if !objects.is_empty() {
