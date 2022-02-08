@@ -46,10 +46,10 @@ jobs:
             arch: amd64
 
           # TODO: takes >13-min, too long for free-tier github action
-          # - os: macos-latest
-          #   platform: darwin
-          #   target: aarch64-apple-darwin
-          #   arch: arm64
+          - os: macos-latest
+            platform: darwin
+            target: aarch64-apple-darwin
+            arch: arm64
 
           # NOT WORKING WITH openssl
           # - os: windows-latest
@@ -100,19 +100,19 @@ jobs:
             
             ./target/${TARGET}/release/avalanche-ops-nodes-aws --help
             cp ./target/${TARGET}/release/avalanche-ops-nodes-aws avalanche-ops-nodes-aws.${TARGET}
-            echo "::set-output name=file_name::avalanche-ops-nodes-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanche_ops::avalanche-ops-nodes-aws.${TARGET}"
             
             ./target/${TARGET}/release/avalanched-aws --help
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name::avalanched-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanched::avalanched-aws.${TARGET}"
 
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
             cp ./target/${TARGET}/release/avalanche-ops-nodes-aws avalanche-ops-nodes-aws.${TARGET}
-            echo "::set-output name=file_name::avalanche-ops-nodes-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanche_ops::avalanche-ops-nodes-aws.${TARGET}"
             
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name::avalanched-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanched::avalanched-aws.${TARGET}"
 
           else
 
@@ -124,9 +124,10 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          name: nightly
-          tag_name: ${GITHUB_REF_NAME}
+          name: latest
+          tag_name: latest
           prerelease: true
-          body: nightly
+          body: latest
           files: |
-            ${{ steps.release_artifacts.outputs.file_name }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched }}
