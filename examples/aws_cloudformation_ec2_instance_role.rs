@@ -59,7 +59,7 @@ fn main() {
                 .parameter_value(id::generate("id"))
                 .build(),
             Parameter::builder()
-                .parameter_key("KmsKeyArn")
+                .parameter_key("KmsCmkArn")
                 .parameter_value("arn:aws:kms:us-west-2:123:key/456")
                 .build(),
             Parameter::builder()

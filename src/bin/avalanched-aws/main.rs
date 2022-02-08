@@ -55,6 +55,12 @@ fn main() {
 
     // TODO: get public hostname
 
+    // TODO: fetch tag to see if beacon/non-beacon
+    // ID
+    // NODE_TYPE
+    // KMS_CMK_ARN
+    // S3_BUCKET_NAME
+
     let tls_key_path = matches.value_of("TLS_KEY_PATH").unwrap();
     if tls_key_path.is_empty() {
         panic!("empty tls_key_path")

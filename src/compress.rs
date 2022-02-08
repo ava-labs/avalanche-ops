@@ -16,7 +16,7 @@ pub fn to_zstd(src_path: &str, dst_path: &str, level: Option<i32>) -> io::Result
     let size = meta.len() as f64;
 
     info!(
-        "compressing {} to {} (current size {})",
+        "compressing '{}' to '{}' (current size {})",
         src_path,
         dst_path,
         crate::humanize::bytes(size),
@@ -30,7 +30,7 @@ pub fn to_zstd(src_path: &str, dst_path: &str, level: Option<i32>) -> io::Result
     let meta = fs::metadata(dst_path)?;
     let size = meta.len() as f64;
     info!(
-        "compressed {} to {} (new size {})",
+        "compressed '{}' to '{}' (new size {})",
         src_path,
         dst_path,
         crate::humanize::bytes(size),
@@ -47,7 +47,7 @@ pub fn from_zstd(src_path: &str, dst_path: &str) -> io::Result<()> {
     let size = meta.len() as f64;
 
     info!(
-        "decompressing {} to {} (current size {})",
+        "decompressing '{}' to '{}' (current size {})",
         src_path,
         dst_path,
         crate::humanize::bytes(size),
@@ -61,7 +61,7 @@ pub fn from_zstd(src_path: &str, dst_path: &str) -> io::Result<()> {
     let meta = fs::metadata(dst_path)?;
     let size = meta.len() as f64;
     info!(
-        "decompressed {} to {} (new size {})",
+        "decompressed '{}' to '{}' (new size {})",
         src_path,
         dst_path,
         crate::humanize::bytes(size),

@@ -10,9 +10,9 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
-  KmsKeyArn:
+  KmsCmkArn:
     Type: String
-    Description: The CMK ARN that de/encrypts resources in S3.
+    Description: KMS CMK ARN that de/encrypts resources.
 
   S3BucketName:
     Type: String
@@ -58,7 +58,7 @@ Resources:
                   - kms:Encrypt # to generate TLS key and encrypt
                   - kms:GenerateDataKey* # to encrypt TLS key
                   - kms:DescribeKey # to describe the CMK
-                Resource: { Ref: KmsKeyArn }
+                Resource: { Ref: KmsCmkArn }
               - Effect: Allow
                 Action:
                   - s3:List*

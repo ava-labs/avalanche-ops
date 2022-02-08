@@ -370,12 +370,18 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     ))
     .unwrap();
 
-    let tempf = tempfile::NamedTempFile::new().unwrap();
-    let tempf_path = tempf.path().to_str().unwrap();
-    crate::compress::to_zstd(&config.avalanchego_bin, tempf_path, None).unwrap();
+    let tmpf_avalanchego_bin_compressed = tempfile::NamedTempFile::new().unwrap();
+    let tmpf_avalanchego_bin_compressed_path =
+        tmpf_avalanchego_bin_compressed.path().to_str().unwrap();
+    crate::compress::to_zstd(
+        &config.avalanchego_bin,
+        tmpf_avalanchego_bin_compressed_path,
+        None,
+    )
+    .unwrap();
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
-        tempf_path,
+        tmpf_avalanchego_bin_compressed_path,
         format!("{}/install/avalanchego.zstd", config.id).as_str(),
     ))
     .unwrap();
@@ -390,17 +396,17 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             let file_name = entry.file_name();
             let file_name = file_name.as_os_str().to_str().unwrap();
 
-            let tempf = tempfile::NamedTempFile::new().unwrap();
-            let tempf_path = tempf.path().to_str().unwrap();
-            crate::compress::to_zstd(file_path, tempf_path, None).unwrap();
+            let tmpf_plugin_compressed = tempfile::NamedTempFile::new().unwrap();
+            let tmpf_plugin_compressed_path = tmpf_plugin_compressed.path().to_str().unwrap();
+            crate::compress::to_zstd(file_path, tmpf_plugin_compressed_path, None).unwrap();
 
             info!(
                 "uploading {} (compressed from {}) from plugins directory {}",
-                tempf_path, file_path, plugins_dir,
+                tmpf_plugin_compressed_path, file_path, plugins_dir,
             );
             rt.block_on(s3_manager.put_object(
                 &aws_resources.bucket,
-                tempf_path,
+                tmpf_plugin_compressed_path,
                 format!("{}/install/plugins/{}.zstd", config.id, file_name).as_str(),
             ))
             .unwrap();
@@ -456,24 +462,22 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         ))
         .unwrap();
 
-        let ec2_key_path_compressed = format!("{}.zstd", ec2_key_path);
-        compress::to_zstd(
-            ec2_key_path.as_str(),
-            ec2_key_path_compressed.as_str(),
-            None,
-        )
-        .unwrap();
-        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
+        let tmpf_compressed = tempfile::NamedTempFile::new().unwrap();
+        let tmpf_compressed_path = tmpf_compressed.path().to_str().unwrap();
+        compress::to_zstd(ec2_key_path.as_str(), tmpf_compressed_path, None).unwrap();
+
+        let tmpf_encrypted = tempfile::NamedTempFile::new().unwrap();
+        let tmpf_encrypted_path = tmpf_encrypted.path().to_str().unwrap();
         rt.block_on(kms_manager.encrypt_file(
             aws_resources.kms_cmk_id.clone().unwrap().as_str(),
             None,
-            ec2_key_path_compressed.as_str(),
-            ec2_key_path_compressed_encrypted.as_str(),
+            tmpf_compressed_path,
+            tmpf_encrypted_path,
         ))
         .unwrap();
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            ec2_key_path_compressed_encrypted.as_str(),
+            tmpf_encrypted_path,
             format!("{}/ec2-key.zstd.encrypted", config.id).as_str(),
         ))
         .unwrap();
@@ -522,7 +526,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             ])),
             Some(Vec::from([
                 build_param("Id", &config.id),
-                build_param("KmsKeyArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
+                build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
                 build_param("S3BucketName", &aws_resources.bucket),
             ])),
         ))
@@ -652,6 +656,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
 
     let mut asg_parameters = Vec::from([
         build_param("Id", &config.id),
+        build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
         build_param("S3BucketName", &aws_resources.bucket),
         build_param(
             "Ec2KeyPairName",

@@ -15,6 +15,10 @@ Parameters:
     AllowedValues: ["beacon", "non-beacon"]
     Description: Node type.
 
+  KmsCmkArn:
+    Type: String
+    Description: KMS CMK ARN that de/encrypts resources.
+
   S3BucketName:
     Type: String
     Description: S3 bucket name.
@@ -283,12 +287,18 @@ Resources:
         - Key: Name
           PropagateAtLaunch: true
           Value: !Join ["-", [!Ref Id, "asg", !Ref NodeType, "amd64"]]
-        - Key: BUCKET
+        - Key: ID
           PropagateAtLaunch: true
-          Value: !Ref S3BucketName
+          Value: !Ref Id
         - Key: NODE_TYPE
           PropagateAtLaunch: true
           Value: !Ref NodeType
+        - Key: KMS_CMK_ARN
+          PropagateAtLaunch: true
+          Value: !Ref KmsCmkArn
+        - Key: S3_BUCKET_NAME
+          PropagateAtLaunch: true
+          Value: !Ref S3BucketName
       # specify "MixedInstancesPolicy" or "LaunchConfiguration"
       MixedInstancesPolicy:
         InstancesDistribution:
