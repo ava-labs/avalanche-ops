@@ -46,10 +46,12 @@ jobs:
             arch: amd64
 
           # TODO: takes >13-min, too long for free-tier github action
-          - os: macos-latest
-            platform: darwin
-            target: aarch64-apple-darwin
-            arch: arm64
+          # NOT WORKING with openssl
+          # "openssl-sys-0.9.72/build/find_normal.rs:180:5"
+          # - os: macos-latest
+          #   platform: darwin
+          #   target: aarch64-apple-darwin
+          #   arch: arm64
 
           # NOT WORKING WITH openssl
           # - os: windows-latest
