@@ -775,6 +775,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .unwrap();
         let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
+        println!("\nchmod 400 {}\n", ec2_key_path);
         for d in droplets {
             // e.g.,
             // chmod 400 /tmp/test-ec2-access-key
@@ -1140,7 +1141,7 @@ fn get_ec2_key_path(config_path: &str) -> String {
     let path = Path::new(config_path);
     let parent_dir = path.parent().unwrap();
     let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ec2-access-key", name.to_str().unwrap(),);
+    let new_name = format!("{}-ec2-access.rsa.key", name.to_str().unwrap(),);
     String::from(
         parent_dir
             .join(Path::new(new_name.as_str()))

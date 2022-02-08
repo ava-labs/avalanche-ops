@@ -33,6 +33,7 @@ impl Manager {
     }
 
     /// Creates an AWS EC2 key-pair and saves the private key to disk.
+    /// It overwrites "key_path" file with the newly created key.
     pub async fn create_key_pair(&self, key_name: &str, key_path: &str) -> Result<()> {
         let path = Path::new(key_path);
         if path.exists() {
