@@ -54,7 +54,7 @@ pub struct Config {
 
     /// "avalanched" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
-    /// "installation/avalanched" to be shared with remote machines.
+    /// "install/avalanched" to be shared with remote machines.
     /// The file is NOT compressed when uploaded.
     #[serde(default)]
     pub avalanched_bin: String,

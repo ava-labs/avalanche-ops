@@ -221,7 +221,8 @@ pub struct Droplet {
     pub instance_state_code: i32,
     pub instance_state_name: String,
     pub availability_zone: String,
-    pub public_ip: String,
+    pub public_hostname: String,
+    pub public_ipv4: String,
 }
 
 impl Droplet {
@@ -251,7 +252,12 @@ impl Droplet {
             },
             None => String::new(),
         };
-        let public_ip = inst
+
+        let public_hostname = inst
+            .public_dns_name
+            .to_owned()
+            .unwrap_or_else(|| String::from(""));
+        let public_ipv4 = inst
             .public_ip_address
             .to_owned()
             .unwrap_or_else(|| String::from(""));
@@ -262,7 +268,8 @@ impl Droplet {
             instance_state_code,
             instance_state_name,
             availability_zone,
-            public_ip,
+            public_hostname,
+            public_ipv4,
         }
     }
 }
@@ -321,6 +328,7 @@ fn is_error_delete_key_pair_does_not_exist(e: &SdkError<DeleteKeyPairError>) -> 
 const IMDS_V2_INSTANCE_ID_URI: &str = "http://169.254.169.254/latest/meta-data/instance-id";
 
 /// Fetches the instance ID on the host EC2 machine.
+/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 pub async fn fetch_instance_id() -> Result<String> {
     info!("fetching the local instance ID");
 
@@ -365,6 +373,112 @@ pub async fn fetch_instance_id() -> Result<String> {
         }
     };
     Ok(id)
+}
+
+/// Serves public-hostname for instance metadata service v2.
+/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+/// e.g., curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/public-hostname
+const IMDS_V2_PUBLIC_HOSTNAME_URI: &str = "http://169.254.169.254/latest/meta-data/public-hostname";
+
+/// Fetches the public hostname of the host EC2 machine.
+/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
+pub async fn fetch_public_hostname() -> Result<String> {
+    info!("fetching the public hostname");
+
+    let token = fetch_token().await?;
+    let req = match Request::builder()
+        .method(Method::GET)
+        .uri(IMDS_V2_PUBLIC_HOSTNAME_URI)
+        .header("X-aws-ec2-metadata-token", token)
+        .body(Body::empty())
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return Err(API {
+                message: format!("failed to build GET meta-data/public-ipv4 {:?}", e),
+                is_retryable: false,
+            });
+        }
+    };
+
+    let ret = crate::http::read_bytes(req, Duration::from_secs(5)).await;
+    let hostname = match ret {
+        Ok(bytes) => {
+            let s = match String::from_utf8(bytes.to_vec()) {
+                Ok(text) => text,
+                Err(e) => {
+                    return Err(API {
+                        message: format!(
+                            "GET meta-data/public-hostname returned unexpected bytes {:?} ({})",
+                            bytes, e
+                        ),
+                        is_retryable: false,
+                    });
+                }
+            };
+            s
+        }
+        Err(e) => {
+            return Err(API {
+                message: format!("failed GET meta-data/public-hostname {:?}", e),
+                is_retryable: false,
+            })
+        }
+    };
+    Ok(hostname)
+}
+
+/// Serves public-ipv4 for instance metadata service v2.
+/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+/// e.g., curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/public-ipv4
+const IMDS_V2_PUBLIC_IPV4_URI: &str = "http://169.254.169.254/latest/meta-data/public-ipv4";
+
+/// Fetches the public IPv4 address of the host EC2 machine.
+/// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
+pub async fn fetch_public_ipv4() -> Result<String> {
+    info!("fetching the public ipv4");
+
+    let token = fetch_token().await?;
+    let req = match Request::builder()
+        .method(Method::GET)
+        .uri(IMDS_V2_PUBLIC_IPV4_URI)
+        .header("X-aws-ec2-metadata-token", token)
+        .body(Body::empty())
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return Err(API {
+                message: format!("failed to build GET meta-data/public-ipv4 {:?}", e),
+                is_retryable: false,
+            });
+        }
+    };
+
+    let ret = crate::http::read_bytes(req, Duration::from_secs(5)).await;
+    let ipv4 = match ret {
+        Ok(bytes) => {
+            let s = match String::from_utf8(bytes.to_vec()) {
+                Ok(text) => text,
+                Err(e) => {
+                    return Err(API {
+                        message: format!(
+                            "GET meta-data/public-ipv4 returned unexpected bytes {:?} ({})",
+                            bytes, e
+                        ),
+                        is_retryable: false,
+                    });
+                }
+            };
+            s
+        }
+        Err(e) => {
+            return Err(API {
+                message: format!("failed GET meta-data/public-ipv4 {:?}", e),
+                is_retryable: false,
+            })
+        }
+    };
+    Ok(ipv4)
 }
 
 /// Serves session token for instance metadata service v2.

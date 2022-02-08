@@ -366,17 +366,17 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         &config.avalanched_bin,
-        format!("{}/installation/avalanched", config.id).as_str(),
+        format!("{}/install/avalanched", config.id).as_str(),
     ))
     .unwrap();
 
     let tempf = tempfile::NamedTempFile::new().unwrap();
     let tempf_path = tempf.path().to_str().unwrap();
-    crate::compress::compress_zstd(&config.avalanchego_bin, tempf_path, None).unwrap();
+    crate::compress::to_zstd(&config.avalanchego_bin, tempf_path, None).unwrap();
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         tempf_path,
-        format!("{}/installation/avalanchego.zstd", config.id).as_str(),
+        format!("{}/install/avalanchego.zstd", config.id).as_str(),
     ))
     .unwrap();
 
@@ -392,7 +392,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
 
             let tempf = tempfile::NamedTempFile::new().unwrap();
             let tempf_path = tempf.path().to_str().unwrap();
-            crate::compress::compress_zstd(file_path, tempf_path, None).unwrap();
+            crate::compress::to_zstd(file_path, tempf_path, None).unwrap();
 
             info!(
                 "uploading {} (compressed from {}) from plugins directory {}",
@@ -401,7 +401,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             rt.block_on(s3_manager.put_object(
                 &aws_resources.bucket,
                 tempf_path,
-                format!("{}/installation/plugins/{}.zstd", config.id, file_name).as_str(),
+                format!("{}/install/plugins/{}.zstd", config.id, file_name).as_str(),
             ))
             .unwrap();
         }
@@ -457,7 +457,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         .unwrap();
 
         let ec2_key_path_compressed = format!("{}.zstd", ec2_key_path);
-        compress::compress_zstd(
+        compress::to_zstd(
             ec2_key_path.as_str(),
             ec2_key_path_compressed.as_str(),
             None,
@@ -778,7 +778,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             println!(
                 "# instance '{}' in {}\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\n",
-                d.instance_id, d.availability_zone, ec2_key_path, d.public_ip
+                d.instance_id, d.availability_zone, ec2_key_path, d.public_ipv4
             );
         }
 
