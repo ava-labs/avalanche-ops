@@ -3,7 +3,7 @@ use std::{
     io::{self, stdout, Error, ErrorKind},
     path::Path,
     thread,
-    time::{self, Duration},
+    time::Duration,
 };
 
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
@@ -343,7 +343,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     let ec2_manager = aws_ec2::Manager::new(&shared_config);
     let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
 
-    thread::sleep(time::Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(2));
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -354,7 +354,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     rt.block_on(s3_manager.create_bucket(&aws_resources.bucket))
         .unwrap();
 
-    thread::sleep(time::Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(2));
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -420,7 +420,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     .unwrap();
 
     if aws_resources.kms_cmk_id.is_none() && aws_resources.kms_cmk_arn.is_none() {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -437,7 +437,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
@@ -447,7 +447,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     }
 
     if aws_resources.ec2_key_path.is_none() {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -486,7 +486,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
@@ -499,7 +499,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         .cloudformation_ec2_instance_profile_arn
         .is_none()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -532,7 +532,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         ))
         .unwrap();
 
-        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(10));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
                 ec2_instance_role_stack_name.as_str(),
@@ -553,7 +553,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
@@ -566,7 +566,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         && aws_resources.cloudformation_vpc_security_group_id.is_none()
         && aws_resources.cloudformation_vpc_public_subnet_ids.is_none()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -610,7 +610,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         ))
         .unwrap();
 
-        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(10));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
                 vpc_stack_name.as_str(),
@@ -645,7 +645,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
@@ -699,7 +699,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .cloudformation_asg_beacon_nodes_logical_id
             .is_none()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -741,7 +741,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
-        thread::sleep(time::Duration::from_secs(30));
+        thread::sleep(Duration::from_secs(30));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
                 cloudformation_asg_beacon_nodes_stack_name.as_str(),
@@ -792,20 +792,23 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
             format!("{}/config.yaml", config.id).as_str(),
         ))
         .unwrap();
+
+        // wait longer for nodes to publish "beacon" nodes information
+        thread::sleep(Duration::from_secs(120));
     }
 
     if aws_resources
         .cloudformation_asg_non_beacon_nodes_logical_id
         .is_none()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(5));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -847,7 +850,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
-        thread::sleep(time::Duration::from_secs(30));
+        thread::sleep(Duration::from_secs(30));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
                 cloudformation_asg_non_beacon_nodes_stack_name.as_str(),
@@ -878,7 +881,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
@@ -968,7 +971,7 @@ fn run_delete(
         .cloudformation_asg_non_beacon_nodes_logical_id
         .is_some()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -981,7 +984,7 @@ fn run_delete(
             aws_resources.cloudformation_asg_non_beacon_nodes.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(asg_non_beacon_nodes_stack_name.as_str()))
             .unwrap();
-        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
             asg_non_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -996,7 +999,7 @@ fn run_delete(
             .cloudformation_asg_beacon_nodes_logical_id
             .is_some()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -1008,7 +1011,7 @@ fn run_delete(
         let asg_beacon_nodes_stack_name = aws_resources.cloudformation_asg_beacon_nodes.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(asg_beacon_nodes_stack_name.as_str()))
             .unwrap();
-        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
             asg_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -1022,7 +1025,7 @@ fn run_delete(
         && aws_resources.cloudformation_vpc_security_group_id.is_some()
         && aws_resources.cloudformation_vpc_public_subnet_ids.is_some()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -1034,7 +1037,7 @@ fn run_delete(
         let vpc_stack_name = aws_resources.cloudformation_vpc.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(vpc_stack_name.as_str()))
             .unwrap();
-        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
             vpc_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -1048,7 +1051,7 @@ fn run_delete(
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -1060,7 +1063,7 @@ fn run_delete(
         let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
             .unwrap();
-        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
             ec2_instance_role_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -1071,7 +1074,7 @@ fn run_delete(
     }
 
     if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -1097,7 +1100,7 @@ fn run_delete(
     }
 
     if aws_resources.kms_cmk_id.is_some() && aws_resources.kms_cmk_arn.is_some() {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -1112,7 +1115,7 @@ fn run_delete(
     }
 
     if delete_all {
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),

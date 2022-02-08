@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, thread, time::Duration};
 
 use clap::{App, Arg};
 use log::info;
@@ -49,6 +49,15 @@ fn main() {
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
+        .arg(
+            Arg::new("AVALANCHEGO_BIN")
+                .long("avalanchego-bin")
+                .short('b')
+                .help("Sets the Avalanche node binary path to locate the downloaded file")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
         .get_matches();
 
     let log_level = matches.value_of("LOG_LEVEL").unwrap_or("info");
@@ -59,6 +68,8 @@ fn main() {
 
     let rt = Runtime::new().unwrap();
 
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: ffetching intance metadata using IMDSv2");
     let az = rt.block_on(aws_ec2::fetch_availability_zone()).unwrap();
     info!("fetched availability zone {}", az);
     let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
@@ -68,15 +79,18 @@ fn main() {
     let public_ipv4 = rt.block_on(aws_ec2::fetch_public_ipv4()).unwrap();
     info!("fetched public ipv4 {}", public_ipv4);
 
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: loading AWS config");
     let region = matches.value_of("REGION").unwrap();
     let shared_config = rt
         .block_on(aws::load_config(Some(region.to_string())))
         .unwrap();
-
     let ec2_manager = aws_ec2::Manager::new(&shared_config);
     let kms_manager = aws_kms::Manager::new(&shared_config);
     let s3_manager = aws_s3::Manager::new(&shared_config);
 
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: fetching tags from the local instance");
     let tags = rt.block_on(ec2_manager.fetch_tags(&instance_id)).unwrap();
     let mut id: String = String::new();
     let mut node_type: String = String::new();
@@ -115,14 +129,10 @@ fn main() {
         panic!("'S3_BUCKET_NAME' tag not found")
     }
 
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: generating TLS certs");
     let tls_key_path = matches.value_of("TLS_KEY_PATH").unwrap();
-    if tls_key_path.is_empty() {
-        panic!("empty tls_key_path")
-    }
     let tls_cert_path = matches.value_of("TLS_CERT_PATH").unwrap();
-    if tls_cert_path.is_empty() {
-        panic!("empty tls_cert_path")
-    }
     if !Path::new(tls_key_path).exists() {
         info!(
             "TLS key path {} does not exist yet, generating one",
@@ -130,6 +140,7 @@ fn main() {
         );
         cert::generate(tls_key_path, tls_cert_path).unwrap();
 
+        info!("backing up TLS certs to S3");
         let tmpf_compressed = tempfile::NamedTempFile::new().unwrap();
         let tmpf_compressed_path = tmpf_compressed.path().to_str().unwrap();
         compress::to_zstd(tls_key_path, tmpf_compressed_path, None).unwrap();
@@ -151,12 +162,13 @@ fn main() {
         ))
         .unwrap();
     }
-
     let node_id = id::load_node_id(tls_cert_path).unwrap();
     info!("loaded node ID: {}", node_id);
 
     if node_type.eq("beacon") {
-        let beacon_node = network::BeaconNode::new(public_ipv4, node_id);
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: publishing beacon node information");
+        let beacon_node = network::BeaconNode::new(public_ipv4.clone(), node_id);
         let tmpf_beacon_node = tempfile::NamedTempFile::new().unwrap();
         let tmpf_beacon_node_path = tmpf_beacon_node.path().to_str().unwrap();
         beacon_node.sync(tmpf_beacon_node_path).unwrap();
@@ -168,15 +180,101 @@ fn main() {
         .unwrap();
     }
 
-    // TODO: download network config from S3
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: downloading network Config from S3");
+    let tmpf_config = tempfile::NamedTempFile::new().unwrap();
+    let tmpf_config_path = tmpf_config.path().to_str().unwrap();
+    rt.block_on(s3_manager.get_object(
+        &s3_bucket_name,
+        format!("{}/config.yaml", id).as_str(),
+        tmpf_config_path,
+    ))
+    .unwrap();
+    let config = network::load_config(tmpf_config_path).unwrap();
 
-    // TODO: download avalanchego config from S3
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: downloading avalanche binary from S3");
+    let tmpf_avalanchego_bin_compressed = tempfile::NamedTempFile::new().unwrap();
+    let tmpf_avalanchego_bin_compressed_path =
+        tmpf_avalanchego_bin_compressed.path().to_str().unwrap();
+    rt.block_on(s3_manager.get_object(
+        &s3_bucket_name,
+        format!("{}/install/avalanchego.zstd", id).as_str(),
+        tmpf_avalanchego_bin_compressed_path,
+    ))
+    .unwrap();
+    let avalanchego_bin = matches.value_of("AVALANCHEGO_BIN").unwrap();
+    compress::from_zstd(tmpf_avalanchego_bin_compressed_path, avalanchego_bin).unwrap();
 
-    // TODO: download plugins config from S3
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: downloading plugins from S3");
+    // TODO
+
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: setting up avalanche node service file");
+    let mut avalanche_node_cmd = format!(
+        "{} --network-id={} --public-ip={}",
+        avalanchego_bin,
+        config.network_id,
+        public_ipv4.as_str(),
+    );
+    avalanche_node_cmd.push_str(
+        format!(
+            " --staking-enabled=true --staking-tls-key-file={} --staking-tls-cert-file={}",
+            tls_key_path, tls_cert_path
+        )
+        .as_str(),
+    );
+    if config.snow_sample_size.is_some() {
+        let snow_sample_size = config.snow_sample_size.unwrap();
+        avalanche_node_cmd.push_str(format!(" --snow-sample-size={}", snow_sample_size).as_str());
+    }
+    if config.snow_quorum_size.is_some() {
+        let snow_quorum_size = config.snow_quorum_size.unwrap();
+        avalanche_node_cmd.push_str(format!(" --snow-quorum-size={}", snow_quorum_size).as_str());
+    }
+    if config.http_port.is_some() {
+        let http_port = config.http_port.unwrap();
+        avalanche_node_cmd.push_str(format!(" --http-port={}", http_port).as_str());
+    }
+    if config.staking_port.is_some() {
+        let staking_port = config.staking_port.unwrap();
+        avalanche_node_cmd.push_str(format!(" --staking-port={}", staking_port).as_str());
+    }
+    if node_type.eq("non-beacon") {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading beacon node information");
+        let objects = rt
+            .block_on(s3_manager.list_objects(
+                &s3_bucket_name,
+                Some(String::from(format!("{}/beacon-nodes/", id))),
+            ))
+            .unwrap();
+
+        if !objects.is_empty() {
+            let mut bootstrap_ips: Vec<String> = vec![];
+            let mut bootstrap_ids: Vec<String> = vec![];
+            for obj in objects.iter() {
+                let s3_key = obj.key().unwrap();
+                let tmpf = tempfile::NamedTempFile::new().unwrap();
+                let tmpf_path = tmpf.path().to_str().unwrap();
+                rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, tmpf_path))
+                    .unwrap();
+
+                let beacon_node = network::load_beacon_node(tmpf_path).unwrap();
+                bootstrap_ips.push(beacon_node.ip);
+                bootstrap_ids.push(beacon_node.id);
+            }
+            info!("adding {} bootstrap nodes to the flag", objects.len());
+            avalanche_node_cmd
+                .push_str(format!(" --bootstrap-ips={}", bootstrap_ips.join(",")).as_str());
+            avalanche_node_cmd
+                .push_str(format!(" --bootstrap-ids={}", bootstrap_ids.join(",")).as_str());
+        }
+    }
+    info!("command TODO: {}", avalanche_node_cmd);
 
     // TODO: run avalanche node in systemd
-
-    // TODO: periodically upload beacon information to S3 as health check
-
-    info!("Hello, world!");
 }
+
+// TODO: periodically upload beacon information to S3 as health check
