@@ -54,6 +54,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - ec2:DescribeInstances # to fetch tags
                   - ec2:DescribeTags # to find network/resource information
                 Resource: "*"
               - Effect: Allow

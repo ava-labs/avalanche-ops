@@ -42,13 +42,19 @@ curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 
-# TODO: download "avalanched-aws" from github release,
-# TODO: release nightly or tip
+# TODO: not working
 ./scripts/build.cross.sh
+
+# download from the github release page
+# https://github.com/ava-labs/avalanche-ops/releases/tag/tip
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/tip/avalanched-aws.x86_64-unknown-linux-gnu \
+-o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 ```
 
 ```bash
 avalanche-ops-nodes-aws default-config custom \
+--avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
 --avalanchego-bin /tmp/avalanchego-v1.7.4/avalanchego \
 --plugins-dir /tmp/avalanchego-v1.7.4/plugins \
 --config /tmp/test.yaml
