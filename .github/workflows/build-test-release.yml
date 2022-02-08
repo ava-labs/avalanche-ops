@@ -5,7 +5,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   run_unit_tests:
@@ -45,8 +45,7 @@ jobs:
             target: x86_64-apple-darwin
             arch: amd64
 
-          # takes >13-min, too long for free-tier github action
-          # TODO: comment out
+          # TODO: takes >13-min, too long for free-tier github action
           # - os: macos-latest
           #   platform: darwin
           #   target: aarch64-apple-darwin
@@ -90,7 +89,7 @@ jobs:
           args: --release --bin avalanche-ops-nodes-aws --bin avalanched-aws --target ${{ matrix.job.target }}
 
       - name: Compress binaries
-        id: binaries
+        id: release_artifacts
         env:
           PLATFORM_NAME: ${{ matrix.job.platform }}
           TARGET: ${{ matrix.job.target }}
@@ -98,10 +97,36 @@ jobs:
         shell: bash
         run: |
           if [ "$PLATFORM_NAME" == "linux" ]; then
+            
             ./target/${TARGET}/release/avalanche-ops-nodes-aws --help
+            cp ./target/${TARGET}/release/avalanche-ops-nodes-aws avalanche-ops-nodes-aws.${TARGET}
+            echo "::set-output name=file_name::avalanche-ops-nodes-aws.${TARGET}"
+            
             ./target/${TARGET}/release/avalanched-aws --help
+            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
+            echo "::set-output name=file_name::avalanched-aws.${TARGET}"
+
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
-            echo "skipping darwin"
+
+            cp ./target/${TARGET}/release/avalanche-ops-nodes-aws avalanche-ops-nodes-aws.${TARGET}
+            echo "::set-output name=file_name::avalanche-ops-nodes-aws.${TARGET}"
+            
+            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
+            echo "::set-output name=file_name::avalanched-aws.${TARGET}"
+
           else
+
             echo "skipping $PLATFORM_NAME"
+
           fi
+
+      # https://github.com/softprops/action-gh-release
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: nightly
+          tag_name: ${GITHUB_REF_NAME}
+          prerelease: true
+          body: nightly
+          files: |
+            ${{ steps.release_artifacts.outputs.file_name }}
