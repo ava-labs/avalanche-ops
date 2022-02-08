@@ -212,6 +212,7 @@ Resources:
             Tags:
               - { Key: Name, Value: !Sub "${Id}-volume-${NodeType}-amd64" }
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
+        # check "/var/log/cloud-init.log" and "/var/log/cloud-init-output.log"
         UserData:
           Fn::Base64:
             Fn::Sub: |
@@ -223,8 +224,12 @@ Resources:
               && sudo apt-get install -y \
               curl wget zip gzip tar \
               libssl-dev
+
+              aws s3 ls || true
+
     Metadata:
       Comment: Install and configure AWS CLI
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
       AWS::CloudFormation::Init:
         configSets:
           default:
