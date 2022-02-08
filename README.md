@@ -31,7 +31,9 @@ A single command to create a new Avalanche node from scratch and join any networ
 ```bash
 # optional
 ./scripts/build.release.sh
+```
 
+```bash
 # https://github.com/ava-labs/avalanchego/releases
 VERSION=1.7.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
@@ -49,10 +51,24 @@ avalanche-ops-nodes-aws default-config custom \
 ```
 
 ```bash
+# make sure you have access to your AWS account
+ROLE_ARN=$(aws sts get-caller-identity --query Arn --output text);
+echo $ROLE_ARN
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text);
+echo ${ACCOUNT_ID}
+```
+
+```bash
+# edit "/tmp/test.yaml" if needed
+# to create resources
 avalanche-ops-nodes-aws apply --config /tmp/test.yaml
 ```
 
 ```bash
+# to clean up resources
+# specify "--delete-all" to delete auto-created S3 bucket
+# otherwise, S3 bucket is not deleted
 avalanche-ops-nodes-aws delete --config /tmp/test.yaml
 ```
 
