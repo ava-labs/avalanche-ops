@@ -61,21 +61,13 @@ Resources:
                 Resource: { Ref: KmsKeyArn }
               - Effect: Allow
                 Action:
-                  - s3:GetObject # to download avalanched-aws binary
+                  - s3:List*
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject # to download artifacts
                   - s3:PutObject # to upload generated TLS keys
                 Resource:
-                  - !Join [
-                      "",
-                      [!Sub "arn:${AWS::Partition}:s3:::", !Ref S3BucketName],
-                    ]
-                  - !Join [
-                      "",
-                      [
-                        !Sub "arn:${AWS::Partition}:s3:::",
-                        !Ref S3BucketName,
-                        "/installation/*",
-                      ],
-                    ]
                   - !Join [
                       "",
                       [
@@ -93,7 +85,27 @@ Resources:
                         !Ref S3BucketName,
                         "/",
                         !Ref Id,
+                        "/install/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
                         "/pki/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/beacon-nodes/*",
                       ],
                     ]
 
