@@ -126,10 +126,10 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          name: latest
-          tag_name: latest
+          name: Tip
+          tag_name: tip
           prerelease: true
-          body: latest
+          body: Latest builds from the last commit.
           files: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched }}
