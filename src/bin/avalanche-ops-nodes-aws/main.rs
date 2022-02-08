@@ -26,6 +26,9 @@ const SUBCOMMAND_DEFAULT_CONFIG: &str = "default-config";
 const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
 
+// 30-minute
+const MAX_WAIT_SECONDS: u64 = 30 * 60;
+
 fn main() {
     let matches = App::new(APP_NAME)
         .about("Avalanche node operations on AWS")
@@ -41,12 +44,21 @@ fn main() {
 
     match matches.subcommand() {
         Some((SUBCOMMAND_DEFAULT_CONFIG, sub_matches)) => {
-            let bin_path = sub_matches.value_of("AVALANCHEGO_BIN").unwrap();
+            let avalanched_bin = sub_matches.value_of("AVALANCHED_BIN").unwrap();
+            let avalanchego_bin = sub_matches.value_of("AVALANCHEGO_BIN").unwrap();
             let plugins_dir = sub_matches.value_of("PLUGINS_DIR").unwrap_or("");
             let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
             let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
             let network_id = sub_matches.value_of("NETWORK_ID").unwrap_or("custom");
-            run_default_config(bin_path, plugins_dir, log_level, config_path, network_id).unwrap();
+            run_default_config(
+                avalanched_bin,
+                avalanchego_bin,
+                plugins_dir,
+                log_level,
+                config_path,
+                network_id,
+            )
+            .unwrap();
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
@@ -71,6 +83,15 @@ fn main() {
 fn create_default_config_command() -> App<'static> {
     App::new(SUBCOMMAND_DEFAULT_CONFIG)
         .about("Writes a default configuration")
+        .arg(
+            Arg::new("AVALANCHED_BIN") 
+                .long("avalanched-bin")
+                .short('d')
+                .help("Sets the Avalanched binary path to be shared with remote machines")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
         .arg(
             Arg::new("AVALANCHEGO_BIN") 
                 .long("avalanchego-bin")
@@ -191,7 +212,8 @@ fn create_delete_command() -> App<'static> {
 
 /// TODO: better error handling rather than just panic with "unwrap"
 fn run_default_config(
-    bin_path: &str,
+    avalanched_bin: &str,
+    avalanchego_bin: &str,
     plugins_dir: &str,
     log_level: &str,
     config_path: &str,
@@ -206,7 +228,7 @@ fn run_default_config(
     if plugins_dir.is_empty() {
         pdir = None;
     }
-    let config = network::Config::default_aws(bin_path, pdir, network_id);
+    let config = network::Config::default_aws(avalanched_bin, avalanchego_bin, pdir, network_id);
     config.sync(config_path).unwrap();
 
     execute!(
@@ -332,7 +354,22 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     rt.block_on(s3_manager.create_bucket(&aws_resources.bucket))
         .unwrap();
 
-    thread::sleep(time::Duration::from_secs(1));
+    thread::sleep(time::Duration::from_secs(2));
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
+        ResetColor
+    )
+    .unwrap();
+
+    rt.block_on(s3_manager.put_object(
+        &aws_resources.bucket,
+        &config.avalanched_bin,
+        format!("{}/installation/avalanched", config.id).as_str(),
+    ))
+    .unwrap();
+
     let tempf = tempfile::NamedTempFile::new().unwrap();
     let tempf_path = tempf.path().to_str().unwrap();
     crate::compress::compress_zstd(&config.avalanchego_bin, tempf_path, None).unwrap();
@@ -613,6 +650,45 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         .unwrap();
     }
 
+    let mut asg_parameters = Vec::from([
+        build_param("Id", &config.id),
+        build_param("S3BucketName", &aws_resources.bucket),
+        build_param(
+            "Ec2KeyPairName",
+            &aws_resources.ec2_key_name.clone().unwrap(),
+        ),
+        build_param(
+            "InstanceProfileArn",
+            &aws_resources
+                .cloudformation_ec2_instance_profile_arn
+                .clone()
+                .unwrap(),
+        ),
+        build_param(
+            "PublicSubnetIds",
+            &aws_resources
+                .cloudformation_vpc_public_subnet_ids
+                .clone()
+                .unwrap()
+                .join(","),
+        ),
+        build_param(
+            "SecurityGroupId",
+            &aws_resources
+                .cloudformation_vpc_security_group_id
+                .clone()
+                .unwrap(),
+        ),
+    ]);
+    if config.machine.instance_types.is_some() {
+        let instance_types = config.machine.instance_types.clone().unwrap();
+        asg_parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
+        asg_parameters.push(build_param(
+            "InstanceTypesCount",
+            format!("{}", instance_types.len()).as_str(),
+        ));
+    }
+
     if config.machine.beacon_nodes.unwrap_or(0) > 0
         && aws_resources
             .cloudformation_asg_beacon_nodes_logical_id
@@ -636,49 +712,13 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .clone()
             .unwrap();
 
-        let mut parameters = Vec::from([
-            build_param("Id", &config.id),
-            build_param("NodeType", "beacon"),
-            build_param("S3BucketName", &aws_resources.bucket),
-            build_param(
-                "Ec2KeyPairName",
-                &aws_resources.ec2_key_name.clone().unwrap(),
-            ),
-            build_param(
-                "InstanceProfileArn",
-                &aws_resources
-                    .cloudformation_ec2_instance_profile_arn
-                    .clone()
-                    .unwrap(),
-            ),
-            build_param(
-                "PublicSubnetIds",
-                &aws_resources
-                    .cloudformation_vpc_public_subnet_ids
-                    .clone()
-                    .unwrap()
-                    .join(","),
-            ),
-            build_param(
-                "SecurityGroupId",
-                &aws_resources
-                    .cloudformation_vpc_security_group_id
-                    .clone()
-                    .unwrap(),
-            ),
-            build_param(
-                "AsgDesiredCapacity",
-                format!("{}", config.machine.beacon_nodes.unwrap()).as_str(),
-            ),
-        ]);
-        if config.machine.instance_types.is_some() {
-            let instance_types = config.machine.instance_types.clone().unwrap();
-            parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
-            parameters.push(build_param(
-                "InstanceTypesCount",
-                format!("{}", instance_types.len()).as_str(),
-            ));
-        }
+        let desired_capacity = config.machine.beacon_nodes.unwrap();
+        let mut parameters = asg_parameters.clone();
+        parameters.push(build_param("NodeType", "beacon"));
+        parameters.push(build_param(
+            "AsgDesiredCapacity",
+            format!("{}", desired_capacity).as_str(),
+        ));
 
         rt.block_on(cloudformation_manager.create_stack(
             cloudformation_asg_beacon_nodes_stack_name.as_str(),
@@ -692,14 +732,17 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         ))
         .unwrap();
 
-        // TODO: adjust timeouts based on the capacity
-        thread::sleep(time::Duration::from_secs(10));
+        let mut wait_secs = 20 * desired_capacity as u64;
+        if wait_secs > MAX_WAIT_SECONDS {
+            wait_secs = MAX_WAIT_SECONDS;
+        }
+        thread::sleep(time::Duration::from_secs(30));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
                 cloudformation_asg_beacon_nodes_stack_name.as_str(),
                 StackStatus::CreateComplete,
-                Duration::from_secs(300),
-                Duration::from_secs(20),
+                Duration::from_secs(wait_secs),
+                Duration::from_secs(30),
             ))
             .unwrap();
 
@@ -711,15 +754,35 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 aws_resources.cloudformation_asg_beacon_nodes_logical_id = Some(v);
             }
         }
+        if aws_resources
+            .cloudformation_asg_beacon_nodes_logical_id
+            .is_none()
+        {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "aws_resources.cloudformation_asg_beacon_nodes_logical_id not found",
+            ));
+        }
 
-        // TODO
-        // get all IPs and IDs, update config path
-        // e.g.,
-        // chmod 400 /tmp/test-ec2-access-key
-        // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@34.209.244.108
-        // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@ec2-34-209-244-108.us-west-2.compute.amazonaws.com
-        // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
+        let asg_name = aws_resources
+            .cloudformation_asg_beacon_nodes_logical_id
+            .clone()
+            .unwrap();
+        let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
+        let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
+        for d in droplets {
+            // e.g.,
+            // chmod 400 /tmp/test-ec2-access-key
+            // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@34.209.244.108
+            // ssh -o "StrictHostKeyChecking no" -i /tmp/test-ec2-access-key ubuntu@ec2-34-209-244-108.us-west-2.compute.amazonaws.com
+            // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
+            println!(
+                "# instance '{}' in {}\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\n",
+                d.instance_id, d.availability_zone, ec2_key_path, d.public_ip
+            );
+        }
 
+        // TODO: wait for beacon nodes to generate certs and node ID and post to remote storage
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 
@@ -745,8 +808,66 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         )
         .unwrap();
 
-        // TODO
-        info!("not implemented...");
+        let cloudformation_asg_non_beacon_nodes_yaml =
+            Asset::get("cloudformation/ec2_asg_amd64.yaml").unwrap();
+        let cloudformation_asg_non_beacon_nodes_tmpl =
+            std::str::from_utf8(cloudformation_asg_non_beacon_nodes_yaml.data.as_ref()).unwrap();
+        let cloudformation_asg_non_beacon_nodes_stack_name = aws_resources
+            .cloudformation_asg_non_beacon_nodes
+            .clone()
+            .unwrap();
+
+        let desired_capacity = config.machine.non_beacon_nodes;
+        let mut parameters = asg_parameters.clone();
+        parameters.push(build_param("NodeType", "non-beacon"));
+        parameters.push(build_param(
+            "AsgDesiredCapacity",
+            format!("{}", desired_capacity).as_str(),
+        ));
+
+        rt.block_on(cloudformation_manager.create_stack(
+            cloudformation_asg_non_beacon_nodes_stack_name.as_str(),
+            None,
+            OnFailure::Delete,
+            cloudformation_asg_non_beacon_nodes_tmpl,
+            Some(Vec::from([
+                Tag::builder().key("kind").value("avalanche-ops").build(),
+            ])),
+            Some(parameters),
+        ))
+        .unwrap();
+
+        let mut wait_secs = 20 * desired_capacity as u64;
+        if wait_secs > MAX_WAIT_SECONDS {
+            wait_secs = MAX_WAIT_SECONDS;
+        }
+        thread::sleep(time::Duration::from_secs(30));
+        let stack = rt
+            .block_on(cloudformation_manager.poll_stack(
+                cloudformation_asg_non_beacon_nodes_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(wait_secs),
+                Duration::from_secs(30),
+            ))
+            .unwrap();
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("AsgLogicalId") {
+                aws_resources.cloudformation_asg_non_beacon_nodes_logical_id = Some(v);
+            }
+        }
+        if aws_resources
+            .cloudformation_asg_non_beacon_nodes_logical_id
+            .is_none()
+        {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "aws_resources.cloudformation_asg_non_beacon_nodes_logical_id not found",
+            ));
+        }
 
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();

@@ -308,5 +308,6 @@ Resources:
                 - !Ref AWS::NoValue
 
 Outputs:
+  # same as "AutoScalingGroupName"
   AsgLogicalId:
     Value: !Ref ASG

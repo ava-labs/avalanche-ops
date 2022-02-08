@@ -36,3 +36,12 @@ zstd = "0.10.0"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
+
+# ref. https://doc.rust-lang.org/cargo/reference/cargo-targets.html#binaries
+[[bin]]
+name = "avalanche-ops-nodes-aws"
+path = "src/bin/avalanche-ops-nodes-aws/main.rs"
+
+[[bin]]
+name = "avalanched-aws"
+path = "src/bin/avalanched-aws/main.rs"

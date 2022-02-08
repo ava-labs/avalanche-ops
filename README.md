@@ -30,7 +30,7 @@ A single command to create a new Avalanche node from scratch and join any networ
 
 ```bash
 # optional
-./scripts/build.sh
+./scripts/build.release.sh
 
 # https://github.com/ava-labs/avalanchego/releases
 VERSION=1.7.4

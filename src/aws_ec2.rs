@@ -1,8 +1,14 @@
 use std::{fs::File, io::prelude::*, path::Path, time::Duration};
 
-use aws_sdk_ec2::{error::DeleteKeyPairError, model::Tag, Client, SdkError};
+use aws_sdk_ec2::{
+    error::DeleteKeyPairError,
+    model::{Filter, Instance, InstanceState, InstanceStateName, Tag},
+    Client, SdkError,
+};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use hyper::{Body, Method, Request};
 use log::{info, warn};
+use serde::{Deserialize, Serialize};
 
 use crate::aws::{
     Error::{Other, API},
@@ -157,6 +163,134 @@ impl Manager {
         info!("fetched {} tags for '{}'", tags.len(), instance_id);
 
         Ok(tags)
+    }
+
+    /// Lists instances by the Auto Scaling Groups name.
+    pub async fn list_asg(&self, asg_name: &str) -> Result<Vec<Droplet>> {
+        let filter = Filter::builder()
+            .set_name(Some(String::from("tag:aws:autoscaling:groupName")))
+            .set_values(Some(vec![String::from(asg_name)]))
+            .build();
+        let resp = match self
+            .cli
+            .describe_instances()
+            .set_filters(Some(vec![filter]))
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(API {
+                    message: format!("failed describe_instances {:?}", e),
+                    is_retryable: is_error_retryable(&e),
+                });
+            }
+        };
+
+        let reservations = match resp.reservations {
+            Some(rvs) => rvs,
+            None => {
+                warn!("empty reservation from describe_instances response");
+                return Ok(vec![]);
+            }
+        };
+
+        let mut droplets: Vec<Droplet> = Vec::new();
+        for rsv in reservations.iter() {
+            let instances = rsv.instances().unwrap();
+            for instance in instances {
+                let instance_id = instance.instance_id().unwrap();
+                info!("instance {}", instance_id);
+                droplets.push(Droplet::new(instance));
+            }
+        }
+
+        Ok(droplets)
+    }
+}
+
+/// Represents the underlying EC2 instance.
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct Droplet {
+    pub instance_id: String,
+    /// Represents the data format in RFC3339.
+    /// ref. https://serde.rs/custom-date-format.html
+    #[serde(with = "rfc3339_format")]
+    pub launched_at_utc: DateTime<Utc>,
+    pub instance_state_code: i32,
+    pub instance_state_name: String,
+    pub availability_zone: String,
+    pub public_ip: String,
+}
+
+impl Droplet {
+    pub fn new(inst: &Instance) -> Self {
+        let instance_id = match inst.instance_id.to_owned() {
+            Some(v) => v,
+            None => String::new(),
+        };
+        let launch_time = inst.launch_time().unwrap();
+        let native_dt = NaiveDateTime::from_timestamp(launch_time.secs(), 0);
+        let launched_at_utc = DateTime::<Utc>::from_utc(native_dt, Utc);
+
+        let instance_state = match inst.state.to_owned() {
+            Some(v) => v,
+            None => InstanceState::builder().build(),
+        };
+        let instance_state_code = instance_state.code.unwrap_or(0);
+        let instance_state_name = instance_state
+            .name
+            .unwrap_or_else(|| InstanceStateName::Unknown(String::from("unknown")));
+        let instance_state_name = instance_state_name.as_str().to_string();
+
+        let availability_zone = match inst.placement.to_owned() {
+            Some(v) => match v.availability_zone {
+                Some(v2) => v2,
+                None => String::new(),
+            },
+            None => String::new(),
+        };
+        let public_ip = inst
+            .public_ip_address
+            .to_owned()
+            .unwrap_or_else(|| String::from(""));
+
+        Self {
+            instance_id,
+            launched_at_utc,
+            instance_state_code,
+            instance_state_name,
+            availability_zone,
+            public_ip,
+        }
+    }
+}
+
+/// ref. https://serde.rs/custom-date-format.html
+mod rfc3339_format {
+    use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(dt: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // ref. https://docs.rs/chrono/0.4.19/chrono/struct.DateTime.html#method.to_rfc3339_opts
+        serializer.serialize_str(&dt.to_rfc3339_opts(SecondsFormat::Millis, true))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+
+        // ref. https://docs.rs/chrono/0.4.19/chrono/struct.DateTime.html#method.parse_from_rfc3339
+        match DateTime::parse_from_rfc3339(&s).map_err(serde::de::Error::custom) {
+            Ok(dt) => Ok(Utc.from_utc_datetime(&dt.naive_utc())),
+            Err(e) => Err(e),
+        }
     }
 }
 
