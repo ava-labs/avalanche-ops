@@ -808,11 +808,11 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .unwrap();
         let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
-        println!("\nchmod 400 {}\n", ec2_key_path);
+        println!("\nchmod 400 {}", ec2_key_path);
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             println!(
-                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\n",
+                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
@@ -820,6 +820,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 d.public_ipv4
             );
         }
+        println!("");
 
         // TODO: wait for beacon nodes to generate certs and node ID and post to remote storage
         config.aws_resources = Some(aws_resources.clone());
