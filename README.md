@@ -6,32 +6,38 @@
 ## Avalanche Ops
 
 `avalanche-ops` is an operation toolkit for Avalanche nodes:
-- Written in Rust
-- Fully automates VM provisioning on cloud with recommended settings
-- Fully automates node installation
-- Fully automates test network setups
+- 🦀 Written in Rust
+- 🏗️ Fully automates VM (or physical machine) provisioning
+- 🍏 Fully automates node installation
+- 🚜 Fully automates node operations
+- 💻 Fully automates test network setups
 
 `avalanche-ops` is:
-- Not a replacement of [`avalanchego`](https://github.com/ava-labs/avalanchego)
-- Not implementing any client-side load generation (to be done in Avalanche client/node projects)
-- Not implementing any Avalanche-specific test cases (instead focus on infrastructure setups)
-- Not using Kubernetes, prefers physical machines (or cloud VMs)
-- **Not production ready** (under heavy development, only used for testing)
+- 🚫 NOT a replacement of [`avalanchego`](https://github.com/ava-labs/avalanchego)
+- 🚫 NOT implementing any client-side load generation (to be done in Avalanche client/node projects)
+- 🚫 NOT implementing any Avalanche-specific test cases (focus on infrastructure setups)
+- 🚫 NOT using Kubernetes, prefers physical machines (or cloud VMs)
+- 🚫 **NOT production ready** (under heavy development, only used for testing)
 
 ### Installation
 
 ```bash
-TBD
+# to build manually
+./scripts/build.release.sh
+
+# TODO: not working
+# ./scripts/build.cross.sh
 ```
-
-### `avalanche-ops-nodes-aws`
-
-A single command to create a new Avalanche node from scratch and join any network of choice (e.g., test, fuji, main) or a custom Avalanche network with multiple nodes. Provisions all AWS resources required to run a node or network with recommended setups (configurable):
 
 ```bash
-# optional
-./scripts/build.release.sh
+# to download from the github release page
+# https://github.com/ava-labs/avalanche-ops/releases/tag/tip
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/tip/avalanched-aws.x86_64-unknown-linux-gnu \
+-o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 ```
+
+It requires Avalanche node software to bootstrap the remote machines:
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
@@ -41,16 +47,11 @@ rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
-
-# TODO: not working
-./scripts/build.cross.sh
-
-# download from the github release page
-# https://github.com/ava-labs/avalanche-ops/releases/tag/tip
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/tip/avalanched-aws.x86_64-unknown-linux-gnu \
--o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 ```
+
+### `avalanche-ops` on AWS
+
+A single command to create a new Avalanche node from scratch and join any network of choice (e.g., test, fuji, main) or a custom Avalanche network with multiple nodes. Provisions all AWS resources required to run a node or network with recommended setups (configurable):
 
 ```bash
 avalanche-ops-nodes-aws default-config custom \
@@ -83,8 +84,6 @@ avalanche-ops-nodes-aws apply --config /tmp/test.yaml
 avalanche-ops-nodes-aws delete --config /tmp/test.yaml
 ```
 
-### `avalanched-aws`
-
 Avalanche node daemon that provisions and manages the software on the remote machine (e.g., generate certs, encrypt, upload to S3):
 
 ```bash
@@ -94,12 +93,14 @@ avalanched-aws
 ### Roadmap
 
 - Failure injection testing
+- Stress testing
 - Log collection
 - Metrics collection
+- Support ARM
 - Raspberry Pi
+- Support key rotation
 
 ### Other projects
 
 - [`avalanche-network-runner`](https://github.com/ava-labs/avalanche-network-runner) to run a local network (with Kubernetes)
 - [`avalanchego-operator`](https://github.com/ava-labs/avalanchego-operator) to run a Kubernetes operator
-
