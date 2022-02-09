@@ -410,6 +410,12 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&config.id),
     ))
     .unwrap();
+    rt.block_on(s3_manager.put_object(
+        &aws_resources.bucket,
+        &config.install_artifacts.avalanchego_bin,
+        &aws_s3::KeyPath::AvalancheBin.to_string(&config.id),
+    ))
+    .unwrap();
 
     if config.install_artifacts.plugins_dir.is_some() {
         let plugins_dir = config.install_artifacts.plugins_dir.clone().unwrap();

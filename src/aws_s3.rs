@@ -435,6 +435,7 @@ fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
 pub enum KeyPath {
     GenesisFile,
     AvalanchedBin,
+    AvalancheBin,
     AvalancheBinCompressed,
     Ec2AccessKeyCompressedEncrypted,
     PluginsDir,
@@ -448,6 +449,7 @@ impl KeyPath {
         match self {
             KeyPath::GenesisFile => format!("{}/install/genesis.json", id),
             KeyPath::AvalanchedBin => format!("{}/install/avalanched", id),
+            KeyPath::AvalancheBin => format!("{}/install/avalanche", id),
             KeyPath::AvalancheBinCompressed => format!("{}/install/avalanche.zstd", id),
             KeyPath::Ec2AccessKeyCompressedEncrypted => {
                 format!("{}/ec2-access-key.zstd.encrypted", id)

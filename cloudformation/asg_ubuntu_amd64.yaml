@@ -242,6 +242,22 @@ Resources:
               sudo ./aws/install
               /usr/local/bin/aws --version
 
+              # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
+              sudo snap install amazon-ssm-agent --classic
+              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+              mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
+              cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
+              [Service]
+              Restart=always
+              RestartSec=60s
+              EOF
+              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+
+              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
+              curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -o /tmp/awslogs-agent-setup.py
+              sudo python3 /tmp/awslogs-agent-setup.py --region ${AWS::Region}
+
               TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
               INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --retry 3 -s http://169.254.169.254/latest/meta-data/instance-id)
               ATTACHMENT_STATE="unknown"
@@ -269,9 +285,14 @@ Resources:
               df -h
 
               aws s3 ls s3://${S3BucketName}/${Id}/
+
               aws s3 cp s3://${S3BucketName}/${Id}/install/avalanched /tmp/avalanched
               chmod +x /tmp/avalanched
-              mv /tmp/avalanched /usr/local/bin/avalanched
+              sudo mv /tmp/avalanched /usr/local/bin/avalanched
+
+              aws s3 cp s3://${S3BucketName}/${Id}/install/avalanche /tmp/avalanche
+              chmod +x /tmp/avalanche
+              sudo mv /tmp/avalanche /usr/local/bin/avalanche
 
               mkdir -p /etc/pki/tls/certs
               chmod 755 /etc/pki/tls/certs
@@ -293,28 +314,9 @@ Resources:
               WantedBy=multi-user.target
               EOF
               sudo mv /tmp/avalanched.service /etc/systemd/system/avalanched.service
-              # sudo systemctl status avalanched.service -l --no-pager
-              # sudo journalctl -u avalanched.service -l --no-pager|less
-              # sudo journalctl -f -u avalanched.service
               sudo systemctl daemon-reload
               sudo systemctl enable avalanched.service
               sudo systemctl restart avalanched.service
-
-              # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
-              sudo snap install amazon-ssm-agent --classic
-              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
-              mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
-              cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
-              [Service]
-              Restart=always
-              RestartSec=60s
-              EOF
-              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
-
-              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
-              curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -o /tmp/awslogs-agent-setup.py
-              sudo python3 /tmp/awslogs-agent-setup.py --region ${AWS::Region}
 
               curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
               pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
