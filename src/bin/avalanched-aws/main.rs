@@ -274,9 +274,18 @@ fn main() {
         let staking_port = config.staking_port.unwrap();
         avalanche_node_cmd.push_str(format!(" --staking-port={}", staking_port).as_str());
     }
-    if node_type.eq("non-beacon") && !config.is_mainnet() {
+
+    // mainnet has its own hard-coded beacon nodes
+    if !config.is_mainnet() && node_type.eq("non-beacon") {
         thread::sleep(Duration::from_secs(1));
-        info!("STEP: downloading beacon node information");
+        info!(
+            "STEP: downloading beacon node information for network '{}'",
+            config.network_id
+        );
+
+        // "avalanche-ops" should always set up beacon nodes first
+        // so here we assume beacon nodes information are already
+        // updated in the remote storage
         let objects = rt
             .block_on(s3_manager.list_objects(
                 &s3_bucket_name,
@@ -296,13 +305,14 @@ fn main() {
                 bootstrap_ips.push(beacon_node.ip);
                 bootstrap_ids.push(beacon_node.id);
             }
-            info!("adding {} bootstrap nodes to the flag", objects.len());
+            info!("found {} bootstrap nodes", objects.len());
             avalanche_node_cmd
                 .push_str(format!(" --bootstrap-ips={}", bootstrap_ips.join(",")).as_str());
             avalanche_node_cmd
                 .push_str(format!(" --bootstrap-ids={}", bootstrap_ids.join(",")).as_str());
         }
     }
+
     let avalanche_service_file_contents = format!(
         "[Unit]
 Description=avalanche agent
