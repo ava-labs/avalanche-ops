@@ -56,6 +56,7 @@ Resources:
                 Action:
                   - ec2:DescribeInstances # to fetch tags
                   - ec2:DescribeTags # to find network/resource information
+                  - ec2:DescribeVolumes # to wait for volume attachment
                 Resource: "*"
               - Effect: Allow
                 Action:

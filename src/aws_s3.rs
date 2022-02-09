@@ -339,7 +339,7 @@ impl Manager {
     pub async fn get_object(&self, bucket_name: &str, s3_key: &str, file_path: &str) -> Result<()> {
         if Path::new(file_path).exists() {
             return Err(Other {
-                message: format!("file path {} already not exists", file_path),
+                message: format!("file path {} already exists", file_path),
                 is_retryable: false,
             });
         }

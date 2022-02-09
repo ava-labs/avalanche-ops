@@ -195,7 +195,7 @@ Resources:
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html
         BlockDeviceMappings:
-          - DeviceName: /dev/xvda
+          - DeviceName: "/dev/xvdb"
             # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
             Ebs:
               VolumeType: !Ref VolumeType
@@ -236,6 +236,32 @@ Resources:
               && sudo apt-get install -y \
                   curl wget unzip zip gzip tar libssl-dev \
                   python3-pip python-setuptools
+
+              TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+              INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --retry 3 -s http://169.254.169.254/latest/meta-data/instance-id)
+              ATTACHMENT_STATE="unknown"
+              until [ "$ATTACHMENT_STATE" == "attached" ]; do
+                ATTACHMENT_STATE=$(aws ec2 describe-volumes \
+                      --region ${AWS::Region} \
+                      --filters \
+                        Name=attachment.instance-id,Values=${INSTANCE_ID} \
+                        Name=attachment.device,Values=/dev/nvme1n1 \
+                      --query Volumes[].Attachments[].State \
+                      --output text)
+                sleep 2
+              done
+
+              # TODO: why device name is not "/dev/xvdb"?
+              lsblk
+              df -h
+              sudo mkfs -t ext4 /dev/nvme1n1
+              mkdir -p /avalanche-data
+              sudo mount /dev/nvme1n1 /avalanche-data -t ext4
+              # auto remount in case of instance reboot
+              sudo echo '/dev/nvme1n1       /avalanche-data   ext4    defaults,nofail 0       2' >> /etc/fstab
+              mount -a
+              lsblk
+              df -h
 
               curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
               unzip awscli.v2.zip
