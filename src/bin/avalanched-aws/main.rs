@@ -143,18 +143,14 @@ fn main() {
         panic!("'S3_BUCKET_NAME' tag not found")
     }
 
-    thread::sleep(Duration::from_secs(1));
-    info!("STEP: generating TLS certs");
     let tls_key_path = matches.value_of("TLS_KEY_PATH").unwrap();
     let tls_cert_path = matches.value_of("TLS_CERT_PATH").unwrap();
     if !Path::new(tls_key_path).exists() {
-        info!(
-            "TLS key path {} does not exist yet, generating one",
-            tls_key_path
-        );
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: generating TLS certs");
         cert::generate(tls_key_path, tls_cert_path).unwrap();
 
-        info!("uploading TLS certs to S3");
+        info!("uploading generated TLS certs to S3");
         let tmp_compressed_path = random::tmp_path(15).unwrap();
         compress::to_zstd(tls_key_path, &tmp_compressed_path, None).unwrap();
 
@@ -182,7 +178,7 @@ fn main() {
         .unwrap();
     }
     let node_id = id::load_node_id(tls_cert_path).unwrap();
-    info!("loaded node ID: {}", node_id);
+    info!("loaded node ID from cert: {}", node_id);
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading network Config from S3");
@@ -322,20 +318,22 @@ fn main() {
         }
     }
 
+    info!("writing avalanche.service file");
     let avalanche_service_file_contents = format!(
         "[Unit]
 Description=avalanche agent
+
 [Service]
 Type=notify
 Restart=always
 RestartSec=5s
 LimitNOFILE=40000
 ExecStart={}
+
 [Install]
 WantedBy=multi-user.target",
         avalanche_node_cmd
     );
-    println!("writing\n\n{}\n", avalanche_service_file_contents);
     let mut avalanche_service_file = tempfile::NamedTempFile::new().unwrap();
     avalanche_service_file
         .write_all(avalanche_service_file_contents.as_bytes())
@@ -350,11 +348,10 @@ WantedBy=multi-user.target",
     bash::run("sudo systemctl enable avalanche.service").unwrap();
     bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
 
-    // TODO: exit and fail
     loop {
         // TODO: periodically upload beacon/non-beacon information to S3 as health check?
         // TODO: check upgrade artifacts by polling s3
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(20));
 
         if node_type.eq("beacon") {
             // only upload when all nodes are ready
