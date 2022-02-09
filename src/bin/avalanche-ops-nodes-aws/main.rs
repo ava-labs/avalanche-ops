@@ -941,6 +941,33 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             ));
         }
 
+        let asg_name = aws_resources
+            .cloudformation_asg_non_beacon_nodes_logical_id
+            .clone()
+            .unwrap();
+        let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
+
+        let mut non_beacon_nodes: Vec<network::NonBeaconNode> = vec![];
+
+        let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
+        let f = File::open(&ec2_key_path).unwrap();
+        f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+        println!("\nchmod 400 {}", ec2_key_path);
+        for d in droplets {
+            non_beacon_nodes.push(network::NonBeaconNode::new(d.public_ipv4.clone()));
+            // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
+            println!(
+                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
+                d.instance_id,
+                d.instance_state_name,
+                d.availability_zone,
+                ec2_key_path,
+                d.public_ipv4
+            );
+        }
+        println!();
+
+        aws_resources.non_beacon_nodes = Some(non_beacon_nodes);
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 

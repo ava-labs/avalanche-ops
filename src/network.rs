@@ -233,6 +233,8 @@ pub struct AWSResources {
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub beacon_nodes: Option<Vec<BeaconNode>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub non_beacon_nodes: Option<Vec<NonBeaconNode>>,
 }
 
 impl Config {
@@ -309,6 +311,7 @@ impl Config {
                 cloudformation_asg_non_beacon_nodes_logical_id: None,
 
                 beacon_nodes: None,
+                non_beacon_nodes: None,
             }),
         }
     }
@@ -656,6 +659,8 @@ aws_resources:
     id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX
   - ip: 1.2.3.6
     id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY
+  non_beacon_nodes:
+  - ip: 1.2.3.9
 
 "#,
         id, genesis_file, avalanched_bin, avalanchego_bin, plugins_dir, bucket,
@@ -740,6 +745,9 @@ aws_resources:
                     id: String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY"),
                 },
             ]),
+            non_beacon_nodes: Some(vec![NonBeaconNode {
+                ip: String::from("1.2.3.9"),
+            }]),
         }),
     };
 
@@ -790,6 +798,25 @@ aws_resources:
     assert_eq!(beacons[1].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX");
     assert_eq!(beacons[2].ip, "1.2.3.6");
     assert_eq!(beacons[2].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY");
+    let non_beacons = match aws_reesources.non_beacon_nodes {
+        Some(v) => v,
+        None => panic!("unexpected None non-beacon_nodes"),
+    };
+    assert_eq!(non_beacons[0].ip, "1.2.3.9");
+}
+
+/// Represents a non-beacon node.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct NonBeaconNode {
+    #[serde(default)]
+    pub ip: String,
+}
+
+impl NonBeaconNode {
+    pub fn new(ip: String) -> Self {
+        Self { ip }
+    }
 }
 
 /// Represents each beacon node.
