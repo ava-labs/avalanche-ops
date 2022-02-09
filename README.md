@@ -41,7 +41,7 @@ It requires Avalanche node software to bootstrap the remote machines:
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.4
+VERSION=1.7.5
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
