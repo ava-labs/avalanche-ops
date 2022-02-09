@@ -248,8 +248,9 @@ fn run_default_config(
         pdir,
         network_id,
     );
-    config.sync(config_path).unwrap();
+    config.validate().unwrap();
 
+    config.sync(config_path).unwrap();
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
