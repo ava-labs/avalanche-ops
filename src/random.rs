@@ -1,4 +1,4 @@
-use std::{fs, io};
+use std::{env, fs, io};
 
 use rand::seq::SliceRandom;
 
@@ -78,16 +78,9 @@ fn test_string() {
 /// Returns a file path randomly generated in tmp directory.
 /// The file does not exist yet.
 pub fn tmp_path(n: usize) -> io::Result<String> {
-    let tmp_dir = tempfile::tempdir().unwrap();
-    let tmp_dir_path = tmp_dir.path().as_os_str().to_str().unwrap();
-
-    let tmp_file_path = tmp_dir.path().join(string(n));
+    let tmp_dir = env::temp_dir();
+    let tmp_file_path = tmp_dir.join(string(n));
     let tmp_file_path = tmp_file_path.as_os_str().to_str().unwrap();
-
-    // prevent "tempfile::tempdir()" destructor
-    fs::remove_dir_all(tmp_dir_path).unwrap();
-    fs::create_dir_all(tmp_dir_path).unwrap();
-
     Ok(String::from(tmp_file_path))
 }
 
