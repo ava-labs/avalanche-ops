@@ -8,6 +8,8 @@ use avalanche_ops::{aws, aws_ec2, aws_kms, aws_s3, bash, cert, compress, id, net
 
 const APP_NAME: &str = "avalanched-aws";
 
+const GENESIS_PATH: &str = "/etc/genesis.json";
+
 fn main() {
     let matches = App::new(APP_NAME)
         .about("Avalanche agent (daemon) on AWS")
@@ -241,14 +243,26 @@ fn main() {
         compress::from_zstd(tmpf_path, &file_path).unwrap();
     }
 
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: downloading genesis file from S3");
+    let tmpf_genesis = tempfile::NamedTempFile::new().unwrap();
+    let tmpf_genesis_path = tmpf_genesis.path().to_str().unwrap();
+    rt.block_on(s3_manager.get_object(
+        &s3_bucket_name,
+        &aws_s3::KeyPath::GenesisFile.to_string(&config.id),
+        tmpf_genesis_path,
+    ))
+    .unwrap();
+    fs::copy(tmpf_genesis_path, GENESIS_PATH).unwrap();
+
     // TODO: set up "--db-dir" based on "df -h"
-    // TODO: set up "--genesis"
     thread::sleep(Duration::from_secs(1));
     info!("STEP: setting up avalanche node service file");
     let mut avalanche_node_cmd = format!(
-        "{} --network-id={} --public-ip={}",
+        "{} --network-id={} --genesis={}, --public-ip={}",
         avalanche_bin,
         config.network_id,
+        GENESIS_PATH,
         public_ipv4.as_str(),
     );
     avalanche_node_cmd.push_str(
