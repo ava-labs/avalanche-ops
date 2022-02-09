@@ -532,7 +532,7 @@ fn test_config() {
     let genesis_json_contents = std::str::from_utf8(genesis_json.data.as_ref()).unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(genesis_json_contents);
+    let ret = f.write_all(genesis_json_contents.to_vec());
     assert!(ret.is_ok());
     let genesis_file = f.path().to_str().unwrap();
 
