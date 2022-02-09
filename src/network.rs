@@ -601,7 +601,7 @@ fn test_config() {
         avalanched_bin,
         avalanchego_bin,
         Some(String::from(plugins_dir)),
-        1,
+        1337,
     )
     .validate()
     .is_ok());
@@ -610,7 +610,7 @@ fn test_config() {
         avalanched_bin,
         avalanchego_bin,
         Some(String::from(plugins_dir)),
-        10,
+        1337,
     )
     .validate()
     .is_ok());
