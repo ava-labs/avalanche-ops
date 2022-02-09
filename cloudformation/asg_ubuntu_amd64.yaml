@@ -254,9 +254,10 @@ Resources:
               EOF
               sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
 
+              # TODO: install with python3?
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
-              curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -o /tmp/awslogs-agent-setup.py
-              sudo python3 /tmp/awslogs-agent-setup.py --region ${AWS::Region}
+              # curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -o /tmp/awslogs-agent-setup.py
+              # sudo python3 /tmp/awslogs-agent-setup.py --region ${AWS::Region}
 
               TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
               INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --retry 3 -s http://169.254.169.254/latest/meta-data/instance-id)
