@@ -225,6 +225,7 @@ Resources:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
         # /var/log/cloud-init-output.log
+        # takes about 3-minute
         UserData:
           Fn::Base64:
             Fn::Sub: |
@@ -269,8 +270,6 @@ Resources:
               done
 
               # TODO: why device name is not "/dev/xvdb"?
-              lsblk
-              df -h
               sudo mkfs -t ext4 /dev/nvme1n1
               mkdir -p /avalanche-data
               sudo mount /dev/nvme1n1 /avalanche-data -t ext4
@@ -279,8 +278,6 @@ Resources:
               sudo mount --all
               lsblk
               df -h
-
-              aws s3 ls s3://${S3BucketName}/${Id}/
 
               aws s3 cp s3://${S3BucketName}/${Id}/install/avalanched /tmp/avalanched
               chmod +x /tmp/avalanched
@@ -312,7 +309,7 @@ Resources:
               sudo mv /tmp/avalanched.service /etc/systemd/system/avalanched.service
               sudo systemctl daemon-reload
               sudo systemctl enable avalanched.service
-              sudo systemctl restart avalanched.service
+              sudo systemctl start --no-block avalanched.service
 
               # TODO: install with python3?
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html

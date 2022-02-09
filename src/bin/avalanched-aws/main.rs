@@ -253,7 +253,7 @@ fn main() {
     thread::sleep(Duration::from_secs(1));
     info!("STEP: setting up avalanche node service file");
     let mut avalanche_node_cmd = format!(
-        "{} --network-id={} --genesis={} --db-dir={} --public-ip={} ",
+        "{} --network-id={} --genesis={} --db-dir={} --public-ip={}",
         avalanche_bin,
         config.network_id,
         GENESIS_PATH,
@@ -348,7 +348,7 @@ WantedBy=multi-user.target",
     .unwrap();
     bash::run("sudo systemctl daemon-reload").unwrap();
     bash::run("sudo systemctl enable avalanche.service").unwrap();
-    bash::run("sudo systemctl restart avalanche.service").unwrap();
+    bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
 
     // TODO: exit and fail
     loop {
