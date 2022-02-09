@@ -1,4 +1,4 @@
-use std::io;
+use std::{fs, io};
 
 use rand::seq::SliceRandom;
 
@@ -79,9 +79,15 @@ fn test_string() {
 /// The file does not exist yet.
 pub fn tmp_path(n: usize) -> io::Result<String> {
     let tmp_dir = tempfile::tempdir().unwrap();
-    let tmp_path = tmp_dir.path().join(string(n));
-    let tmp_path = tmp_path.as_os_str().to_str().unwrap();
-    Ok(String::from(tmp_path))
+    let tmp_dir_path = tmp_dir.path().as_os_str().to_str().unwrap();
+
+    let tmp_file_path = tmp_dir.path().join(string(n));
+    let tmp_file_path = tmp_file_path.as_os_str().to_str().unwrap();
+
+    fs::remove_dir_all(tmp_dir_path).unwrap();
+    fs::create_dir_all(tmp_dir_path).unwrap();
+
+    Ok(String::from(tmp_file_path))
 }
 
 #[test]
