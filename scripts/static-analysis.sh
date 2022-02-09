@@ -21,7 +21,9 @@ cargo fmt --all --verbose -- --check
 # TODO: enable nightly fmt
 rustup default nightly
 cargo +nightly fmt --all -- --config-path .rustfmt.nightly.toml --verbose --check || true
-cargo +nightly clippy --all --all-features -- -D warnings
+
+# cargo +nightly clippy --all --all-features -- -D warnings
+cargo +nightly clippy -- -D warnings
 
 rustup default stable
 
