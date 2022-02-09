@@ -822,8 +822,8 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         }
         println!();
 
-        let target_nodes = config.machine.beacon_nodes.unwrap();
         // wait for beacon nodes to generate certs and node ID and post to remote storage
+        let target_nodes = config.machine.beacon_nodes.unwrap();
         loop {
             thread::sleep(Duration::from_secs(30));
             let objects = rt

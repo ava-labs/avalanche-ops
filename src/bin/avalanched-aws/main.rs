@@ -178,34 +178,27 @@ fn main() {
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading network Config from S3");
-    let tmp_dir = tempfile::tempdir().unwrap();
-    let tmp_config_path = tmp_dir.path().join(random::string(15));
-    let tmp_config_path = tmp_config_path.as_os_str().to_str().unwrap();
+    let tmp_config_path = random::tmp_path(15).unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
         &aws_s3::KeyPath::ConfigFile.to_string(&id),
-        tmp_config_path,
+        &tmp_config_path,
     ))
     .unwrap();
-    let config = network::load_config(tmp_config_path).unwrap();
+    let config = network::load_config(&tmp_config_path).unwrap();
 
     let avalanche_bin = matches.value_of("AVALANCHE_BIN").unwrap();
     if !Path::new(avalanche_bin).exists() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading avalanche binary from S3");
-        let tmp_dir = tempfile::tempdir().unwrap();
-        let tmp_avalanche_bin_compressed_path = tmp_dir.path().join(random::string(15));
-        let tmp_avalanche_bin_compressed_path = tmp_avalanche_bin_compressed_path
-            .as_os_str()
-            .to_str()
-            .unwrap();
+        let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
             &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&id),
-            tmp_avalanche_bin_compressed_path,
+            &tmp_avalanche_bin_compressed_path,
         ))
         .unwrap();
-        compress::from_zstd(tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
+        compress::from_zstd(&tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
     }
 
     let plugins_dir = get_plugins_dir(avalanche_bin);
@@ -224,28 +217,24 @@ fn main() {
             let file_name = extract_filename(s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
 
-            let tmp_dir = tempfile::tempdir().unwrap();
-            let tmp_path = tmp_dir.path().join(random::string(15));
-            let tmp_path = tmp_path.as_os_str().to_str().unwrap();
-            rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, tmp_path))
+            let tmp_path = random::tmp_path(15).unwrap();
+            rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
                 .unwrap();
-            compress::from_zstd(tmp_path, &file_path).unwrap();
+            compress::from_zstd(&tmp_path, &file_path).unwrap();
         }
     }
 
     if !Path::new(GENESIS_PATH).exists() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading genesis file from S3");
-        let tmp_dir = tempfile::tempdir().unwrap();
-        let tmp_genesis_path = tmp_dir.path().join(random::string(15));
-        let tmp_genesis_path = tmp_genesis_path.as_os_str().to_str().unwrap();
+        let tmp_genesis_path = random::tmp_path(15).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
             &aws_s3::KeyPath::GenesisFile.to_string(&config.id),
-            tmp_genesis_path,
+            &tmp_genesis_path,
         ))
         .unwrap();
-        fs::copy(tmp_genesis_path, GENESIS_PATH).unwrap();
+        fs::copy(&tmp_genesis_path, GENESIS_PATH).unwrap();
     }
 
     // TODO: set up "--db-dir" based on "df -h"
@@ -295,13 +284,11 @@ fn main() {
             let mut bootstrap_ids: Vec<String> = vec![];
             for obj in objects.iter() {
                 let s3_key = obj.key().unwrap();
-                let tmp_dir = tempfile::tempdir().unwrap();
-                let tmp_path = tmp_dir.path().join(random::string(15));
-                let tmp_path = tmp_path.as_os_str().to_str().unwrap();
-                rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, tmp_path))
+                let tmp_path = random::tmp_path(15).unwrap();
+                rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
                     .unwrap();
 
-                let beacon_node = network::load_beacon_node(tmp_path).unwrap();
+                let beacon_node = network::load_beacon_node(&tmp_path).unwrap();
                 bootstrap_ips.push(beacon_node.ip);
                 bootstrap_ids.push(beacon_node.id);
             }

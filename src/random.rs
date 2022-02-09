@@ -1,3 +1,5 @@
+use std::io;
+
 use rand::seq::SliceRandom;
 
 /// Generates a random string of length "n".
@@ -71,4 +73,26 @@ fn test_string() {
 
     info!("word1: {:?}", word1);
     info!("word2: {:?}", word2);
+}
+
+/// Returns a file path randomly generated in tmp directory.
+/// The file does not exist yet.
+pub fn tmp_path(n: usize) -> io::Result<String> {
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_path = tmp_dir.path().join(string(n));
+    let tmp_path = tmp_path.as_os_str().to_str().unwrap();
+    Ok(String::from(tmp_path))
+}
+
+#[test]
+fn test_temp_path() {
+    let _ = env_logger::builder().is_test(true).try_init();
+    use log::info;
+
+    let p1 = tmp_path(10).unwrap();
+    let p2 = tmp_path(10).unwrap();
+    assert_ne!(p1, p2);
+
+    info!("p1: {:?}", p1);
+    info!("p2: {:?}", p2);
 }
