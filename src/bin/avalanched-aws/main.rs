@@ -10,6 +10,9 @@ const APP_NAME: &str = "avalanched-aws";
 
 const GENESIS_PATH: &str = "/etc/genesis.json";
 
+/// ref. "cloudformation/asg_ubuntu_amd64.yaml"
+const MOUNTED_DB_DIR_PATH: &str = "/avalanche-data";
+
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not change node ID)
 fn main() {
@@ -237,14 +240,15 @@ fn main() {
         fs::copy(&tmp_genesis_path, GENESIS_PATH).unwrap();
     }
 
-    // TODO: set up "--db-dir" based on "df -h"
+    // "--db-dir" volume is set up in ASG launch configuration
     thread::sleep(Duration::from_secs(1));
     info!("STEP: setting up avalanche node service file");
     let mut avalanche_node_cmd = format!(
-        "{} --network-id={} --genesis={}, --public-ip={}",
+        "{} --network-id={} --genesis={} --db-dir={} --public-ip={} ",
         avalanche_bin,
         config.network_id,
         GENESIS_PATH,
+        MOUNTED_DB_DIR_PATH,
         public_ipv4.as_str(),
     );
     avalanche_node_cmd.push_str(
@@ -270,7 +274,7 @@ fn main() {
         let staking_port = config.staking_port.unwrap();
         avalanche_node_cmd.push_str(format!(" --staking-port={}", staking_port).as_str());
     }
-    if node_type.eq("non-beacon") {
+    if node_type.eq("non-beacon") && !config.is_mainnet() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading beacon node information");
         let objects = rt
