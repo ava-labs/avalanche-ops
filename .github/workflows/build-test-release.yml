@@ -40,16 +40,15 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            platform: linux
-            target: aarch64-unknown-linux-gnu
           - os: macos-latest
             platform: darwin
             target: x86_64-apple-darwin
 
-          # TODO: takes >13-min, too long for free-tier github action
-          # NOT WORKING with openssl
-          # "openssl-sys-0.9.72/build/find_normal.rs:180:5"
+          # TODO: NOT WORKING "aesv8-armx-linux64.S": No such file or directory"
+          # - os: ubuntu-latest
+          #   platform: linux
+          #   target: aarch64-unknown-linux-gnu
+          # TODO: NOT WORKING "openssl-sys-0.9.72/build/find_normal.rs:180:5"
           # - os: macos-latest
           #   platform: darwin
           #   target: aarch64-apple-darwin
