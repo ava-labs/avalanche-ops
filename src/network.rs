@@ -88,10 +88,14 @@ pub struct Config {
 }
 
 /// Represents artifacts for installation, to be shared with
-/// remote machines. All paths are local.
+/// remote machines. All paths are local to the caller's environment.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct InstallArtifacts {
+    /// Genesis file path.
+    /// MUST BE NON-EMPTY.
+    #[serde(default)]
+    pub genesis_file: String,
     /// "avalanched" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
     /// "install/avalanched" to be shared with remote machines.
@@ -233,6 +237,7 @@ pub struct AWSResources {
 impl Config {
     /// Creates a default Status based on the network ID.
     pub fn default_aws(
+        genesis_file: &str,
         avalanched_bin: &str,
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
@@ -255,6 +260,7 @@ impl Config {
             staking_port: Some(DEFAULT_STAKING_PORT),
 
             install_artifacts: InstallArtifacts {
+                genesis_file: genesis_file.to_string(),
                 avalanched_bin: avalanched_bin.to_string(),
                 avalanchego_bin: avalanchego_bin.to_string(),
                 plugins_dir,
@@ -349,6 +355,15 @@ impl Config {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
         }
 
+        if !Path::new(&self.install_artifacts.genesis_file).exists() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "genesis_file {} does not exist",
+                    self.install_artifacts.genesis_file
+                ),
+            ));
+        }
         if !Path::new(&self.install_artifacts.avalanched_bin).exists() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -503,6 +518,11 @@ fn test_config() {
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(&vec![0]);
     assert!(ret.is_ok());
+    let genesis_file = f.path().to_str().unwrap();
+
+    let mut f = tempfile::NamedTempFile::new().unwrap();
+    let ret = f.write_all(&vec![0]);
+    assert!(ret.is_ok());
     let avalanched_bin = f.path().to_str().unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
@@ -525,6 +545,7 @@ fn test_config() {
     }
 
     assert!(Config::default_aws(
+        genesis_file,
         avalanched_bin,
         avalanchego_bin,
         Some(String::from(plugins_dir)),
@@ -533,6 +554,7 @@ fn test_config() {
     .validate()
     .is_ok());
     assert!(Config::default_aws(
+        genesis_file,
         avalanched_bin,
         avalanchego_bin,
         Some(String::from(plugins_dir)),
@@ -558,6 +580,7 @@ http_port: 9650
 staking_port: 9651
 
 install_artifacts:
+  genesis_file: {}
   avalanched_bin: {}
   avalanchego_bin: {}
   plugins_dir: {}
@@ -583,7 +606,7 @@ aws_resources:
     id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY
 
 "#,
-        id, avalanched_bin, avalanchego_bin, plugins_dir, bucket,
+        id, genesis_file, avalanched_bin, avalanchego_bin, plugins_dir, bucket,
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
@@ -609,9 +632,10 @@ aws_resources:
         staking_port: Some(9651),
 
         install_artifacts: InstallArtifacts {
+            genesis_file: genesis_file.to_string(),
             avalanched_bin: avalanched_bin.to_string(),
             avalanchego_bin: avalanchego_bin.to_string(),
-            plugins_dir: Some(String::from(plugins_dir)),
+            plugins_dir: Some(plugins_dir.to_string()),
         },
 
         machine: Machine {
@@ -680,6 +704,7 @@ aws_resources:
     assert_eq!(cfg.http_port.unwrap_or(0), 9650);
     assert_eq!(cfg.staking_port.unwrap_or(0), 9651);
 
+    assert_eq!(cfg.install_artifacts.genesis_file, genesis_file);
     assert_eq!(cfg.install_artifacts.avalanched_bin, avalanched_bin);
     assert_eq!(cfg.install_artifacts.avalanchego_bin, avalanchego_bin);
     assert_eq!(

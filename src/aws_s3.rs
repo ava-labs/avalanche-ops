@@ -429,3 +429,37 @@ fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
         _ => false,
     }
 }
+
+/// Represents the S3 key path.
+/// MUST be kept in sync with "cloudformation/ec2_instance_role.yaml".
+pub enum KeyPath {
+    GenesisFile,
+    AvalanchedBin,
+    AvalancheBinCompressed,
+    Ec2AccessKeyCompressedEncrypted,
+    PluginsDir,
+    PkiKeyDir,
+    BeaconNodesDir,
+    ConfigFile,
+}
+
+impl KeyPath {
+    pub fn to_string(&self, id: &str) -> String {
+        match self {
+            KeyPath::GenesisFile => format!("{}/install/genesis.json", id),
+            KeyPath::AvalanchedBin => format!("{}/install/avalanched", id),
+            KeyPath::AvalancheBinCompressed => format!("{}/install/avalanche.zstd", id),
+            KeyPath::Ec2AccessKeyCompressedEncrypted => {
+                format!("{}/ec2-access-key.zstd.encrypted", id)
+            }
+            KeyPath::PluginsDir => format!("{}/install/plugins", id),
+            KeyPath::PkiKeyDir => {
+                format!("{}/pki", id)
+            }
+            KeyPath::BeaconNodesDir => {
+                format!("{}/beacon-nodes", id)
+            }
+            KeyPath::ConfigFile => format!("{}/config.yaml", id),
+        }
+    }
+}

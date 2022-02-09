@@ -9,6 +9,7 @@ pub mod bash;
 pub mod cert;
 pub mod compress;
 pub mod crypto;
+pub mod genesis;
 pub mod http;
 pub mod humanize;
 pub mod id;

@@ -155,11 +155,18 @@ fn main() {
         ))
         .unwrap();
 
-        rt.block_on(s3_manager.put_object(
-            &s3_bucket_name,
-            tmpf_encrypted_path,
-            format!("{}/pki/{}.key.zstd.encrypted", id, instance_id).as_str(),
-        ))
+        rt.block_on(
+            s3_manager.put_object(
+                &s3_bucket_name,
+                tmpf_encrypted_path,
+                format!(
+                    "{}/{}.key.zstd.encrypted",
+                    aws_s3::KeyPath::PkiKeyDir.to_string(&id),
+                    instance_id
+                )
+                .as_str(),
+            ),
+        )
         .unwrap();
     }
     let node_id = id::load_node_id(tls_cert_path).unwrap();
@@ -172,11 +179,18 @@ fn main() {
         let tmpf_beacon_node = tempfile::NamedTempFile::new().unwrap();
         let tmpf_beacon_node_path = tmpf_beacon_node.path().to_str().unwrap();
         beacon_node.sync(tmpf_beacon_node_path).unwrap();
-        rt.block_on(s3_manager.put_object(
-            &s3_bucket_name,
-            tmpf_beacon_node_path,
-            format!("{}/beacon-nodes/{}.yaml", id, instance_id).as_str(),
-        ))
+        rt.block_on(
+            s3_manager.put_object(
+                &s3_bucket_name,
+                tmpf_beacon_node_path,
+                format!(
+                    "{}/{}.yaml",
+                    aws_s3::KeyPath::BeaconNodesDir.to_string(&id),
+                    instance_id
+                )
+                .as_str(),
+            ),
+        )
         .unwrap();
     }
 
@@ -186,7 +200,7 @@ fn main() {
     let tmpf_config_path = tmpf_config.path().to_str().unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
-        format!("{}/config.yaml", id).as_str(),
+        &aws_s3::KeyPath::ConfigFile.to_string(&id),
         tmpf_config_path,
     ))
     .unwrap();
@@ -198,7 +212,7 @@ fn main() {
     let tmpf_avalanche_bin_compressed_path = tmpf_avalanche_bin_compressed.path().to_str().unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
-        format!("{}/install/avalanchego.zstd", id).as_str(),
+        &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&id),
         tmpf_avalanche_bin_compressed_path,
     ))
     .unwrap();
@@ -210,9 +224,10 @@ fn main() {
     let plugins_dir = get_plugins_dir(avalanche_bin);
     fs::create_dir_all(plugins_dir.clone()).unwrap();
     let objects = rt
-        .block_on(
-            s3_manager.list_objects(&s3_bucket_name, Some(format!("{}/install/plugins/", id))),
-        )
+        .block_on(s3_manager.list_objects(
+            &s3_bucket_name,
+            Some(aws_s3::KeyPath::PluginsDir.to_string(&id)),
+        ))
         .unwrap();
     for obj in objects.iter() {
         let s3_key = obj.key().unwrap();
@@ -226,6 +241,8 @@ fn main() {
         compress::from_zstd(tmpf_path, &file_path).unwrap();
     }
 
+    // TODO: set up "--db-dir" based on "df -h"
+    // TODO: set up "--genesis"
     thread::sleep(Duration::from_secs(1));
     info!("STEP: setting up avalanche node service file");
     let mut avalanche_node_cmd = format!(
@@ -261,9 +278,10 @@ fn main() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading beacon node information");
         let objects = rt
-            .block_on(
-                s3_manager.list_objects(&s3_bucket_name, Some(format!("{}/beacon-nodes/", id))),
-            )
+            .block_on(s3_manager.list_objects(
+                &s3_bucket_name,
+                Some(aws_s3::KeyPath::BeaconNodesDir.to_string(&id)),
+            ))
             .unwrap();
         if !objects.is_empty() {
             let mut bootstrap_ips: Vec<String> = vec![];

@@ -44,6 +44,7 @@ fn main() {
 
     match matches.subcommand() {
         Some((SUBCOMMAND_DEFAULT_CONFIG, sub_matches)) => {
+            let genesis_file = sub_matches.value_of("GENESIS_FILE").unwrap();
             let avalanched_bin = sub_matches.value_of("AVALANCHED_BIN").unwrap();
             let avalanchego_bin = sub_matches.value_of("AVALANCHEGO_BIN").unwrap();
             let plugins_dir = sub_matches.value_of("PLUGINS_DIR").unwrap_or("");
@@ -51,6 +52,7 @@ fn main() {
             let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
             let network_id = sub_matches.value_of("NETWORK_ID").unwrap_or("custom");
             run_default_config(
+                genesis_file,
                 avalanched_bin,
                 avalanchego_bin,
                 plugins_dir,
@@ -83,6 +85,15 @@ fn main() {
 fn create_default_config_command() -> App<'static> {
     App::new(SUBCOMMAND_DEFAULT_CONFIG)
         .about("Writes a default configuration")
+        .arg(
+            Arg::new("GENESIS_FILE") 
+                .long("genesis-file")
+                .short('g')
+                .help("Sets the genesis file path to load and share with remote machines")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
         .arg(
             Arg::new("AVALANCHED_BIN") 
                 .long("avalanched-bin")
@@ -212,6 +223,7 @@ fn create_delete_command() -> App<'static> {
 
 /// TODO: better error handling rather than just panic with "unwrap"
 fn run_default_config(
+    genesis_file: &str,
     avalanched_bin: &str,
     avalanchego_bin: &str,
     plugins_dir: &str,
@@ -228,7 +240,13 @@ fn run_default_config(
     if plugins_dir.is_empty() {
         pdir = None;
     }
-    let config = network::Config::default_aws(avalanched_bin, avalanchego_bin, pdir, network_id);
+    let config = network::Config::default_aws(
+        genesis_file,
+        avalanched_bin,
+        avalanchego_bin,
+        pdir,
+        network_id,
+    );
     config.sync(config_path).unwrap();
 
     execute!(
@@ -367,8 +385,14 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
 
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
+        &config.install_artifacts.genesis_file,
+        &aws_s3::KeyPath::GenesisFile.to_string(&config.id),
+    ))
+    .unwrap();
+    rt.block_on(s3_manager.put_object(
+        &aws_resources.bucket,
         &config.install_artifacts.avalanched_bin,
-        format!("{}/install/avalanched", config.id).as_str(),
+        &aws_s3::KeyPath::AvalanchedBin.to_string(&config.id),
     ))
     .unwrap();
 
@@ -384,7 +408,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         tmpf_avalanchego_bin_compressed_path,
-        format!("{}/install/avalanche.zstd", config.id).as_str(),
+        &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&config.id),
     ))
     .unwrap();
 
@@ -406,18 +430,25 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 "uploading {} (compressed from {}) from plugins directory {}",
                 tmpf_plugin_compressed_path, file_path, plugins_dir,
             );
-            rt.block_on(s3_manager.put_object(
-                &aws_resources.bucket,
-                tmpf_plugin_compressed_path,
-                format!("{}/install/plugins/{}.zstd", config.id, file_name).as_str(),
-            ))
+            rt.block_on(
+                s3_manager.put_object(
+                    &aws_resources.bucket,
+                    tmpf_plugin_compressed_path,
+                    format!(
+                        "{}/{}.zstd",
+                        &aws_s3::KeyPath::PluginsDir.to_string(&config.id),
+                        file_name
+                    )
+                    .as_str(),
+                ),
+            )
             .unwrap();
         }
     }
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         config_path,
-        format!("{}/config.yaml", config.id).as_str(),
+        &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
     ))
     .unwrap();
 
@@ -443,7 +474,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
-            format!("{}/config.yaml", config.id).as_str(),
+            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
         ))
         .unwrap();
     }
@@ -480,7 +511,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             tmpf_encrypted_path,
-            format!("{}/ec2-access-key.zstd.encrypted", config.id).as_str(),
+            &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted.to_string(&config.id),
         ))
         .unwrap();
 
@@ -492,7 +523,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
-            format!("{}/config.yaml", config.id).as_str(),
+            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
         ))
         .unwrap();
     }
@@ -559,7 +590,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
-            format!("{}/config.yaml", config.id).as_str(),
+            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
         ))
         .unwrap();
     }
@@ -651,7 +682,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
-            format!("{}/config.yaml", config.id).as_str(),
+            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
         ))
         .unwrap();
     }
@@ -798,7 +829,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
-            format!("{}/config.yaml", config.id).as_str(),
+            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
         ))
         .unwrap();
 
@@ -887,7 +918,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             config_path,
-            format!("{}/config.yaml", config.id).as_str(),
+            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
         ))
         .unwrap();
     }
