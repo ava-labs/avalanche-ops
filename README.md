@@ -54,6 +54,7 @@ https://github.com/ava-labs/avalanche-ops/releases/download/tip/avalanched-aws.x
 
 ```bash
 avalanche-ops-nodes-aws default-config custom \
+--genesis-file ./sample.genesis.json \
 --avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
 --avalanchego-bin /tmp/avalanchego-v1.7.4/avalanchego \
 --plugins-dir /tmp/avalanchego-v1.7.4/plugins \
