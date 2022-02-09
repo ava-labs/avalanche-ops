@@ -1197,7 +1197,7 @@ fn get_ec2_key_path(config_path: &str) -> String {
     let path = Path::new(config_path);
     let parent_dir = path.parent().unwrap();
     let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ec2-access.rsa.key", name.to_str().unwrap(),);
+    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
     String::from(
         parent_dir
             .join(Path::new(new_name.as_str()))

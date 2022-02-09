@@ -55,6 +55,7 @@ pub struct Config {
     /// Network ID.
     /// Only supports: "mainnet" and custom name.
     /// MUST NOT BE EMPTY.
+    /// "utils/constants/NetworkID" only accepts string for known networks.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#NetworkName
     #[serde(default)]
     pub network_id: String,
