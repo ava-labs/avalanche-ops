@@ -148,24 +148,22 @@ fn main() {
         cert::generate(tls_key_path, tls_cert_path).unwrap();
 
         info!("uploading TLS certs to S3");
-        let tmpf_compressed = tempfile::NamedTempFile::new().unwrap();
-        let tmpf_compressed_path = tmpf_compressed.path().to_str().unwrap();
-        compress::to_zstd(tls_key_path, tmpf_compressed_path, None).unwrap();
+        let tmp_compressed_path = random::tmp_path(15).unwrap();
+        compress::to_zstd(tls_key_path, &tmp_compressed_path, None).unwrap();
 
-        let tmpf_encrypted = tempfile::NamedTempFile::new().unwrap();
-        let tmpf_encrypted_path = tmpf_encrypted.path().to_str().unwrap();
+        let tmp_encrypted_path = random::tmp_path(15).unwrap();
         rt.block_on(kms_manager.encrypt_file(
             &kms_cmk_arn,
             None,
-            tmpf_compressed_path,
-            tmpf_encrypted_path,
+            &tmp_compressed_path,
+            &tmp_encrypted_path,
         ))
         .unwrap();
 
         rt.block_on(
             s3_manager.put_object(
                 &s3_bucket_name,
-                tmpf_encrypted_path,
+                &tmp_encrypted_path,
                 format!(
                     "{}/{}.key.zstd.encrypted",
                     aws_s3::KeyPath::PkiKeyDir.to_string(&id),
@@ -352,13 +350,12 @@ WantedBy=multi-user.target",
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing beacon node information");
             let beacon_node = network::BeaconNode::new(public_ipv4.clone(), node_id.clone());
-            let tmpf_beacon_node = tempfile::NamedTempFile::new().unwrap();
-            let tmpf_beacon_node_path = tmpf_beacon_node.path().to_str().unwrap();
-            beacon_node.sync(tmpf_beacon_node_path).unwrap();
+            let tmp_beacon_node_path = random::tmp_path(15).unwrap();
+            beacon_node.sync(&tmp_beacon_node_path).unwrap();
             rt.block_on(
                 s3_manager.put_object(
                     &s3_bucket_name,
-                    tmpf_beacon_node_path,
+                    &tmp_beacon_node_path,
                     format!(
                         "{}/{}.yaml",
                         aws_s3::KeyPath::BeaconNodesDir.to_string(&id),

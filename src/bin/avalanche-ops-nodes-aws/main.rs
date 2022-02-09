@@ -18,7 +18,7 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress, network,
+    aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress, network, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -396,18 +396,16 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     ))
     .unwrap();
 
-    let tmpf_avalanchego_bin_compressed = tempfile::NamedTempFile::new().unwrap();
-    let tmpf_avalanchego_bin_compressed_path =
-        tmpf_avalanchego_bin_compressed.path().to_str().unwrap();
+    let tmp_avalanchego_bin_compressed_path = random::tmp_path(15).unwrap();
     crate::compress::to_zstd(
         &config.install_artifacts.avalanchego_bin,
-        tmpf_avalanchego_bin_compressed_path,
+        &tmp_avalanchego_bin_compressed_path,
         None,
     )
     .unwrap();
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
-        tmpf_avalanchego_bin_compressed_path,
+        &tmp_avalanchego_bin_compressed_path,
         &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&config.id),
     ))
     .unwrap();
@@ -422,18 +420,17 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             let file_name = entry.file_name();
             let file_name = file_name.as_os_str().to_str().unwrap();
 
-            let tmpf_plugin_compressed = tempfile::NamedTempFile::new().unwrap();
-            let tmpf_plugin_compressed_path = tmpf_plugin_compressed.path().to_str().unwrap();
-            crate::compress::to_zstd(file_path, tmpf_plugin_compressed_path, None).unwrap();
+            let tmp_plugin_compressed_path = random::tmp_path(15).unwrap();
+            crate::compress::to_zstd(file_path, &tmp_plugin_compressed_path, None).unwrap();
 
             info!(
                 "uploading {} (compressed from {}) from plugins directory {}",
-                tmpf_plugin_compressed_path, file_path, plugins_dir,
+                tmp_plugin_compressed_path, file_path, plugins_dir,
             );
             rt.block_on(
                 s3_manager.put_object(
                     &aws_resources.bucket,
-                    tmpf_plugin_compressed_path,
+                    &tmp_plugin_compressed_path,
                     format!(
                         "{}/{}.zstd",
                         &aws_s3::KeyPath::PluginsDir.to_string(&config.id),
@@ -495,22 +492,20 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         ))
         .unwrap();
 
-        let tmpf_compressed = tempfile::NamedTempFile::new().unwrap();
-        let tmpf_compressed_path = tmpf_compressed.path().to_str().unwrap();
-        compress::to_zstd(ec2_key_path.as_str(), tmpf_compressed_path, None).unwrap();
+        let tmp_compressed_path = random::tmp_path(15).unwrap();
+        compress::to_zstd(ec2_key_path.as_str(), &tmp_compressed_path, None).unwrap();
 
-        let tmpf_encrypted = tempfile::NamedTempFile::new().unwrap();
-        let tmpf_encrypted_path = tmpf_encrypted.path().to_str().unwrap();
+        let tmp_encrypted_path = random::tmp_path(15).unwrap();
         rt.block_on(kms_manager.encrypt_file(
             aws_resources.kms_cmk_id.clone().unwrap().as_str(),
             None,
-            tmpf_compressed_path,
-            tmpf_encrypted_path,
+            &tmp_compressed_path,
+            &tmp_encrypted_path,
         ))
         .unwrap();
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            tmpf_encrypted_path,
+            &tmp_encrypted_path,
             &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted.to_string(&config.id),
         ))
         .unwrap();
