@@ -253,7 +253,7 @@ Resources:
               Restart=always
               RestartSec=60s
               EOF
-              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
               INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --retry 3 -s http://169.254.169.254/latest/meta-data/instance-id)
@@ -316,18 +316,19 @@ Resources:
               # curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -o /tmp/awslogs-agent-setup.py
               # sudo python3 /tmp/awslogs-agent-setup.py --region ${AWS::Region}
 
-              curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
-              pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
-              if [[ $? -ne 0 ]]; then
-                /usr/local/bin/cfn-signal --resource AutoScalingGroup \
-                  --stack ${AWS::StackName} \
-                  --region ${AWS::Region} \
-                  --success false
-              else
-                /usr/local/bin/cfn-signal -e $? --resource AutoScalingGroup \
-                  --stack ${AWS::StackName} \
-                  --region ${AWS::Region}
-              fi
+              # NOT WORKING; "print 'revision: %(revno)s' % version_info"
+              # curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
+              # pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+              # if [[ $? -ne 0 ]]; then
+              #   /usr/local/bin/cfn-signal --resource AutoScalingGroup \
+              #     --stack ${AWS::StackName} \
+              #     --region ${AWS::Region} \
+              #     --success false
+              # else
+              #   /usr/local/bin/cfn-signal -e $? --resource AutoScalingGroup \
+              #     --stack ${AWS::StackName} \
+              #     --region ${AWS::Region}
+              # fi
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:
