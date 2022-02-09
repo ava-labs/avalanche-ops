@@ -250,7 +250,7 @@ Resources:
                       --region ${AWS::Region} \
                       --filters \
                         Name=attachment.instance-id,Values=$INSTANCE_ID \
-                        Name=attachment.device,Values=/dev/nvme1n1 \
+                        Name=attachment.device,Values=/dev/xvdb \
                       --query Volumes[].Attachments[].State \
                       --output text)
                 sleep 2
@@ -264,7 +264,7 @@ Resources:
               sudo mount /dev/nvme1n1 /avalanche-data -t ext4
               # auto remount in case of instance reboot
               sudo echo '/dev/nvme1n1       /avalanche-data   ext4    defaults,nofail 0       2' >> /etc/fstab
-              mount -a
+              sudo mount --all
               lsblk
               df -h
 

@@ -25,7 +25,9 @@ fi
 
 # TODO: not working
 # ref. https://github.com/cross-rs/cross/issues/510
+# ref. https://github.com/cross-rs/cross/issues/229
 # cargo install cross
+# cargo install --version 0.1.16 cross
 cross build \
 --release \
 --bin avalanche-ops-nodes-aws \
