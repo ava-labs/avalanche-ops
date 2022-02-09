@@ -1,4 +1,4 @@
-use std::{env, fs, io};
+use std::{env, io};
 
 use rand::seq::SliceRandom;
 
