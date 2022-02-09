@@ -56,7 +56,7 @@ A single command to create a new Avalanche node from scratch and join any networ
 ```bash
 # "1337" here is the custom network ID
 avalanche-ops-nodes-aws default-config 1337
---genesis-file ./sample.genesis.json \
+--genesis-file artifacts/sample.genesis.json \
 --avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
 --avalanchego-bin /tmp/avalanchego-v1.7.4/avalanchego \
 --plugins-dir /tmp/avalanchego-v1.7.4/plugins \

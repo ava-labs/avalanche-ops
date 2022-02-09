@@ -365,6 +365,13 @@ impl Config {
                 ),
             ));
         }
+        let genesis = crate::genesis::load_config(&self.install_artifacts.genesis_file).unwrap();
+        if genesis.network_id.ne(&self.network_id) {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("network ID {} not found in genesis file", self.network_id),
+            ));
+        }
         if !Path::new(&self.install_artifacts.avalanched_bin).exists() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -516,8 +523,16 @@ fn test_config() {
 
     let _ = env_logger::builder().is_test(true).try_init();
 
+    use rust_embed::RustEmbed;
+    #[derive(RustEmbed)]
+    #[folder = "artifacts/"]
+    #[prefix = "artifacts/"]
+    struct Asset;
+    let genesis_json = Asset::get("artifacts/sample.genesis.json").unwrap();
+    let genesis_json_contents = std::str::from_utf8(genesis_json.data.as_ref()).unwrap();
+
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(&vec![0]);
+    let ret = f.write_all(genesis_json_contents);
     assert!(ret.is_ok());
     let genesis_file = f.path().to_str().unwrap();
 
@@ -572,7 +587,7 @@ fn test_config() {
 
 id: {}
 
-network_id: hello
+network_id: "1337"
 
 snow_sample_size: 20
 snow_quorum_size: 15
@@ -624,7 +639,7 @@ aws_resources:
     let orig = Config {
         id: id.clone(),
 
-        network_id: String::from("hello"),
+        network_id: String::from("1337"),
 
         snow_sample_size: Some(20),
         snow_quorum_size: Some(15),
