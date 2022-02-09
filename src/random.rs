@@ -84,6 +84,7 @@ pub fn tmp_path(n: usize) -> io::Result<String> {
     let tmp_file_path = tmp_dir.path().join(string(n));
     let tmp_file_path = tmp_file_path.as_os_str().to_str().unwrap();
 
+    // prevent "tempfile::tempdir()" destructor
     fs::remove_dir_all(tmp_dir_path).unwrap();
     fs::create_dir_all(tmp_dir_path).unwrap();
 
