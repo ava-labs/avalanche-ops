@@ -112,6 +112,16 @@ Resources:
                         "/beacon-nodes/*",
                       ],
                     ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/events/*",
+                      ],
+                    ]
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
   InstanceProfile:

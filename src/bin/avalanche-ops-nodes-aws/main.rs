@@ -820,9 +820,24 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 d.public_ipv4
             );
         }
-        println!("");
+        println!();
 
-        // TODO: wait for beacon nodes to generate certs and node ID and post to remote storage
+        let target_nodes = config.machine.beacon_nodes.unwrap();
+        // wait for beacon nodes to generate certs and node ID and post to remote storage
+        loop {
+            thread::sleep(Duration::from_secs(30));
+            let objects = rt
+                .block_on(s3_manager.list_objects(
+                    &aws_resources.bucket,
+                    Some(aws_s3::KeyPath::BeaconNodesDir.to_string(&config.id)),
+                ))
+                .unwrap();
+            info!("{} beacon nodes are ready!", objects.len());
+            if objects.len() as u32 >= target_nodes {
+                break;
+            }
+        }
+
         config.aws_resources = Some(aws_resources.clone());
         config.sync(config_path).unwrap();
 

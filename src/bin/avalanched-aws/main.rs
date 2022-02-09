@@ -4,12 +4,14 @@ use clap::{App, Arg};
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_ops::{aws, aws_ec2, aws_kms, aws_s3, bash, cert, compress, id, network};
+use avalanche_ops::{aws, aws_ec2, aws_kms, aws_s3, bash, cert, compress, id, network, random};
 
 const APP_NAME: &str = "avalanched-aws";
 
 const GENESIS_PATH: &str = "/etc/genesis.json";
 
+/// Should be able to run with idempotency
+/// (e.g., multiple restarts should not change node ID)
 fn main() {
     let matches = App::new(APP_NAME)
         .about("Avalanche agent (daemon) on AWS")
@@ -71,7 +73,7 @@ fn main() {
     let rt = Runtime::new().unwrap();
 
     thread::sleep(Duration::from_secs(1));
-    info!("STEP: ffetching intance metadata using IMDSv2");
+    info!("STEP: fetching intance metadata using IMDSv2");
     let az = rt.block_on(aws_ec2::fetch_availability_zone()).unwrap();
     info!("fetched availability zone {}", az);
     let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
@@ -142,7 +144,7 @@ fn main() {
         );
         cert::generate(tls_key_path, tls_cert_path).unwrap();
 
-        info!("backing up TLS certs to S3");
+        info!("uploading TLS certs to S3");
         let tmpf_compressed = tempfile::NamedTempFile::new().unwrap();
         let tmpf_compressed_path = tmpf_compressed.path().to_str().unwrap();
         compress::to_zstd(tls_key_path, tmpf_compressed_path, None).unwrap();
@@ -174,86 +176,75 @@ fn main() {
     let node_id = id::load_node_id(tls_cert_path).unwrap();
     info!("loaded node ID: {}", node_id);
 
-    if node_type.eq("beacon") {
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: publishing beacon node information");
-        let beacon_node = network::BeaconNode::new(public_ipv4.clone(), node_id);
-        let tmpf_beacon_node = tempfile::NamedTempFile::new().unwrap();
-        let tmpf_beacon_node_path = tmpf_beacon_node.path().to_str().unwrap();
-        beacon_node.sync(tmpf_beacon_node_path).unwrap();
-        rt.block_on(
-            s3_manager.put_object(
-                &s3_bucket_name,
-                tmpf_beacon_node_path,
-                format!(
-                    "{}/{}.yaml",
-                    aws_s3::KeyPath::BeaconNodesDir.to_string(&id),
-                    instance_id
-                )
-                .as_str(),
-            ),
-        )
-        .unwrap();
-    }
-
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading network Config from S3");
-    let tmpf_config = tempfile::NamedTempFile::new().unwrap();
-    let tmpf_config_path = tmpf_config.path().to_str().unwrap();
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_config_path = tmp_dir.path().join(random::string(10));
+    let tmp_config_path = tmp_config_path.as_os_str().to_str().unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
         &aws_s3::KeyPath::ConfigFile.to_string(&id),
-        tmpf_config_path,
+        tmp_config_path,
     ))
     .unwrap();
-    let config = network::load_config(tmpf_config_path).unwrap();
+    let config = network::load_config(tmp_config_path).unwrap();
 
-    thread::sleep(Duration::from_secs(1));
-    info!("STEP: downloading avalanche binary from S3");
-    let tmpf_avalanche_bin_compressed = tempfile::NamedTempFile::new().unwrap();
-    let tmpf_avalanche_bin_compressed_path = tmpf_avalanche_bin_compressed.path().to_str().unwrap();
-    rt.block_on(s3_manager.get_object(
-        &s3_bucket_name,
-        &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&id),
-        tmpf_avalanche_bin_compressed_path,
-    ))
-    .unwrap();
     let avalanche_bin = matches.value_of("AVALANCHE_BIN").unwrap();
-    compress::from_zstd(tmpf_avalanche_bin_compressed_path, avalanche_bin).unwrap();
-
-    thread::sleep(Duration::from_secs(1));
-    info!("STEP: downloading plugins from S3");
-    let plugins_dir = get_plugins_dir(avalanche_bin);
-    fs::create_dir_all(plugins_dir.clone()).unwrap();
-    let objects = rt
-        .block_on(s3_manager.list_objects(
+    if !Path::new(avalanche_bin).exists() {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading avalanche binary from S3");
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let tmp_avalanche_bin_compressed_path = tmp_dir.path().join(random::string(10));
+        let tmp_avalanche_bin_compressed_path = tmp_avalanche_bin_compressed_path
+            .as_os_str()
+            .to_str()
+            .unwrap();
+        rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            Some(aws_s3::KeyPath::PluginsDir.to_string(&id)),
+            &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&id),
+            tmp_avalanche_bin_compressed_path,
         ))
         .unwrap();
-    for obj in objects.iter() {
-        let s3_key = obj.key().unwrap();
-        let file_name = extract_filename(s3_key);
-        let file_path = format!("{}/{}", plugins_dir, file_name);
-
-        let tmpf = tempfile::NamedTempFile::new().unwrap();
-        let tmpf_path = tmpf.path().to_str().unwrap();
-        rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, tmpf_path))
-            .unwrap();
-        compress::from_zstd(tmpf_path, &file_path).unwrap();
+        compress::from_zstd(tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
     }
 
-    thread::sleep(Duration::from_secs(1));
-    info!("STEP: downloading genesis file from S3");
-    let tmpf_genesis = tempfile::NamedTempFile::new().unwrap();
-    let tmpf_genesis_path = tmpf_genesis.path().to_str().unwrap();
-    rt.block_on(s3_manager.get_object(
-        &s3_bucket_name,
-        &aws_s3::KeyPath::GenesisFile.to_string(&config.id),
-        tmpf_genesis_path,
-    ))
-    .unwrap();
-    fs::copy(tmpf_genesis_path, GENESIS_PATH).unwrap();
+    let plugins_dir = get_plugins_dir(avalanche_bin);
+    if !Path::new(&plugins_dir).exists() {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading plugins from S3");
+        fs::create_dir_all(plugins_dir.clone()).unwrap();
+        let objects = rt
+            .block_on(s3_manager.list_objects(
+                &s3_bucket_name,
+                Some(aws_s3::KeyPath::PluginsDir.to_string(&id)),
+            ))
+            .unwrap();
+        for obj in objects.iter() {
+            let s3_key = obj.key().unwrap();
+            let file_name = extract_filename(s3_key);
+            let file_path = format!("{}/{}", plugins_dir, file_name);
+
+            let tmpf = tempfile::NamedTempFile::new().unwrap();
+            let tmpf_path = tmpf.path().to_str().unwrap();
+            rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, tmpf_path))
+                .unwrap();
+            compress::from_zstd(tmpf_path, &file_path).unwrap();
+        }
+    }
+
+    if !Path::new(GENESIS_PATH).exists() {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading genesis file from S3");
+        let tmpf_genesis = tempfile::NamedTempFile::new().unwrap();
+        let tmpf_genesis_path = tmpf_genesis.path().to_str().unwrap();
+        rt.block_on(s3_manager.get_object(
+            &s3_bucket_name,
+            &aws_s3::KeyPath::GenesisFile.to_string(&config.id),
+            tmpf_genesis_path,
+        ))
+        .unwrap();
+        fs::copy(tmpf_genesis_path, GENESIS_PATH).unwrap();
+    }
 
     // TODO: set up "--db-dir" based on "df -h"
     thread::sleep(Duration::from_secs(1));
@@ -331,7 +322,7 @@ ExecStart={}
 WantedBy=multi-user.target",
         avalanche_node_cmd
     );
-    info!("{}", avalanche_service_file_contents);
+    println!("writing\n\n{}\n", avalanche_service_file_contents);
     let mut avalanche_service_file = tempfile::NamedTempFile::new().unwrap();
     avalanche_service_file
         .write_all(avalanche_service_file_contents.as_bytes())
@@ -345,11 +336,35 @@ WantedBy=multi-user.target",
     bash::run("sudo systemctl daemon-reload").unwrap();
     bash::run("sudo systemctl enable avalanche.service").unwrap();
     bash::run("sudo systemctl restart avalanche.service").unwrap();
-    // sudo systemctl status avalanche.service -l --no-pager
-    // sudo journalctl -u avalanche.service -l --no-pager|less
-    // sudo journalctl -f -u avalanche.service
 
-    // TODO: run avalanche node in systemd
+    loop {
+        // TODO: periodically upload beacon/non-beacon information to S3 as health check?
+        // TODO: check upgrade artifacts by polling s3
+        thread::sleep(Duration::from_secs(10));
+
+        if node_type.eq("beacon") {
+            // only upload when all nodes are ready
+            thread::sleep(Duration::from_secs(1));
+            info!("STEP: publishing beacon node information");
+            let beacon_node = network::BeaconNode::new(public_ipv4.clone(), node_id.clone());
+            let tmpf_beacon_node = tempfile::NamedTempFile::new().unwrap();
+            let tmpf_beacon_node_path = tmpf_beacon_node.path().to_str().unwrap();
+            beacon_node.sync(tmpf_beacon_node_path).unwrap();
+            rt.block_on(
+                s3_manager.put_object(
+                    &s3_bucket_name,
+                    tmpf_beacon_node_path,
+                    format!(
+                        "{}/{}.yaml",
+                        aws_s3::KeyPath::BeaconNodesDir.to_string(&id),
+                        instance_id
+                    )
+                    .as_str(),
+                ),
+            )
+            .unwrap();
+        }
+    }
 }
 
 ///  build
@@ -374,5 +389,3 @@ fn extract_filename(p: &str) -> String {
     let file_stemp = path.file_stem().unwrap();
     String::from(file_stemp.to_str().unwrap())
 }
-
-// TODO: periodically upload beacon information to S3 as health check
