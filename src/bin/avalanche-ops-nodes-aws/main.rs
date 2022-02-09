@@ -8,7 +8,7 @@ use std::{
 };
 
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
-use clap::{arg, App, AppSettings, Arg};
+use clap::{App, AppSettings, Arg};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
@@ -51,7 +51,8 @@ fn main() {
             let plugins_dir = sub_matches.value_of("PLUGINS_DIR").unwrap_or("");
             let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
             let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
-            let network_id = sub_matches.value_of("NETWORK_ID").unwrap_or("custom");
+            let net_id = sub_matches.value_of("NETWORK_ID").unwrap();
+            let network_id = String::from(net_id).parse::<u32>().unwrap();
             run_default_config(
                 genesis_file,
                 avalanched_bin,
@@ -86,6 +87,15 @@ fn main() {
 fn create_default_config_command() -> App<'static> {
     App::new(SUBCOMMAND_DEFAULT_CONFIG)
         .about("Writes a default configuration")
+        .arg(
+            Arg::new("NETWORK_ID") 
+                .long("network-id")
+                .short('g')
+                .help("Sets the network ID in u32 format (e.g., 1 is for mainnet, 4 is for fuji)")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
         .arg(
             Arg::new("GENESIS_FILE") 
                 .long("genesis-file")
@@ -142,7 +152,6 @@ fn create_default_config_command() -> App<'static> {
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
-        .arg(arg!(<NETWORK_ID>).required(true).allow_invalid_utf8(false))
 }
 
 fn create_apply_command() -> App<'static> {
@@ -230,7 +239,7 @@ fn run_default_config(
     plugins_dir: &str,
     log_level: &str,
     config_path: &str,
-    network_id: &str,
+    network_id: u32,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(

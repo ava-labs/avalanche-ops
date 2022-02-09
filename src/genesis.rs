@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Config {
     #[serde(rename = "networkID")] // https://serde.rs/container-attrs.html
-    pub network_id: String,
+    pub network_id: u32,
 
     #[serde(rename = "allocations", skip_serializing_if = "Option::is_none")]
     pub allocations: Option<Vec<Allocation>>,
@@ -118,7 +118,7 @@ fn test_config() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = Config {
-        network_id: String::from("custom"),
+        network_id: 1337,
 
         allocations: Some(vec![Allocation {
             eth_addr: Some(String::from("a")),

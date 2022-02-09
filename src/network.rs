@@ -53,12 +53,12 @@ pub struct Config {
     pub id: String,
 
     /// Network ID.
-    /// Only supports: "mainnet" and custom name.
     /// MUST NOT BE EMPTY.
+    /// e.g., "mainnet" is 1, "fuji" is 4, "local" is 12345.
     /// "utils/constants/NetworkID" only accepts string for known networks.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#NetworkName
     #[serde(default)]
-    pub network_id: String,
+    pub network_id: u32,
 
     /// The sample size k, snowball.Parameters.K.
     /// If zero, use the default value set via avalanche node code.
@@ -242,17 +242,21 @@ impl Config {
         avalanched_bin: &str,
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
-        network_id: &str,
+        network_id: u32,
     ) -> Self {
         let beacon_nodes = match network_id {
-            "mainnet" => 0,
+            1 => 0, // "mainnet"
+            2 => 0, // "cascade"
+            3 => 0, // "denali"
+            4 => 0, // "everest"
+            5 => 0, // "fuji"
             _ => DEFAULT_MACHINE_BEACON_NODES,
         };
 
         Self {
             id: crate::id::generate("avalanche-ops"),
 
-            network_id: String::from(network_id),
+            network_id,
 
             snow_sample_size: Some(DEFAULT_SNOW_SAMPLE_SIZE),
             snow_quorum_size: Some(DEFAULT_SNOW_QUORUM_SIZE),
@@ -311,7 +315,7 @@ impl Config {
 
     /// Returns true if the topology is mainnet.
     pub fn is_mainnet(&self) -> bool {
-        self.network_id == "mainnet"
+        self.network_id == 1
     }
 
     /// Converts to string.
@@ -369,7 +373,10 @@ impl Config {
         if genesis.network_id.ne(&self.network_id) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("network ID {} not found in genesis file", self.network_id),
+                format!(
+                    "network ID '{}' not found in the genesis file",
+                    self.network_id
+                ),
             ));
         }
         if !Path::new(&self.install_artifacts.avalanched_bin).exists() {
@@ -402,10 +409,10 @@ impl Config {
             ));
         }
 
-        if self.network_id.is_empty() {
+        if self.network_id == 0 {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                "'network_id' cannot be empty",
+                "'network_id' cannot be 0",
             ));
         }
 
@@ -422,8 +429,9 @@ impl Config {
         }
 
         // network specific validations
-        match self.network_id.as_str() {
-            "mainnet" => {
+        match self.network_id {
+            1 => {
+                // "mainnet"
                 if self.machine.beacon_nodes.unwrap_or(0) > 0 {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
@@ -431,7 +439,35 @@ impl Config {
                     ));
                 }
             }
-            "cascade" | "denali" | "everest" | "fuji" | "testnet" | "testing" | "local" => {
+            2 => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "network '{}' is not supported yet in this tooling",
+                        self.network_id
+                    ),
+                ));
+            }
+            3 => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "network '{}' is not supported yet in this tooling",
+                        self.network_id
+                    ),
+                ));
+            }
+            4 => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "network '{}' is not supported yet in this tooling",
+                        self.network_id
+                    ),
+                ));
+            }
+            5 => {
+                // fuji
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
@@ -532,7 +568,7 @@ fn test_config() {
     let genesis_json_contents = std::str::from_utf8(genesis_json.data.as_ref()).unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(genesis_json_contents.to_vec());
+    let ret = f.write_all(genesis_json_contents.as_bytes());
     assert!(ret.is_ok());
     let genesis_file = f.path().to_str().unwrap();
 
@@ -565,7 +601,7 @@ fn test_config() {
         avalanched_bin,
         avalanchego_bin,
         Some(String::from(plugins_dir)),
-        "mainnet"
+        1,
     )
     .validate()
     .is_ok());
@@ -574,7 +610,7 @@ fn test_config() {
         avalanched_bin,
         avalanchego_bin,
         Some(String::from(plugins_dir)),
-        "mycustom"
+        10,
     )
     .validate()
     .is_ok());
@@ -587,7 +623,7 @@ fn test_config() {
 
 id: {}
 
-network_id: "1337"
+network_id: 1337
 
 snow_sample_size: 20
 snow_quorum_size: 15
@@ -639,7 +675,7 @@ aws_resources:
     let orig = Config {
         id: id.clone(),
 
-        network_id: String::from("1337"),
+        network_id: 1337,
 
         snow_sample_size: Some(20),
         snow_quorum_size: Some(15),
@@ -714,7 +750,7 @@ aws_resources:
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
 
-    assert_eq!(cfg.network_id, "hello");
+    assert_eq!(cfg.network_id, 1337);
     assert_eq!(cfg.snow_sample_size.unwrap_or(0), 20);
     assert_eq!(cfg.snow_quorum_size.unwrap_or(0), 15);
     assert_eq!(cfg.http_port.unwrap_or(0), 9650);
