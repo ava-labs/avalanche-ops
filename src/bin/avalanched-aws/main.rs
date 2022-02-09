@@ -306,8 +306,10 @@ fn main() {
                 rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
                     .unwrap();
 
+                // ref. "avalanchego/config.StakingPortKey" default value is "9651"
+                let staking_port = config.staking_port.unwrap_or(9651);
                 let beacon_node = network::load_beacon_node(&tmp_path).unwrap();
-                bootstrap_ips.push(beacon_node.ip);
+                bootstrap_ips.push(format!("{}:{}", beacon_node.ip, staking_port));
                 bootstrap_ids.push(beacon_node.id);
             }
             info!("found {} bootstrap nodes", objects.len());
