@@ -116,7 +116,7 @@ jobs:
 
             cp ./target/${TARGET}/release/avalanche-ops-nodes-aws avalanche-ops-nodes-aws.${TARGET}
             echo "::set-output name=file_name_avalanche_ops::avalanche-ops-nodes-aws.${TARGET}"
-            gtar -czvf avalanche-ops-nodes-aws_${VERSION_NAME}_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-ops-nodes-aws
+            gtar -czvf avalanche-ops-nodes-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-ops-nodes-aws
             echo "::set-output name=file_name_avalanche_ops_tar_gz::avalanche-ops-nodes-aws_${TARGET}.tar.gz"
 
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}

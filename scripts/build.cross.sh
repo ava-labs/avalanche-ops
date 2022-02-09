@@ -16,6 +16,13 @@ fi
 # --bin avalanched-aws \
 # --target x86_64-unknown-linux-gnu
 
+# rustup target add x86_64-unknown-linux-musl
+# cargo build \
+# --release \
+# --bin avalanche-ops-nodes-aws \
+# --bin avalanched-aws \
+# --target x86_64-unknown-linux-musl
+
 # TODO: not working
 # ref. https://github.com/cross-rs/cross/issues/510
 # cargo install cross
