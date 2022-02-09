@@ -36,14 +36,16 @@ jobs:
     strategy:
       matrix:
         job:
+          # https://doc.rust-lang.org/nightly/rustc/platform-support.html
           - os: ubuntu-latest
             platform: linux
             target: x86_64-unknown-linux-gnu
-            arch: amd64
+          - os: ubuntu-latest
+            platform: linux
+            target: aarch64-unknown-linux-gnu
           - os: macos-latest
             platform: darwin
             target: x86_64-apple-darwin
-            arch: amd64
 
           # TODO: takes >13-min, too long for free-tier github action
           # NOT WORKING with openssl
@@ -51,13 +53,9 @@ jobs:
           # - os: macos-latest
           #   platform: darwin
           #   target: aarch64-apple-darwin
-          #   arch: arm64
-
-          # NOT WORKING WITH openssl
           # - os: windows-latest
           #   platform: win32
           #   target: x86_64-pc-windows-msvc
-          #   arch: amd64
 
     steps:
       - name: Checkout
@@ -95,7 +93,6 @@ jobs:
         env:
           PLATFORM_NAME: ${{ matrix.job.platform }}
           TARGET: ${{ matrix.job.target }}
-          ARCH: ${{ matrix.job.arch }}
         shell: bash
         run: |
           if [ "$PLATFORM_NAME" == "linux" ]; then
