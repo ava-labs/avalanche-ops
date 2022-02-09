@@ -253,7 +253,7 @@ fn main() {
     thread::sleep(Duration::from_secs(1));
     info!("STEP: setting up avalanche node service file");
     let mut avalanche_node_cmd = format!(
-        "{} --network-id={} --genesis={} --db-dir={} --public-ip={}",
+        "{} --network-id={} --genesis={} --db-dir={} --public-ip={} --http-host=0.0.0.0", // TODO: make this configurable
         avalanche_bin,
         config.network_id,
         GENESIS_PATH,
