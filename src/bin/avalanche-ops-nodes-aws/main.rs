@@ -1,6 +1,7 @@
 use std::{
-    fs,
+    fs::{self, File},
     io::{self, stdout, Error, ErrorKind},
+    os::unix::fs::PermissionsExt,
     path::Path,
     thread,
     time::Duration,
@@ -803,6 +804,8 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .unwrap();
         let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
+        let f = File::open(&ec2_key_path).unwrap();
+        f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
         println!("\nchmod 400 {}", ec2_key_path);
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]

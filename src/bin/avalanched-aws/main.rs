@@ -1,4 +1,11 @@
-use std::{fs, io::Write, path::Path, thread, time::Duration};
+use std::{
+    fs::{self, File},
+    io::Write,
+    os::unix::fs::PermissionsExt,
+    path::Path,
+    thread,
+    time::Duration,
+};
 
 use clap::{App, Arg};
 use log::info;
@@ -200,6 +207,8 @@ fn main() {
         ))
         .unwrap();
         compress::from_zstd(&tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
+        let f = File::open(avalanche_bin).unwrap();
+        f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
     }
 
     let plugins_dir = get_plugins_dir(avalanche_bin);
@@ -222,6 +231,8 @@ fn main() {
             rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
                 .unwrap();
             compress::from_zstd(&tmp_path, &file_path).unwrap();
+            let f = File::open(file_path).unwrap();
+            f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
         }
     }
 
