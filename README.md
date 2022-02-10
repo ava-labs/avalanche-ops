@@ -52,22 +52,19 @@ find /tmp/avalanchego-v${VERSION}
 
 ## Workflow
 
-`avalanche-ops` is the client (or control plane) that provisions a set of remote machines based on user-provided configuration. `avalanched` is an agent (or daemon) that runs on each remote machine to create and install Avalanche-specific resources (e.g., TLS certificate generation, beacon-node discovery). `avalanche-ops` first provides Avalanche genesis file and executable binaries to run in remote machines. Then control remote machines to download and set up such user-provided artifacts. It requires two groups of machines: (1) beacon node (only required for custom network), and (2) non-beacon node. Whether the node type is beacon or not, during bootstrap, `avalanched` auto-generates the TLS certificates and stores encrypted version in a shared remote storage. If the node type is beacon, the `avalanche` publishes `BeaconNode` information in YAML to a shared remote storage, which later is used for service discovery mechanism for non-beacon nodes.
+`avalanche-ops` is the client (or control plane) that provisions a set of remote machines based on user-provided configuration. `avalanched` is an agent (or daemon) that runs on each remote machine to create and install Avalanche-specific resources (e.g., TLS certificate generation, beacon-node discovery). `avalanche-ops` first provides Avalanche genesis file and executable binaries to run in remote machines. Then control remote machines to download and set up such user-provided artifacts. It requires two groups of machines: (1) beacon node (only required for custom network), and (2) non-beacon node. Whether the node type is beacon or not, during bootstrap, `avalanched` auto-generates the TLS certificates and stores encrypted version in a shared remote storage. If the node type is beacon, the `avalanche` publishes `BeaconNode` information in YAML to a shared remote storage, which is used for service discovery mechanism for non-beacon nodes.
 
 ## `avalanche-ops` on AWS
 
 A single command to create a new Avalanche node from scratch and join any network of choice (e.g., test, fuji, main) or a custom Avalanche network with multiple nodes. Provisions all AWS resources required to run a node or network with recommended setups (configurable):
 
 ```bash
-# "1337" here is the custom network ID
-# must be matched with the one in genesis file
-avalanche-ops-nodes-aws default-config \
---network-id 1337 \
---genesis-file artifacts/sample.genesis.json \
+avalanche-ops-nodes-aws default-spec \
 --avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
---avalanchego-bin /tmp/avalanchego-v1.7.4/avalanchego \
---plugins-dir /tmp/avalanchego-v1.7.4/plugins \
---config /tmp/test.yaml
+--avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
+--plugins-dir /tmp/avalanchego-v1.7.5/plugins \
+--genesis-file-path artifacts/sample.genesis.json \
+--spec-file-path /tmp/test.yaml \
 ```
 
 ```bash
@@ -82,14 +79,16 @@ echo ${ACCOUNT_ID}
 ```bash
 # edit "/tmp/test.yaml" if needed
 # to create resources
-avalanche-ops-nodes-aws apply --config /tmp/test.yaml
+avalanche-ops-nodes-aws apply \
+--spec-file-path /tmp/test.yaml
 ```
 
 ```bash
 # to clean up resources
 # specify "--delete-all" to delete auto-created S3 bucket
 # otherwise, S3 bucket is not deleted
-avalanche-ops-nodes-aws delete --config /tmp/test.yaml
+avalanche-ops-nodes-aws delete \
+--spec-file-path /tmp/test.yaml
 ```
 
 Avalanche node daemon that provisions and manages the software on the remote machine (e.g., generate certs, encrypt, upload to S3):

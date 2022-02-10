@@ -10,9 +10,10 @@ use serde::{Deserialize, Serialize};
 
 /// Represents Avalanche network genesis configuration.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/genesis#Config
+/// ref. https://serde.rs/container-attrs.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct Config {
-    #[serde(rename = "networkID")] // https://serde.rs/container-attrs.html
+pub struct Genesis {
+    #[serde(rename = "networkID")]
     pub network_id: u32,
 
     #[serde(rename = "allocations", skip_serializing_if = "Option::is_none")]
@@ -75,7 +76,7 @@ pub struct Staker {
     pub delegation_fee: Option<u32>,
 }
 
-impl Config {
+impl Genesis {
     /// Converts to string.
     pub fn to_string(&self) -> io::Result<String> {
         match serde_json::to_string(&self) {
@@ -113,11 +114,9 @@ impl Config {
 
 #[test]
 fn test_config() {
-    use std::fs;
-
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let config = Config {
+    let config = Genesis {
         network_id: 1337,
 
         allocations: Some(vec![Allocation {
@@ -153,11 +152,10 @@ fn test_config() {
     let p = crate::random::tmp_path(10).unwrap();
     let ret = config.sync(&p);
     assert!(ret.is_ok());
-    fs::remove_file(p).unwrap();
 }
 
-pub fn load_config(file_path: &str) -> io::Result<Config> {
-    info!("loading config from {}", file_path);
+pub fn load(file_path: &str) -> io::Result<Genesis> {
+    info!("loading genesis from {}", file_path);
 
     if !Path::new(file_path).exists() {
         return Err(Error::new(

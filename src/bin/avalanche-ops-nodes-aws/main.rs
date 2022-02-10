@@ -19,11 +19,11 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress, network, random,
+    self, avalanchego, aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
-const SUBCOMMAND_DEFAULT_CONFIG: &str = "default-config";
+const SUBCOMMAND_DEFAULT_SPEC: &str = "default-spec";
 const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
 
@@ -37,72 +37,60 @@ fn main() {
         .setting(AppSettings::AllowExternalSubcommands)
         .setting(AppSettings::AllowInvalidUtf8ForExternalSubcommands)
         .subcommands(vec![
-            create_default_config_command(),
+            create_default_spec_command(),
             create_apply_command(),
             create_delete_command(),
         ])
         .get_matches();
 
     match matches.subcommand() {
-        Some((SUBCOMMAND_DEFAULT_CONFIG, sub_matches)) => {
-            let genesis_file = sub_matches.value_of("GENESIS_FILE").unwrap();
-            let avalanched_bin = sub_matches.value_of("AVALANCHED_BIN").unwrap();
-            let avalanchego_bin = sub_matches.value_of("AVALANCHEGO_BIN").unwrap();
-            let plugins_dir = sub_matches.value_of("PLUGINS_DIR").unwrap_or("");
-            let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
-            let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
-            let net_id = sub_matches.value_of("NETWORK_ID").unwrap();
-            let network_id = String::from(net_id).parse::<u32>().unwrap();
-            run_default_config(
-                genesis_file,
-                avalanched_bin,
-                avalanchego_bin,
-                plugins_dir,
-                log_level,
-                config_path,
-                network_id,
+        Some((SUBCOMMAND_DEFAULT_SPEC, sub_matches)) => {
+            run_default_spec(
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches.value_of("AVALANCHED_BIN").unwrap(),
+                sub_matches.value_of("AVALANCHE_BIN").unwrap(),
+                sub_matches.value_of("PLUGINS_DIR").unwrap_or(""),
+                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
+                sub_matches.value_of("GENESIS_FILE_PATH").unwrap(),
             )
             .unwrap();
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
-            let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
-            let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
-            let skip_prompt = sub_matches.is_present("SKIP_PROMPT");
-            run_apply(log_level, config_path, skip_prompt).unwrap();
+            run_apply(
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
+                sub_matches.is_present("SKIP_PROMPT"),
+            )
+            .unwrap();
         }
 
         Some((SUBCOMMAND_DELETE, sub_matches)) => {
-            let log_level = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
-            let config_path = sub_matches.value_of("CONFIG_FILE_PATH").unwrap();
-            let delete_all = sub_matches.is_present("DELETE_ALL");
-            let skip_prompt = sub_matches.is_present("SKIP_PROMPT");
-            run_delete(log_level, config_path, delete_all, skip_prompt).unwrap();
+            run_delete(
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
+                sub_matches.is_present("SKIP_PROMPT"),
+                sub_matches.is_present("DELETE_ALL"),
+            )
+            .unwrap();
         }
 
         _ => unreachable!("unknown subcommand"),
     }
 }
 
-fn create_default_config_command() -> App<'static> {
-    App::new(SUBCOMMAND_DEFAULT_CONFIG)
+fn create_default_spec_command() -> App<'static> {
+    App::new(SUBCOMMAND_DEFAULT_SPEC)
         .about("Writes a default configuration")
         .arg(
-            Arg::new("NETWORK_ID") 
-                .long("network-id")
-                .short('g')
-                .help("Sets the network ID in u32 format (e.g., 1 is for mainnet, 4 is for fuji)")
-                .required(true)
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
+                .required(false)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("GENESIS_FILE") 
-                .long("genesis-file")
-                .short('g')
-                .help("Sets the genesis file path to load and share with remote machines")
-                .required(true)
-                .takes_value(true)
+                .possible_value("debug")
+                .possible_value("info")
                 .allow_invalid_utf8(false),
         )
         .arg(
@@ -115,8 +103,8 @@ fn create_default_config_command() -> App<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AVALANCHEGO_BIN") 
-                .long("avalanchego-bin")
+            Arg::new("AVALANCHE_BIN") 
+                .long("avalanche-bin")
                 .short('b')
                 .help("Sets the Avalanche node binary path to be shared with remote machines")
                 .required(true)
@@ -133,21 +121,19 @@ fn create_default_config_command() -> App<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("LOG_LEVEL")
-                .long("log-level")
-                .short('l')
-                .help("Sets the log level")
-                .required(false)
+            Arg::new("SPEC_FILE_PATH")
+                .long("spec-file-path")
+                .short('s')
+                .help("The config file to create")
+                .required(true)
                 .takes_value(true)
-                .possible_value("debug")
-                .possible_value("info")
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("CONFIG_FILE_PATH")
-                .long("config")
-                .short('c')
-                .help("The config file to create")
+            Arg::new("GENESIS_FILE_PATH") 
+                .long("genesis-file-path")
+                .short('g')
+                .help("Sets the genesis file path to load and share with remote machines")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -169,10 +155,10 @@ fn create_apply_command() -> App<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("CONFIG_FILE_PATH")
-                .long("config")
-                .short('c')
-                .help("The config file to load and update")
+            Arg::new("SPEC_FILE_PATH")
+                .long("spec-file-path")
+                .short('s')
+                .help("The spec file to load and update")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -203,21 +189,12 @@ fn create_delete_command() -> App<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("CONFIG_FILE_PATH")
-                .long("config")
-                .short('c')
-                .help("The config file to load")
+            Arg::new("SPEC_FILE_PATH")
+                .long("spec-file-path")
+                .short('s')
+                .help("The spec file to load")
                 .required(true)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("DELETE_ALL")
-                .long("delete-all")
-                .short('a')
-                .help("Enables delete all mode (e.g., delete S3 bucket)")
-                .required(false)
-                .takes_value(false)
                 .allow_invalid_utf8(false),
         )
         .arg(
@@ -229,77 +206,89 @@ fn create_delete_command() -> App<'static> {
                 .takes_value(false)
                 .allow_invalid_utf8(false),
         )
+        .arg(
+            Arg::new("DELETE_ALL")
+                .long("delete-all")
+                .short('a')
+                .help("Enables delete all mode (e.g., delete S3 bucket)")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
 }
 
-/// TODO: better error handling rather than just panic with "unwrap"
-fn run_default_config(
-    genesis_file: &str,
-    avalanched_bin: &str,
-    avalanchego_bin: &str,
-    plugins_dir: &str,
+fn run_default_spec(
     log_level: &str,
-    config_path: &str,
-    network_id: u32,
+    avalanched_bin: &str,
+    avalanche_bin: &str,
+    plugins_dir: &str,
+    spec_file_path: &str,
+    genesis_file_path: &str,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut pdir = Some(String::from(plugins_dir));
+    let mut _plugins_dir = Some(String::from(plugins_dir));
     if plugins_dir.is_empty() {
-        pdir = None;
+        _plugins_dir = None;
     }
-    let config = network::Config::default_aws(
-        genesis_file,
-        avalanched_bin,
-        avalanchego_bin,
-        pdir,
-        network_id,
-    );
-    config.validate().unwrap();
+    let mut _genesis_file_path = Some(String::from(genesis_file_path));
+    if genesis_file_path.is_empty() {
+        _genesis_file_path = None;
+    }
 
-    config.sync(config_path).unwrap();
+    // set defaults based on genesis file
+    let genesis = avalanche_ops::genesis::load(genesis_file_path)?;
+    let mut avalanchego_config = avalanchego::Config::default();
+    avalanchego_config.network_id = Some(genesis.network_id);
+
+    let spec = avalanche_ops::Spec::default_aws(
+        avalanched_bin,
+        avalanche_bin,
+        _plugins_dir,
+        _genesis_file_path,
+        avalanchego_config,
+    );
+    spec.validate()?;
+    spec.sync(spec_file_path)?;
+
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("\nSaved configuration: '{}'\n", config_path)),
+        Print(format!("\nSaved spec: '{}'\n", spec_file_path)),
         ResetColor
-    )
-    .unwrap();
-    let config_contents = config.to_string().unwrap();
-    println!("{}", config_contents);
+    )?;
+    let spec_contents = spec.encode_yaml().unwrap();
+    println!("{}\n", spec_contents);
 
     Ok(())
 }
 
-// TODO: define helper functions for s3 paths
-
-/// TODO: better error handling rather than just panic with "unwrap"
-fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Result<()> {
-    // ref. https://github.com/env-logger-rs/env_logger/issues/47
-    env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
-    );
-
+fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     #[derive(RustEmbed)]
     #[folder = "cloudformation/"]
     #[prefix = "cloudformation/"]
     struct Asset;
 
-    let mut config = network::load_config(config_path).unwrap();
-    let mut aws_resources = config.aws_resources.clone().unwrap();
+    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
+    );
+
+    let mut spec = avalanche_ops::load_spec(spec_file_path).unwrap();
+    spec.validate()?;
 
     let rt = Runtime::new().unwrap();
+
+    let mut aws_resources = spec.aws_resources.clone().unwrap();
     let shared_config = rt
         .block_on(aws::load_config(Some(aws_resources.region.clone())))
         .unwrap();
 
     let sts_manager = aws_sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
-
-    // configuration must be valid
-    config.validate().unwrap();
 
     // validate identity
     match aws_resources.clone().identity {
@@ -320,37 +309,38 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         }
     }
 
-    // set defaults
+    // set defaults based on ID
     if aws_resources.ec2_key_name.is_none() {
-        aws_resources.ec2_key_name = Some(format!("{}-ec2-key", config.id));
+        aws_resources.ec2_key_name = Some(format!("{}-ec2-key", spec.id));
     }
     if aws_resources.cloudformation_ec2_instance_role.is_none() {
         aws_resources.cloudformation_ec2_instance_role =
-            Some(format!("{}-ec2-instance-role", config.id));
+            Some(format!("{}-ec2-instance-role", spec.id));
     }
     if aws_resources.cloudformation_vpc.is_none() {
-        aws_resources.cloudformation_vpc = Some(format!("{}-vpc", config.id));
+        aws_resources.cloudformation_vpc = Some(format!("{}-vpc", spec.id));
     }
-    if !config.is_mainnet() && aws_resources.cloudformation_asg_beacon_nodes.is_none() {
+    if !spec.avalanchego_config.is_mainnet()
+        && aws_resources.cloudformation_asg_beacon_nodes.is_none()
+    {
         aws_resources.cloudformation_asg_beacon_nodes =
-            Some(format!("{}-asg-beacon-nodes", config.id));
+            Some(format!("{}-asg-beacon-nodes", spec.id));
     }
     if aws_resources.cloudformation_asg_non_beacon_nodes.is_none() {
         aws_resources.cloudformation_asg_non_beacon_nodes =
-            Some(format!("{}-asg-non-beacon-nodes", config.id));
+            Some(format!("{}-asg-non-beacon-nodes", spec.id));
     }
-    config.aws_resources = Some(aws_resources.clone());
-    config.sync(config_path).unwrap();
+    spec.aws_resources = Some(aws_resources.clone());
+    spec.sync(spec_file_path)?;
 
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("\nLoaded configuration: '{}'\n", config_path)),
+        Print(format!("\nLoaded Spec: '{}'\n", spec_file_path)),
         ResetColor
-    )
-    .unwrap();
-    let config_contents = config.to_string().unwrap();
-    println!("{}\n", config_contents);
+    )?;
+    let spec_contents = spec.encode_yaml()?;
+    println!("{}\n", spec_contents);
 
     if !skip_prompt {
         let options = &[
@@ -368,7 +358,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         }
     }
 
-    info!("creating resources (with config path {})", config_path);
+    info!("creating resources (with spec path {})", spec_file_path);
     let s3_manager = aws_s3::Manager::new(&shared_config);
     let kms_manager = aws_kms::Manager::new(&shared_config);
     let ec2_manager = aws_ec2::Manager::new(&shared_config);
@@ -380,8 +370,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         SetForegroundColor(Color::Green),
         Print("\n\n\nSTEP: create S3 bucket\n"),
         ResetColor
-    )
-    .unwrap();
+    )?;
     rt.block_on(s3_manager.create_bucket(&aws_resources.bucket))
         .unwrap();
 
@@ -391,44 +380,34 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         SetForegroundColor(Color::Green),
         Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
         ResetColor
-    )
-    .unwrap();
-
+    )?;
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
-        &config.install_artifacts.genesis_file,
-        &aws_s3::KeyPath::GenesisFile.to_string(&config.id),
+        &spec.install_artifacts.avalanched_bin,
+        &aws_s3::KeyPath::AvalanchedBin.to_string(&spec.id),
     ))
     .unwrap();
-    rt.block_on(s3_manager.put_object(
-        &aws_resources.bucket,
-        &config.install_artifacts.avalanched_bin,
-        &aws_s3::KeyPath::AvalanchedBin.to_string(&config.id),
-    ))
-    .unwrap();
-
-    let tmp_avalanchego_bin_compressed_path = random::tmp_path(15).unwrap();
+    let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
     crate::compress::to_zstd(
-        &config.install_artifacts.avalanchego_bin,
-        &tmp_avalanchego_bin_compressed_path,
+        &spec.install_artifacts.avalanchego_bin,
+        &tmp_avalanche_bin_compressed_path,
         None,
     )
     .unwrap();
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
-        &tmp_avalanchego_bin_compressed_path,
-        &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&config.id),
+        &tmp_avalanche_bin_compressed_path,
+        &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&spec.id),
     ))
     .unwrap();
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
-        &config.install_artifacts.avalanchego_bin,
-        &aws_s3::KeyPath::AvalancheBin.to_string(&config.id),
+        &spec.install_artifacts.avalanchego_bin,
+        &aws_s3::KeyPath::AvalancheBin.to_string(&spec.id),
     ))
     .unwrap();
-
-    if config.install_artifacts.plugins_dir.is_some() {
-        let plugins_dir = config.install_artifacts.plugins_dir.clone().unwrap();
+    if spec.install_artifacts.plugins_dir.is_some() {
+        let plugins_dir = spec.install_artifacts.plugins_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
             let entry = entry.unwrap();
             let entry_path = entry.path();
@@ -450,7 +429,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                     &tmp_plugin_compressed_path,
                     format!(
                         "{}/{}.zstd",
-                        &aws_s3::KeyPath::PluginsDir.to_string(&config.id),
+                        &aws_s3::KeyPath::PluginsDir.to_string(&spec.id),
                         file_name
                     )
                     .as_str(),
@@ -459,10 +438,21 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .unwrap();
         }
     }
+    if spec.install_artifacts.genesis_file_path.is_some() {
+        let genesis_file_path = spec.install_artifacts.genesis_file_path.clone().unwrap();
+        if Path::new(&genesis_file_path).exists() {
+            rt.block_on(s3_manager.put_object(
+                &aws_resources.bucket,
+                &genesis_file_path,
+                &aws_s3::KeyPath::GenesisFile.to_string(&spec.id),
+            ))
+            .unwrap();
+        }
+    }
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
-        config_path,
-        &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
+        spec_file_path,
+        &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
     ))
     .unwrap();
 
@@ -473,22 +463,21 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             SetForegroundColor(Color::Green),
             Print("\n\n\nSTEP: create KMS key\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
         let key = rt
-            .block_on(kms_manager.create_key(format!("{}-cmk", config.id).as_str()))
+            .block_on(kms_manager.create_key(format!("{}-cmk", spec.id).as_str()))
             .unwrap();
 
         aws_resources.kms_cmk_id = Some(key.id);
         aws_resources.kms_cmk_arn = Some(key.arn);
-        config.aws_resources = Some(aws_resources.clone());
-        config.sync(config_path).unwrap();
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            config_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
+            spec_file_path,
+            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
         ))
         .unwrap();
     }
@@ -502,7 +491,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             ResetColor
         )
         .unwrap();
-        let ec2_key_path = get_ec2_key_path(config_path);
+        let ec2_key_path = get_ec2_key_path(spec_file_path);
         rt.block_on(ec2_manager.create_key_pair(
             aws_resources.ec2_key_name.clone().unwrap().as_str(),
             ec2_key_path.as_str(),
@@ -523,19 +512,19 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             &tmp_encrypted_path,
-            &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted.to_string(&config.id),
+            &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted.to_string(&spec.id),
         ))
         .unwrap();
 
         aws_resources.ec2_key_path = Some(ec2_key_path);
-        config.aws_resources = Some(aws_resources.clone());
-        config.sync(config_path).unwrap();
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            config_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
+            spec_file_path,
+            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
         ))
         .unwrap();
     }
@@ -550,8 +539,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             SetForegroundColor(Color::Green),
             Print("\n\n\nSTEP: create EC2 instance role\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let ec2_instance_role_yaml = Asset::get("cloudformation/ec2_instance_role.yaml").unwrap();
         let ec2_instance_role_tmpl =
@@ -570,7 +558,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 Tag::builder().key("kind").value("avalanche-ops").build(),
             ])),
             Some(Vec::from([
-                build_param("Id", &config.id),
+                build_param("Id", &spec.id),
                 build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
                 build_param("S3BucketName", &aws_resources.bucket),
             ])),
@@ -595,14 +583,14 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 aws_resources.cloudformation_ec2_instance_profile_arn = Some(v)
             }
         }
-        config.aws_resources = Some(aws_resources.clone());
-        config.sync(config_path).unwrap();
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            config_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
+            spec_file_path,
+            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
         ))
         .unwrap();
     }
@@ -617,32 +605,30 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             SetForegroundColor(Color::Green),
             Print("\n\n\nSTEP: create VPC\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let vpc_yaml = Asset::get("cloudformation/vpc.yaml").unwrap();
         let vpc_tmpl = std::str::from_utf8(vpc_yaml.data.as_ref()).unwrap();
         let vpc_stack_name = aws_resources.cloudformation_vpc.clone().unwrap();
 
         let mut parameters = Vec::from([
-            build_param("Id", &config.id),
+            build_param("Id", &spec.id),
             build_param("VpcCidr", "10.0.0.0/16"),
             build_param("PublicSubnetCidr1", "10.0.64.0/19"),
             build_param("PublicSubnetCidr2", "10.0.128.0/19"),
             build_param("PublicSubnetCidr3", "10.0.192.0/19"),
             build_param("IngressEgressIpv4Range", "0.0.0.0/0"),
         ]);
-        if config.http_port.is_some() {
-            let http_port = config.http_port.unwrap();
+        if spec.avalanchego_config.http_port.is_some() {
+            let http_port = spec.avalanchego_config.http_port.unwrap();
             let param = build_param("HttpPort", format!("{}", http_port).as_str());
             parameters.push(param);
         }
-        if config.staking_port.is_some() {
-            let staking_port = config.staking_port.unwrap();
+        if spec.avalanchego_config.staking_port.is_some() {
+            let staking_port = spec.avalanchego_config.staking_port.unwrap();
             let param = build_param("StakingPort", format!("{}", staking_port).as_str());
             parameters.push(param);
         }
-
         rt.block_on(cloudformation_manager.create_stack(
             vpc_stack_name.as_str(),
             None,
@@ -687,20 +673,20 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 aws_resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
             }
         }
-        config.aws_resources = Some(aws_resources.clone());
-        config.sync(config_path).unwrap();
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            config_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
+            spec_file_path,
+            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
         ))
         .unwrap();
     }
 
     let mut asg_parameters = Vec::from([
-        build_param("Id", &config.id),
+        build_param("Id", &spec.id),
         build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
         build_param("S3BucketName", &aws_resources.bucket),
         build_param(
@@ -730,8 +716,8 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
                 .unwrap(),
         ),
     ]);
-    if config.machine.instance_types.is_some() {
-        let instance_types = config.machine.instance_types.clone().unwrap();
+    if spec.machine.instance_types.is_some() {
+        let instance_types = spec.machine.instance_types.clone().unwrap();
         asg_parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
         asg_parameters.push(build_param(
             "InstanceTypesCount",
@@ -739,7 +725,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         ));
     }
 
-    if config.machine.beacon_nodes.unwrap_or(0) > 0
+    if spec.machine.beacon_nodes.unwrap_or(0) > 0
         && aws_resources
             .cloudformation_asg_beacon_nodes_logical_id
             .is_none()
@@ -750,8 +736,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             SetForegroundColor(Color::Green),
             Print("\n\n\nSTEP: create ASG for beacon nodes\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let cloudformation_asg_beacon_nodes_yaml =
             Asset::get("cloudformation/asg_ubuntu_amd64.yaml").unwrap();
@@ -762,7 +747,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .clone()
             .unwrap();
 
-        let desired_capacity = config.machine.beacon_nodes.unwrap();
+        let desired_capacity = spec.machine.beacon_nodes.unwrap();
         let mut parameters = asg_parameters.clone();
         parameters.push(build_param("NodeType", "beacon"));
         parameters.push(build_param(
@@ -837,29 +822,34 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         println!();
 
         // wait for beacon nodes to generate certs and node ID and post to remote storage
-        let target_nodes = config.machine.beacon_nodes.unwrap();
+        // TODO: set timeouts
+        let target_nodes = spec.machine.beacon_nodes.unwrap();
         loop {
             thread::sleep(Duration::from_secs(30));
             let objects = rt
                 .block_on(s3_manager.list_objects(
                     &aws_resources.bucket,
-                    Some(aws_s3::KeyPath::BeaconNodesDir.to_string(&config.id)),
+                    Some(aws_s3::KeyPath::BeaconNodesDir.to_string(&spec.id)),
                 ))
                 .unwrap();
-            info!("{} beacon nodes are ready!", objects.len());
+            info!(
+                "{} beacon nodes are ready (expecting {} nodes)",
+                objects.len(),
+                target_nodes
+            );
             if objects.len() as u32 >= target_nodes {
                 break;
             }
         }
 
-        config.aws_resources = Some(aws_resources.clone());
-        config.sync(config_path).unwrap();
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            config_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
+            spec_file_path,
+            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
         ))
         .unwrap();
 
@@ -877,8 +867,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             SetForegroundColor(Color::Green),
             Print("\n\n\nSTEP: create ASG for non-beacon nodes\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let cloudformation_asg_non_beacon_nodes_yaml =
             Asset::get("cloudformation/asg_ubuntu_amd64.yaml").unwrap();
@@ -889,7 +878,7 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .clone()
             .unwrap();
 
-        let desired_capacity = config.machine.non_beacon_nodes;
+        let desired_capacity = spec.machine.non_beacon_nodes;
         let mut parameters = asg_parameters.clone();
         parameters.push(build_param("NodeType", "non-beacon"));
         parameters.push(build_param(
@@ -947,14 +936,14 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
             .unwrap();
         let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
 
-        let mut non_beacon_nodes: Vec<network::NonBeaconNode> = vec![];
+        let mut non_beacon_nodes: Vec<avalanche_ops::NonBeaconNode> = vec![];
 
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
         println!("\nchmod 400 {}", ec2_key_path);
         for d in droplets {
-            non_beacon_nodes.push(network::NonBeaconNode::new(d.public_ipv4.clone()));
+            non_beacon_nodes.push(avalanche_ops::NonBeaconNode::new(d.public_ipv4.clone()));
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             println!(
                 "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
@@ -968,14 +957,14 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
         println!();
 
         aws_resources.non_beacon_nodes = Some(non_beacon_nodes);
-        config.aws_resources = Some(aws_resources.clone());
-        config.sync(config_path).unwrap();
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
-            config_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&config.id),
+            spec_file_path,
+            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
         ))
         .unwrap();
     }
@@ -983,10 +972,9 @@ fn run_apply(log_level: &str, config_path: &str, skip_prompt: bool) -> io::Resul
     Ok(())
 }
 
-/// TODO: better error handling rather than just panic with "unwrap"
 fn run_delete(
     log_level: &str,
-    config_path: &str,
+    spec_file_path: &str,
     delete_all: bool,
     skip_prompt: bool,
 ) -> io::Result<()> {
@@ -995,8 +983,8 @@ fn run_delete(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let config = network::load_config(config_path).unwrap();
-    let aws_resources = config.aws_resources.clone().unwrap();
+    let spec = avalanche_ops::load_spec(spec_file_path).unwrap();
+    let aws_resources = spec.aws_resources.clone().unwrap();
 
     let rt = Runtime::new().unwrap();
     let shared_config = rt
@@ -1028,12 +1016,11 @@ fn run_delete(
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("\nLoaded configuration: '{}'\n", config_path)),
+        Print(format!("\nLoaded configuration: '{}'\n", spec_file_path)),
         ResetColor
-    )
-    .unwrap();
-    let config_contents = config.to_string().unwrap();
-    println!("{}\n", config_contents);
+    )?;
+    let spec_contents = spec.encode_yaml().unwrap();
+    println!("{}\n", spec_contents);
 
     if !skip_prompt {
         let options = &[
@@ -1067,8 +1054,7 @@ fn run_delete(
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: delete ASG for non-beacon nodes\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let asg_non_beacon_nodes_stack_name =
             aws_resources.cloudformation_asg_non_beacon_nodes.unwrap();
@@ -1084,7 +1070,7 @@ fn run_delete(
         .unwrap();
     }
 
-    if config.machine.beacon_nodes.unwrap_or(0) > 0
+    if spec.machine.beacon_nodes.unwrap_or(0) > 0
         && aws_resources
             .cloudformation_asg_beacon_nodes_logical_id
             .is_some()
@@ -1095,8 +1081,7 @@ fn run_delete(
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: delete ASG for beacon nodes\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let asg_beacon_nodes_stack_name = aws_resources.cloudformation_asg_beacon_nodes.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(asg_beacon_nodes_stack_name.as_str()))
@@ -1121,8 +1106,7 @@ fn run_delete(
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: delete VPC\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let vpc_stack_name = aws_resources.cloudformation_vpc.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(vpc_stack_name.as_str()))
@@ -1147,8 +1131,7 @@ fn run_delete(
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: delete EC2 instance role\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
@@ -1170,8 +1153,7 @@ fn run_delete(
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: delete EC2 key pair\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let ec2_key_path = aws_resources.ec2_key_path.unwrap();
         if Path::new(ec2_key_path.as_str()).exists() {
@@ -1196,8 +1178,7 @@ fn run_delete(
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: delete KMS key\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         let cmk_id = aws_resources.kms_cmk_id.unwrap();
         rt.block_on(kms_manager.schedule_to_delete(cmk_id.as_str()))
@@ -1211,8 +1192,7 @@ fn run_delete(
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: delete S3 bucket\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
 
         rt.block_on(s3_manager.delete_objects(&aws_resources.bucket, None))
             .unwrap();
@@ -1230,8 +1210,8 @@ fn build_param(k: &str, v: &str) -> Parameter {
         .build()
 }
 
-fn get_ec2_key_path(config_path: &str) -> String {
-    let path = Path::new(config_path);
+fn get_ec2_key_path(spec_file_path: &str) -> String {
+    let path = Path::new(spec_file_path);
     let parent_dir = path.parent().unwrap();
     let name = path.file_stem().unwrap();
     let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);

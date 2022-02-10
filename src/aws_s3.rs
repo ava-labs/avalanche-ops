@@ -441,6 +441,7 @@ pub enum KeyPath {
     PluginsDir,
     PkiKeyDir,
     BeaconNodesDir,
+    NonBeaconNodesDir,
     ConfigFile,
 }
 
@@ -460,6 +461,9 @@ impl KeyPath {
             }
             KeyPath::BeaconNodesDir => {
                 format!("{}/beacon-nodes", id)
+            }
+            KeyPath::NonBeaconNodesDir => {
+                format!("{}/non-beacon-nodes", id)
             }
             KeyPath::ConfigFile => format!("{}/config.yaml", id),
         }

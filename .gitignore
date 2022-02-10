@@ -11,3 +11,5 @@ Cargo.lock
 
 # for "cross build" outputs
 release
+
+.DS_Store

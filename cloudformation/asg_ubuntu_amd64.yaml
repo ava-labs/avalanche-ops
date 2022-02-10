@@ -269,6 +269,9 @@ Resources:
                 sleep 2
               done
 
+              mkdir -p /var/log/avalanche
+              chmod 755 /var/log/avalanche
+
               # TODO: why device name is not "/dev/xvdb"?
               sudo mkfs -t ext4 /dev/nvme1n1
               mkdir -p /avalanche-data
@@ -292,17 +295,14 @@ Resources:
               cat > /tmp/avalanched.service <<EOF
               [Unit]
               Description=avalanche agent
+
               [Service]
               Type=notify
               Restart=always
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched \
-                --log-level info \
-                --region ${AWS::Region} \
-                --tls-key-path /etc/pki/tls/certs/avalanched.pki.key \
-                --tls-cert-path /etc/pki/tls/certs/avalanched.pki.crt \
-                --avalanche-bin /usr/local/bin/avalanche
+              ExecStart=/usr/local/bin/avalanched --avalanche-bin /usr/local/bin/avalanche
+
               [Install]
               WantedBy=multi-user.target
               EOF
