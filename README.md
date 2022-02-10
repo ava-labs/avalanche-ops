@@ -91,57 +91,61 @@ avalanche-ops-nodes-aws delete \
 --spec-file-path /tmp/test.yaml
 ```
 
+## `avalanched` on AWS
+
 Avalanche node daemon that provisions and manages the software on the remote machine (e.g., generate certs, encrypt, upload to S3):
 
 ```bash
 avalanched-aws
 ```
 
-### Demo: custom network on AWS
+### Example: set up custom network on AWS
 
 Write the configuration file with some default values:
 
-![demo-01](./img/demo-01.png)
+![demo-aws-01](./img/demo-aws-01.png)
 
 Then apply the configuration:
 
-![demo-02](./img/demo-02.png)
+![demo-aws-02](./img/demo-aws-02.png)
 
-![demo-03](./img/demo-03.png)
+![demo-aws-03](./img/demo-aws-03.png)
 
 Wait for beacon nodes to be ready:
 
-![demo-04](./img/demo-04.png)
+![demo-aws-04](./img/demo-aws-04.png)
 
-Check your S3 bucket for generated artifacts (all keys are encrypted using KMS):
+Check your S3 bucket for generated artifacts **(all keys are encrypted using KMS)**:
 
-![demo-05](./img/demo-05.png)
+![demo-aws-05](./img/demo-aws-05.png)
 
 Check the beacon nodes and make sure you can access via public IPv4 address:
 
-![demo-06](./img/demo-06.png)
+![demo-aws-06](./img/demo-aws-06.png)
 
-```yaml
----
-ip: 34.209.4.8
-id: NodeID-BD9XC2pLr1ADLuDSmPx6Di2fYFHpSrJTt
-```
+![demo-aws-07](./img/demo-aws-07.png)
 
-```bash
-curl -L http://34.209.4.8:9650/ext/metrics
-```
+![demo-aws-08](./img/demo-aws-08.png)
 
 Now, check non-beacon nodes created in a separate Auto Scaling Groups:
 
-![demo-07](./img/demo-07.png)
+![demo-aws-09](./img/demo-aws-09.png)
 
-![demo-08](./img/demo-08.png)
+![demo-aws-10](./img/demo-aws-10.png)
+
+Now, the `avalanched` on non-beacon nodes also publish their node information to the remote storage:
+
+![demo-aws-11](./img/demo-aws-11.png)
+
+![demo-aws-12](./img/demo-aws-12.png)
+
+![demo-aws-13](./img/demo-aws-13.png)
 
 To shut down the network, run `avalanche-ops-nodes-aws delete` command:
 
-![demo-09](./img/demo-09.png)
+![demo-aws-09](./img/demo-aws-09.png)
 
-![demo-10](./img/demo-10.png)
+![demo-aws-10](./img/demo-aws-10.png)
 
 ## Roadmap
 
