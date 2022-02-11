@@ -13,7 +13,8 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego, aws, aws_ec2, aws_kms, aws_s3, bash, cert, compress, id, random,
+    self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress, id,
+    random,
 };
 
 const APP_NAME: &str = "avalanched-aws";
@@ -39,6 +40,15 @@ fn main() {
                 .long("avalanche-bin")
                 .short('b')
                 .help("Sets the Avalanche node binary path to locate the downloaded file")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("CLOUDWATCH_CONFIG_FILE_PATH")
+                .long("cloudwatch-config-file-path")
+                .short('c')
+                .help("Sets CloudWatch configuration JSON file path to output")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -115,6 +125,38 @@ fn main() {
     if s3_bucket_name.is_empty() {
         panic!("'S3_BUCKET_NAME' tag not found")
     }
+
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: writing CloudWatch configuration JSON file");
+    let cloudwatch_config_file_path = matches
+        .value_of("CLOUDWATCH_CONFIG_FILE_PATH")
+        .unwrap_or(aws_cloudwatch::DEFAULT_CONFIG_FILE_PATH);
+    let mut cloudwatch_config = aws_cloudwatch::Config::default();
+    cloudwatch_config.logs = Some(aws_cloudwatch::Logs {
+        log_stream_name: id.clone(),
+        force_flush_interval: Some(60),
+        logs_collected: Some(aws_cloudwatch::LogsCollected {
+            files: Some(aws_cloudwatch::Files {
+                collect_list: Some(vec![
+                    aws_cloudwatch::Collect {
+                        log_group_name: format!("avalanched-{}-{}", node_type, instance_id),
+                        file_path: String::from("/var/log/avalanched/avalanched.log"),
+                        timestamp_format: None,
+                        timezone: None,
+                        auto_removal: None,
+                    },
+                    aws_cloudwatch::Collect {
+                        log_group_name: format!("avalanche-{}-{}", node_type, instance_id),
+                        file_path: String::from("/var/log/avalanche/avalanche.log"),
+                        timestamp_format: None,
+                        timezone: None,
+                        auto_removal: None,
+                    },
+                ]),
+            }),
+        }),
+    });
+    cloudwatch_config.sync(cloudwatch_config_file_path).unwrap();
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading network Config from S3");
@@ -306,7 +348,7 @@ fn main() {
     info!("writing avalanche.service file");
     let avalanche_service_file_contents = format!(
         "[Unit]
-Description=avalanche agent
+Description=avalanche node
 
 [Service]
 Type=notify
