@@ -1,5 +1,5 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
     string::String,
@@ -132,7 +132,7 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self::new()
+        Self::default()
     }
 }
 
@@ -226,7 +226,11 @@ impl Config {
             ));
         }
         let p = file_path.unwrap_or_else(|| self.config_file.clone().unwrap());
+
         info!("syncing avalanchego Config to '{}'", p);
+        let path = Path::new(&p);
+        let parent_dir = path.parent().unwrap();
+        fs::create_dir_all(parent_dir)?;
 
         let ret = serde_json::to_vec(self);
         let d = match ret {

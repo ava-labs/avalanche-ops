@@ -1,5 +1,5 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
     string::String,
@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub mod avalanchego;
 pub mod aws;
 pub mod aws_cloudformation;
+pub mod aws_cloudwatch;
 pub mod aws_ec2;
 pub mod aws_kms;
 pub mod aws_s3;
@@ -308,6 +309,9 @@ impl Spec {
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing Spec to '{}'", file_path);
+        let path = Path::new(file_path);
+        let parent_dir = path.parent().unwrap();
+        fs::create_dir_all(parent_dir)?;
 
         let ret = serde_yaml::to_vec(self);
         let d = match ret {
@@ -822,7 +826,10 @@ impl BeaconNode {
     /// Saves the current beacon node to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
-        info!("syncing network BeaconNode to '{}'", file_path);
+        info!("syncing BeaconNode to '{}'", file_path);
+        let path = Path::new(file_path);
+        let parent_dir = path.parent().unwrap();
+        fs::create_dir_all(parent_dir)?;
 
         let ret = serde_yaml::to_vec(self);
         let d = match ret {

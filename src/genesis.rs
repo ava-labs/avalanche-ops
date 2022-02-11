@@ -1,5 +1,5 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
     string::String,
@@ -93,7 +93,10 @@ impl Genesis {
     /// Saves the current configuration to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
-        info!("syncing network Config to '{}'", file_path);
+        info!("syncing genesis Config to '{}'", file_path);
+        let path = Path::new(file_path);
+        let parent_dir = path.parent().unwrap();
+        fs::create_dir_all(parent_dir)?;
 
         let ret = serde_json::to_vec(self);
         let d = match ret {

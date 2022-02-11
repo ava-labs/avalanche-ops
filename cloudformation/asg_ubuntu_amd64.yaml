@@ -269,9 +269,6 @@ Resources:
                 sleep 2
               done
 
-              mkdir -p /var/log/avalanche
-              chmod 755 /var/log/avalanche
-
               # TODO: why device name is not "/dev/xvdb"?
               sudo mkfs -t ext4 /dev/nvme1n1
               mkdir -p /avalanche-data
@@ -290,18 +287,25 @@ Resources:
               chmod +x /tmp/avalanche
               sudo mv /tmp/avalanche /usr/local/bin/avalanche
 
+              # TODO: make this configurable?
+              mkdir -p /var/log/avalanched
+              chmod 755 /var/log/avalanched
               mkdir -p /etc/pki/tls/certs
               chmod 755 /etc/pki/tls/certs
+              mkdir -p /var/log/avalanche
+              chmod 755 /var/log/avalanche
               cat > /tmp/avalanched.service <<EOF
               [Unit]
-              Description=avalanche agent
+              Description=avalanched (avalanche agent)
 
               [Service]
               Type=notify
               Restart=always
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched --avalanche-bin /usr/local/bin/avalanche
+              ExecStart=/usr/local/bin/avalanched --avalanche-bin /usr/local/bin/avalanche --cloudwatch-config-file-path /opt/aws/amazon-cloudwatch-agent/bin/config.json
+              StandardOutput=file:/var/log/avalanched/avalanched.log
+              StandardError=file:/var/log/avalanched/avalanched.log
 
               [Install]
               WantedBy=multi-user.target
@@ -311,10 +315,21 @@ Resources:
               sudo systemctl enable avalanched.service
               sudo systemctl start --no-block avalanched.service
 
-              # TODO: install with python3?
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
-              # curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -o /tmp/awslogs-agent-setup.py
-              # sudo python3 /tmp/awslogs-agent-setup.py --region ${AWS::Region}
+              mkdir -p /tmp/install-cloudwatch-logs
+              pushd /tmp/install-cloudwatch-logs
+              wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+              sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
+              popd
+
+              cat /opt/aws/amazon-cloudwatch-agent/bin/config.json
+              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
+              mkdir -p /etc/systemd/system/amazon-cloudwatch-agent.service.d
+              cat <<EOF > /etc/systemd/system/amazon-cloudwatch-agent.service.d/10-restart-always.conf
+              [Service]
+              Restart=always
+              RestartSec=60s
+              EOF
 
               # NOT WORKING; "print 'revision: %(revno)s' % version_info"
               # curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
