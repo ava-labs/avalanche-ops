@@ -47,6 +47,11 @@ fn main() {
     assert_eq!(dek.plain, plain2);
     assert_eq!(plain1, plain2);
 
+    thread::sleep(time::Duration::from_secs(2));
+
+    // envelope encryption with "AES_256" (32-byte)
+    // TODO
+
     thread::sleep(time::Duration::from_secs(5));
 
     let ret = ab!(kms_manager.schedule_to_delete(&key.id));

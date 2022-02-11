@@ -108,13 +108,13 @@ impl Manager {
     }
 
     /// Generates a data-encryption key.
-    /// TODO: implement envelope encryption using DEK.
+    /// The default key spec is AES_256 generate a 256-bit symmetric key.
     /// ref. https://docs.aws.amazon.com/kms/latest/APIReference/API_GenerateDataKey.html
     pub async fn generate_data_key(
         &self,
         key_id: &str,
         spec: Option<DataKeySpec>,
-    ) -> Result<crate::crypto::DEK> {
+    ) -> Result<crate::envelope::DEK> {
         // default to "AES_256" for generate 256-bit symmetric key (32-byte)
         let dek_spec = spec.unwrap_or(DataKeySpec::Aes256);
         info!(
@@ -141,7 +141,7 @@ impl Manager {
         let cipher = resp.ciphertext_blob().unwrap();
         let plain = resp.plaintext().unwrap();
 
-        Ok(crate::crypto::DEK::new(
+        Ok(crate::envelope::DEK::new(
             cipher.clone().into_inner(),
             plain.clone().into_inner(),
         ))
