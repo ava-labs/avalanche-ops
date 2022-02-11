@@ -177,9 +177,8 @@ fn main() {
         compress::to_zstd(&tls_key_path, &tmp_compressed_path, None).unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15).unwrap();
-        rt.block_on(kms_manager.encrypt_file(
+        rt.block_on(kms_manager.seal_aes_256_file(
             &kms_cmk_arn,
-            None,
             &tmp_compressed_path,
             &tmp_encrypted_path,
         ))
@@ -190,7 +189,7 @@ fn main() {
                 &s3_bucket_name,
                 &tmp_encrypted_path,
                 format!(
-                    "{}/{}.key.zstd.encrypted",
+                    "{}/{}.key.zstd.seal_aes_256.encrypted",
                     aws_s3::KeyPath::PkiKeyDir.to_string(&id),
                     instance_id
                 )

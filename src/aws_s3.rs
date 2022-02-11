@@ -453,7 +453,7 @@ impl KeyPath {
             KeyPath::AvalancheBin => format!("{}/install/avalanche", id),
             KeyPath::AvalancheBinCompressed => format!("{}/install/avalanche.zstd", id),
             KeyPath::Ec2AccessKeyCompressedEncrypted => {
-                format!("{}/ec2-access-key.zstd.encrypted", id)
+                format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
             }
             KeyPath::PluginsDir => format!("{}/install/plugins", id),
             KeyPath::PkiKeyDir => {

@@ -48,14 +48,15 @@ fn main() {
     assert_eq!(dek_ciphertext_decrypted, dek_plaintext_encrypted_decrypted);
 
     let plaintext = "Hello World!";
-    let mut file = tempfile::NamedTempFile::new().unwrap();
-    let ret = file.write_all(plaintext.as_bytes());
+    let mut plaintext_file = tempfile::NamedTempFile::new().unwrap();
+    let ret = plaintext_file.write_all(plaintext.as_bytes());
     assert!(ret.is_ok());
-    let file_path = file.path().to_str().unwrap();
+    let plaintext_file_path = plaintext_file.path().to_str().unwrap();
+
     let encrypted_file_path = avalanche_ops::random::tmp_path(10).unwrap();
     let decrypted_file_path = avalanche_ops::random::tmp_path(10).unwrap();
-
-    ab!(kms_manager.encrypt_file(&cmk.id, None, file_path, &encrypted_file_path)).unwrap();
+    ab!(kms_manager.encrypt_file(&cmk.id, None, plaintext_file_path, &encrypted_file_path))
+        .unwrap();
     ab!(kms_manager.decrypt_file(&cmk.id, None, &encrypted_file_path, &decrypted_file_path))
         .unwrap();
 
@@ -64,17 +65,49 @@ fn main() {
     encrypted_file
         .read_to_end(&mut encrypted_file_contents)
         .unwrap();
-
     let mut decrypted_file = File::open(decrypted_file_path).unwrap();
     let mut decrypted_file_contents = Vec::new();
     decrypted_file
         .read_to_end(&mut decrypted_file_contents)
         .unwrap();
-
     info!("encrypted_file_contents: {:?}", encrypted_file_contents);
     info!("decrypted_file_contents: {:?}", decrypted_file_contents);
     assert_eq!(&decrypted_file_contents, plaintext.as_bytes());
     assert!(eq_vectors(&decrypted_file_contents, plaintext.as_bytes()));
+
+    let sealed_aes_256_file_path = avalanche_ops::random::tmp_path(10).unwrap();
+    let unsealed_aes_256_file_path = avalanche_ops::random::tmp_path(10).unwrap();
+    ab!(kms_manager.seal_aes_256_file(&cmk.id, plaintext_file_path, &sealed_aes_256_file_path))
+        .unwrap();
+    ab!(kms_manager.unseal_aes_256_file(
+        &cmk.id,
+        &sealed_aes_256_file_path,
+        &unsealed_aes_256_file_path,
+    ))
+    .unwrap();
+    let mut sealed_aes_256_file = File::open(sealed_aes_256_file_path).unwrap();
+    let mut sealed_aes_256_file_contents = Vec::new();
+    sealed_aes_256_file
+        .read_to_end(&mut sealed_aes_256_file_contents)
+        .unwrap();
+    let mut unsealed_aes_256_file = File::open(unsealed_aes_256_file_path).unwrap();
+    let mut unsealed_aes_256_file_contents = Vec::new();
+    unsealed_aes_256_file
+        .read_to_end(&mut unsealed_aes_256_file_contents)
+        .unwrap();
+    info!(
+        "sealed_aes_256_file_contents: {:?}",
+        sealed_aes_256_file_contents
+    );
+    info!(
+        "unsealed_aes_256_file_contents: {:?}",
+        unsealed_aes_256_file_contents
+    );
+    assert_eq!(&unsealed_aes_256_file_contents, plaintext.as_bytes());
+    assert!(eq_vectors(
+        &unsealed_aes_256_file_contents,
+        plaintext.as_bytes()
+    ));
 
     thread::sleep(time::Duration::from_secs(2));
 

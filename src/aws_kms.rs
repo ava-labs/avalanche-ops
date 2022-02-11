@@ -621,6 +621,100 @@ impl Manager {
         );
         Ok(decrypted)
     }
+
+    /// Envelope-encrypts data from a file and save the ciphertext to the other file.
+    pub async fn seal_aes_256_file(
+        &self,
+        key_id: &str,
+        src_file: &str,
+        dst_file: &str,
+    ) -> Result<()> {
+        info!("envelope-encrypting file {} to {}", src_file, dst_file);
+        let d = match fs::read(src_file) {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed read {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+
+        let ciphertext = match self.seal_aes_256(key_id, &d).await {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        let mut f = match File::create(dst_file) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed File::create {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+        match f.write_all(&ciphertext) {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed File::write_all {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+
+        Ok(())
+    }
+
+    /// Envelope-decrypts data from a file and save the plaintext to the other file.
+    pub async fn unseal_aes_256_file(
+        &self,
+        key_id: &str,
+        src_file: &str,
+        dst_file: &str,
+    ) -> Result<()> {
+        info!("envelope-decrypting file {} to {}", src_file, dst_file);
+        let d = match fs::read(src_file) {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed read {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+
+        let plaintext = match self.unseal_aes_256(key_id, &d).await {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        let mut f = match File::create(dst_file) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed File::create {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+        match f.write_all(&plaintext) {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed File::write_all {:?}", e),
+                    is_retryable: false,
+                });
+            }
+        };
+
+        Ok(())
+    }
 }
 
 /// Represents the KMS CMK.

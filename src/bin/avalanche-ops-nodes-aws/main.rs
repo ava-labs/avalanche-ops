@@ -502,9 +502,8 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         compress::to_zstd(ec2_key_path.as_str(), &tmp_compressed_path, None).unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15).unwrap();
-        rt.block_on(kms_manager.encrypt_file(
+        rt.block_on(kms_manager.seal_aes_256_file(
             aws_resources.kms_cmk_id.clone().unwrap().as_str(),
-            None,
             &tmp_compressed_path,
             &tmp_encrypted_path,
         ))
