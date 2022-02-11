@@ -18,7 +18,6 @@ pub mod aws_sts;
 pub mod bash;
 pub mod cert;
 pub mod compress;
-pub mod envelope;
 pub mod genesis;
 pub mod http;
 pub mod humanize;
