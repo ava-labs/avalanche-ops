@@ -8,6 +8,7 @@ use std::{
 };
 
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_s3::model::Object;
 use clap::{App, AppSettings, Arg};
 use crossterm::{
     execute,
@@ -20,7 +21,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress,
-    envelope, random,
+    envelope, genesis, node, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -241,7 +242,7 @@ fn run_default_spec(
     }
 
     // set defaults based on genesis file
-    let genesis = avalanche_ops::genesis::load(genesis_file_path)?;
+    let genesis = genesis::Config::load(genesis_file_path)?;
     let mut avalanchego_config = avalanchego::Config::default();
     avalanchego_config.network_id = Some(genesis.network_id);
 
@@ -253,7 +254,6 @@ fn run_default_spec(
         avalanchego_config,
     );
     spec.validate()?;
-    spec.sync(spec_file_path)?;
 
     execute!(
         stdout(),
@@ -278,7 +278,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut spec = avalanche_ops::load_spec(spec_file_path).unwrap();
+    let mut spec = avalanche_ops::Spec::load(spec_file_path).unwrap();
     spec.validate()?;
 
     let rt = Runtime::new().unwrap();
@@ -332,7 +332,6 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             Some(format!("{}-asg-non-beacon-nodes", spec.id));
     }
     spec.aws_resources = Some(aws_resources.clone());
-    spec.sync(spec_file_path)?;
 
     execute!(
         stdout(),
@@ -385,11 +384,11 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         &spec.install_artifacts.avalanched_bin,
-        &aws_s3::KeyPath::AvalanchedBin.to_string(&spec.id),
+        &aws_s3::KeyPath::AvalanchedBin(spec.id.clone()).encode(),
     ))
     .unwrap();
     let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
-    crate::compress::to_zstd(
+    crate::compress::to_zstd_file(
         &spec.install_artifacts.avalanchego_bin,
         &tmp_avalanche_bin_compressed_path,
         None,
@@ -398,13 +397,13 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         &tmp_avalanche_bin_compressed_path,
-        &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&spec.id),
+        &aws_s3::KeyPath::AvalancheBinCompressed(spec.id.clone()).encode(),
     ))
     .unwrap();
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         &spec.install_artifacts.avalanchego_bin,
-        &aws_s3::KeyPath::AvalancheBin.to_string(&spec.id),
+        &aws_s3::KeyPath::AvalancheBin(spec.id.clone()).encode(),
     ))
     .unwrap();
     if spec.install_artifacts.plugins_dir.is_some() {
@@ -418,7 +417,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             let file_name = file_name.as_os_str().to_str().unwrap();
 
             let tmp_plugin_compressed_path = random::tmp_path(15).unwrap();
-            crate::compress::to_zstd(file_path, &tmp_plugin_compressed_path, None).unwrap();
+            crate::compress::to_zstd_file(file_path, &tmp_plugin_compressed_path, None).unwrap();
 
             info!(
                 "uploading {} (compressed from {}) from plugins directory {}",
@@ -430,7 +429,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                     &tmp_plugin_compressed_path,
                     format!(
                         "{}/{}.zstd",
-                        &aws_s3::KeyPath::PluginsDir.to_string(&spec.id),
+                        &aws_s3::KeyPath::PluginsDir(spec.id.clone()).encode(),
                         file_name
                     )
                     .as_str(),
@@ -445,7 +444,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             rt.block_on(s3_manager.put_object(
                 &aws_resources.bucket,
                 &genesis_file_path,
-                &aws_s3::KeyPath::GenesisFile.to_string(&spec.id),
+                &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
             ))
             .unwrap();
         }
@@ -453,7 +452,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         spec_file_path,
-        &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
+        &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
     ))
     .unwrap();
 
@@ -472,13 +471,12 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         aws_resources.kms_cmk_id = Some(key.id);
         aws_resources.kms_cmk_arn = Some(key.arn);
         spec.aws_resources = Some(aws_resources.clone());
-        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
+            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -501,7 +499,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         .unwrap();
 
         let tmp_compressed_path = random::tmp_path(15).unwrap();
-        compress::to_zstd(ec2_key_path.as_str(), &tmp_compressed_path, None).unwrap();
+        compress::to_zstd_file(ec2_key_path.as_str(), &tmp_compressed_path, None).unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15).unwrap();
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
@@ -509,19 +507,18 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             &tmp_encrypted_path,
-            &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted.to_string(&spec.id),
+            &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
         ))
         .unwrap();
 
         aws_resources.ec2_key_path = Some(ec2_key_path);
         spec.aws_resources = Some(aws_resources.clone());
-        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
+            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -581,13 +578,12 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             }
         }
         spec.aws_resources = Some(aws_resources.clone());
-        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
+            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -671,13 +667,12 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             }
         }
         spec.aws_resources = Some(aws_resources.clone());
-        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
+            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -722,6 +717,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ));
     }
 
+    let mut all_nodes: Vec<node::Node> = Vec::new();
     if spec.machine.beacon_nodes.unwrap_or(0) > 0
         && aws_resources
             .cloudformation_asg_beacon_nodes_logical_id
@@ -746,7 +742,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
 
         let desired_capacity = spec.machine.beacon_nodes.unwrap();
         let mut parameters = asg_parameters.clone();
-        parameters.push(build_param("NodeType", "beacon"));
+        parameters.push(build_param("NodeKind", "beacon"));
         parameters.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
@@ -821,12 +817,13 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         // wait for beacon nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
         let target_nodes = spec.machine.beacon_nodes.unwrap();
+        let mut objects: Vec<Object>;
         loop {
             thread::sleep(Duration::from_secs(30));
-            let objects = rt
+            objects = rt
                 .block_on(s3_manager.list_objects(
                     &aws_resources.bucket,
-                    Some(aws_s3::KeyPath::BeaconNodesDir.to_string(&spec.id)),
+                    Some(aws_s3::KeyPath::BeaconNodesDir(spec.id.clone()).encode()),
                 ))
                 .unwrap();
             info!(
@@ -838,7 +835,11 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 break;
             }
         }
-
+        for obj in objects.iter() {
+            let s3_key = obj.key().unwrap();
+            let beacon_node = aws_s3::KeyPath::parse_node_path(s3_key).unwrap();
+            all_nodes.push(beacon_node);
+        }
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
@@ -846,7 +847,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
+            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
 
@@ -877,7 +878,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
 
         let desired_capacity = spec.machine.non_beacon_nodes;
         let mut parameters = asg_parameters.clone();
-        parameters.push(build_param("NodeType", "non-beacon"));
+        parameters.push(build_param("NodeKind", "non-beacon"));
         parameters.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
@@ -933,14 +934,11 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             .unwrap();
         let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
 
-        let mut non_beacon_nodes: Vec<avalanche_ops::NonBeaconNode> = vec![];
-
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
         println!("\nchmod 400 {}", ec2_key_path);
         for d in droplets {
-            non_beacon_nodes.push(avalanche_ops::NonBeaconNode::new(d.public_ipv4.clone()));
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             println!(
                 "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
@@ -953,7 +951,32 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         }
         println!();
 
-        aws_resources.non_beacon_nodes = Some(non_beacon_nodes);
+        // wait for non-beacon nodes to generate certs and node ID and post to remote storage
+        // TODO: set timeouts
+        let target_nodes = spec.machine.non_beacon_nodes;
+        let mut objects: Vec<Object>;
+        loop {
+            thread::sleep(Duration::from_secs(30));
+            objects = rt
+                .block_on(s3_manager.list_objects(
+                    &aws_resources.bucket,
+                    Some(aws_s3::KeyPath::BeaconNodesDir(spec.id.clone()).encode()),
+                ))
+                .unwrap();
+            info!(
+                "{} non-beacon nodes are ready (expecting {} nodes)",
+                objects.len(),
+                target_nodes
+            );
+            if objects.len() as u32 >= target_nodes {
+                break;
+            }
+        }
+        for obj in objects.iter() {
+            let s3_key = obj.key().unwrap();
+            let non_beacon_node = aws_s3::KeyPath::parse_node_path(s3_key).unwrap();
+            all_nodes.push(non_beacon_node);
+        }
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
@@ -961,11 +984,15 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile.to_string(&spec.id),
+            &aws_s3::KeyPath::ConfigFile(spec.id).encode(),
         ))
         .unwrap();
     }
 
+    println!("\n\nfound all nodes based on S3 keys:\n");
+    for node in all_nodes {
+        println!("{}", node.encode_yaml().unwrap());
+    }
     Ok(())
 }
 
@@ -980,7 +1007,7 @@ fn run_delete(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalanche_ops::load_spec(spec_file_path).unwrap();
+    let spec = avalanche_ops::Spec::load(spec_file_path).unwrap();
     let aws_resources = spec.aws_resources.clone().unwrap();
 
     let rt = Runtime::new().unwrap();

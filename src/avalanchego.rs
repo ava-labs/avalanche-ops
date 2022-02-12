@@ -203,14 +203,14 @@ impl Config {
         self.network_id.is_none() || self.network_id.unwrap() == 1
     }
 
-    /// Converts to string.
+    /// Converts to string with JSON encoder.
     pub fn encode_json(&self) -> io::Result<String> {
         match serde_json::to_string(&self) {
             Ok(s) => Ok(s),
             Err(e) => {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    format!("failed to serialize Config to YAML {}", e),
+                    format!("failed to serialize to YAML {}", e),
                 ));
             }
         }
@@ -246,6 +246,30 @@ impl Config {
         f.write_all(&d)?;
 
         Ok(())
+    }
+
+    pub fn load(file_path: &str) -> io::Result<Self> {
+        info!("loading config from {}", file_path);
+
+        if !Path::new(file_path).exists() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("file {} does not exists", file_path),
+            ));
+        }
+
+        let f = match File::open(&file_path) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to open {} ({})", file_path, e),
+                ));
+            }
+        };
+        serde_json::from_reader(f).map_err(|e| {
+            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
+        })
     }
 
     /// Validates the configuration.
@@ -288,7 +312,7 @@ impl Config {
         // network ID must match with the one in genesis file
         if self.genesis.is_some() {
             let genesis_file_path = self.genesis.clone().unwrap();
-            let genesis_config = crate::genesis::load(&genesis_file_path).unwrap();
+            let genesis_config = crate::genesis::Config::load(&genesis_file_path).unwrap();
             let genesis_network_id = self.network_id.unwrap();
             if genesis_config.network_id.ne(&genesis_network_id) {
                 return Err(Error::new(
@@ -342,29 +366,9 @@ fn test_config() {
     let p = crate::random::tmp_path(10).unwrap();
     let ret = config.sync(Some(p.clone()));
     assert!(ret.is_ok());
+
+    let config_loaded = Config::load(&p).unwrap();
+    assert_eq!(config, config_loaded);
+
     fs::remove_file(p).unwrap();
-}
-
-pub fn load_config(file_path: &str) -> io::Result<Config> {
-    info!("loading config from {}", file_path);
-
-    if !Path::new(file_path).exists() {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            format!("file {} does not exists", file_path),
-        ));
-    }
-
-    let f = match File::open(&file_path) {
-        Ok(f) => f,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to open {} ({})", file_path, e),
-            ));
-        }
-    };
-    serde_json::from_reader(f).map_err(|e| {
-        return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
-    })
 }

@@ -90,7 +90,7 @@ fn main() {
     info!("STEP: fetching tags from the local instance");
     let tags = rt.block_on(ec2_manager.fetch_tags(&instance_id)).unwrap();
     let mut id: String = String::new();
-    let mut node_type: String = String::new();
+    let mut node_kind: String = String::new();
     let mut kms_cmk_arn: String = String::new();
     let mut s3_bucket_name: String = String::new();
     for c in tags {
@@ -101,8 +101,8 @@ fn main() {
             "ID" => {
                 id = v.to_string();
             }
-            "NODE_TYPE" => {
-                node_type = v.to_string();
+            "NODE_KIND" => {
+                node_kind = v.to_string();
             }
             "KMS_CMK_ARN" => {
                 kms_cmk_arn = v.to_string();
@@ -116,8 +116,8 @@ fn main() {
     if id.is_empty() {
         panic!("'ID' tag not found")
     }
-    if node_type.is_empty() {
-        panic!("'NODE_TYPE' tag not found")
+    if node_kind.is_empty() {
+        panic!("'NODE_KIND' tag not found")
     }
     if kms_cmk_arn.is_empty() {
         panic!("'KMS_CMK_ARN' tag not found")
@@ -140,14 +140,14 @@ fn main() {
             files: Some(aws_cloudwatch::Files {
                 collect_list: Some(vec![
                     aws_cloudwatch::Collect {
-                        log_group_name: format!("avalanched-{}-{}", node_type, instance_id),
+                        log_group_name: format!("avalanched-{}-{}", node_kind, instance_id),
                         file_path: String::from("/var/log/avalanched/avalanched.log"),
                         timestamp_format: None,
                         timezone: None,
                         auto_removal: None,
                     },
                     aws_cloudwatch::Collect {
-                        log_group_name: format!("avalanche-{}-{}", node_type, instance_id),
+                        log_group_name: format!("avalanche-{}-{}", node_kind, instance_id),
                         file_path: String::from("/var/log/avalanche/avalanche.log"),
                         timestamp_format: None,
                         timezone: None,
@@ -164,11 +164,11 @@ fn main() {
     let tmp_spec_file_path = random::tmp_path(15).unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
-        &aws_s3::KeyPath::ConfigFile.to_string(&id),
+        &aws_s3::KeyPath::ConfigFile(id.clone()).encode(),
         &tmp_spec_file_path,
     ))
     .unwrap();
-    let mut spec = avalanche_ops::load_spec(&tmp_spec_file_path).unwrap();
+    let mut spec = avalanche_ops::Spec::load(&tmp_spec_file_path).unwrap();
 
     if spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
@@ -178,7 +178,7 @@ fn main() {
         let tmp_genesis_path = random::tmp_path(15).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &aws_s3::KeyPath::GenesisFile.to_string(&spec.id),
+            &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
             &tmp_genesis_path,
         ))
         .unwrap();
@@ -217,7 +217,7 @@ fn main() {
 
         info!("uploading generated TLS certs to S3");
         let tmp_compressed_path = random::tmp_path(15).unwrap();
-        compress::to_zstd(&tls_key_path, &tmp_compressed_path, None).unwrap();
+        compress::to_zstd_file(&tls_key_path, &tmp_compressed_path, None).unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15).unwrap();
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
@@ -229,7 +229,7 @@ fn main() {
                 &tmp_encrypted_path,
                 format!(
                     "{}/{}.key.zstd.seal_aes_256.encrypted",
-                    aws_s3::KeyPath::PkiKeyDir.to_string(&id),
+                    aws_s3::KeyPath::PkiKeyDir(id.clone()).encode(),
                     instance_id
                 )
                 .as_str(),
@@ -247,11 +247,11 @@ fn main() {
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &aws_s3::KeyPath::AvalancheBinCompressed.to_string(&id),
+            &aws_s3::KeyPath::AvalancheBinCompressed(id.clone()).encode(),
             &tmp_avalanche_bin_compressed_path,
         ))
         .unwrap();
-        compress::from_zstd(&tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
+        compress::from_zstd_file(&tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
         let f = File::open(avalanche_bin).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
     }
@@ -264,7 +264,7 @@ fn main() {
         let objects = rt
             .block_on(s3_manager.list_objects(
                 &s3_bucket_name,
-                Some(aws_s3::KeyPath::PluginsDir.to_string(&id)),
+                Some(aws_s3::KeyPath::PluginsDir(id.clone()).encode()),
             ))
             .unwrap();
         for obj in objects.iter() {
@@ -275,7 +275,7 @@ fn main() {
             let tmp_path = random::tmp_path(15).unwrap();
             rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
                 .unwrap();
-            compress::from_zstd(&tmp_path, &file_path).unwrap();
+            compress::from_zstd_file(&tmp_path, &file_path).unwrap();
             let f = File::open(file_path).unwrap();
             f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
         }
@@ -286,7 +286,7 @@ fn main() {
 
     // mainnet/other pre-defined test nets have hard-coded beacon nodes
     // thus no need for beacon nodes
-    if !spec.avalanchego_config.is_mainnet() && node_type.eq("non-beacon") {
+    if !spec.avalanchego_config.is_mainnet() && node_kind.eq("non-beacon") {
         thread::sleep(Duration::from_secs(1));
         info!(
             "STEP: downloading beacon node information for network '{}'",
@@ -294,8 +294,17 @@ fn main() {
         );
 
         // "avalanche-ops" should always set up beacon nodes first
-        // so here we assume beacon nodes information are already
-        // updated in the remote storage
+        // so here we assume beacon nodes are already set up
+        // and their information is already available via share,
+        // remote storage for service discovery
+        //
+        // always send a new "list_objects" on remote storage
+        // rather than relying on potentially stale (not via "spec")
+        // in case the member lists for "beacon" nodes becomes stale
+        // (e.g., machine replacement in "beacon" nodes ASG)
+        //
+        // TODO: handle stale beacon nodes by heartbeats timestamps
+
         let target_nodes = spec.machine.beacon_nodes.unwrap();
         let mut objects: Vec<Object>;
         loop {
@@ -303,7 +312,7 @@ fn main() {
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &s3_bucket_name,
-                    Some(aws_s3::KeyPath::BeaconNodesDir.to_string(&id)),
+                    Some(aws_s3::KeyPath::BeaconNodesDir(id.clone()).encode()),
                 ))
                 .unwrap();
             info!(
@@ -320,16 +329,15 @@ fn main() {
         let mut bootstrap_ids: Vec<String> = vec![];
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let tmp_path = random::tmp_path(15).unwrap();
-            rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
-                .unwrap();
+            let beacon_node = aws_s3::KeyPath::parse_node_path(s3_key).unwrap();
 
+            // assume all nodes in the network use the same ports
             // ref. "avalanchego/config.StakingPortKey" default value is "9651"
             let staking_port = spec
                 .avalanchego_config
                 .staking_port
                 .unwrap_or(avalanchego::DEFAULT_STAKING_PORT);
-            let beacon_node = avalanche_ops::load_beacon_node(&tmp_path).unwrap();
+
             bootstrap_ips.push(format!("{}:{}", beacon_node.ip, staking_port));
             bootstrap_ids.push(beacon_node.id);
         }
@@ -381,42 +389,40 @@ WantedBy=multi-user.target",
         // TODO: check upgrade artifacts by polling s3
         thread::sleep(Duration::from_secs(20));
 
-        if node_type.eq("beacon") {
+        // to be downloaded in bootstrapping non-beacon nodes
+        if node_kind.eq("beacon") {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing beacon node information");
-            let beacon_node = avalanche_ops::BeaconNode::new(public_ipv4.clone(), node_id.clone());
-            let tmp_beacon_node_path = random::tmp_path(15).unwrap();
-            beacon_node.sync(&tmp_beacon_node_path).unwrap();
-            rt.block_on(
-                s3_manager.put_object(
-                    &s3_bucket_name,
-                    &tmp_beacon_node_path,
-                    format!(
-                        "{}/{}.yaml",
-                        aws_s3::KeyPath::BeaconNodesDir.to_string(&id),
-                        instance_id
-                    )
-                    .as_str(),
-                ),
-            )
+            let s3_key = aws_s3::KeyPath::BeaconNode {
+                id: spec.id.clone(),
+                instance_id: instance_id.clone(),
+                node_id: node_id.clone(),
+                node_ip: public_ipv4.clone(),
+            };
+            let s3_key = s3_key.encode();
+            rt.block_on(s3_manager.put_object(
+                &s3_bucket_name,
+                &spec.avalanchego_config.clone().config_file.unwrap(),
+                &s3_key,
+            ))
             .unwrap();
         }
 
-        if node_type.eq("non-beacon") {
+        if node_kind.eq("non-beacon") {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing non-beacon node information");
-            rt.block_on(
-                s3_manager.put_object(
-                    &s3_bucket_name,
-                    &spec.avalanchego_config.clone().config_file.unwrap(),
-                    format!(
-                        "{}/{}.json",
-                        aws_s3::KeyPath::NonBeaconNodesDir.to_string(&id),
-                        instance_id
-                    )
-                    .as_str(),
-                ),
-            )
+            let s3_key = aws_s3::KeyPath::NonBeaconNode {
+                id: spec.id.clone(),
+                instance_id: instance_id.clone(),
+                node_id: node_id.clone(),
+                node_ip: public_ipv4.clone(),
+            };
+            let s3_key = s3_key.encode();
+            rt.block_on(s3_manager.put_object(
+                &s3_bucket_name,
+                &spec.avalanchego_config.clone().config_file.unwrap(),
+                &s3_key,
+            ))
             .unwrap();
         }
     }
