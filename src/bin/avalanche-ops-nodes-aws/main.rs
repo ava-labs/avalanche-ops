@@ -19,7 +19,8 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego, aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress, random,
+    self, avalanchego, aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress,
+    envelope, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -481,6 +482,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
     }
+    let envelope = envelope::Envelope::new(Some(kms_manager), aws_resources.kms_cmk_id.clone());
 
     if aws_resources.ec2_key_path.is_none() {
         thread::sleep(Duration::from_secs(2));
@@ -502,12 +504,8 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         compress::to_zstd(ec2_key_path.as_str(), &tmp_compressed_path, None).unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15).unwrap();
-        rt.block_on(kms_manager.seal_aes_256_file(
-            aws_resources.kms_cmk_id.clone().unwrap().as_str(),
-            &tmp_compressed_path,
-            &tmp_encrypted_path,
-        ))
-        .unwrap();
+        rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
+            .unwrap();
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             &tmp_encrypted_path,

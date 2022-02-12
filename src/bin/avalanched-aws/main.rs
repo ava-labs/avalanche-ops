@@ -13,8 +13,8 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress, id,
-    random,
+    self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress,
+    envelope, id, random,
 };
 
 const APP_NAME: &str = "avalanched-aws";
@@ -125,6 +125,7 @@ fn main() {
     if s3_bucket_name.is_empty() {
         panic!("'S3_BUCKET_NAME' tag not found")
     }
+    let envelope = envelope::Envelope::new(Some(kms_manager), Some(kms_cmk_arn));
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: writing CloudWatch configuration JSON file");
@@ -219,12 +220,8 @@ fn main() {
         compress::to_zstd(&tls_key_path, &tmp_compressed_path, None).unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15).unwrap();
-        rt.block_on(kms_manager.seal_aes_256_file(
-            &kms_cmk_arn,
-            &tmp_compressed_path,
-            &tmp_encrypted_path,
-        ))
-        .unwrap();
+        rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
+            .unwrap();
 
         rt.block_on(
             s3_manager.put_object(
