@@ -25,6 +25,7 @@ pub mod genesis;
 pub mod http;
 pub mod humanize;
 pub mod id;
+pub mod node;
 pub mod random;
 mod time;
 
@@ -55,7 +56,7 @@ pub struct Spec {
 
     /// AWS resources if run in AWS.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub aws_resources: Option<AWSResources>,
+    pub aws_resources: Option<aws::Resources>,
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
     pub machine: Machine,
@@ -67,111 +68,6 @@ pub struct Spec {
     /// in the remote machines.
     /// Must be "kebab-case" to be compatible with "avalanchego".
     pub avalanchego_config: avalanchego::Config,
-}
-
-/// Represents the current AWS resource status.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct AWSResources {
-    /// AWS region to create resources.
-    /// MUST BE NON-EMPTY.
-    #[serde(default)]
-    pub region: String,
-
-    /// Name of the bucket to store (or download from)
-    /// the configuration and resources (e.g., S3).
-    /// If not exists, it creates automatically.
-    /// If exists, it skips creation and uses the existing one.
-    /// MUST BE NON-EMPTY.
-    #[serde(default)]
-    pub bucket: String,
-
-    /// AWS STS caller loaded from its local environment.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub identity: Option<aws_sts::Identity>,
-
-    /// KMS CMK ID to encrypt resources.
-    /// None if not created yet.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub kms_cmk_id: Option<String>,
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub kms_cmk_arn: Option<String>,
-
-    /// EC2 key pair name for SSH access to EC2 instances.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ec2_key_name: Option<String>,
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ec2_key_path: Option<String>,
-
-    /// CloudFormation stack name for EC2 instance role.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ec2_instance_role: Option<String>,
-    /// Instance profile ARN from "cloudformation_ec2_instance_role".
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ec2_instance_profile_arn: Option<String>,
-
-    /// CloudFormation stack name for VPC.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_vpc: Option<String>,
-    /// VPC ID from "cloudformation_vpc".
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_vpc_id: Option<String>,
-    /// Security group ID from "cloudformation_vpc".
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_vpc_security_group_id: Option<String>,
-    /// Public subnet IDs from "cloudformation_vpc".
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
-
-    /// CloudFormation stack name of Auto Scaling Group (ASG)
-    /// for beacon nodes.
-    /// None if mainnet.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_beacon_nodes: Option<String>,
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_beacon_nodes_logical_id: Option<String>,
-
-    /// CloudFormation stack name of Auto Scaling Group (ASG)
-    /// for non-beacon nodes.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_non_beacon_nodes: Option<String>,
-    /// Only updated after creation.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_non_beacon_nodes_logical_id: Option<String>,
-
-    /// Empty if the node itself is a beacon node.
-    /// Non-empty to specify pre-provisioned beacon nodes in the network.
-    /// This is read-only and should not be manually configured by the user.
-    /// The node provisioner should update this field, so that
-    /// the node agent can download and use this for its "--bootstrap-ips"
-    /// and "--bootstrap-ids" flags.
-    /// Read-only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub beacon_nodes: Option<Vec<BeaconNode>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub non_beacon_nodes: Option<Vec<NonBeaconNode>>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -242,7 +138,7 @@ impl Spec {
         Self {
             id: crate::id::generate("avalanche-ops"),
 
-            aws_resources: Some(AWSResources {
+            aws_resources: Some(aws::Resources {
                 region: String::from("us-west-2"),
                 bucket: format!("avalanche-ops-{}", crate::time::get(8)), // [year][month][date]
 
@@ -267,9 +163,6 @@ impl Spec {
 
                 cloudformation_asg_non_beacon_nodes: None,
                 cloudformation_asg_non_beacon_nodes_logical_id: None,
-
-                beacon_nodes: None,
-                non_beacon_nodes: None,
             }),
 
             machine: Machine {
@@ -329,6 +222,30 @@ impl Spec {
         f.write_all(&d)?;
 
         Ok(())
+    }
+
+    pub fn load(file_path: &str) -> io::Result<Self> {
+        info!("loading Spec from {}", file_path);
+
+        if !Path::new(file_path).exists() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("file {} does not exists", file_path),
+            ));
+        }
+
+        let f = match File::open(&file_path) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to open {} ({})", file_path, e),
+                ));
+            }
+        };
+        serde_yaml::from_reader(f).map_err(|e| {
+            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
+        })
     }
 
     /// Validates the spec.
@@ -484,30 +401,6 @@ impl Spec {
     }
 }
 
-pub fn load_spec(file_path: &str) -> io::Result<Spec> {
-    info!("loading Spec from {}", file_path);
-
-    if !Path::new(file_path).exists() {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            format!("file {} does not exists", file_path),
-        ));
-    }
-
-    let f = match File::open(&file_path) {
-        Ok(f) => f,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to open {} ({})", file_path, e),
-            ));
-        }
-    };
-    serde_yaml::from_reader(f).map_err(|e| {
-        return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
-    })
-}
-
 #[test]
 fn test_spec() {
     use std::fs;
@@ -562,15 +455,6 @@ id: {}
 aws_resources:
   region: us-west-2
   bucket: {}
-  beacon_nodes:
-  - ip: 1.2.3.4
-    id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
-  - ip: 1.2.3.5
-    id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX
-  - ip: 1.2.3.6
-    id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY
-  non_beacon_nodes:
-  - ip: 1.2.3.9
 
 machine:
   beacon_nodes: 10
@@ -617,7 +501,7 @@ avalanchego_config:
     assert!(ret.is_ok());
     let config_path = f.path().to_str().unwrap();
 
-    let ret = load_spec(config_path);
+    let ret = Spec::load(config_path);
     assert!(ret.is_ok());
     let cfg = ret.unwrap();
 
@@ -637,7 +521,7 @@ avalanchego_config:
     let orig = Spec {
         id: id.clone(),
 
-        aws_resources: Some(AWSResources {
+        aws_resources: Some(aws::Resources {
             region: String::from("us-west-2"),
             bucket: bucket.clone(),
 
@@ -662,24 +546,6 @@ avalanchego_config:
 
             cloudformation_asg_non_beacon_nodes: None,
             cloudformation_asg_non_beacon_nodes_logical_id: None,
-
-            beacon_nodes: Some(vec![
-                BeaconNode {
-                    ip: String::from("1.2.3.4"),
-                    id: String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"),
-                },
-                BeaconNode {
-                    ip: String::from("1.2.3.5"),
-                    id: String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX"),
-                },
-                BeaconNode {
-                    ip: String::from("1.2.3.6"),
-                    id: String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY"),
-                },
-            ]),
-            non_beacon_nodes: Some(vec![NonBeaconNode {
-                ip: String::from("1.2.3.9"),
-            }]),
         }),
 
         machine: Machine {
@@ -714,22 +580,6 @@ avalanchego_config:
     let aws_reesources = cfg.aws_resources.unwrap();
     assert_eq!(aws_reesources.region, "us-west-2");
     assert_eq!(aws_reesources.bucket, bucket);
-    assert!(aws_reesources.beacon_nodes.is_some());
-    let beacons = match aws_reesources.beacon_nodes {
-        Some(v) => v,
-        None => panic!("unexpected None beacon_nodes"),
-    };
-    assert_eq!(beacons[0].ip, "1.2.3.4");
-    assert_eq!(beacons[0].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg");
-    assert_eq!(beacons[1].ip, "1.2.3.5");
-    assert_eq!(beacons[1].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LX");
-    assert_eq!(beacons[2].ip, "1.2.3.6");
-    assert_eq!(beacons[2].id, "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3LY");
-    let non_beacons = match aws_reesources.non_beacon_nodes {
-        Some(v) => v,
-        None => panic!("unexpected None non-beacon_nodes"),
-    };
-    assert_eq!(non_beacons[0].ip, "1.2.3.9");
 
     assert_eq!(cfg.install_artifacts.avalanched_bin, avalanched_bin);
     assert_eq!(cfg.install_artifacts.avalanchego_bin, avalanchego_bin);
@@ -793,143 +643,4 @@ avalanchego_config:
             .unwrap_or("".to_string()),
         avalanchego::DEFAULT_DB_DIR,
     );
-}
-
-/// Represents a non-beacon node.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct NonBeaconNode {
-    #[serde(default)]
-    pub ip: String,
-}
-
-impl NonBeaconNode {
-    pub fn new(ip: String) -> Self {
-        Self { ip }
-    }
-}
-
-/// Represents each beacon node.
-/// Only required for custom networks.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct BeaconNode {
-    #[serde(default)]
-    pub ip: String,
-    #[serde(default)]
-    pub id: String,
-}
-
-impl BeaconNode {
-    pub fn new(ip: String, id: String) -> Self {
-        Self { ip, id }
-    }
-
-    /// Saves the current beacon node to disk
-    /// and overwrites the file.
-    pub fn sync(&self, file_path: &str) -> io::Result<()> {
-        info!("syncing BeaconNode to '{}'", file_path);
-        let path = Path::new(file_path);
-        let parent_dir = path.parent().unwrap();
-        fs::create_dir_all(parent_dir)?;
-
-        let ret = serde_yaml::to_vec(self);
-        let d = match ret {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize BeaconNode to YAML {}", e),
-                ));
-            }
-        };
-        let mut f = File::create(file_path)?;
-        f.write_all(&d)?;
-
-        Ok(())
-    }
-}
-
-pub fn load_beacon_node(file_path: &str) -> io::Result<BeaconNode> {
-    info!("loading beacon node from {}", file_path);
-
-    if !Path::new(file_path).exists() {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            format!("file {} does not exists", file_path),
-        ));
-    }
-
-    let f = match File::open(&file_path) {
-        Ok(f) => f,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to open {} ({})", file_path, e),
-            ));
-        }
-    };
-    serde_yaml::from_reader(f).map_err(|e| {
-        return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
-    })
-}
-
-#[test]
-fn test_beacon_node() {
-    let d = r#"
-ip: 1.2.3.4
-id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
-    
-"#;
-    let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(d.as_bytes());
-    assert!(ret.is_ok());
-    let beacon_node_path = f.path().to_str().unwrap();
-
-    let ret = load_beacon_node(beacon_node_path);
-    assert!(ret.is_ok());
-    let beacon_node = ret.unwrap();
-
-    let ret = beacon_node.sync(beacon_node_path);
-    assert!(ret.is_ok());
-
-    let orig = BeaconNode::new(
-        String::from("1.2.3.4"),
-        String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"),
-    );
-
-    assert_eq!(beacon_node, orig);
-    // manually check to make sure the serde deserializer works
-    assert_eq!(beacon_node.ip, String::from("1.2.3.4"));
-    assert_eq!(
-        beacon_node.id,
-        String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg")
-    );
-}
-
-/// Defines the node type.
-/// Must be either "beacon" or "non-beacon"
-pub enum NodeType {
-    Beacon,
-    NonBeacon,
-}
-
-impl NodeType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            NodeType::Beacon => "beacon",
-            NodeType::NonBeacon => "non-beacon",
-        }
-    }
-    pub fn from_str(&self, s: &str) -> io::Result<Self> {
-        match s {
-            "beacon" => Ok(NodeType::Beacon),
-            "non-beacon" => Ok(NodeType::NonBeacon),
-            "non_beacon" => Ok(NodeType::NonBeacon),
-            _ => Err(Error::new(
-                ErrorKind::Other,
-                format!("unknown node type '{}'", s),
-            )),
-        }
-    }
 }

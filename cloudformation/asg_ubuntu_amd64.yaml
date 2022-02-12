@@ -14,10 +14,10 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
-  NodeType:
+  NodeKind:
     Type: String
     AllowedValues: ["beacon", "non-beacon"]
-    Description: Node type.
+    Description: Node kind.
 
   KmsCmkArn:
     Type: String
@@ -181,7 +181,7 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateName:
-        !Join ["-", [!Ref Id, "asg-launch-template", !Ref NodeType, "amd64"]]
+        !Join ["-", [!Ref Id, "asg-launch-template", !Ref NodeKind, "amd64"]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -217,10 +217,10 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-instance-${NodeType}-amd64" }
+              - { Key: Name, Value: !Sub "${Id}-instance-${NodeKind}-amd64" }
           - ResourceType: volume
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-volume-${NodeType}-amd64" }
+              - { Key: Name, Value: !Sub "${Id}-volume-${NodeKind}-amd64" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -360,7 +360,7 @@ Resources:
           - ScheduledActions
     Properties:
       AutoScalingGroupName:
-        !Join ["-", [!Ref Id, "asg", !Ref NodeType, "amd64"]]
+        !Join ["-", [!Ref Id, "asg", !Ref NodeKind, "amd64"]]
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
@@ -372,13 +372,13 @@ Resources:
       Tags:
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Join ["-", [!Ref Id, "asg", !Ref NodeType, "amd64"]]
+          Value: !Join ["-", [!Ref Id, "asg", !Ref NodeKind, "amd64"]]
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id
-        - Key: NODE_TYPE
+        - Key: NODE_KIND
           PropagateAtLaunch: true
-          Value: !Ref NodeType
+          Value: !Ref NodeKind
         - Key: KMS_CMK_ARN
           PropagateAtLaunch: true
           Value: !Ref KmsCmkArn

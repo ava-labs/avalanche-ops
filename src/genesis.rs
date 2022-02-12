@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/genesis#Config
 /// ref. https://serde.rs/container-attrs.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct Genesis {
+pub struct Config {
     #[serde(rename = "networkID")]
     pub network_id: u32,
 
@@ -76,7 +76,7 @@ pub struct Staker {
     pub delegation_fee: Option<u32>,
 }
 
-impl Genesis {
+impl Config {
     /// Converts to string.
     pub fn to_string(&self) -> io::Result<String> {
         match serde_json::to_string(&self) {
@@ -113,13 +113,37 @@ impl Genesis {
 
         Ok(())
     }
+
+    pub fn load(file_path: &str) -> io::Result<Self> {
+        info!("loading genesis from {}", file_path);
+
+        if !Path::new(file_path).exists() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("file {} does not exists", file_path),
+            ));
+        }
+
+        let f = match File::open(&file_path) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to open {} ({})", file_path, e),
+                ));
+            }
+        };
+        serde_json::from_reader(f).map_err(|e| {
+            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
+        })
+    }
 }
 
 #[test]
 fn test_config() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let config = Genesis {
+    let config = Config {
         network_id: 1337,
 
         allocations: Some(vec![Allocation {
@@ -155,28 +179,7 @@ fn test_config() {
     let p = crate::random::tmp_path(10).unwrap();
     let ret = config.sync(&p);
     assert!(ret.is_ok());
-}
 
-pub fn load(file_path: &str) -> io::Result<Genesis> {
-    info!("loading genesis from {}", file_path);
-
-    if !Path::new(file_path).exists() {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            format!("file {} does not exists", file_path),
-        ));
-    }
-
-    let f = match File::open(&file_path) {
-        Ok(f) => f,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to open {} ({})", file_path, e),
-            ));
-        }
-    };
-    serde_json::from_reader(f).map_err(|e| {
-        return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
-    })
+    let config_loaded = Config::load(&p).unwrap();
+    assert_eq!(config, config_loaded);
 }

@@ -143,6 +143,30 @@ impl Config {
         Ok(())
     }
 
+    pub fn load(file_path: &str) -> io::Result<Self> {
+        info!("loading config from {}", file_path);
+
+        if !Path::new(file_path).exists() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("file {} does not exists", file_path),
+            ));
+        }
+
+        let f = match File::open(&file_path) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to open {} ({})", file_path, e),
+                ));
+            }
+        };
+        serde_json::from_reader(f).map_err(|e| {
+            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
+        })
+    }
+
     /// Validates the configuration.
     pub fn validate(&self) -> io::Result<()> {
         info!("validating the CloudWatch configuration");
@@ -167,28 +191,4 @@ fn test_config() {
     let ret = config.sync(&p);
     assert!(ret.is_ok());
     fs::remove_file(p).unwrap();
-}
-
-pub fn load_config(file_path: &str) -> io::Result<Config> {
-    info!("loading config from {}", file_path);
-
-    if !Path::new(file_path).exists() {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            format!("file {} does not exists", file_path),
-        ));
-    }
-
-    let f = match File::open(&file_path) {
-        Ok(f) => f,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to open {} ({})", file_path, e),
-            ));
-        }
-    };
-    serde_json::from_reader(f).map_err(|e| {
-        return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
-    })
 }

@@ -12,9 +12,12 @@ use aws_sdk_s3::{
 use log::{debug, info, warn};
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use crate::errors::{
-    Error::{Other, API},
-    Result,
+use crate::{
+    errors::{
+        Error::{Other, API},
+        Result,
+    },
+    node,
 };
 
 /// Implements AWS S3 manager.
@@ -433,39 +436,128 @@ fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
 /// Represents the S3 key path.
 /// MUST be kept in sync with "cloudformation/ec2_instance_role.yaml".
 pub enum KeyPath {
-    GenesisFile,
-    AvalanchedBin,
-    AvalancheBin,
-    AvalancheBinCompressed,
-    Ec2AccessKeyCompressedEncrypted,
-    PluginsDir,
-    PkiKeyDir,
-    BeaconNodesDir,
-    NonBeaconNodesDir,
-    ConfigFile,
+    GenesisFile(String),
+
+    AvalanchedBin(String),
+    AvalancheBin(String),
+    AvalancheBinCompressed(String),
+    PluginsDir(String),
+
+    Ec2AccessKeyCompressedEncrypted(String),
+    PkiKeyDir(String),
+
+    BeaconNodesDir(String),
+    BeaconNode(String, node::Node),
+
+    NonBeaconNodesDir(String),
+    NonBeaconNode(String, node::Node),
+
+    ConfigFile(String),
 }
 
 impl KeyPath {
-    pub fn to_string(&self, id: &str) -> String {
+    pub fn encode(&self) -> String {
         match self {
-            KeyPath::GenesisFile => format!("{}/install/genesis.json", id),
-            KeyPath::AvalanchedBin => format!("{}/install/avalanched", id),
-            KeyPath::AvalancheBin => format!("{}/install/avalanche", id),
-            KeyPath::AvalancheBinCompressed => format!("{}/install/avalanche.zstd", id),
-            KeyPath::Ec2AccessKeyCompressedEncrypted => {
+            KeyPath::GenesisFile(id) => format!("{}/install/genesis.json", id),
+
+            KeyPath::AvalanchedBin(id) => format!("{}/install/avalanched", id),
+            KeyPath::AvalancheBin(id) => format!("{}/install/avalanche", id),
+            KeyPath::AvalancheBinCompressed(id) => format!("{}/install/avalanche.zstd", id),
+            KeyPath::PluginsDir(id) => format!("{}/install/plugins", id),
+
+            KeyPath::Ec2AccessKeyCompressedEncrypted(id) => {
                 format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
             }
-            KeyPath::PluginsDir => format!("{}/install/plugins", id),
-            KeyPath::PkiKeyDir => {
+            KeyPath::PkiKeyDir(id) => {
                 format!("{}/pki", id)
             }
-            KeyPath::BeaconNodesDir => {
+
+            KeyPath::BeaconNodesDir(id) => {
                 format!("{}/beacon-nodes", id)
             }
-            KeyPath::NonBeaconNodesDir => {
+            KeyPath::BeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+
+            KeyPath::NonBeaconNodesDir(id) => {
                 format!("{}/non-beacon-nodes", id)
             }
-            KeyPath::ConfigFile => format!("{}/config.yaml", id),
+            KeyPath::NonBeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/non-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+
+            KeyPath::ConfigFile(id) => format!("{}/config.yaml", id),
         }
     }
+
+    pub fn parse_node_path(s3_path: &str) -> Result<node::Node> {
+        let p = Path::new(s3_path);
+        let file_name = match p.file_name() {
+            Some(v) => v,
+            None => {
+                return Err(Other {
+                    message: String::from("failed Path.file_name (None)"),
+                    is_retryable: false,
+                });
+            }
+        };
+        let file_name = file_name.to_str().unwrap();
+        let splits: Vec<&str> = file_name.split('_').collect();
+        if splits.len() != 2 {
+            return Err(Other {
+                message: format!(
+                    "file name {} of s3_path {} expected two splits for '_' (got {})",
+                    file_name,
+                    s3_path,
+                    splits.len(),
+                ),
+                is_retryable: false,
+            });
+        }
+
+        let compressed_id = splits[1];
+        match node::Node::decompress_base58(compressed_id.replace(".yaml", "")) {
+            Ok(node) => Ok(node),
+            Err(e) => {
+                return Err(Other {
+                    message: format!("failed node::Node::decompress_base64 {}", e),
+                    is_retryable: false,
+                });
+            }
+        }
+    }
+}
+
+#[test]
+fn test_key_path() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let id = crate::random::string(10);
+    let instance_id = crate::random::string(5);
+    let node_id = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg";
+    let node_ip = "1.2.3.4";
+
+    let node = node::Node::new(node::Kind::NonBeacon, &instance_id, node_id, node_ip);
+    let p = KeyPath::NonBeaconNode(
+        id,
+        node::Node {
+            kind: String::from("non-beacon"),
+            machine_id: instance_id.clone(),
+            id: node_id.to_string(),
+            ip: node_ip.to_string(),
+        },
+    );
+    let s3_path = p.encode();
+    info!("KeyPath: {}", s3_path);
+
+    let node_parsed = KeyPath::parse_node_path(&s3_path).unwrap();
+    assert_eq!(node, node_parsed);
 }
