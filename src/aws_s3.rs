@@ -447,20 +447,10 @@ pub enum KeyPath {
     PkiKeyDir(String),
 
     BeaconNodesDir(String),
-    BeaconNode {
-        id: String,
-        instance_id: String,
-        node_id: String,
-        node_ip: String,
-    },
+    BeaconNode(String, node::Node),
 
     NonBeaconNodesDir(String),
-    NonBeaconNode {
-        id: String,
-        instance_id: String,
-        node_id: String,
-        node_ip: String,
-    },
+    NonBeaconNode(String, node::Node),
 
     ConfigFile(String),
 }
@@ -485,29 +475,23 @@ impl KeyPath {
             KeyPath::BeaconNodesDir(id) => {
                 format!("{}/beacon-nodes", id)
             }
-            KeyPath::BeaconNode {
-                id,
-                instance_id,
-                node_id,
-                node_ip,
-            } => {
-                let node = node::Node::new(node::Kind::Beacon, instance_id, node_id, node_ip);
+            KeyPath::BeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
-                format!("{}/beacon-nodes/{}_{}", id, instance_id, compressed_id)
+                format!(
+                    "{}/beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
             }
 
             KeyPath::NonBeaconNodesDir(id) => {
                 format!("{}/non-beacon-nodes", id)
             }
-            KeyPath::NonBeaconNode {
-                id,
-                instance_id,
-                node_id,
-                node_ip,
-            } => {
-                let node = node::Node::new(node::Kind::NonBeacon, instance_id, node_id, node_ip);
+            KeyPath::NonBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
-                format!("{}/non-beacon-nodes/{}_{}", id, instance_id, compressed_id)
+                format!(
+                    "{}/non-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
             }
 
             KeyPath::ConfigFile(id) => format!("{}/config.yaml", id),
@@ -540,7 +524,7 @@ impl KeyPath {
         }
 
         let compressed_id = splits[1];
-        match node::Node::decompress_base58(compressed_id.to_string()) {
+        match node::Node::decompress_base58(compressed_id.replace(".yaml", "")) {
             Ok(node) => Ok(node),
             Err(e) => {
                 return Err(Other {
@@ -562,12 +546,15 @@ fn test_key_path() {
     let node_ip = "1.2.3.4";
 
     let node = node::Node::new(node::Kind::NonBeacon, &instance_id, node_id, node_ip);
-    let p = KeyPath::NonBeaconNode {
-        id: id,
-        instance_id: instance_id.clone(),
-        node_id: node_id.to_string(),
-        node_ip: node_ip.to_string(),
-    };
+    let p = KeyPath::NonBeaconNode(
+        id,
+        node::Node {
+            kind: String::from("non-beacon"),
+            machine_id: instance_id.clone(),
+            id: node_id.to_string(),
+            ip: node_ip.to_string(),
+        },
+    );
     let s3_path = p.encode();
     info!("KeyPath: {}", s3_path);
 

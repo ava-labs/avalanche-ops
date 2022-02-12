@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::Write,
+    io::{self, Error, ErrorKind, Write},
     os::unix::fs::PermissionsExt,
     path::Path,
     thread,
@@ -10,11 +10,12 @@ use std::{
 use aws_sdk_s3::model::Object;
 use clap::{App, Arg};
 use log::info;
+use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress,
-    envelope, id, random,
+    envelope, id, node, random,
 };
 
 const APP_NAME: &str = "avalanched-aws";
@@ -393,38 +394,64 @@ WantedBy=multi-user.target",
         if node_kind.eq("beacon") {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing beacon node information");
-            let s3_key = aws_s3::KeyPath::BeaconNode {
-                id: spec.id.clone(),
-                instance_id: instance_id.clone(),
-                node_id: node_id.clone(),
-                node_ip: public_ipv4.clone(),
-            };
+            let node = node::Node::new(node::Kind::Beacon, &instance_id, &node_id, &public_ipv4);
+            let s3_key = aws_s3::KeyPath::BeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
-            rt.block_on(s3_manager.put_object(
-                &s3_bucket_name,
-                &spec.avalanchego_config.clone().config_file.unwrap(),
-                &s3_key,
-            ))
-            .unwrap();
+            let node_info = NodeInformation {
+                node: node,
+                avalanchego_config: spec.avalanchego_config.clone(),
+            };
+            let tmp_path = random::tmp_path(10).unwrap();
+            node_info.sync(tmp_path.clone()).unwrap();
+            rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
+                .unwrap();
         }
 
         if node_kind.eq("non-beacon") {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing non-beacon node information");
-            let s3_key = aws_s3::KeyPath::NonBeaconNode {
-                id: spec.id.clone(),
-                instance_id: instance_id.clone(),
-                node_id: node_id.clone(),
-                node_ip: public_ipv4.clone(),
-            };
+            let node = node::Node::new(node::Kind::NonBeacon, &instance_id, &node_id, &public_ipv4);
+            let s3_key = aws_s3::KeyPath::NonBeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
-            rt.block_on(s3_manager.put_object(
-                &s3_bucket_name,
-                &spec.avalanchego_config.clone().config_file.unwrap(),
-                &s3_key,
-            ))
-            .unwrap();
+            let node_info = NodeInformation {
+                node: node,
+                avalanchego_config: spec.avalanchego_config.clone(),
+            };
+            let tmp_path = random::tmp_path(10).unwrap();
+            node_info.sync(tmp_path.clone()).unwrap();
+            rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
+                .unwrap();
         }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct NodeInformation {
+    pub node: node::Node,
+    pub avalanchego_config: avalanchego::Config,
+}
+
+impl NodeInformation {
+    pub fn sync(&self, file_path: String) -> io::Result<()> {
+        info!("syncing NodeInformation to '{}'", file_path);
+        let path = Path::new(&file_path);
+        let parent_dir = path.parent().unwrap();
+        fs::create_dir_all(parent_dir)?;
+
+        let ret = serde_json::to_vec(self);
+        let d = match ret {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize NodeInformation to YAML {}", e),
+                ));
+            }
+        };
+        let mut f = File::create(&file_path)?;
+        f.write_all(&d)?;
+
+        Ok(())
     }
 }
 
