@@ -1,34 +1,12 @@
-name: Build + test + release
+name: Release tip
 
 on:
   push:
-  pull_request:
 
 permissions:
   contents: write
 
 jobs:
-  run_unit_tests:
-    name: Unit tests with Rust stable
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-
-      - name: Run unit tests
-        run: scripts/tests.unit.sh
-
   release:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}

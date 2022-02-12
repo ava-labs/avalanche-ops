@@ -12,7 +12,7 @@ use aws_sdk_s3::{
 use log::{debug, info, warn};
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use crate::aws::{
+use crate::errors::{
     Error::{Other, API},
     Result,
 };

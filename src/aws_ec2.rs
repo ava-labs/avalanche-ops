@@ -10,7 +10,7 @@ use hyper::{Body, Method, Request};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::aws::{
+use crate::errors::{
     Error::{Other, API},
     Result,
 };

@@ -10,7 +10,7 @@ use aws_sdk_cloudformation::{
 };
 use log::{info, warn};
 
-use crate::aws::{
+use crate::errors::{
     Error::{Other, API},
     Result,
 };

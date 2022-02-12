@@ -3,7 +3,7 @@ use std::{thread, time};
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_kms, id};
+use avalanche_ops::{aws, aws_kms, envelope, id};
 
 fn main() {
     use std::{
@@ -75,16 +75,12 @@ fn main() {
     assert_eq!(&decrypted_file_contents, plaintext.as_bytes());
     assert!(eq_vectors(&decrypted_file_contents, plaintext.as_bytes()));
 
+    let envelope = envelope::Envelope::new(Some(kms_manager.clone()), Some(cmk.id.clone()));
     let sealed_aes_256_file_path = avalanche_ops::random::tmp_path(10).unwrap();
     let unsealed_aes_256_file_path = avalanche_ops::random::tmp_path(10).unwrap();
-    ab!(kms_manager.seal_aes_256_file(&cmk.id, plaintext_file_path, &sealed_aes_256_file_path))
+    ab!(envelope.seal_aes_256_file(plaintext_file_path, &sealed_aes_256_file_path)).unwrap();
+    ab!(envelope.unseal_aes_256_file(&sealed_aes_256_file_path, &unsealed_aes_256_file_path))
         .unwrap();
-    ab!(kms_manager.unseal_aes_256_file(
-        &cmk.id,
-        &sealed_aes_256_file_path,
-        &unsealed_aes_256_file_path,
-    ))
-    .unwrap();
     let mut sealed_aes_256_file = File::open(sealed_aes_256_file_path).unwrap();
     let mut sealed_aes_256_file_contents = Vec::new();
     sealed_aes_256_file
@@ -112,10 +108,9 @@ fn main() {
     thread::sleep(time::Duration::from_secs(2));
 
     // envelope encryption with "AES_256" (32-byte)
-    let plaintext_sealed = ab!(kms_manager.seal_aes_256(&cmk.id, plaintext.as_bytes())).unwrap();
+    let plaintext_sealed = ab!(envelope.seal_aes_256(plaintext.as_bytes())).unwrap();
     thread::sleep(time::Duration::from_secs(1));
-    let plaintext_sealed_unsealed =
-        ab!(kms_manager.unseal_aes_256(&cmk.id, &plaintext_sealed)).unwrap();
+    let plaintext_sealed_unsealed = ab!(envelope.unseal_aes_256(&plaintext_sealed)).unwrap();
     info!("plaintext_sealed: {:?}", plaintext_sealed);
     info!("plaintext_sealed_unsealed: {:?}", plaintext_sealed_unsealed);
     assert_eq!(&plaintext_sealed_unsealed, plaintext.as_bytes());
