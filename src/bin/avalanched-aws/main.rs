@@ -330,6 +330,9 @@ fn main() {
         let mut bootstrap_ids: Vec<String> = vec![];
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
+
+            // just parse the s3 key name
+            // to reduce "s3_manager.get_object" call volume
             let beacon_node = aws_s3::KeyPath::parse_node_path(s3_key).unwrap();
 
             // assume all nodes in the network use the same ports
