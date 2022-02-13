@@ -10,7 +10,7 @@ use aws_sdk_kms::{
         EncryptErrorKind, GenerateDataKeyError, GenerateDataKeyErrorKind, ScheduleKeyDeletionError,
         ScheduleKeyDeletionErrorKind,
     },
-    model::{DataKeySpec, EncryptionAlgorithmSpec},
+    model::{DataKeySpec, EncryptionAlgorithmSpec, Tag},
     Client, SdkError,
 };
 use aws_smithy_types::Blob;
@@ -59,7 +59,19 @@ impl Manager {
     /// Creates an AWS KMS CMK.
     pub async fn create_key(&self, key_desc: &str) -> Result<Key> {
         info!("creating KMS CMK '{}'", key_desc);
-        let ret = self.cli.create_key().description(key_desc).send().await;
+        let ret = self
+            .cli
+            .create_key()
+            .description(key_desc)
+            .tags(Tag::builder().tag_key("Name").tag_value(key_desc).build())
+            .tags(
+                Tag::builder()
+                    .tag_key("kind")
+                    .tag_value("avalanche-ops")
+                    .build(),
+            )
+            .send()
+            .await;
         let resp = match ret {
             Ok(v) => v,
             Err(e) => {
