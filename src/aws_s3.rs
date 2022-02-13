@@ -163,25 +163,30 @@ impl Manager {
             let obj_id = ObjectIdentifier::builder().set_key(Some(k)).build();
             object_ids.push(obj_id);
         }
-        let deletes = Delete::builder().set_objects(Some(object_ids)).build();
 
-        let ret = self
-            .cli
-            .delete_objects()
-            .bucket(bucket_name)
-            .delete(deletes)
-            .send()
-            .await;
-        match ret {
-            Ok(_) => {}
-            Err(e) => {
-                return Err(API {
-                    message: format!("failed delete_bucket {:?}", e),
-                    is_retryable: is_error_retryable(&e),
-                });
-            }
-        };
-        info!("deleted objets in S3 bucket '{}'", bucket_name);
+        let n = object_ids.len();
+        if n > 0 {
+            let deletes = Delete::builder().set_objects(Some(object_ids)).build();
+            let ret = self
+                .cli
+                .delete_objects()
+                .bucket(bucket_name)
+                .delete(deletes)
+                .send()
+                .await;
+            match ret {
+                Ok(_) => {}
+                Err(e) => {
+                    return Err(API {
+                        message: format!("failed delete_bucket {:?}", e),
+                        is_retryable: is_error_retryable(&e),
+                    });
+                }
+            };
+            info!("deleted {} objets in S3 bucket '{}'", n, bucket_name);
+        } else {
+            info!("nothing to delete; skipping...");
+        }
 
         Ok(())
     }

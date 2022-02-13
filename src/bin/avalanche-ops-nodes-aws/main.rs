@@ -29,8 +29,8 @@ const SUBCOMMAND_DEFAULT_SPEC: &str = "default-spec";
 const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
 
-// 30-minute
-const MAX_WAIT_SECONDS: u64 = 30 * 60;
+// 50-minute
+const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
 fn main() {
     let matches = App::new(APP_NAME)
@@ -956,7 +956,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        let mut wait_secs = 20 * desired_capacity as u64;
+        let mut wait_secs = 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
