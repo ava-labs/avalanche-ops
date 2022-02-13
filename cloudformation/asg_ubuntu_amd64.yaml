@@ -213,7 +213,11 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Condition: EmptyNlbTargetGroupArn
     Properties:
-      HealthCheckEnabled: false
+      Name: !Join ["-", [!Ref Id, "nlb-target-group"]]
+      # Health check enabled must be true for target groups
+      # with target type 'instance'
+      HealthCheckEnabled: true
+      HealthCheckProtocol: TCP
       Protocol: TCP
       TargetType: instance
       VpcId: !Ref NlbVpcId
@@ -231,7 +235,7 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref NLBTargetGroup
       LoadBalancerArn: !Ref NLB
-      Port: 443
+      Port: !Ref NlbHttpPort
       Protocol: TCP
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
