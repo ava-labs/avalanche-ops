@@ -34,10 +34,13 @@ pub const DEFAULT_MACHINE_BEACON_NODES: u32 = 3;
 /// Default machine non-beacon nodes size.
 pub const DEFAULT_MACHINE_NON_BEACON_NODES: u32 = 2;
 
-pub const MIN_MACHINE_BEACON_NODES: u32 = 1; // only required for custom networks
-pub const MAX_MACHINE_BEACON_NODES: u32 = 10; // TODO: support higher number
+/// only required for custom networks
+pub const MIN_MACHINE_BEACON_NODES: u32 = 1;
+pub const MAX_MACHINE_BEACON_NODES: u32 = 100;
+
+/// required for all node kinds
 pub const MIN_MACHINE_NON_BEACON_NODES: u32 = 1;
-pub const MAX_MACHINE_NON_BEACON_NODES: u32 = 20; // TODO: support higher number
+pub const MAX_MACHINE_NON_BEACON_NODES: u32 = 200;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
