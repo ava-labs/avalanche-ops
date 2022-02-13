@@ -71,8 +71,8 @@ fn main() {
             run_delete(
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.is_present("SKIP_PROMPT"),
                 sub_matches.is_present("DELETE_ALL"),
+                sub_matches.is_present("SKIP_PROMPT"),
             )
             .unwrap();
         }
