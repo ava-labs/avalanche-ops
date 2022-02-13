@@ -961,7 +961,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &aws_resources.bucket,
-                    Some(aws_s3::KeyPath::BeaconNodesDir(spec.id.clone()).encode()),
+                    Some(aws_s3::KeyPath::NonBeaconNodesDir(spec.id.clone()).encode()),
                 ))
                 .unwrap();
             info!(
@@ -994,6 +994,9 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     for node in all_nodes {
         println!("{}", node.encode_yaml().unwrap());
     }
+
+    println!();
+    info!("apply all success!");
     Ok(())
 }
 
@@ -1225,6 +1228,8 @@ fn run_delete(
             .unwrap();
     }
 
+    println!();
+    info!("delete all success!");
     Ok(())
 }
 

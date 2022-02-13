@@ -161,7 +161,7 @@ fn main() {
     cloudwatch_config.sync(cloudwatch_config_file_path).unwrap();
 
     thread::sleep(Duration::from_secs(1));
-    info!("STEP: downloading network Config from S3");
+    info!("STEP: downloading avalanche-ops::Spec from S3");
     let tmp_spec_file_path = random::tmp_path(15).unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
@@ -282,9 +282,6 @@ fn main() {
         }
     }
 
-    thread::sleep(Duration::from_secs(1));
-    info!("STEP: setting up avalanche node service file");
-
     // mainnet/other pre-defined test nets have hard-coded beacon nodes
     // thus no need for beacon nodes
     if !spec.avalanchego_config.is_mainnet() && node_kind.eq("non-beacon") {
@@ -354,7 +351,8 @@ fn main() {
     // persist before starting the service
     spec.avalanchego_config.sync(None).unwrap();
 
-    info!("writing avalanche.service file");
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: setting up avalanche node systemd service file");
     let avalanche_service_file_contents = format!(
         "[Unit]
 Description=avalanche node
@@ -388,11 +386,12 @@ WantedBy=multi-user.target",
     bash::run("sudo systemctl enable avalanche.service").unwrap();
     bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
 
-    loop {
-        // TODO: periodically upload beacon/non-beacon information to S3 as health check?
-        // TODO: check upgrade artifacts by polling s3
-        thread::sleep(Duration::from_secs(20));
+    info!("avalanched all success!");
 
+    // TODO: check upgrade artifacts by polling s3
+    // e.g., we can update avalanche node software
+    info!("avalanched now periodically publishing node information...");
+    loop {
         // to be downloaded in bootstrapping non-beacon nodes
         if node_kind.eq("beacon") {
             thread::sleep(Duration::from_secs(1));
@@ -425,6 +424,8 @@ WantedBy=multi-user.target",
             rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
                 .unwrap();
         }
+
+        thread::sleep(Duration::from_secs(60));
     }
 }
 
