@@ -254,6 +254,7 @@ fn run_default_spec(
         avalanchego_config,
     );
     spec.validate()?;
+    spec.sync(spec_file_path)?;
 
     execute!(
         stdout(),
