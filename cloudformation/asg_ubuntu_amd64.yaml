@@ -214,7 +214,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Condition: EmptyNlbTargetGroupArn
     Properties:
-      Name: !Join ["-", [!Ref Id, "nlb-target-group"]]
+      Name: !Join ["-", [!Ref Id, "nlb-tg"]]
       # Health check enabled must be true for target groups
       # with target type 'instance'
       HealthCheckEnabled: true
