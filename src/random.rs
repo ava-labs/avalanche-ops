@@ -1,53 +1,32 @@
 use std::{env, io};
 
-use rand::seq::SliceRandom;
+use lazy_static::lazy_static;
+use ring::rand::{SecureRandom, SystemRandom};
 
 /// Generates a random string of length "n".
 pub fn string(n: usize) -> String {
-    let ret = WORDS.choose(&mut rand::thread_rng()).unwrap();
-    let mut picked = String::from(ret.to_owned());
-    let length = picked.len();
-
-    if length == n {
-        return picked;
+    let bytes = rand_bytes(n).unwrap();
+    let mut d = bs58::encode(&bytes[..]).into_string();
+    if n > 0 && d.len() > n {
+        d.truncate(n);
     }
-
-    if length < n {
-        let remaining = n - length;
-        for _ in 0..remaining {
-            let c = CHARS.choose(&mut rand::thread_rng()).unwrap();
-            picked.push_str(c.to_string().as_str());
-        }
-        return picked;
-    }
-
-    if n > 0 && picked.len() > n {
-        picked.truncate(n);
-    }
-    picked
+    d
 }
 
-static CHARS: &[char] = &[
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
-    'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-];
+fn secure_random() -> &'static dyn SecureRandom {
+    use std::ops::Deref;
+    lazy_static! {
+        static ref RANDOM: SystemRandom = SystemRandom::new();
+    }
+    RANDOM.deref()
+}
 
-static WORDS: &[&str] = &[
-    "avalanche",
-    "avax",
-    "frosty",
-    "hawaii",
-    "moon",
-    "slush",
-    "snowflake",
-    "snowman",
-    "snowstorm",
-    "space",
-    "summer",
-    "uponly",
-    "water",
-    "wgmi",
-];
+/// Generates a random string of length "n".
+fn rand_bytes(n: usize) -> Result<Vec<u8>, String> {
+    let mut d: Vec<u8> = vec![0u8; n];
+    secure_random().fill(&mut d).map_err(|e| e.to_string())?;
+    Ok(d)
+}
 
 #[test]
 fn test_string() {

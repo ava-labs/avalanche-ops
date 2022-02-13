@@ -205,6 +205,7 @@ Resources:
       Type: network
       Name: !Join ["-", [!Ref Id, "nlb"]]
       Subnets: !Ref PublicSubnetIds
+      # load balancer name '...' cannot be longer than '32' characters
       Tags:
         - { Key: Name, Value: !Sub "${Id}-nlb" }
 
