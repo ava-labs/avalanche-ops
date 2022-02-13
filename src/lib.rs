@@ -139,13 +139,9 @@ impl Spec {
         };
 
         // [year][month][date]-[system host-based id]
-        let bucket = format!(
-            "avalanche-ops-{}-{}",
-            crate::time::get(6),
-            crate::id::sid(7)
-        );
+        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
         Self {
-            id: crate::id::generate("avalanche-ops"),
+            id: crate::id::generate("avax"),
 
             aws_resources: Some(aws::Resources {
                 region: String::from("us-west-2"),

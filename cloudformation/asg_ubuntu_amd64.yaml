@@ -203,6 +203,7 @@ Resources:
     Condition: EmptyNlbTargetGroupArn
     Properties:
       Type: network
+      # load balancer name '...' cannot be longer than '32' characters
       Name: !Join ["-", [!Ref Id, "nlb"]]
       Subnets: !Ref PublicSubnetIds
       # load balancer name '...' cannot be longer than '32' characters
@@ -214,6 +215,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Condition: EmptyNlbTargetGroupArn
     Properties:
+      # Target group name '...' cannot be longer than '32' characters
       Name: !Join ["-", [!Ref Id, "nlb-tg"]]
       # Health check enabled must be true for target groups
       # with target type 'instance'
