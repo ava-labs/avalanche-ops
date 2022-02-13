@@ -7,11 +7,11 @@
 
 `avalanche-ops` is an operation toolkit for Avalanche nodes:
 - 🦀 Written in Rust
-- 🏗️ Fully automates VM (or physical machine) provisioning
-- 🍏 Fully automates node installation
-- 🚜 Fully automates node operations
-- 💻 Fully automates test network setups
-- 🛡️ Securely encrypt all artifacts in case of backups
+- ✅ Fully automates VM (or physical machine) provisioning
+- ✅ Fully automates node installation and operations
+- ✅ Fully automates custom network setups
+- ✅ Fully automates custom VM (subnet) setups
+- 📨 Securely encrypt all artifacts in case of backups
 
 `avalanche-ops` is:
 - 🚫 NOT a replacement of [`avalanchego`](https://github.com/ava-labs/avalanchego)
@@ -52,7 +52,9 @@ find /tmp/avalanchego-v${VERSION}
 
 ## Workflow
 
-`avalanche-ops` is the client (or control plane) that provisions a set of remote machines based on user-provided configuration. `avalanched` is an agent (or daemon) that runs on each remote machine to create and install Avalanche-specific resources (e.g., TLS certificate generation, beacon-node discovery). `avalanche-ops` first provides Avalanche genesis file and executable binaries to run in remote machines. Then control remote machines to download and set up such user-provided artifacts. It requires two groups of machines: (1) beacon node (only required for custom network), and (2) non-beacon node. Whether the node type is beacon or not, during bootstrap, `avalanched` auto-generates the TLS certificates and stores encrypted version in a shared remote storage. If the node type is beacon, the `avalanche` publishes `BeaconNode` information in YAML to a shared remote storage, which is used for service discovery mechanism for non-beacon nodes.
+**`avalanche-ops`** is the client (or "control plane") that runs on the operator's host machine or test runner, which provisions a set of remote machines based on user-provided configuration. **`avalanched`** is an agent (or daemon) that runs on every remote machine, which creates and installs Avalanche-specific resources (e.g., TLS certificate generation, beacon-node discovery, write avalanche node service file).
+
+First, provide **`avalanche-ops`** with genesis file and executable binaries to run in remote machines. Which then controls remote machines to download and set up such user-provided artifacts. Setting up a custom network requires two groups of machines: (1) beacon node (only required for custom network), and (2) non-beacon node. Whether the node type is beacon or not, during the bootstrap phase, `avalanched` auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-beacon nodes list the storage to discover beacon nodes.
 
 ## `avalanche-ops` on AWS
 
