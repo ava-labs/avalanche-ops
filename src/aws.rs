@@ -109,4 +109,17 @@ pub struct Resources {
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_non_beacon_nodes_logical_id: Option<String>,
+
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_arn: Option<String>,
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_target_group_arn: Option<String>,
+    /// Only updated after creation.
+    /// Read-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_dns_name: Option<String>,
 }

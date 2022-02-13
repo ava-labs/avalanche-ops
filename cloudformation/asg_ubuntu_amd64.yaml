@@ -142,6 +142,19 @@ Parameters:
     MinValue: 1
     MaxValue: 1000
 
+  NlbTargetGroupArn:
+    Type: String
+    Description: NLB target group ARN for ASG
+
+  NlbVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  NlbHttpPort:
+    Type: Number
+    Default: 9650
+    Description: HTTP port (only required for NLB)
+
 Conditions:
   HasImageId:
     Fn::Not:
@@ -175,7 +188,51 @@ Conditions:
       - Ref: InstanceTypesCount
       - 4
 
+  # only create 1 NLB once
+  # for both beacon- and non-beacon nodes
+  EmptyNlbTargetGroupArn:
+    Fn::Equals:
+      - Ref: NlbTargetGroupArn
+      - ""
+
 Resources:
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
+  NLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Condition: EmptyNlbTargetGroupArn
+    Properties:
+      Type: network
+      Name: !Join ["-", [!Ref Id, "nlb"]]
+      Subnets: !Ref PublicSubnetIds
+      Tags:
+        - { Key: Name, Value: !Sub "${Id}-nlb" }
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
+  NLBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Condition: EmptyNlbTargetGroupArn
+    Properties:
+      HealthCheckEnabled: false
+      Protocol: TCP
+      TargetType: instance
+      VpcId: !Ref NlbVpcId
+      Port: !Ref NlbHttpPort
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
+  NLBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: EmptyNlbTargetGroupArn
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NLBTargetGroup
+      LoadBalancerArn: !Ref NLB
+      Port: 443
+      Protocol: TCP
+
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
@@ -365,8 +422,13 @@ Resources:
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
       VPCZoneIdentifier: !Ref PublicSubnetIds
+      TargetGroupARNs:
+        - Fn::If:
+            - EmptyNlbTargetGroupArn
+            - !Ref NLBTargetGroup
+            - !Ref NlbTargetGroupArn
       HealthCheckType: EC2
-      HealthCheckGracePeriod: 300
+      HealthCheckGracePeriod: 120
       MetricsCollection:
         - Granularity: "1Minute"
       Tags:
@@ -412,3 +474,15 @@ Outputs:
   # same as "AutoScalingGroupName"
   AsgLogicalId:
     Value: !Ref ASG
+
+  NlbArn:
+    Condition: EmptyNlbTargetGroupArn
+    Value: !Ref NLB
+
+  NlbTargetGroupArn:
+    Condition: EmptyNlbTargetGroupArn
+    Value: !Ref NLBTargetGroup
+
+  NlbDnsName:
+    Condition: EmptyNlbTargetGroupArn
+    Value: !GetAtt NLB.DNSName

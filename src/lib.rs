@@ -172,6 +172,10 @@ impl Spec {
 
                 cloudformation_asg_non_beacon_nodes: None,
                 cloudformation_asg_non_beacon_nodes_logical_id: None,
+
+                cloudformation_asg_nlb_arn: None,
+                cloudformation_asg_nlb_target_group_arn: None,
+                cloudformation_asg_nlb_dns_name: None,
             }),
 
             machine: Machine {
@@ -555,6 +559,10 @@ avalanchego_config:
 
             cloudformation_asg_non_beacon_nodes: None,
             cloudformation_asg_non_beacon_nodes_logical_id: None,
+
+            cloudformation_asg_nlb_arn: None,
+            cloudformation_asg_nlb_target_group_arn: None,
+            cloudformation_asg_nlb_dns_name: None,
         }),
 
         machine: Machine {

@@ -708,7 +708,16 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 .clone()
                 .unwrap(),
         ),
+        build_param(
+            "NlbVpcId",
+            &aws_resources.cloudformation_vpc_id.clone().unwrap(),
+        ),
     ]);
+    if spec.avalanchego_config.http_port.is_some() {
+        let http_port = spec.avalanchego_config.http_port.unwrap();
+        let param = build_param("NlbHttpPort", format!("{}", http_port).as_str());
+        asg_parameters.push(param);
+    }
     if spec.machine.instance_types.is_some() {
         let instance_types = spec.machine.instance_types.clone().unwrap();
         asg_parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
@@ -742,6 +751,8 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             .unwrap();
 
         let desired_capacity = spec.machine.beacon_nodes.unwrap();
+
+        // must deep-copy as shared with other node kind
         let mut parameters = asg_parameters.clone();
         parameters.push(build_param("NodeKind", "beacon"));
         parameters.push(build_param(
@@ -781,6 +792,19 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("AsgLogicalId") {
                 aws_resources.cloudformation_asg_beacon_nodes_logical_id = Some(v);
+                continue;
+            }
+            if k.eq("NlbArn") {
+                aws_resources.cloudformation_asg_nlb_arn = Some(v);
+                continue;
+            }
+            if k.eq("NlbTargetGroupArn") {
+                aws_resources.cloudformation_asg_nlb_target_group_arn = Some(v);
+                continue;
+            }
+            if k.eq("NlbDnsName") {
+                aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
+                continue;
             }
         }
         if aws_resources
@@ -790,6 +814,27 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             return Err(Error::new(
                 ErrorKind::Other,
                 "aws_resources.cloudformation_asg_beacon_nodes_logical_id not found",
+            ));
+        }
+        if aws_resources.cloudformation_asg_nlb_arn.is_none() {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "aws_resources.cloudformation_asg_nlb_arn not found",
+            ));
+        }
+        if aws_resources
+            .cloudformation_asg_nlb_target_group_arn
+            .is_none()
+        {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
+            ));
+        }
+        if aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "aws_resources.cloudformation_asg_nlb_dns_name not found",
             ));
         }
 
@@ -878,11 +923,20 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             .unwrap();
 
         let desired_capacity = spec.machine.non_beacon_nodes;
+
+        // must deep-copy as shared with other node kind
         let mut parameters = asg_parameters.clone();
         parameters.push(build_param("NodeKind", "non-beacon"));
         parameters.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
+        ));
+        parameters.push(build_param(
+            "NlbTargetGroupArn",
+            &aws_resources
+                .cloudformation_asg_nlb_target_group_arn
+                .clone()
+                .unwrap(),
         ));
 
         rt.block_on(cloudformation_manager.create_stack(
