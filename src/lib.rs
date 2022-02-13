@@ -135,12 +135,18 @@ impl Spec {
             _ => DEFAULT_MACHINE_BEACON_NODES,
         };
 
+        // [year][month][date]-[system host-based id]
+        let bucket = format!(
+            "avalanche-ops-{}-{}",
+            crate::time::get(8),
+            crate::id::sid(5)
+        );
         Self {
             id: crate::id::generate("avalanche-ops"),
 
             aws_resources: Some(aws::Resources {
                 region: String::from("us-west-2"),
-                bucket: format!("avalanche-ops-{}", crate::time::get(8)), // [year][month][date]
+                bucket,
 
                 identity: None,
 

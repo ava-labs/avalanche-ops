@@ -400,7 +400,7 @@ WantedBy=multi-user.target",
             let s3_key = aws_s3::KeyPath::BeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
             let node_info = NodeInformation {
-                node: node,
+                node,
                 avalanchego_config: spec.avalanchego_config.clone(),
             };
             let tmp_path = random::tmp_path(10).unwrap();
@@ -416,7 +416,7 @@ WantedBy=multi-user.target",
             let s3_key = aws_s3::KeyPath::NonBeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
             let node_info = NodeInformation {
-                node: node,
+                node,
                 avalanchego_config: spec.avalanchego_config.clone(),
             };
             let tmp_path = random::tmp_path(10).unwrap();

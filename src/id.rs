@@ -30,6 +30,39 @@ fn test_generate() {
     info!("id2: {:?}", id2);
 }
 
+/// Creates an ID based on host information.
+pub fn sid(n: usize) -> String {
+    let id = format!(
+        "{}-{}-{}",
+        whoami::username(),
+        whoami::hostname(),
+        whoami::platform()
+    );
+
+    let mut hasher = Ripemd160::new();
+    hasher.update(id.as_bytes());
+    let result = hasher.finalize();
+
+    let mut id = hex::encode(&result[..]);
+    if n > 0 && id.len() > n {
+        id.truncate(n);
+    }
+    id
+}
+
+#[test]
+fn test_sid() {
+    let _ = env_logger::builder().is_test(true).try_init();
+    use log::info;
+
+    let id1 = sid(10);
+    let id2 = sid(10);
+    assert_eq!(id1, id2);
+
+    info!("id1: {:?}", id1);
+    info!("id2: {:?}", id2);
+}
+
 /// Loads a node ID from the PEM-encoded X509 certificate.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/node#Node.Initialize
 pub fn load_node_id(cert_path: &str) -> io::Result<String> {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -xue
 
-if ! [[ "$0" =~ scripts/example.run.sh ]]; then
+if ! [[ "$0" =~ scripts/examples.sh ]]; then
   echo "must be run from repository root"
   exit 255
 fi
@@ -14,6 +14,7 @@ cargo run --example aws_kms
 cargo run --example aws_s3
 cargo run --example aws_sts
 cargo run --example compress
+cargo run --example id
 
 rm -f /tmp/test.insecure.key /tmp/test.insecure.cert
 cargo run --example cert -- /tmp/test.insecure.key /tmp/test.insecure.cert

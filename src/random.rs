@@ -21,7 +21,9 @@ pub fn string(n: usize) -> String {
         return picked;
     }
 
-    picked.truncate(n);
+    if n > 0 && picked.len() > n {
+        picked.truncate(n);
+    }
     picked
 }
 
