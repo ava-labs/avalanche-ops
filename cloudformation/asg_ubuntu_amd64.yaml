@@ -144,6 +144,7 @@ Parameters:
 
   NlbTargetGroupArn:
     Type: String
+    Default: ""
     Description: NLB target group ARN for ASG
 
   NlbVpcId:
