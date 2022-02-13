@@ -333,6 +333,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             Some(format!("{}-asg-non-beacon-nodes", spec.id));
     }
     spec.aws_resources = Some(aws_resources.clone());
+    spec.sync(spec_file_path)?;
 
     execute!(
         stdout(),
@@ -472,6 +473,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         aws_resources.kms_cmk_id = Some(key.id);
         aws_resources.kms_cmk_arn = Some(key.arn);
         spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
@@ -514,6 +516,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
 
         aws_resources.ec2_key_path = Some(ec2_key_path);
         spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
@@ -579,6 +582,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             }
         }
         spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
@@ -668,6 +672,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             }
         }
         spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
