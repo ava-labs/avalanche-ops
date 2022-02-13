@@ -141,8 +141,8 @@ impl Spec {
         // [year][month][date]-[system host-based id]
         let bucket = format!(
             "avalanche-ops-{}-{}",
-            crate::time::get(8),
-            crate::id::sid(5)
+            crate::time::get(6),
+            crate::id::sid(7)
         );
         Self {
             id: crate::id::generate("avalanche-ops"),
