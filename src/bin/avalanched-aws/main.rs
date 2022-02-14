@@ -133,22 +133,26 @@ fn main() {
     let cloudwatch_config_file_path = matches
         .value_of("CLOUDWATCH_CONFIG_FILE_PATH")
         .unwrap_or(aws_cloudwatch::DEFAULT_CONFIG_FILE_PATH);
+
+    // ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
+    // TODO: add more logs for plugins
     let mut cloudwatch_config = aws_cloudwatch::Config::default();
     cloudwatch_config.logs = Some(aws_cloudwatch::Logs {
-        log_stream_name: id.clone(),
         force_flush_interval: Some(60),
         logs_collected: Some(aws_cloudwatch::LogsCollected {
             files: Some(aws_cloudwatch::Files {
                 collect_list: Some(vec![
                     aws_cloudwatch::Collect {
-                        log_group_name: format!("avalanched-{}-{}", node_kind, instance_id),
+                        log_group_name: id.clone(),
+                        log_stream_name: format!("avalanched-{}-{}", node_kind, instance_id),
                         file_path: String::from("/var/log/avalanched/avalanched.log"),
                         timestamp_format: None,
                         timezone: None,
                         auto_removal: None,
                     },
                     aws_cloudwatch::Collect {
-                        log_group_name: format!("avalanche-{}-{}", node_kind, instance_id),
+                        log_group_name: id.clone(),
+                        log_stream_name: format!("avalanche-{}-{}", node_kind, instance_id),
                         file_path: String::from("/var/log/avalanche/avalanche.log"),
                         timestamp_format: None,
                         timezone: None,

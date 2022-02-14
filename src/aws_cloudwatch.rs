@@ -41,9 +41,6 @@ pub struct Agent {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Logs {
-    /// Specifies the default log stream name to be used for any logs.
-    /// e.g., Use test "Id" to publish all logs under one stream.
-    pub log_stream_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logs_collected: Option<LogsCollected>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -70,6 +67,7 @@ pub struct Files {
 pub struct Collect {
     /// Specifies what to use as the log group name in CloudWatch Logs.
     pub log_group_name: String,
+    pub log_stream_name: String,
     /// Specifies the path of the log file to upload to CloudWatch Logs.
     pub file_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
