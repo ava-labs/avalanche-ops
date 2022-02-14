@@ -45,6 +45,10 @@ pub const DEFAULT_STAKING_ENABLED: bool = true;
 pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.key";
 pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.crt";
 
+pub const DEFAULT_INDEX_ENABLED: bool = true;
+pub const DEFAULT_API_ADMIN_ENABLED: bool = true;
+pub const DEFAULT_API_IPCS_ENABLED: bool = true;
+
 /// Represents AvalancheGo genesis configuration.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/config
 /// ref. https://serde.rs/container-attrs.html
@@ -113,11 +117,9 @@ pub struct Config {
     pub snow_quorum_size: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub index_enabled: Option<bool>,
+    pub bootstrap_ips: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub api_admin_enabled: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub api_ipcs_enabled: Option<bool>,
+    pub bootstrap_ids: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network_peer_list_gossip_frequency: Option<String>,
@@ -125,9 +127,11 @@ pub struct Config {
     pub network_max_reconnect_delay: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bootstrap_ips: Option<String>,
+    pub index_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bootstrap_ids: Option<String>,
+    pub api_admin_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_ipcs_enabled: Option<bool>,
 }
 
 impl Default for Config {
@@ -165,15 +169,15 @@ impl Config {
             snow_sample_size: None,
             snow_quorum_size: None,
 
-            index_enabled: None,
-            api_admin_enabled: None,
-            api_ipcs_enabled: None,
+            bootstrap_ips: None,
+            bootstrap_ids: None,
 
             network_peer_list_gossip_frequency: None,
             network_max_reconnect_delay: None,
 
-            bootstrap_ips: None,
-            bootstrap_ids: None,
+            index_enabled: None,
+            api_admin_enabled: None,
+            api_ipcs_enabled: None,
         }
     }
 
@@ -195,6 +199,10 @@ impl Config {
 
         config.db_dir = Some(String::from(DEFAULT_DB_DIR));
         config.log_dir = Some(String::from(DEFAULT_LOG_DIR));
+
+        config.index_enabled = Some(DEFAULT_INDEX_ENABLED);
+        config.api_admin_enabled = Some(DEFAULT_API_ADMIN_ENABLED);
+        config.api_ipcs_enabled = Some(DEFAULT_API_IPCS_ENABLED);
         config
     }
 
