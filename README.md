@@ -121,9 +121,9 @@ Check your S3 bucket for generated artifacts **(all keys are encrypted using KMS
 
 ![demo-aws-05](./img/demo-aws-05.png)
 
-Check the beacon nodes and make sure you can access via public IPv4 address:
-
 ![demo-aws-06](./img/demo-aws-06.png)
+
+Check the beacon nodes:
 
 ![demo-aws-07](./img/demo-aws-07.png)
 
@@ -135,19 +135,17 @@ Now, check non-beacon nodes created in a separate Auto Scaling Groups:
 
 ![demo-aws-10](./img/demo-aws-10.png)
 
-Now, the `avalanched` on non-beacon nodes also publish their node information to the remote storage:
+Now that the network is ready, check the metrics URL (or access via public IPv4 address):
 
 ![demo-aws-11](./img/demo-aws-11.png)
 
 ![demo-aws-12](./img/demo-aws-12.png)
 
-![demo-aws-13](./img/demo-aws-13.png)
-
 To shut down the network, run `avalanche-ops-nodes-aws delete` command:
 
-![demo-aws-09](./img/demo-aws-09.png)
+![demo-aws-13](./img/demo-aws-13.png)
 
-![demo-aws-10](./img/demo-aws-10.png)
+![demo-aws-14](./img/demo-aws-14.png)
 
 ## Roadmap
 
