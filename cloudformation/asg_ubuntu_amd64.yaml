@@ -198,6 +198,7 @@ Conditions:
 
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
+  # takes 3-minute
   NLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Condition: EmptyNlbTargetGroupArn

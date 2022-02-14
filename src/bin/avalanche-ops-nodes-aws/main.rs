@@ -569,7 +569,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 ec2_instance_role_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(500),
-                Duration::from_secs(20),
+                Duration::from_secs(30),
             ))
             .unwrap();
 
@@ -645,7 +645,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 vpc_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(300),
-                Duration::from_secs(20),
+                Duration::from_secs(30),
             ))
             .unwrap();
 
@@ -777,8 +777,8 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        // add 3-minute for ELB creation
-        let mut wait_secs = 180 + 60 * desired_capacity as u64;
+        // add 5-minute for ELB creation
+        let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -903,8 +903,8 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        // wait longer for nodes to publish "beacon" nodes information
-        thread::sleep(Duration::from_secs(120));
+        info!("waiting for beacon nodes bootstrap (to be safe)");
+        thread::sleep(Duration::from_secs(100));
     }
 
     if aws_resources
@@ -930,6 +930,13 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
 
         let desired_capacity = spec.machine.non_beacon_nodes;
 
+        // we don't create beacon nodes for mainnet nodes
+        // so no nlb creation before
+        // we create here for non-beacon nodes
+        let need_to_create_nlb = aws_resources
+            .cloudformation_asg_nlb_target_group_arn
+            .is_none();
+
         // must deep-copy as shared with other node kind
         let mut parameters = asg_parameters.clone();
         parameters.push(build_param("NodeKind", "non-beacon"));
@@ -937,13 +944,16 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
-        parameters.push(build_param(
-            "NlbTargetGroupArn",
-            &aws_resources
-                .cloudformation_asg_nlb_target_group_arn
-                .clone()
-                .unwrap(),
-        ));
+        if !need_to_create_nlb {
+            // already created for beacon nodes
+            parameters.push(build_param(
+                "NlbTargetGroupArn",
+                &aws_resources
+                    .cloudformation_asg_nlb_target_group_arn
+                    .clone()
+                    .unwrap(),
+            ));
+        }
 
         rt.block_on(cloudformation_manager.create_stack(
             cloudformation_asg_non_beacon_nodes_stack_name.as_str(),
@@ -957,7 +967,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        let mut wait_secs = 180 + 60 * desired_capacity as u64;
+        let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -977,6 +987,21 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("AsgLogicalId") {
                 aws_resources.cloudformation_asg_non_beacon_nodes_logical_id = Some(v);
+                continue;
+            }
+            if need_to_create_nlb {
+                if k.eq("NlbArn") {
+                    aws_resources.cloudformation_asg_nlb_arn = Some(v);
+                    continue;
+                }
+                if k.eq("NlbTargetGroupArn") {
+                    aws_resources.cloudformation_asg_nlb_target_group_arn = Some(v);
+                    continue;
+                }
+                if k.eq("NlbDnsName") {
+                    aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
+                    continue;
+                }
             }
         }
         if aws_resources
@@ -988,6 +1013,31 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 "aws_resources.cloudformation_asg_non_beacon_nodes_logical_id not found",
             ));
         }
+        if need_to_create_nlb {
+            if aws_resources.cloudformation_asg_nlb_arn.is_none() {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_arn not found",
+                ));
+            }
+            if aws_resources
+                .cloudformation_asg_nlb_target_group_arn
+                .is_none()
+            {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
+                ));
+            }
+            if aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_dns_name not found",
+                ));
+            }
+        }
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
 
         let asg_name = aws_resources
             .cloudformation_asg_non_beacon_nodes_logical_id
@@ -1050,10 +1100,31 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         .unwrap();
     }
 
-    println!("\n\nfound all nodes based on S3 keys:\n");
-    for node in all_nodes {
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: listing all nodes based on S3 keys...\n"),
+        ResetColor
+    )?;
+    for node in all_nodes.iter() {
         println!("{}", node.encode_yaml().unwrap());
     }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n"),
+        ResetColor
+    )?;
+    let dns_name = aws_resources.cloudformation_asg_nlb_dns_name.unwrap();
+    let http_port = spec
+        .avalanchego_config
+        .http_port
+        .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
+    let metrics_endpoint_dns = format!("http://{}:{}/ext/metrics", dns_name, http_port);
+    let metrics_endpoint_ip = format!("http://{}:{}/ext/metrics", all_nodes[0].ip, http_port);
+    println!("{}", metrics_endpoint_dns);
+    println!("{}", metrics_endpoint_ip);
 
     println!();
     info!("apply all success!");
@@ -1145,7 +1216,7 @@ fn run_delete(
         )?;
 
         let desired_capacity = spec.machine.beacon_nodes.unwrap();
-        let mut wait_secs = 180 + 60 * desired_capacity as u64;
+        let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -1158,7 +1229,7 @@ fn run_delete(
             asg_non_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(wait_secs),
-            Duration::from_secs(20),
+            Duration::from_secs(30),
         ))
         .unwrap();
     }
@@ -1177,7 +1248,7 @@ fn run_delete(
         )?;
 
         let desired_capacity = spec.machine.beacon_nodes.unwrap();
-        let mut wait_secs = 180 + 60 * desired_capacity as u64;
+        let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -1189,7 +1260,7 @@ fn run_delete(
             asg_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(wait_secs),
-            Duration::from_secs(20),
+            Duration::from_secs(30),
         ))
         .unwrap();
     }
@@ -1214,7 +1285,7 @@ fn run_delete(
             vpc_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(500),
-            Duration::from_secs(20),
+            Duration::from_secs(30),
         ))
         .unwrap();
     }
@@ -1239,7 +1310,7 @@ fn run_delete(
             ec2_instance_role_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(500),
-            Duration::from_secs(20),
+            Duration::from_secs(30),
         ))
         .unwrap();
     }
