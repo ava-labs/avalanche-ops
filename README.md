@@ -152,13 +152,11 @@ To shut down the network, run `avalanche-ops-nodes-aws delete` command:
 - Genesis file generator with pre-funded wallets
 - Failure injection testing
 - Stress testing
-- Log collection
 - Metrics collection
 - Support custom VMs
 - Support ARM
 - Support Raspberry Pi
 - Support key rotation
-- Integrate with DNS for easier service discovery
 
 ## Other projects
 
