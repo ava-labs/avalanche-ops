@@ -1,7 +1,7 @@
 
 <br>
 
-![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/tests-release-tip.yml/badge.svg) ![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/static-analysis.yml/badge.svg)
+![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/tests-release-latest.yml/badge.svg) ![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/static-analysis.yml/badge.svg)
 
 # Avalanche Ops
 
@@ -32,9 +32,9 @@
 
 ```bash
 # to download from the github release page
-# https://github.com/ava-labs/avalanche-ops/releases/tag/tip
+# https://github.com/ava-labs/avalanche-ops/releases/tag/latest
 curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/tip/avalanched-aws.x86_64-unknown-linux-gnu \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
 -o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 ```
 

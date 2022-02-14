@@ -1,4 +1,4 @@
-name: Tests (and release tip)
+name: Tests (and release latest)
 
 on:
   push:
@@ -29,8 +29,8 @@ jobs:
       - name: Run unit tests
         run: scripts/tests.unit.sh
 
-  release_tip:
-    name: Build release tip for ${{ matrix.job.target }} (${{ matrix.job.os }})
+  release_latest:
+    name: Build release latest for ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     needs: run_unit_tests
     if: ${{ github.ref == 'refs/heads/main' }}
@@ -131,8 +131,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          name: Tip
-          tag_name: tip
+          name: Latest release
+          tag_name: latest
           prerelease: true
           body: Latest builds from the last commit.
           files: |
