@@ -568,7 +568,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             .block_on(cloudformation_manager.poll_stack(
                 ec2_instance_role_stack_name.as_str(),
                 StackStatus::CreateComplete,
-                Duration::from_secs(300),
+                Duration::from_secs(500),
                 Duration::from_secs(20),
             ))
             .unwrap();
@@ -777,7 +777,8 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        let mut wait_secs = 20 * desired_capacity as u64;
+        // add 3-minute for ELB creation
+        let mut wait_secs = 180 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -956,7 +957,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        let mut wait_secs = 60 * desired_capacity as u64;
+        let mut wait_secs = 180 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -1143,6 +1144,11 @@ fn run_delete(
             ResetColor
         )?;
 
+        let desired_capacity = spec.machine.beacon_nodes.unwrap();
+        let mut wait_secs = 180 + 60 * desired_capacity as u64;
+        if wait_secs > MAX_WAIT_SECONDS {
+            wait_secs = MAX_WAIT_SECONDS;
+        }
         let asg_non_beacon_nodes_stack_name =
             aws_resources.cloudformation_asg_non_beacon_nodes.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(asg_non_beacon_nodes_stack_name.as_str()))
@@ -1151,7 +1157,7 @@ fn run_delete(
         rt.block_on(cloudformation_manager.poll_stack(
             asg_non_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
-            Duration::from_secs(300),
+            Duration::from_secs(wait_secs),
             Duration::from_secs(20),
         ))
         .unwrap();
@@ -1170,6 +1176,11 @@ fn run_delete(
             ResetColor
         )?;
 
+        let desired_capacity = spec.machine.beacon_nodes.unwrap();
+        let mut wait_secs = 180 + 60 * desired_capacity as u64;
+        if wait_secs > MAX_WAIT_SECONDS {
+            wait_secs = MAX_WAIT_SECONDS;
+        }
         let asg_beacon_nodes_stack_name = aws_resources.cloudformation_asg_beacon_nodes.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(asg_beacon_nodes_stack_name.as_str()))
             .unwrap();
@@ -1177,7 +1188,7 @@ fn run_delete(
         rt.block_on(cloudformation_manager.poll_stack(
             asg_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
-            Duration::from_secs(300),
+            Duration::from_secs(wait_secs),
             Duration::from_secs(20),
         ))
         .unwrap();
@@ -1202,7 +1213,7 @@ fn run_delete(
         rt.block_on(cloudformation_manager.poll_stack(
             vpc_stack_name.as_str(),
             StackStatus::DeleteComplete,
-            Duration::from_secs(300),
+            Duration::from_secs(500),
             Duration::from_secs(20),
         ))
         .unwrap();
@@ -1227,7 +1238,7 @@ fn run_delete(
         rt.block_on(cloudformation_manager.poll_stack(
             ec2_instance_role_stack_name.as_str(),
             StackStatus::DeleteComplete,
-            Duration::from_secs(300),
+            Duration::from_secs(500),
             Duration::from_secs(20),
         ))
         .unwrap();
