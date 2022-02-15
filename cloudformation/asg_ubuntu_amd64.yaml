@@ -463,6 +463,9 @@ Resources:
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id
+        - Key: NETWORK_ID
+          PropagateAtLaunch: true
+          Value: !Ref NetworkId
         - Key: NODE_KIND
           PropagateAtLaunch: true
           Value: !Ref NodeKind
