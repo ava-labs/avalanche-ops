@@ -91,6 +91,9 @@ pub struct Config {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_dir: Option<String>,
+    /// "avalanchego" logging level.
+    /// See "utils/logging/level.go".
+    /// e.g., "INFO", "FATAL", "DEBUG", "VERBO", etc..
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_level: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
