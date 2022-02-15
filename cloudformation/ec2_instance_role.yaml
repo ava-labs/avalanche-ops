@@ -110,7 +110,37 @@ Resources:
                         !Ref S3BucketName,
                         "/",
                         !Ref Id,
-                        "/beacon-nodes/*",
+                        "/discover/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/discover/bootstrapping-beacon-nodes/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/discover/ready-beacon-nodes/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/discover/ready-non-beacon-nodes/*",
                       ],
                     ]
                   - !Join [

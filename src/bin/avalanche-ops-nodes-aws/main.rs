@@ -49,11 +49,19 @@ fn main() {
         Some((SUBCOMMAND_DEFAULT_SPEC, sub_matches)) => {
             run_default_spec(
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("AVALANCHED_BIN").unwrap(),
-                sub_matches.value_of("AVALANCHE_BIN").unwrap(),
-                sub_matches.value_of("PLUGINS_DIR").unwrap_or(""),
+                sub_matches
+                    .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
+                    .unwrap(),
+                sub_matches
+                    .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
+                    .unwrap(),
+                sub_matches
+                    .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
+                    .unwrap_or(""),
+                sub_matches
+                    .value_of("INSTALL_ARTIFACTS_GENESIS_DRAFT_FILE_PATH")
+                    .unwrap(),
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.value_of("GENESIS_FILE_PATH").unwrap(),
             )
             .unwrap();
         }
@@ -96,29 +104,38 @@ fn create_default_spec_command() -> App<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AVALANCHED_BIN") 
-                .long("avalanched-bin")
+            Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
+                .long("install-artifacts-avalanched-bin")
                 .short('d')
-                .help("Sets the Avalanched binary path to be shared with remote machines")
+                .help("Sets the Avalanched binary path in the local machine to be shared with remote machines")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AVALANCHE_BIN") 
-                .long("avalanche-bin")
+            Arg::new("INSTALL_ARTIFACTS_AVALANCHE_BIN") 
+                .long("install-artifacts-avalanche-bin")
                 .short('b')
-                .help("Sets the Avalanche node binary path to be shared with remote machines")
+                .help("Sets the Avalanche node binary path in the local machine to be shared with remote machines")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("PLUGINS_DIR") 
-                .long("plugins-dir")
+            Arg::new("INSTALL_ARTIFACTS_PLUGINS_DIR") 
+                .long("install-artifacts-plugins-dir")
                 .short('p')
                 .help("Sets 'plugins' directory in the local machine to be shared with remote machines")
                 .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("INSTALL_ARTIFACTS_GENESIS_DRAFT_FILE_PATH") 
+                .long("install-artifacts-genesis-file-path")
+                .short('g')
+                .help("Sets the genesis draft file path in the local machine to load and share with remote machines")
+                .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
@@ -127,15 +144,6 @@ fn create_default_spec_command() -> App<'static> {
                 .long("spec-file-path")
                 .short('s')
                 .help("The config file to create")
-                .required(true)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("GENESIS_FILE_PATH") 
-                .long("genesis-file-path")
-                .short('g')
-                .help("Sets the genesis file path to load and share with remote machines")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -221,36 +229,37 @@ fn create_delete_command() -> App<'static> {
 
 fn run_default_spec(
     log_level: &str,
-    avalanched_bin: &str,
-    avalanche_bin: &str,
-    plugins_dir: &str,
+    install_artifacts_avalanched_bin: &str,
+    install_artifacts_avalanche_bin: &str,
+    install_artifacts_plugins_dir: &str,
+    install_artifacts_genesis_draft_file_path: &str,
     spec_file_path: &str,
-    genesis_file_path: &str,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut _plugins_dir = Some(String::from(plugins_dir));
-    if plugins_dir.is_empty() {
-        _plugins_dir = None;
+    let mut _install_artifacts_plugins_dir = Some(String::from(install_artifacts_plugins_dir));
+    if install_artifacts_plugins_dir.is_empty() {
+        _install_artifacts_plugins_dir = None;
     }
-    let mut _genesis_file_path = Some(String::from(genesis_file_path));
-    if genesis_file_path.is_empty() {
-        _genesis_file_path = None;
+    let mut _install_artifacts_genesis_draft_file_path =
+        Some(String::from(install_artifacts_genesis_draft_file_path));
+    if install_artifacts_genesis_draft_file_path.is_empty() {
+        _install_artifacts_genesis_draft_file_path = None;
     }
 
     // set defaults based on genesis file
-    let genesis = genesis::Config::load(genesis_file_path)?;
+    let genesis = genesis::Config::load(install_artifacts_genesis_draft_file_path)?;
     let mut avalanchego_config = avalanchego::Config::default();
     avalanchego_config.network_id = Some(genesis.network_id);
 
     let spec = avalanche_ops::Spec::default_aws(
-        avalanched_bin,
-        avalanche_bin,
-        _plugins_dir,
-        _genesis_file_path,
+        install_artifacts_avalanched_bin,
+        install_artifacts_avalanche_bin,
+        _install_artifacts_plugins_dir,
+        _install_artifacts_genesis_draft_file_path,
         avalanchego_config,
     );
     spec.validate()?;
@@ -440,13 +449,17 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             .unwrap();
         }
     }
-    if spec.install_artifacts.genesis_file_path.is_some() {
-        let genesis_file_path = spec.install_artifacts.genesis_file_path.clone().unwrap();
-        if Path::new(&genesis_file_path).exists() {
+    if spec.install_artifacts.genesis_draft_file_path.is_some() {
+        let genesis_draft_file_path = spec
+            .install_artifacts
+            .genesis_draft_file_path
+            .clone()
+            .unwrap();
+        if Path::new(&genesis_draft_file_path).exists() {
             rt.block_on(s3_manager.put_object(
                 &aws_resources.bucket,
-                &genesis_file_path,
-                &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
+                &genesis_draft_file_path,
+                &aws_s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
             ))
             .unwrap();
         }
@@ -875,11 +888,11 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &aws_resources.bucket,
-                    Some(aws_s3::KeyPath::BeaconNodesDir(spec.id.clone()).encode()),
+                    Some(aws_s3::KeyPath::DiscoverReadyBeaconNodesDir(spec.id.clone()).encode()),
                 ))
                 .unwrap();
             info!(
-                "{} beacon nodes are ready (expecting {} nodes)",
+                "{} beacon nodes are bootstrapped and ready (expecting {} nodes)",
                 objects.len(),
                 target_nodes
             );
@@ -889,7 +902,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         }
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let beacon_node = aws_s3::KeyPath::parse_node_path(s3_key).unwrap();
+            let beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
             all_nodes.push(beacon_node);
         }
         spec.aws_resources = Some(aws_resources.clone());
@@ -903,7 +916,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        info!("waiting for beacon nodes bootstrap (to be safe)");
+        info!("waiting for beacon nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(100));
     }
 
@@ -1071,7 +1084,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &aws_resources.bucket,
-                    Some(aws_s3::KeyPath::NonBeaconNodesDir(spec.id.clone()).encode()),
+                    Some(aws_s3::KeyPath::DiscoverReadyNonBeaconNodesDir(spec.id.clone()).encode()),
                 ))
                 .unwrap();
             info!(
@@ -1085,7 +1098,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         }
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let non_beacon_node = aws_s3::KeyPath::parse_node_path(s3_key).unwrap();
+            let non_beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
             all_nodes.push(non_beacon_node);
         }
         spec.aws_resources = Some(aws_resources.clone());

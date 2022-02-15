@@ -15,7 +15,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress,
-    envelope, id, node, random,
+    envelope, genesis, id, node, random,
 };
 
 const APP_NAME: &str = "avalanched-aws";
@@ -219,31 +219,6 @@ fn main() {
     spec.avalanchego_config.public_ip = Some(public_ipv4.clone());
     spec.avalanchego_config.sync(None).unwrap();
 
-    if spec.avalanchego_config.genesis.is_some()
-        && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
-    {
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: downloading genesis file from S3");
-        let tmp_genesis_path = random::tmp_path(15).unwrap();
-        rt.block_on(s3_manager.get_object(
-            &s3_bucket_name,
-            &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
-            &tmp_genesis_path,
-        ))
-        .unwrap();
-        fs::copy(
-            &tmp_genesis_path,
-            spec.avalanchego_config.clone().genesis.unwrap(),
-        )
-        .unwrap();
-    }
-
-    // validate after downloading genesis file
-    spec.avalanchego_config.validate().unwrap();
-    if spec.avalanchego_config.config_file.is_none() {
-        panic!("'spec.avalanchego_config.config_file' not found")
-    }
-
     let tls_key_path = spec
         .avalanchego_config
         .clone()
@@ -289,6 +264,134 @@ fn main() {
     let node_id = id::load_node_id(&tls_cert_path).unwrap();
     info!("loaded node ID from cert: {}", node_id);
 
+    if !spec.avalanchego_config.is_mainnet()
+        && node_kind.eq("beacon")
+        && spec.avalanchego_config.genesis.is_some()
+        && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
+    {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: publishing seed/bootstrapping beacon node information for discovery");
+        let node = node::Node::new(node::Kind::Beacon, &instance_id, &node_id, &public_ipv4);
+        let s3_key = aws_s3::KeyPath::DiscoverBootstrappingBeaconNode(id.clone(), node.clone());
+        let s3_key = s3_key.encode();
+        let node_info = NodeInformation {
+            node,
+            avalanchego_config: spec.avalanchego_config.clone(),
+        };
+        let tmp_path = random::tmp_path(10).unwrap();
+        node_info.sync(tmp_path.clone()).unwrap();
+        rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
+            .unwrap();
+
+        thread::sleep(Duration::from_secs(30));
+        info!("STEP: waiting for all seed/bootstrapping beacon nodes to be ready");
+        let target_nodes = spec.machine.beacon_nodes.unwrap();
+        let mut objects: Vec<Object>;
+        loop {
+            thread::sleep(Duration::from_secs(20));
+            objects = rt
+                .block_on(s3_manager.list_objects(
+                    &s3_bucket_name,
+                    Some(aws_s3::KeyPath::DiscoverBootstrappingBeaconNodesDir(id.clone()).encode()),
+                ))
+                .unwrap();
+            info!(
+                "{} seed/bootstrapping beacon nodes are ready (expecting {} nodes)",
+                objects.len(),
+                target_nodes
+            );
+            if objects.len() as u32 >= target_nodes {
+                break;
+            }
+        }
+
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: collect all seed/bootstrapping beacon nodes information from S3 key for initial stakers");
+        let mut stakers: Vec<genesis::Staker> = vec![];
+        for obj in objects.iter() {
+            let s3_key = obj.key().unwrap();
+
+            // just parse the s3 key name
+            // to reduce "s3_manager.get_object" call volume
+            let seed_beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
+
+            let staker = genesis::Staker {
+                node_id: Some(seed_beacon_node.id),
+
+                // ewoq wallet address
+                // TODO: make this configurable
+                reward_address: Some(String::from(
+                    "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+                )),
+
+                // TODO: make this configurable
+                delegation_fee: Some(62500),
+            };
+            stakers.push(staker);
+        }
+        info!(
+            "found {} seed beacon nodes for initial stakers",
+            stakers.len()
+        );
+
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading genesis draft file from S3");
+        let tmp_genesis_path = random::tmp_path(15).unwrap();
+        rt.block_on(s3_manager.get_object(
+            &s3_bucket_name,
+            &aws_s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
+            &tmp_genesis_path,
+        ))
+        .unwrap();
+
+        thread::sleep(Duration::from_secs(1));
+        let genesis_path = spec.avalanchego_config.clone().genesis.unwrap();
+        info!(
+            "STEP: updating genesis draft file and writing to a new genesis file to '{}'",
+            genesis_path
+        );
+        let mut genesis_draft = genesis::Config::load(&tmp_genesis_path).unwrap();
+        genesis_draft.initial_stakers = Some(stakers);
+        genesis_draft.sync(&genesis_path).unwrap();
+
+        // for now, just overwrite from every seed beacon node
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: upload the new genesis file, to be shared with beacon/non-beacon nodes");
+        rt.block_on(s3_manager.put_object(
+            &s3_bucket_name,
+            &genesis_path,
+            &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
+        ))
+        .unwrap();
+    }
+
+    if !spec.avalanchego_config.is_mainnet()
+        && node_kind.eq("non-beacon")
+        && spec.avalanchego_config.genesis.is_some()
+        && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
+    {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading genesis file from S3");
+        let tmp_genesis_path = random::tmp_path(15).unwrap();
+        rt.block_on(s3_manager.get_object(
+            &s3_bucket_name,
+            &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
+            &tmp_genesis_path,
+        ))
+        .unwrap();
+        fs::copy(
+            &tmp_genesis_path,
+            spec.avalanchego_config.clone().genesis.unwrap(),
+        )
+        .unwrap();
+    }
+
+    // validate after downloading genesis file
+    spec.avalanchego_config.validate().unwrap();
+    if spec.avalanchego_config.config_file.is_none() {
+        panic!("'spec.avalanchego_config.config_file' not found")
+    }
+
     // mainnet/other pre-defined test nets have hard-coded beacon nodes
     // thus no need for beacon nodes
     if !spec.avalanchego_config.is_mainnet() && node_kind.eq("non-beacon") {
@@ -300,8 +403,9 @@ fn main() {
 
         // "avalanche-ops" should always set up beacon nodes first
         // so here we assume beacon nodes are already set up
-        // and their information is already available via share,
+        // and their information is already available via shared,
         // remote storage for service discovery
+        // so that we block non-beacon nodes until beacon nodes are ready
         //
         // always send a new "list_objects" on remote storage
         // rather than relying on potentially stale (not via "spec")
@@ -309,7 +413,6 @@ fn main() {
         // (e.g., machine replacement in "beacon" nodes ASG)
         //
         // TODO: handle stale beacon nodes by heartbeats timestamps
-
         let target_nodes = spec.machine.beacon_nodes.unwrap();
         let mut objects: Vec<Object>;
         loop {
@@ -317,7 +420,7 @@ fn main() {
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &s3_bucket_name,
-                    Some(aws_s3::KeyPath::BeaconNodesDir(id.clone()).encode()),
+                    Some(aws_s3::KeyPath::DiscoverReadyBeaconNodesDir(id.clone()).encode()),
                 ))
                 .unwrap();
             info!(
@@ -330,6 +433,8 @@ fn main() {
             }
         }
 
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: collect all beacon nodes IDs and IPs from S3 key for bootstrap information");
         let mut bootstrap_ips: Vec<String> = vec![];
         let mut bootstrap_ids: Vec<String> = vec![];
         for obj in objects.iter() {
@@ -337,7 +442,7 @@ fn main() {
 
             // just parse the s3 key name
             // to reduce "s3_manager.get_object" call volume
-            let beacon_node = aws_s3::KeyPath::parse_node_path(s3_key).unwrap();
+            let beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
 
             // assume all nodes in the network use the same ports
             // ref. "avalanchego/config.StakingPortKey" default value is "9651"
@@ -349,7 +454,7 @@ fn main() {
             bootstrap_ips.push(format!("{}:{}", beacon_node.ip, staking_port));
             bootstrap_ids.push(beacon_node.id);
         }
-        info!("found {} bootstrap nodes", objects.len());
+        info!("found {} bootstrap nodes", bootstrap_ids.len());
 
         spec.avalanchego_config.bootstrap_ips = Some(bootstrap_ips.join(","));
         spec.avalanchego_config.bootstrap_ids = Some(bootstrap_ids.join(","));
@@ -408,11 +513,11 @@ WantedBy=multi-user.target",
     info!("avalanched now periodically publishing node information...");
     loop {
         // to be downloaded in bootstrapping non-beacon nodes
-        if node_kind.eq("beacon") {
+        if !spec.avalanchego_config.is_mainnet() && node_kind.eq("beacon") {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing beacon node information");
             let node = node::Node::new(node::Kind::Beacon, &instance_id, &node_id, &public_ipv4);
-            let s3_key = aws_s3::KeyPath::BeaconNode(id.clone(), node.clone());
+            let s3_key = aws_s3::KeyPath::DiscoverReadyBeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
             let node_info = NodeInformation {
                 node,
@@ -428,7 +533,7 @@ WantedBy=multi-user.target",
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing non-beacon node information");
             let node = node::Node::new(node::Kind::NonBeacon, &instance_id, &node_id, &public_ipv4);
-            let s3_key = aws_s3::KeyPath::NonBeaconNode(id.clone(), node.clone());
+            let s3_key = aws_s3::KeyPath::DiscoverReadyNonBeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
             let node_info = NodeInformation {
                 node,

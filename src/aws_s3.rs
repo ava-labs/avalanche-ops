@@ -441,6 +441,11 @@ fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
 /// Represents the S3 key path.
 /// MUST be kept in sync with "cloudformation/ec2_instance_role.yaml".
 pub enum KeyPath {
+    // basic, common, top-level genesis, not ready for full use
+    // e.g., initial stakers are empty since there's no beacon node yet
+    GenesisDraftFile(String),
+    // valid genesis file with fully specified initial stakers
+    // after beacon nodes become active
     GenesisFile(String),
 
     AvalanchedBin(String),
@@ -451,11 +456,12 @@ pub enum KeyPath {
     Ec2AccessKeyCompressedEncrypted(String),
     PkiKeyDir(String),
 
-    BeaconNodesDir(String),
-    BeaconNode(String, node::Node),
-
-    NonBeaconNodesDir(String),
-    NonBeaconNode(String, node::Node),
+    DiscoverBootstrappingBeaconNodesDir(String),
+    DiscoverBootstrappingBeaconNode(String, node::Node),
+    DiscoverReadyBeaconNodesDir(String),
+    DiscoverReadyBeaconNode(String, node::Node),
+    DiscoverReadyNonBeaconNodesDir(String),
+    DiscoverReadyNonBeaconNode(String, node::Node),
 
     ConfigFile(String),
 }
@@ -463,6 +469,7 @@ pub enum KeyPath {
 impl KeyPath {
     pub fn encode(&self) -> String {
         match self {
+            KeyPath::GenesisDraftFile(id) => format!("{}/install/genesis.draft.json", id),
             KeyPath::GenesisFile(id) => format!("{}/install/genesis.json", id),
 
             KeyPath::AvalanchedBin(id) => format!("{}/install/avalanched", id),
@@ -477,24 +484,33 @@ impl KeyPath {
                 format!("{}/pki", id)
             }
 
-            KeyPath::BeaconNodesDir(id) => {
-                format!("{}/beacon-nodes", id)
+            KeyPath::DiscoverBootstrappingBeaconNodesDir(id) => {
+                format!("{}/discover/bootstrapping-beacon-nodes", id)
             }
-            KeyPath::BeaconNode(id, node) => {
+            KeyPath::DiscoverBootstrappingBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/beacon-nodes/{}_{}.yaml",
+                    "{}/discover/bootstrapping-beacon-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
-
-            KeyPath::NonBeaconNodesDir(id) => {
-                format!("{}/non-beacon-nodes", id)
+            KeyPath::DiscoverReadyBeaconNodesDir(id) => {
+                format!("{}/discover/ready-beacon-nodes", id)
             }
-            KeyPath::NonBeaconNode(id, node) => {
+            KeyPath::DiscoverReadyBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/non-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/ready-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+            KeyPath::DiscoverReadyNonBeaconNodesDir(id) => {
+                format!("{}/discover/ready-non-beacon-nodes", id)
+            }
+            KeyPath::DiscoverReadyNonBeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/discover/ready-non-beacon-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
@@ -503,7 +519,7 @@ impl KeyPath {
         }
     }
 
-    pub fn parse_node_path(s3_path: &str) -> Result<node::Node> {
+    pub fn parse_node_from_s3_path(s3_path: &str) -> Result<node::Node> {
         let p = Path::new(s3_path);
         let file_name = match p.file_name() {
             Some(v) => v,
@@ -551,7 +567,7 @@ fn test_key_path() {
     let node_ip = "1.2.3.4";
 
     let node = node::Node::new(node::Kind::NonBeacon, &instance_id, node_id, node_ip);
-    let p = KeyPath::NonBeaconNode(
+    let p = KeyPath::DiscoverReadyNonBeaconNode(
         id,
         node::Node {
             kind: String::from("non-beacon"),
@@ -563,6 +579,6 @@ fn test_key_path() {
     let s3_path = p.encode();
     info!("KeyPath: {}", s3_path);
 
-    let node_parsed = KeyPath::parse_node_path(&s3_path).unwrap();
+    let node_parsed = KeyPath::parse_node_from_s3_path(&s3_path).unwrap();
     assert_eq!(node, node_parsed);
 }

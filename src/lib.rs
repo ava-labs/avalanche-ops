@@ -111,10 +111,12 @@ pub struct InstallArtifacts {
     /// with remote machiens.
     #[serde(default)]
     pub plugins_dir: Option<String>,
-    /// Genesis file path in the local machine.
+    /// Genesis "DRAFT" file path in the local machine.
+    /// Some fields to be overwritten (e.g., initial stakers).
+    /// TODO: to deprecated in favor of configurable genesis file.
     /// MUST BE NON-EMPTY for custom network.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub genesis_file_path: Option<String>,
+    pub genesis_draft_file_path: Option<String>,
 }
 
 impl Spec {
@@ -123,7 +125,7 @@ impl Spec {
         avalanched_bin: &str,
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
-        genesis_file_path: Option<String>,
+        genesis_draft_file_path: Option<String>,
         avalanchego_config: avalanchego::Config,
     ) -> Self {
         let beacon_nodes = match avalanchego_config.network_id {
@@ -189,7 +191,7 @@ impl Spec {
                 avalanched_bin: avalanched_bin.to_string(),
                 avalanchego_bin: avalanchego_bin.to_string(),
                 plugins_dir,
-                genesis_file_path,
+                genesis_draft_file_path,
             },
 
             avalanchego_config,
@@ -330,11 +332,29 @@ impl Spec {
             let network_id = self.avalanchego_config.network_id.unwrap();
             match network_id {
                 1 => {
-                    // "mainnet"
+                    // already defined "mainnet"
                     if self.machine.beacon_nodes.unwrap_or(0) > 0 {
                         return Err(Error::new(
                             ErrorKind::InvalidInput,
-                            "cannot specify non-zero 'machine.beacon_nodes' for mainnet",
+                            format!(
+                                "cannot specify non-zero 'machine.beacon_nodes' for network_id {}",
+                                network_id
+                            ),
+                        ));
+                    }
+                    if self.install_artifacts.genesis_draft_file_path.is_some() {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {}", network_id),
+                        ));
+                    }
+                    if self.avalanchego_config.genesis.is_some() {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!(
+                                "cannot specify 'avalanchego_config.genesis' for network_id {}",
+                                network_id
+                            ),
                         ));
                     }
                 }
@@ -367,13 +387,30 @@ impl Spec {
                 }
                 5 => {
                     // fuji
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "network '{}' is not supported yet in this tooling",
-                            network_id
-                        ),
-                    ));
+                    if self.machine.beacon_nodes.unwrap_or(0) > 0 {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!(
+                                "cannot specify non-zero 'machine.beacon_nodes' for network_id {}",
+                                network_id
+                            ),
+                        ));
+                    }
+                    if self.install_artifacts.genesis_draft_file_path.is_some() {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {}", network_id),
+                        ));
+                    }
+                    if self.avalanchego_config.genesis.is_some() {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!(
+                                "cannot specify 'avalanchego_config.genesis' for network_id {}",
+                                network_id
+                            ),
+                        ));
+                    }
                 }
                 _ => {
                     if self.machine.beacon_nodes.unwrap_or(0) == 0 {
@@ -402,6 +439,21 @@ impl Spec {
                             ),
                         ));
                     }
+                    if self.install_artifacts.genesis_draft_file_path.is_none() {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!("MUST specify 'install_artifacts.genesis_draft_file_path' for custom network_id {}", network_id),
+                        ));
+                    }
+                    if self.avalanchego_config.genesis.is_none() {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!(
+                                "MUST specify 'avalanchego_config.genesis' for custom network_id {}",
+                                network_id
+                            ),
+                        ));
+                    }
                 }
             }
         }
@@ -427,7 +479,7 @@ fn test_spec() {
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(genesis_json_contents.as_bytes());
     assert!(ret.is_ok());
-    let genesis_file_path = f.path().to_str().unwrap();
+    let genesis_draft_file_path = f.path().to_str().unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(&vec![0]);
@@ -478,7 +530,7 @@ install_artifacts:
   avalanched_bin: {}
   avalanchego_bin: {}
   plugins_dir: {}
-  genesis_file_path: {}
+  genesis_draft_file_path: {}
 
 avalanchego_config:
   config-file: {}
@@ -496,7 +548,7 @@ avalanchego_config:
         avalanched_bin,
         avalanchego_bin,
         plugins_dir,
-        genesis_file_path,
+        genesis_draft_file_path,
         avalanchego::DEFAULT_CONFIG_FILE_PATH,
         avalanchego::DEFAULT_GENESIS_PATH,
         avalanchego::DEFAULT_SNOW_SAMPLE_SIZE,
@@ -576,7 +628,7 @@ avalanchego_config:
             avalanched_bin: avalanched_bin.to_string(),
             avalanchego_bin: avalanchego_bin.to_string(),
             plugins_dir: Some(plugins_dir.to_string()),
-            genesis_file_path: Some(String::from(genesis_file_path)),
+            genesis_draft_file_path: Some(String::from(genesis_draft_file_path)),
         },
 
         avalanchego_config: avago_config,
@@ -604,9 +656,9 @@ avalanchego_config:
     );
     assert_eq!(
         cfg.install_artifacts
-            .genesis_file_path
+            .genesis_draft_file_path
             .unwrap_or(String::from("")),
-        genesis_file_path
+        genesis_draft_file_path
     );
 
     assert_eq!(cfg.machine.beacon_nodes.unwrap_or(0), 10);

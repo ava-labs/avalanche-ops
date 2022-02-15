@@ -62,10 +62,10 @@ A single command to create a new Avalanche node from scratch and join any networ
 
 ```bash
 avalanche-ops-nodes-aws default-spec \
---avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
---avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
---plugins-dir /tmp/avalanchego-v1.7.5/plugins \
---genesis-file-path artifacts/sample.genesis.json \
+--install-artifacts-avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
+--install-artifacts-plugins-dir /tmp/avalanchego-v1.7.5/plugins \
+--install-artifacts-genesis-draft-file-path artifacts/sample.genesis.json \
 --spec-file-path /tmp/test.yaml \
 ```
 
