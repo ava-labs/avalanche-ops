@@ -710,6 +710,10 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
 
     let mut asg_parameters = Vec::from([
         build_param("Id", &spec.id),
+        build_param(
+            "NetworkId",
+            format!("{}", &spec.avalanchego_config.network_id.unwrap_or(1)).as_str(),
+        ),
         build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
         build_param("S3BucketName", &aws_resources.bucket),
         build_param(

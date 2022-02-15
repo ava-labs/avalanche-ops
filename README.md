@@ -112,45 +112,67 @@ Write the configuration file with some default values:
 
 ![demo-aws-01](./img/demo-aws-01.png)
 
-Then apply the configuration:
-
 ![demo-aws-02](./img/demo-aws-02.png)
+
+Then apply the configuration:
 
 ![demo-aws-03](./img/demo-aws-03.png)
 
-Wait for beacon nodes to be ready:
-
 ![demo-aws-04](./img/demo-aws-04.png)
-
-Check your S3 bucket for generated artifacts **(all keys are encrypted using KMS)**:
 
 ![demo-aws-05](./img/demo-aws-05.png)
 
-![demo-aws-06](./img/demo-aws-06.png)
+Wait for beacon nodes to be ready:
 
-Check the beacon nodes:
+![demo-aws-06](./img/demo-aws-06.png)
 
 ![demo-aws-07](./img/demo-aws-07.png)
 
-![demo-aws-08](./img/demo-aws-08.png)
+Check your S3 bucket for generated artifacts **(all keys are encrypted using KMS)**:
 
-Now, check non-beacon nodes created in a separate Auto Scaling Groups:
+![demo-aws-08](./img/demo-aws-08.png)
 
 ![demo-aws-09](./img/demo-aws-09.png)
 
 ![demo-aws-10](./img/demo-aws-10.png)
 
-Now that the network is ready, check the metrics URL (or access via public IPv4 address):
-
 ![demo-aws-11](./img/demo-aws-11.png)
 
 ![demo-aws-12](./img/demo-aws-12.png)
 
-To shut down the network, run `avalanche-ops-nodes-aws delete` command:
+Check the beacon nodes:
 
 ![demo-aws-13](./img/demo-aws-13.png)
 
+Check non-beacon nodes created in a separate Auto Scaling Groups:
+
 ![demo-aws-14](./img/demo-aws-14.png)
+
+![demo-aws-15](./img/demo-aws-15.png)
+
+Check how non-beacon nodes discovered other beacon nodes and publish non-beacon nodes information:
+
+![demo-aws-16](./img/demo-aws-16.png)
+
+![demo-aws-17](./img/demo-aws-17.png)
+
+Check logs from nodes are being published:
+
+![demo-aws-18](./img/demo-aws-18.png)
+
+Now that the network is ready, check the metrics URL (or access via public IPv4 address):
+
+![demo-aws-19](./img/demo-aws-19.png)
+
+![demo-aws-20](./img/demo-aws-20.png)
+
+To shut down the network, run `avalanche-ops-nodes-aws delete` command:
+
+![demo-aws-21](./img/demo-aws-21.png)
+
+![demo-aws-22](./img/demo-aws-22.png)
+
+![demo-aws-23](./img/demo-aws-23.png)
 
 ## Roadmap
 

@@ -14,6 +14,10 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
+  NetworkId:
+    Type: Number
+    Description: Avalanche network ID, used for resource tagging.
+
   NodeKind:
     Type: String
     AllowedValues: ["beacon", "non-beacon"]
