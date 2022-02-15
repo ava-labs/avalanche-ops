@@ -40,6 +40,7 @@ pub const DEFAULT_DB_DIR: &str = "/avalanche-data";
 /// Default "log-dir" directory path for remote linux machines.
 /// ref. See "cloudformation/asg_ubuntu_amd64.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
+pub const DEFAULT_LOG_LEVEL: &str = "INFO";
 
 pub const DEFAULT_STAKING_ENABLED: bool = true;
 pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.key";
@@ -72,6 +73,8 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network_id: Option<u32>,
 
+    /// Public IP of this node for P2P communication.
+    /// If empty, try to discover with NAT.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub public_ip: Option<String>,
 
@@ -202,6 +205,7 @@ impl Config {
 
         config.db_dir = Some(String::from(DEFAULT_DB_DIR));
         config.log_dir = Some(String::from(DEFAULT_LOG_DIR));
+        config.log_level = Some(String::from(DEFAULT_LOG_LEVEL));
 
         config.index_enabled = Some(DEFAULT_INDEX_ENABLED);
         config.api_admin_enabled = Some(DEFAULT_API_ADMIN_ENABLED);

@@ -173,7 +173,10 @@ fn main() {
         &tmp_spec_file_path,
     ))
     .unwrap();
+
     let mut spec = avalanche_ops::Spec::load(&tmp_spec_file_path).unwrap();
+    spec.avalanchego_config.public_ip = Some(public_ipv4.clone());
+    spec.avalanchego_config.sync(None).unwrap();
 
     if spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
@@ -356,7 +359,10 @@ fn main() {
     spec.avalanchego_config.sync(None).unwrap();
 
     thread::sleep(Duration::from_secs(1));
-    info!("STEP: setting up avalanche node systemd service file");
+    info!(
+        "STEP: setting up avalanche node systemd service file with --config-file={}",
+        spec.avalanchego_config.clone().config_file.unwrap()
+    );
     // don't use "Type=notify"
     // as "avalanchego" currently does not do anything specific to systemd
     // ref. "expected that the service sends a notification message via sd_notify"
