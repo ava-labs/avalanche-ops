@@ -360,6 +360,7 @@ Resources:
               chmod 755 /etc/pki/tls/certs
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
+
               cat > /tmp/avalanched.service <<EOF
               [Unit]
               Description=avalanched (avalanche agent)
@@ -387,6 +388,17 @@ Resources:
               wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
               sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
               popd
+
+              # enough time for "avalanched" to initialize cloudwatch configuration
+              sleep 10
+              echo "wait until /opt/aws/amazon-cloudwatch-agent/bin/config.json is written by avalanched"
+              while [[ ! -s /opt/aws/amazon-cloudwatch-agent/bin/config.json ]]
+                do
+                echo "waiting for /opt/aws/amazon-cloudwatch-agent/bin/config.json creation"
+                sleep 5
+                # wait up to 5-minute
+                ((c++)) && ((c==60)) && break
+              done
 
               cat /opt/aws/amazon-cloudwatch-agent/bin/config.json
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
