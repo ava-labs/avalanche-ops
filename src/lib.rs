@@ -36,10 +36,11 @@ pub const DEFAULT_MACHINE_NON_BEACON_NODES: u32 = 2;
 
 /// only required for custom networks
 pub const MIN_MACHINE_BEACON_NODES: u32 = 1;
-pub const MAX_MACHINE_BEACON_NODES: u32 = 100;
+pub const MAX_MACHINE_BEACON_NODES: u32 = 10;
 
 /// required for all node kinds
 pub const MIN_MACHINE_NON_BEACON_NODES: u32 = 1;
+/// TODO: support higher limit?
 pub const MAX_MACHINE_NON_BEACON_NODES: u32 = 200;
 
 /// Represents network-level configuration shared among all nodes.

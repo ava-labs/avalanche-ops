@@ -207,7 +207,7 @@ impl Manager {
     ) -> Result<Vec<Object>> {
         let pfx = prefix.unwrap_or_default();
 
-        info!("listing bucket {} with prefix {}", bucket_name, pfx);
+        info!("listing bucket {} with prefix '{:?}'", bucket_name, pfx);
         let mut objects: Vec<Object> = Vec::new();
         let mut token = String::new();
         loop {
