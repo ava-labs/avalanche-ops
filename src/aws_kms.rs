@@ -410,7 +410,7 @@ pub fn is_error_retryable_create_key(e: &SdkError<CreateKeyError>) -> bool {
                     | CreateKeyErrorKind::KmsInternalException(_)
             )
         }
-        _ => is_error_retryable(e),
+        _ => false,
     }
 }
 
@@ -425,7 +425,7 @@ pub fn is_error_retryable_generate_data_key(e: &SdkError<GenerateDataKeyError>) 
                     | GenerateDataKeyErrorKind::KeyUnavailableException(_)
             )
         }
-        _ => is_error_retryable(e),
+        _ => false,
     }
 }
 
@@ -440,7 +440,7 @@ pub fn is_error_retryable_encrypt(e: &SdkError<EncryptError>) -> bool {
                     | EncryptErrorKind::KeyUnavailableException(_)
             )
         }
-        _ => is_error_retryable(e),
+        _ => false,
     }
 }
 
@@ -455,7 +455,7 @@ pub fn is_error_retryable_decrypt(e: &SdkError<DecryptError>) -> bool {
                     | DecryptErrorKind::KeyUnavailableException(_)
             )
         }
-        _ => is_error_retryable(e),
+        _ => false,
     }
 }
 

@@ -9,6 +9,7 @@ fi
 # RUST_LOG=debug cargo run --example aws_cloudformation_ec2_instance_role.rs
 cargo run --example aws_cloudformation_ec2_instance_role
 cargo run --example aws_cloudformation_vpc
+cargo run --example aws_cloudwatch
 cargo run --example aws_ec2_key_pair
 cargo run --example aws_kms
 cargo run --example aws_s3

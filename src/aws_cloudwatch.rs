@@ -5,8 +5,134 @@ use std::{
     string::String,
 };
 
-use log::info;
+use aws_sdk_cloudwatchlogs::{
+    error::{
+        CreateLogGroupError, CreateLogGroupErrorKind, DeleteLogGroupError, DeleteLogGroupErrorKind,
+    },
+    Client, SdkError,
+};
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
+
+use crate::errors::{Error::API, Result};
+
+/// Implements AWS CloudWatch manager.
+pub struct Manager {
+    #[allow(dead_code)]
+    shared_config: aws_config::Config,
+    cli: Client,
+}
+
+impl Manager {
+    pub fn new(shared_config: &aws_config::Config) -> Self {
+        let cloned = shared_config.clone();
+        let cli = Client::new(shared_config);
+        Self {
+            shared_config: cloned,
+            cli,
+        }
+    }
+
+    /// Creates a CloudWatch log group.
+    pub async fn create_log_group(&self, log_group_name: &str) -> Result<()> {
+        // ref. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-logs-loggroup.html
+        info!("creating CloudWatch log group '{}'", log_group_name);
+        let ret = self
+            .cli
+            .create_log_group()
+            .log_group_name(log_group_name)
+            .send()
+            .await;
+        let already_created = match ret {
+            Ok(_) => false,
+            Err(e) => {
+                if !is_error_create_log_group_already_exists(&e) {
+                    return Err(API {
+                        message: format!("failed create_log_group {:?}", e),
+                        is_retryable: is_error_retryable(&e),
+                    });
+                }
+                warn!("log_group already exists ({})", e);
+                true
+            }
+        };
+        if !already_created {
+            info!("created CloudWatch log group");
+        }
+        Ok(())
+    }
+
+    /// Deletes a CloudWatch log group.
+    pub async fn delete_log_group(&self, log_group_name: &str) -> Result<()> {
+        // ref. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-logs-loggroup.html
+        info!("deleting CloudWatch log group '{}'", log_group_name);
+        let ret = self
+            .cli
+            .delete_log_group()
+            .log_group_name(log_group_name)
+            .send()
+            .await;
+        let deleted = match ret {
+            Ok(_) => true,
+            Err(e) => {
+                let mut ignore_err: bool = false;
+                if is_error_delete_log_group_does_not_exist(&e) {
+                    warn!(
+                        "delete_log_group failed; '{}' does not exist ({}",
+                        log_group_name, e
+                    );
+                    ignore_err = true
+                }
+                if !ignore_err {
+                    return Err(API {
+                        message: format!("failed delete_log_group {:?}", e),
+                        is_retryable: is_error_retryable(&e),
+                    });
+                }
+                false
+            }
+        };
+        if deleted {
+            info!("deleted CloudWatch log group");
+        };
+        Ok(())
+    }
+}
+
+#[inline]
+pub fn is_error_retryable<E>(e: &SdkError<E>) -> bool {
+    match e {
+        SdkError::TimeoutError(_) | SdkError::ResponseError { .. } => true,
+        SdkError::DispatchFailure(e) => e.is_timeout() || e.is_io(),
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_error_create_log_group_already_exists(e: &SdkError<CreateLogGroupError>) -> bool {
+    match e {
+        SdkError::ServiceError { err, .. } => {
+            matches!(
+                err.kind,
+                CreateLogGroupErrorKind::ResourceAlreadyExistsException(_)
+            )
+        }
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_error_delete_log_group_does_not_exist(e: &SdkError<DeleteLogGroupError>) -> bool {
+    match e {
+        SdkError::ServiceError { err, .. } => {
+            matches!(
+                err.kind,
+                DeleteLogGroupErrorKind::ResourceNotFoundException(_)
+            )
+        }
+        _ => false,
+    }
+}
 
 /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
 pub const DEFAULT_CONFIG_FILE_PATH: &str = "/opt/aws/amazon-cloudwatch-agent/bin/config.json";

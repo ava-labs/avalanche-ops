@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 aws-config = "0.6.0"
 aws-sdk-cloudformation = "0.6.0"
+aws-sdk-cloudwatchlogs = "0.6.0"
 aws-sdk-ec2 = "0.6.0"
 aws-sdk-kms = "0.6.0"
 aws-sdk-s3 = "0.6.0"

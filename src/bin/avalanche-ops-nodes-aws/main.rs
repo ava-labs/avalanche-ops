@@ -20,8 +20,8 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego, aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress,
-    envelope, genesis, node, random,
+    self, avalanchego, aws, aws_cloudformation, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, aws_sts,
+    compress, envelope, genesis, node, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -1204,6 +1204,7 @@ fn run_delete(
     let kms_manager = aws_kms::Manager::new(&shared_config);
     let ec2_manager = aws_ec2::Manager::new(&shared_config);
     let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
+    let cw_manager = aws_cloudwatch::Manager::new(&shared_config);
 
     if aws_resources
         .cloudformation_asg_non_beacon_nodes_logical_id
@@ -1357,6 +1358,16 @@ fn run_delete(
     }
 
     if delete_all {
+        // deletes the one auto-created by nodes
+        thread::sleep(Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: cloudwatch log groups\n"),
+            ResetColor
+        )?;
+        rt.block_on(cw_manager.delete_log_group(&spec.id)).unwrap();
+
         thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
