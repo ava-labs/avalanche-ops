@@ -48,6 +48,10 @@ pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/etc/pki/tls/certs/avalanched.p
 
 pub const DEFAULT_INDEX_ENABLED: bool = true;
 pub const DEFAULT_API_ADMIN_ENABLED: bool = true;
+pub const DEFAULT_API_INFO_ENABLED: bool = true;
+pub const DEFAULT_API_KEYSTORE_ENABLED: bool = true;
+pub const DEFAULT_API_METRICS_ENABLED: bool = true;
+pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
 pub const DEFAULT_API_IPCS_ENABLED: bool = true;
 
 /// Represents AvalancheGo genesis configuration.
@@ -137,6 +141,14 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_admin_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_info_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_keystore_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_metrics_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_health_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub api_ipcs_enabled: Option<bool>,
 }
 
@@ -183,6 +195,10 @@ impl Config {
 
             index_enabled: None,
             api_admin_enabled: None,
+            api_info_enabled: None,
+            api_keystore_enabled: None,
+            api_metrics_enabled: None,
+            api_health_enabled: None,
             api_ipcs_enabled: None,
         }
     }
@@ -209,6 +225,10 @@ impl Config {
 
         config.index_enabled = Some(DEFAULT_INDEX_ENABLED);
         config.api_admin_enabled = Some(DEFAULT_API_ADMIN_ENABLED);
+        config.api_info_enabled = Some(DEFAULT_API_INFO_ENABLED);
+        config.api_keystore_enabled = Some(DEFAULT_API_KEYSTORE_ENABLED);
+        config.api_metrics_enabled = Some(DEFAULT_API_METRICS_ENABLED);
+        config.api_health_enabled = Some(DEFAULT_API_HEALTH_ENABLED);
         config.api_ipcs_enabled = Some(DEFAULT_API_IPCS_ENABLED);
         config
     }
