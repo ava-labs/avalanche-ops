@@ -61,6 +61,7 @@ fn main() {
                 sub_matches
                     .value_of("INSTALL_ARTIFACTS_GENESIS_DRAFT_FILE_PATH")
                     .unwrap(),
+                sub_matches.value_of("AVALANCHEGO_LOG_LEVEL").unwrap(),
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
             )
             .unwrap();
@@ -132,10 +133,19 @@ fn create_default_spec_command() -> App<'static> {
         )
         .arg(
             Arg::new("INSTALL_ARTIFACTS_GENESIS_DRAFT_FILE_PATH") 
-                .long("install-artifacts-genesis-file-path")
+                .long("install-artifacts-genesis-draft-file-path")
                 .short('g')
                 .help("Sets the genesis draft file path in the local machine to load and share with remote machines")
                 .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_LOG_LEVEL") 
+                .long("avalanchego-log-level")
+                .help("Sets log-level for avalanchego")
+                .default_value(avalanchego::DEFAULT_LOG_LEVEL)
+                .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
@@ -233,6 +243,7 @@ fn run_default_spec(
     install_artifacts_avalanche_bin: &str,
     install_artifacts_plugins_dir: &str,
     install_artifacts_genesis_draft_file_path: &str,
+    avalanchego_log_level: &str,
     spec_file_path: &str,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -250,10 +261,11 @@ fn run_default_spec(
         _install_artifacts_genesis_draft_file_path = None;
     }
 
-    // set defaults based on genesis file
-    let genesis = genesis::Config::load(install_artifacts_genesis_draft_file_path)?;
     let mut avalanchego_config = avalanchego::Config::default();
+
+    let genesis = genesis::Config::load(install_artifacts_genesis_draft_file_path)?;
     avalanchego_config.network_id = Some(genesis.network_id);
+    avalanchego_config.log_level = Some(String::from(avalanchego_log_level));
 
     let spec = avalanche_ops::Spec::default_aws(
         install_artifacts_avalanched_bin,
