@@ -1148,10 +1148,13 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
     println!("http://{}:{}/ext/metrics", dns_name, http_port);
     println!("http://{}:{}/ext/health", dns_name, http_port);
+    let mut uris: Vec<String> = vec![];
     for n in all_nodes.iter() {
         println!("http://{}:{}/ext/metrics", n.ip, http_port);
         println!("http://{}:{}/ext/health", n.ip, http_port);
+        uris.push(format!("http://{}:{}", n.ip, http_port))
     }
+    println!("URIs: {}", uris.join(","));
 
     println!();
     info!("apply all success!");
