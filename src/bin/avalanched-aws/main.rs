@@ -128,6 +128,47 @@ fn main() {
     }
     let envelope = envelope::Envelope::new(Some(kms_manager), Some(kms_cmk_arn));
 
+    let avalanche_bin = matches.value_of("AVALANCHE_BIN").unwrap();
+    if !Path::new(avalanche_bin).exists() {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading avalanche binary from S3");
+        let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
+        rt.block_on(s3_manager.get_object(
+            &s3_bucket_name,
+            &aws_s3::KeyPath::AvalancheBinCompressed(id.clone()).encode(),
+            &tmp_avalanche_bin_compressed_path,
+        ))
+        .unwrap();
+        compress::from_zstd_file(&tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
+        let f = File::open(avalanche_bin).unwrap();
+        f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
+    }
+
+    let plugins_dir = get_plugins_dir(avalanche_bin);
+    if !Path::new(&plugins_dir).exists() {
+        thread::sleep(Duration::from_secs(1));
+        info!("STEP: downloading plugins from S3");
+        fs::create_dir_all(plugins_dir.clone()).unwrap();
+        let objects = rt
+            .block_on(s3_manager.list_objects(
+                &s3_bucket_name,
+                Some(aws_s3::KeyPath::PluginsDir(id.clone()).encode()),
+            ))
+            .unwrap();
+        for obj in objects.iter() {
+            let s3_key = obj.key().unwrap();
+            let file_name = extract_filename(s3_key);
+            let file_path = format!("{}/{}", plugins_dir, file_name);
+
+            let tmp_path = random::tmp_path(15).unwrap();
+            rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
+                .unwrap();
+            compress::from_zstd_file(&tmp_path, &file_path).unwrap();
+            let f = File::open(file_path).unwrap();
+            f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
+        }
+    }
+
     thread::sleep(Duration::from_secs(1));
     info!("STEP: writing CloudWatch configuration JSON file");
     let cloudwatch_config_file_path = matches
@@ -247,47 +288,6 @@ fn main() {
     }
     let node_id = id::load_node_id(&tls_cert_path).unwrap();
     info!("loaded node ID from cert: {}", node_id);
-
-    let avalanche_bin = matches.value_of("AVALANCHE_BIN").unwrap();
-    if !Path::new(avalanche_bin).exists() {
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: downloading avalanche binary from S3");
-        let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
-        rt.block_on(s3_manager.get_object(
-            &s3_bucket_name,
-            &aws_s3::KeyPath::AvalancheBinCompressed(id.clone()).encode(),
-            &tmp_avalanche_bin_compressed_path,
-        ))
-        .unwrap();
-        compress::from_zstd_file(&tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
-        let f = File::open(avalanche_bin).unwrap();
-        f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
-    }
-
-    let plugins_dir = get_plugins_dir(avalanche_bin);
-    if !Path::new(&plugins_dir).exists() {
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: downloading plugins from S3");
-        fs::create_dir_all(plugins_dir.clone()).unwrap();
-        let objects = rt
-            .block_on(s3_manager.list_objects(
-                &s3_bucket_name,
-                Some(aws_s3::KeyPath::PluginsDir(id.clone()).encode()),
-            ))
-            .unwrap();
-        for obj in objects.iter() {
-            let s3_key = obj.key().unwrap();
-            let file_name = extract_filename(s3_key);
-            let file_path = format!("{}/{}", plugins_dir, file_name);
-
-            let tmp_path = random::tmp_path(15).unwrap();
-            rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
-                .unwrap();
-            compress::from_zstd_file(&tmp_path, &file_path).unwrap();
-            let f = File::open(file_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
-        }
-    }
 
     // mainnet/other pre-defined test nets have hard-coded beacon nodes
     // thus no need for beacon nodes
