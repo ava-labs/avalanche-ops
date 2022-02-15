@@ -1121,10 +1121,12 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         .avalanchego_config
         .http_port
         .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
-    let metrics_endpoint_dns = format!("http://{}:{}/ext/metrics", dns_name, http_port);
-    let metrics_endpoint_ip = format!("http://{}:{}/ext/metrics", all_nodes[0].ip, http_port);
-    println!("{}", metrics_endpoint_dns);
-    println!("{}", metrics_endpoint_ip);
+    println!("http://{}:{}/ext/metrics", dns_name, http_port);
+    println!("http://{}:{}/ext/health", dns_name, http_port);
+    for n in all_nodes.iter() {
+        println!("http://{}:{}/ext/metrics", n.ip, http_port);
+        println!("http://{}:{}/ext/health", n.ip, http_port);
+    }
 
     println!();
     info!("apply all success!");
