@@ -357,12 +357,17 @@ fn main() {
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: setting up avalanche node systemd service file");
+    // don't use "Type=notify"
+    // as "avalanchego" currently does not do anything specific to systemd
+    // ref. "expected that the service sends a notification message via sd_notify"
+    // ref. https://www.freedesktop.org/software/systemd/man/systemd.service.html
     let avalanche_service_file_contents = format!(
         "[Unit]
 Description=avalanche node
 
 [Service]
-Type=notify
+Type=simple
+TimeoutStartSec=300
 Restart=always
 RestartSec=5s
 LimitNOFILE=40000
