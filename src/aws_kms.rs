@@ -66,7 +66,7 @@ impl Manager {
             .tags(Tag::builder().tag_key("Name").tag_value(key_desc).build())
             .tags(
                 Tag::builder()
-                    .tag_key("kind")
+                    .tag_key("KIND")
                     .tag_value("avalanche-ops")
                     .build(),
             )

@@ -2,11 +2,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS Auto Scaling Groups for amd64"
 
-# takes about 2-minute for 3 nodes
-
-# TODO: support CloudWatch logs
-# ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
-# ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AgentReference.html
+# takes about 2-minute for 3 nodes (without NLB)
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Parameters:
@@ -258,8 +254,7 @@ Resources:
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName:
-        !Join ["-", [!Ref Id, "asg-launch-template", !Ref NodeKind, "amd64"]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref NodeKind, "amd64"]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -295,10 +290,10 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-instance-${NodeKind}-amd64" }
+              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-amd64" }
           - ResourceType: volume
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-volume-${NodeKind}-amd64" }
+              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-amd64" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -449,8 +444,7 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      AutoScalingGroupName:
-        !Join ["-", [!Ref Id, "asg", !Ref NodeKind, "amd64"]]
+      AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, "amd64"]]
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
@@ -467,7 +461,7 @@ Resources:
       Tags:
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Join ["-", [!Ref Id, "asg", !Ref NodeKind, "amd64"]]
+          Value: !Join ["-", [!Ref Id, !Ref NodeKind, "amd64"]]
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id

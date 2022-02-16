@@ -578,7 +578,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             OnFailure::Delete,
             ec2_instance_role_tmpl,
             Some(Vec::from([
-                Tag::builder().key("kind").value("avalanche-ops").build(),
+                Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
             Some(Vec::from([
                 build_param("Id", &spec.id),
@@ -658,7 +658,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             OnFailure::Delete,
             vpc_tmpl,
             Some(Vec::from([
-                Tag::builder().key("kind").value("avalanche-ops").build(),
+                Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
             Some(parameters),
         ))
@@ -800,7 +800,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             OnFailure::Delete,
             cloudformation_asg_beacon_nodes_tmpl,
             Some(Vec::from([
-                Tag::builder().key("kind").value("avalanche-ops").build(),
+                Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
             Some(parameters),
         ))
@@ -990,7 +990,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             OnFailure::Delete,
             cloudformation_asg_non_beacon_nodes_tmpl,
             Some(Vec::from([
-                Tag::builder().key("kind").value("avalanche-ops").build(),
+                Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
             Some(parameters),
         ))

@@ -50,7 +50,7 @@ fn main() {
         OnFailure::Delete,
         template_body,
         Some(Vec::from([
-            Tag::builder().key("kind").value("avalanche-ops").build(),
+            Tag::builder().key("KIND").value("avalanche-ops").build(),
             Tag::builder().key("a").value("b").build()
         ])),
         Some(Vec::from([
