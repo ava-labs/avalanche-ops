@@ -21,7 +21,6 @@ pub mod cert;
 pub mod compress;
 pub mod envelope;
 pub mod errors;
-pub mod genesis;
 pub mod http;
 pub mod humanize;
 pub mod id;

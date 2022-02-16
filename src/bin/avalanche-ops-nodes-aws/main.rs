@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudformation, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, aws_sts,
-    compress, envelope, genesis, node, random,
+    compress, envelope, node, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -263,7 +263,7 @@ fn run_default_spec(
 
     let mut avalanchego_config = avalanchego::Config::default();
 
-    let genesis = genesis::Config::load(install_artifacts_genesis_draft_file_path)?;
+    let genesis = avalanchego::Genesis::load(install_artifacts_genesis_draft_file_path)?;
     avalanchego_config.network_id = Some(genesis.network_id);
     avalanchego_config.log_level = Some(String::from(avalanchego_log_level));
 

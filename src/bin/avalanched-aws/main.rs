@@ -15,7 +15,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress,
-    envelope, genesis, id, node, random,
+    envelope, id, node, random,
 };
 
 const APP_NAME: &str = "avalanched-aws";
@@ -307,7 +307,7 @@ fn main() {
 
         thread::sleep(Duration::from_secs(1));
         info!("STEP: collect all seed/bootstrapping beacon nodes information from S3 key for initial stakers");
-        let mut stakers: Vec<genesis::Staker> = vec![];
+        let mut stakers: Vec<avalanchego::Staker> = vec![];
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
 
@@ -315,7 +315,7 @@ fn main() {
             // to reduce "s3_manager.get_object" call volume
             let seed_beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
 
-            let staker = genesis::Staker {
+            let staker = avalanchego::Staker {
                 node_id: Some(seed_beacon_node.id),
 
                 // ewoq wallet address
@@ -350,7 +350,7 @@ fn main() {
             "STEP: updating genesis draft file and writing to a new genesis file to '{}'",
             genesis_path
         );
-        let mut genesis_draft = genesis::Config::load(&tmp_genesis_path).unwrap();
+        let mut genesis_draft = avalanchego::Genesis::load(&tmp_genesis_path).unwrap();
         genesis_draft.initial_stakers = Some(stakers);
         genesis_draft.sync(&genesis_path).unwrap();
 
