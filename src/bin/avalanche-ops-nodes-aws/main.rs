@@ -916,6 +916,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 break;
             }
         }
+
         let mut nodes: Vec<node::Node> = Vec::new();
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
@@ -923,6 +924,35 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             all_nodes.push(beacon_node.clone());
             nodes.push(beacon_node);
         }
+        info!("waiting for beacon nodes bootstrap and ready (to be safe)");
+        let http_port = spec
+            .avalanchego_config
+            .http_port
+            .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
+        for node in nodes.iter() {
+            let mut success = false;
+            for _ in 0..7_u8 {
+                thread::sleep(Duration::from_secs(5));
+                let ret = rt.block_on(get_health(
+                    format!("http://{}:{}", node.ip, http_port).as_str(),
+                ));
+                success = match ret {
+                    Ok(res) => res.healthy.is_some() && res.healthy.unwrap(),
+                    Err(e) => {
+                        warn!("health check failed for {} ({})", node.machine_id, e);
+                        false
+                    }
+                };
+                if success {
+                    info!("health check success for {}", node.machine_id);
+                    break;
+                }
+            }
+            if !success {
+                return Err(Error::new(ErrorKind::Other, "health check failed"));
+            }
+        }
+
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
@@ -934,30 +964,6 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        info!("waiting for beacon nodes bootstrap and ready (to be safe)");
-        let http_port = spec
-            .avalanchego_config
-            .http_port
-            .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
-        for node in nodes.iter() {
-            let mut success = false;
-            for _ in 0..7_u8 {
-                thread::sleep(Duration::from_secs(5));
-                let health_res = rt
-                    .block_on(get_health(
-                        format!("http://{}:{}", node.ip, http_port).as_str(),
-                    ))
-                    .unwrap();
-                if health_res.healthy.is_some() && health_res.healthy.unwrap() {
-                    success = true;
-                    break;
-                }
-                warn!("health check failed for {}", node.machine_id);
-            }
-            if !success {
-                return Err(Error::new(ErrorKind::Other, "health check failed"));
-            }
-        }
         thread::sleep(Duration::from_secs(10));
     }
 
@@ -1137,6 +1143,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 break;
             }
         }
+
         let mut nodes: Vec<node::Node> = Vec::new();
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
@@ -1144,6 +1151,35 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             all_nodes.push(non_beacon_node.clone());
             nodes.push(non_beacon_node);
         }
+        info!("waiting for non-beacon nodes bootstrap and ready (to be safe)");
+        let http_port = spec
+            .avalanchego_config
+            .http_port
+            .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
+        for node in nodes.iter() {
+            let mut success = false;
+            for _ in 0..7_u8 {
+                thread::sleep(Duration::from_secs(5));
+                let ret = rt.block_on(get_health(
+                    format!("http://{}:{}", node.ip, http_port).as_str(),
+                ));
+                success = match ret {
+                    Ok(res) => res.healthy.is_some() && res.healthy.unwrap(),
+                    Err(e) => {
+                        warn!("health check failed for {} ({})", node.machine_id, e);
+                        false
+                    }
+                };
+                if success {
+                    info!("health check success for {}", node.machine_id);
+                    break;
+                }
+            }
+            if !success {
+                return Err(Error::new(ErrorKind::Other, "health check failed"));
+            }
+        }
+
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
@@ -1155,30 +1191,6 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         ))
         .unwrap();
 
-        info!("waiting for non-beacon nodes bootstrap and ready (to be safe)");
-        let http_port = spec
-            .avalanchego_config
-            .http_port
-            .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
-        for node in nodes.iter() {
-            let mut success = false;
-            for _ in 0..7_u8 {
-                thread::sleep(Duration::from_secs(5));
-                let health_res = rt
-                    .block_on(get_health(
-                        format!("http://{}:{}", node.ip, http_port).as_str(),
-                    ))
-                    .unwrap();
-                if health_res.healthy.is_some() && health_res.healthy.unwrap() {
-                    success = true;
-                    break;
-                }
-                warn!("health check failed for {}", node.machine_id);
-            }
-            if !success {
-                return Err(Error::new(ErrorKind::Other, "health check failed"));
-            }
-        }
         thread::sleep(Duration::from_secs(10));
     }
 
