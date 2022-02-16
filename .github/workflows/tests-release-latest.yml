@@ -145,10 +145,10 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: Tag release
-          tag_name: github.ref
+          name: ${{ github.ref }}
+          tag_name: ${{ github.ref }}
           prerelease: false
-          body: Release builds.
+          body: Release builds for ${{ github.ref }}.
           files: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
