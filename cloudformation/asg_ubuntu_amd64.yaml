@@ -60,7 +60,17 @@ Parameters:
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
 
   # Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
-  # Avalanche test net runs "c5.2xlarge".
+  # Avalanche test net ("fuji") runs "c5.2xlarge"
+  #
+  # https://aws.amazon.com/ec2/instance-types/c6a/
+  # c6a.large:   2 vCPU + 4  GiB RAM
+  # c6a.xlarge:  4 vCPU + 8  GiB RAM
+  # c6a.2xlarge: 8 vCPU + 16 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/m6a/
+  # m6a.large:   2 vCPU + 8  GiB RAM
+  # m6a.xlarge:  4 vCPU + 16 GiB RAM
+  # m6a.2xlarge: 8 vCPU + 32 GiB RAM
   #
   # https://aws.amazon.com/ec2/instance-types/m5/
   # m5.large:   2 vCPU + 8  GiB RAM
@@ -84,9 +94,7 @@ Parameters:
   #
   InstanceTypes:
     Type: CommaDelimitedList
-    Default: m5.large,c5.large,r5.large,t3.large
-    # Default: m5.xlarge,c5.xlarge,r5.xlarge,t3.xlarge
-    # Default: m5.2xlarge,c5.2xlarge,r5.2xlarge,t3.2xlarge
+    Default: c6a.large,m6a.large,m5.large,c5.large
     Description: EC2 instance types
 
   InstanceTypesCount:
@@ -475,14 +483,16 @@ Resources:
         - Key: S3_BUCKET_NAME
           PropagateAtLaunch: true
           Value: !Ref S3BucketName
-      # specify "MixedInstancesPolicy" or "LaunchConfiguration"
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       MixedInstancesPolicy:
         InstancesDistribution:
           OnDemandAllocationStrategy: "prioritized"
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplate.html
         LaunchTemplate:
           LaunchTemplateSpecification:
             LaunchTemplateId: !Ref ASGLaunchTemplate
             Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+          # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplateoverrides.html
           Overrides:
             - InstanceType: !Select [0, !Ref InstanceTypes]
             - Fn::If:

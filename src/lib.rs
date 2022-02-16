@@ -181,10 +181,10 @@ impl Spec {
                 beacon_nodes: Some(beacon_nodes),
                 non_beacon_nodes: DEFAULT_MACHINE_NON_BEACON_NODES,
                 instance_types: Some(vec![
+                    String::from("c6a.large"),
+                    String::from("m6a.large"),
                     String::from("m5.large"),
                     String::from("c5.large"),
-                    String::from("r5.large"),
-                    String::from("t3.large"),
                 ]),
             },
 
