@@ -307,6 +307,8 @@ impl Spec {
         if self.id.is_empty() {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
         }
+
+        // some AWS resources have tag limit of 32-character
         if self.id.len() > 28 {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
