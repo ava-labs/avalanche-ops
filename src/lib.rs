@@ -128,22 +128,63 @@ impl Spec {
         genesis_draft_file_path: Option<String>,
         avalanchego_config: avalanchego::Config,
     ) -> Self {
-        let beacon_nodes = match avalanchego_config.network_id {
-            Some(id) => match id {
-                1 => 0, // "mainnet"
-                2 => 0, // "cascade"
-                3 => 0, // "denali"
-                4 => 0, // "everest"
-                5 => 0, // "fuji"
-                _ => DEFAULT_MACHINE_BEACON_NODES,
+        let (id, beacon_nodes, non_beacon_nodes) = match avalanchego_config.network_id {
+            Some(network_id) => match network_id {
+                // "mainnet"
+                1 => (
+                    crate::id::generate("avalanche-mainnet"),
+                    0,
+                    DEFAULT_MACHINE_NON_BEACON_NODES,
+                ),
+
+                // "cascade"
+                2 => (
+                    crate::id::generate("avalanche-cascade"),
+                    0,
+                    DEFAULT_MACHINE_NON_BEACON_NODES,
+                ),
+
+                // "denali"
+                3 => (
+                    crate::id::generate("avalanche-denali"),
+                    0,
+                    DEFAULT_MACHINE_NON_BEACON_NODES,
+                ),
+
+                // "everest"
+                4 => (
+                    crate::id::generate("avalanche-everest"),
+                    0,
+                    DEFAULT_MACHINE_NON_BEACON_NODES,
+                ),
+
+                // "fuji"
+                5 => (
+                    crate::id::generate("everest-fuji"),
+                    0,
+                    DEFAULT_MACHINE_NON_BEACON_NODES,
+                ),
+
+                // custom
+                _ => (
+                    crate::id::generate(format!("avalanche-{}", network_id).as_str()),
+                    DEFAULT_MACHINE_BEACON_NODES,
+                    DEFAULT_MACHINE_NON_BEACON_NODES,
+                ),
             },
-            _ => DEFAULT_MACHINE_BEACON_NODES,
+
+            // mainnet
+            _ => (
+                crate::id::generate("avalanche-mainnet"),
+                0,
+                DEFAULT_MACHINE_NON_BEACON_NODES,
+            ),
         };
 
         // [year][month][date]-[system host-based id]
-        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
+        let bucket = format!("avalanche-{}-{}", crate::time::get(6), crate::id::sid(7));
         Self {
-            id: crate::id::generate("avax"),
+            id,
 
             aws_resources: Some(aws::Resources {
                 region: String::from("us-west-2"),
@@ -178,7 +219,7 @@ impl Spec {
 
             machine: Machine {
                 beacon_nodes: Some(beacon_nodes),
-                non_beacon_nodes: DEFAULT_MACHINE_NON_BEACON_NODES,
+                non_beacon_nodes,
                 instance_types: Some(vec![
                     String::from("c6a.large"),
                     String::from("m6a.large"),
