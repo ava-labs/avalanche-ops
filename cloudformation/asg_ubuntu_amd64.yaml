@@ -229,7 +229,7 @@ Resources:
     Condition: EmptyNlbTargetGroupArn
     Properties:
       # Target group name '...' cannot be longer than '32' characters
-      Name: !Join ["-", [!Ref Id, "nlb-tg"]]
+      Name: !Join ["-", [!Ref Id, "tg"]]
       # Health check enabled must be true for target groups
       # with target type 'instance'
       HealthCheckEnabled: true

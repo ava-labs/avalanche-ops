@@ -132,28 +132,28 @@ impl Spec {
             Some(network_id) => match network_id {
                 // "mainnet"
                 1 => (
-                    crate::id::generate("avalanche-mainnet"),
+                    crate::id::generate("avax-mainnet"),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
 
                 // "cascade"
                 2 => (
-                    crate::id::generate("avalanche-cascade"),
+                    crate::id::generate("avax-cascade"),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
 
                 // "denali"
                 3 => (
-                    crate::id::generate("avalanche-denali"),
+                    crate::id::generate("avax-denali"),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
 
                 // "everest"
                 4 => (
-                    crate::id::generate("avalanche-everest"),
+                    crate::id::generate("avax-everest"),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
@@ -167,7 +167,7 @@ impl Spec {
 
                 // custom
                 _ => (
-                    crate::id::generate(format!("avalanche-{}", network_id).as_str()),
+                    crate::id::generate(format!("avax-{}", network_id).as_str()),
                     DEFAULT_MACHINE_BEACON_NODES,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
@@ -175,14 +175,14 @@ impl Spec {
 
             // mainnet
             _ => (
-                crate::id::generate("avalanche-mainnet"),
+                crate::id::generate("avax-mainnet"),
                 0,
                 DEFAULT_MACHINE_NON_BEACON_NODES,
             ),
         };
 
         // [year][month][date]-[system host-based id]
-        let bucket = format!("avalanche-{}-{}", crate::time::get(6), crate::id::sid(7));
+        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
         Self {
             id,
 
@@ -454,6 +454,15 @@ impl Spec {
                     }
                 }
                 _ => {
+                    if network_id > 10000 {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!(
+                                "cannot specify >10,000 for 'network_id' (got {})",
+                                network_id
+                            ),
+                        ));
+                    }
                     if self.machine.beacon_nodes.unwrap_or(0) == 0 {
                         return Err(Error::new(
                             ErrorKind::InvalidInput,
