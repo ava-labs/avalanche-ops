@@ -1163,7 +1163,6 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     for node in all_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            thread::sleep(Duration::from_secs(15));
             let ret = rt.block_on(get_health(
                 format!("http://{}:{}", node.ip, http_port).as_str(),
             ));
@@ -1178,6 +1177,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 info!("health check success for {}", node.machine_id);
                 break;
             }
+            thread::sleep(Duration::from_secs(10));
         }
         if !success {
             return Err(Error::new(ErrorKind::Other, "health check failed"));
@@ -1187,7 +1187,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         println!("http://{}:{}/ext/health", node.ip, http_port);
         uris.push(format!("http://{}:{}", node.ip, http_port))
     }
-    println!("URIs: {}", uris.join(","));
+    println!("\nURIs: {}", uris.join(","));
 
     println!();
     info!("apply all success!");
