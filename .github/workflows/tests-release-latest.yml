@@ -127,7 +127,7 @@ jobs:
           fi
 
       # https://github.com/softprops/action-gh-release
-      - name: Create latest release
+      - name: Release latest
         uses: softprops/action-gh-release@v1
         if: ${{ github.ref == 'refs/heads/main' }}
         with:
@@ -141,7 +141,7 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanched }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
 
-      - name: Create tag release
+      - name: Release tag
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
