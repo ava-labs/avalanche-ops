@@ -14,7 +14,7 @@ use crate::{random, time};
 /// Generates a random ID with the prefix followed by a
 /// timestamp and random characters.
 pub fn generate(pfx: &str) -> String {
-    format!("{}-{}-{}", pfx, time::get(8), random::string(5))
+    format!("{}-{}-{}", pfx, time::get(6), random::string(6))
 }
 
 #[test]
