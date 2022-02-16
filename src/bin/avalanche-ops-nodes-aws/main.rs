@@ -15,13 +15,13 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use log::info;
+use log::{info, warn};
 use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudformation, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, aws_sts,
-    compress, envelope, node, random,
+    compress, envelope, http, node, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -916,10 +916,12 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 break;
             }
         }
+        let mut nodes: Vec<node::Node> = Vec::new();
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
-            all_nodes.push(beacon_node);
+            all_nodes.push(beacon_node.clone());
+            nodes.push(beacon_node);
         }
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
@@ -933,7 +935,30 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         .unwrap();
 
         info!("waiting for beacon nodes bootstrap and ready (to be safe)");
-        thread::sleep(Duration::from_secs(100));
+        let http_port = spec
+            .avalanchego_config
+            .http_port
+            .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
+        for node in nodes.iter() {
+            let mut success = false;
+            for _ in 0..7_u8 {
+                thread::sleep(Duration::from_secs(5));
+                let health_res = rt
+                    .block_on(get_health(
+                        format!("http://{}:{}", node.ip, http_port).as_str(),
+                    ))
+                    .unwrap();
+                if health_res.healthy.is_some() && health_res.healthy.unwrap() {
+                    success = true;
+                    break;
+                }
+                warn!("health check failed for {}", node.machine_id);
+            }
+            if !success {
+                return Err(Error::new(ErrorKind::Other, "health check failed"));
+            }
+        }
+        thread::sleep(Duration::from_secs(10));
     }
 
     if aws_resources
@@ -1112,10 +1137,12 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 break;
             }
         }
+        let mut nodes: Vec<node::Node> = Vec::new();
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let non_beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
-            all_nodes.push(non_beacon_node);
+            all_nodes.push(non_beacon_node.clone());
+            nodes.push(non_beacon_node);
         }
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
@@ -1127,6 +1154,32 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             &aws_s3::KeyPath::ConfigFile(spec.id).encode(),
         ))
         .unwrap();
+
+        info!("waiting for non-beacon nodes bootstrap and ready (to be safe)");
+        let http_port = spec
+            .avalanchego_config
+            .http_port
+            .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
+        for node in nodes.iter() {
+            let mut success = false;
+            for _ in 0..7_u8 {
+                thread::sleep(Duration::from_secs(5));
+                let health_res = rt
+                    .block_on(get_health(
+                        format!("http://{}:{}", node.ip, http_port).as_str(),
+                    ))
+                    .unwrap();
+                if health_res.healthy.is_some() && health_res.healthy.unwrap() {
+                    success = true;
+                    break;
+                }
+                warn!("health check failed for {}", node.machine_id);
+            }
+            if !success {
+                return Err(Error::new(ErrorKind::Other, "health check failed"));
+            }
+        }
+        thread::sleep(Duration::from_secs(10));
     }
 
     execute!(
@@ -1438,4 +1491,25 @@ fn get_ec2_key_path(spec_file_path: &str) -> String {
             .to_str()
             .unwrap(),
     )
+}
+
+async fn get_health(u: &str) -> io::Result<avalanchego::APIHealthReply> {
+    info!("checking /ext/health for {}", u);
+    let req = http::create_get(u, "/ext/health")?;
+    let buf = match http::read_bytes(req, Duration::from_secs(5)).await {
+        Ok(u) => u,
+        Err(e) => return Err(e),
+    };
+
+    let resp = match serde_json::from_slice(&buf) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
+        }
+    };
+
+    Ok(resp)
 }

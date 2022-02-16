@@ -4,9 +4,33 @@ use std::{
     time::Duration,
 };
 
-use hyper::{body::Bytes, client::HttpConnector, Body, Client, Request, Response};
+use hyper::{body::Bytes, client::HttpConnector, Body, Client, Method, Request, Response};
 use tokio::time::timeout;
 use url::Url;
+
+/// Creates a simple HTTP GET request with no header and no body.
+pub fn create_get(url: &str, path: &str) -> io::Result<Request<Body>> {
+    let uri = match join_uri(url, path) {
+        Ok(u) => u,
+        Err(e) => return Err(e),
+    };
+
+    let req = match Request::builder()
+        .method(Method::GET)
+        .uri(uri.as_str())
+        .body(Body::empty())
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to create request {}", e),
+            ));
+        }
+    };
+
+    Ok(req)
+}
 
 /// Sends a HTTP request, reads response in "hyper::body::Bytes".
 pub async fn read_bytes(req: Request<Body>, timeout_dur: Duration) -> io::Result<Bytes> {
