@@ -5,6 +5,7 @@ use std::{
 };
 
 use hyper::{body::Bytes, client::HttpConnector, Body, Client, Method, Request, Response};
+use log::warn;
 use tokio::time::timeout;
 use url::Url;
 
@@ -33,21 +34,32 @@ pub fn create_get(url: &str, path: &str) -> io::Result<Request<Body>> {
 }
 
 /// Sends a HTTP request, reads response in "hyper::body::Bytes".
-pub async fn read_bytes(req: Request<Body>, timeout_dur: Duration) -> io::Result<Bytes> {
+pub async fn read_bytes(
+    req: Request<Body>,
+    timeout_dur: Duration,
+    check_status_code: bool,
+) -> io::Result<Bytes> {
     let ret = send_req(req, timeout_dur).await;
     let resp = match ret {
         Ok(r) => r,
         Err(e) => return Err(e),
     };
     if !resp.status().is_success() {
-        return Err(Error::new(
-            ErrorKind::Other,
-            format!(
-                "unexpected HTTP response code {} (server error {})",
-                resp.status(),
-                resp.status().is_server_error()
-            ),
-        ));
+        warn!(
+            "unexpected HTTP response code {} (server error {})",
+            resp.status(),
+            resp.status().is_server_error()
+        );
+        if check_status_code {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "unexpected HTTP response code {} (server error {})",
+                    resp.status(),
+                    resp.status().is_server_error()
+                ),
+            ));
+        }
     }
 
     // set timeouts for reads
@@ -132,7 +144,7 @@ fn test_read_bytes_timeout() {
         .body(Body::empty());
     assert!(ret.is_ok());
     let req = ret.unwrap();
-    let ret = ab!(read_bytes(req, Duration::from_secs(1)));
+    let ret = ab!(read_bytes(req, Duration::from_secs(1), true));
     assert!(!ret.is_ok());
 }
 

@@ -1507,8 +1507,10 @@ fn get_ec2_key_path(spec_file_path: &str) -> String {
 
 async fn get_health(u: &str) -> io::Result<avalanchego::APIHealthReply> {
     info!("checking /ext/health for {}", u);
-    let req = http::create_get(u, "/ext/health")?;
-    let buf = match http::read_bytes(req, Duration::from_secs(5)).await {
+    let req = http::create_get(u, "ext/health")?;
+
+    // TODO: fix this; avalanchego /ext/health returns 503...
+    let buf = match http::read_bytes(req, Duration::from_secs(5), false).await {
         Ok(u) => u,
         Err(e) => return Err(e),
     };

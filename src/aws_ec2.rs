@@ -375,7 +375,7 @@ async fn fetch_metadata(path: &str) -> Result<String> {
         }
     };
 
-    let ret = crate::http::read_bytes(req, Duration::from_secs(5)).await;
+    let ret = crate::http::read_bytes(req, Duration::from_secs(5), true).await;
     let rs = match ret {
         Ok(bytes) => {
             let s = match String::from_utf8(bytes.to_vec()) {
@@ -426,7 +426,7 @@ async fn fetch_token() -> Result<String> {
         }
     };
 
-    let ret = crate::http::read_bytes(req, Duration::from_secs(5)).await;
+    let ret = crate::http::read_bytes(req, Duration::from_secs(5), true).await;
     let token = match ret {
         Ok(bytes) => {
             let s = match String::from_utf8(bytes.to_vec()) {
