@@ -33,7 +33,6 @@ jobs:
     name: Build release latest for ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     needs: run_unit_tests
-    if: ${{ github.ref == 'refs/heads/main' }}
     strategy:
       matrix:
         job:
@@ -128,13 +127,28 @@ jobs:
           fi
 
       # https://github.com/softprops/action-gh-release
-      - name: Create release
+      - name: Create latest release
         uses: softprops/action-gh-release@v1
+        if: ${{ github.ref == 'refs/heads/main' }}
         with:
           name: Latest release
           tag_name: latest
           prerelease: true
           body: Latest builds from the last commit.
+          files: |
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+
+      - name: Create tag release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: Tag release
+          tag_name: github.ref
+          prerelease: false
+          body: Release builds.
           files: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
