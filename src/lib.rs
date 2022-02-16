@@ -307,6 +307,12 @@ impl Spec {
         if self.id.is_empty() {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
         }
+        if self.id.len() > 28 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("'id' length cannot be >28 (got {})", self.id.len()),
+            ));
+        }
 
         match &self.aws_resources {
             Some(v) => {
