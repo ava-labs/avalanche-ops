@@ -13,19 +13,19 @@ pub fn string(n: usize) -> String {
     d
 }
 
+/// Generates a random string of length "n".
+fn rand_bytes(n: usize) -> Result<Vec<u8>, String> {
+    let mut d: Vec<u8> = vec![0u8; n];
+    secure_random().fill(&mut d).map_err(|e| e.to_string())?;
+    Ok(d)
+}
+
 fn secure_random() -> &'static dyn SecureRandom {
     use std::ops::Deref;
     lazy_static! {
         static ref RANDOM: SystemRandom = SystemRandom::new();
     }
     RANDOM.deref()
-}
-
-/// Generates a random string of length "n".
-fn rand_bytes(n: usize) -> Result<Vec<u8>, String> {
-    let mut d: Vec<u8> = vec![0u8; n];
-    secure_random().fill(&mut d).map_err(|e| e.to_string())?;
-    Ok(d)
 }
 
 #[test]
