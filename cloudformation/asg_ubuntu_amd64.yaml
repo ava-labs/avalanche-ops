@@ -110,7 +110,7 @@ Parameters:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
   VolumeSize:
     Type: Number
-    Default: 100
+    Default: 400
     MinValue: 40
     MaxValue: 1024
     Description: Size of the root disk for the EC2 instances, in GiB.

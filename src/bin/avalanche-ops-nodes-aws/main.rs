@@ -1157,6 +1157,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
         .avalanchego_config
         .http_port
         .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
+
     println!("http://{}:{}/ext/metrics", dns_name, http_port);
     println!("http://{}:{}/ext/health", dns_name, http_port);
     let mut uris: Vec<String> = vec![];
@@ -1166,21 +1167,40 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
             let ret = rt.block_on(get_health(
                 format!("http://{}:{}", node.ip, http_port).as_str(),
             ));
-            success = match ret {
-                Ok(res) => res.healthy.is_some() && res.healthy.unwrap(),
-                Err(e) => {
-                    warn!("health check failed for {} ({})", node.machine_id, e);
-                    false
-                }
+            let (res, err) = match ret {
+                Ok(res) => (res, None),
+                Err(e) => (
+                    avalanchego::APIHealthReply {
+                        checks: None,
+                        healthy: Some(false),
+                    },
+                    Some(e),
+                ),
             };
+            success = res.healthy.is_some() && res.healthy.unwrap();
             if success {
                 info!("health check success for {}", node.machine_id);
+                break;
+            }
+            warn!(
+                "health check failed for {} ({:?}, {:?})",
+                node.machine_id, res, err
+            );
+            if spec.avalanchego_config.is_mainnet() {
+                // mainnet nodes will take awhile to bootstrap
                 break;
             }
             thread::sleep(Duration::from_secs(10));
         }
         if !success {
-            return Err(Error::new(ErrorKind::Other, "health check failed"));
+            warn!(
+                "health check failed for network id {}",
+                &spec.avalanchego_config.network_id.unwrap_or(1)
+            );
+            if !spec.avalanchego_config.is_mainnet() {
+                // mainnet nodes will take awhile to bootstrap
+                return Err(Error::new(ErrorKind::Other, "health check failed"));
+            }
         }
 
         println!("http://{}:{}/ext/metrics", node.ip, http_port);
@@ -1279,7 +1299,7 @@ fn run_delete(
             ResetColor
         )?;
 
-        let desired_capacity = spec.machine.beacon_nodes.unwrap();
+        let desired_capacity = spec.machine.non_beacon_nodes;
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
