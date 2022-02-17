@@ -127,6 +127,7 @@ jobs:
           fi
 
       # https://github.com/softprops/action-gh-release
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
       - name: Release latest
         uses: softprops/action-gh-release@v1
         if: ${{ github.ref == 'refs/heads/main' }}
@@ -141,16 +142,18 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanched }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
 
-      # - name: Release tag
-      #   uses: softprops/action-gh-release@v1
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   with:
-      #     name: ${{ github.ref }}
-      #     tag_name: ${{ github.ref }}
-      #     prerelease: false
-      #     body: Release builds for ${{ github.ref }}.
-      #     files: |
-      #       ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
-      #       ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
-      #       ${{ steps.release_artifacts.outputs.file_name_avalanched }}
-      #       ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+      - name: Release tag
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          prerelease: true
+          body: Release builds for ${{ github.ref_name }}.
+          files: |
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
