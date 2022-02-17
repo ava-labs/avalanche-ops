@@ -123,3 +123,44 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_nlb_dns_name: Option<String>,
 }
+
+impl Default for Resources {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl Resources {
+    pub fn default() -> Self {
+        Self {
+            region: String::from("us-west-2"),
+            bucket: String::from(""),
+
+            identity: None,
+
+            kms_cmk_id: None,
+            kms_cmk_arn: None,
+
+            ec2_key_name: None,
+            ec2_key_path: None,
+
+            cloudformation_ec2_instance_role: None,
+            cloudformation_ec2_instance_profile_arn: None,
+
+            cloudformation_vpc: None,
+            cloudformation_vpc_id: None,
+            cloudformation_vpc_security_group_id: None,
+            cloudformation_vpc_public_subnet_ids: None,
+
+            cloudformation_asg_beacon_nodes: None,
+            cloudformation_asg_beacon_nodes_logical_id: None,
+
+            cloudformation_asg_non_beacon_nodes: None,
+            cloudformation_asg_non_beacon_nodes_logical_id: None,
+
+            cloudformation_asg_nlb_arn: None,
+            cloudformation_asg_nlb_target_group_arn: None,
+            cloudformation_asg_nlb_dns_name: None,
+        }
+    }
+}

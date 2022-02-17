@@ -451,10 +451,12 @@ pub struct Genesis {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/genesis#Allocation
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Allocation {
-    #[serde(rename = "ethAddr", skip_serializing_if = "Option::is_none")]
-    pub eth_addr: Option<String>,
     #[serde(rename = "avaxAddr", skip_serializing_if = "Option::is_none")]
     pub avax_addr: Option<String>,
+    /// "eth_addr" can be any value, not used in "avalanchego".
+    /// This field is only used for memos.
+    #[serde(rename = "ethAddr", skip_serializing_if = "Option::is_none")]
+    pub eth_addr: Option<String>,
     #[serde(rename = "initialAmount", skip_serializing_if = "Option::is_none")]
     pub initial_amount: Option<u64>,
     #[serde(rename = "unlockSchedule", skip_serializing_if = "Option::is_none")]
@@ -590,7 +592,7 @@ fn test_genesis() {
 }
 
 /// Represents AvalancheGo health status.
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/api/health?utm_source=godoc#APIHealthReply
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/api/health#APIHealthReply
 #[derive(Debug, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct APIHealthReply {
@@ -601,7 +603,7 @@ pub struct APIHealthReply {
 }
 
 /// Represents AvalancheGo health status.
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/api/health?utm_source=godoc#Result
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/api/health#Result
 #[derive(Debug, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct APIHealthResult {

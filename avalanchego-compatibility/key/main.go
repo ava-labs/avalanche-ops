@@ -2,82 +2,100 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanchego/utils/formatting"
+	eth_crypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 var keyFactory = new(crypto.FactorySECP256K1R)
 
-// e.g., go run main.go PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN
+// e.g., go run main.go
+// e.g., go run main.go 1 PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN
 func main() {
-	privateKeyEncoded := ""
-	args := os.Args
-	if len(args) >= 2 {
-		privateKeyEncoded = args[1]
-	}
-
-	var pk *crypto.PrivateKeySECP256K1R
-	if privateKeyEncoded == "" {
+	var (
+		networkID uint64
+		pk        *crypto.PrivateKeySECP256K1R
+	)
+	if len(os.Args) >= 3 {
+		var err error
+		networkID, err = strconv.ParseUint(os.Args[1], 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		pkDecoded, err := decodePrivateKey(os.Args[2])
+		if err != nil {
+			panic(err)
+		}
+		pk = pkDecoded
+	} else {
+		networkID = 9999
 		rpk, err := keyFactory.NewPrivateKey()
 		if err != nil {
 			panic(err)
 		}
 		pk, _ = rpk.(*crypto.PrivateKeySECP256K1R)
-	} else {
-		pkDecoded, err := decodePrivateKey(privateKeyEncoded)
-		if err != nil {
-			panic(err)
-		}
-		pk = pkDecoded
 	}
 
 	pkEncoded, err := encodePrivateKey(pk)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("pkEncoded:", pkEncoded)
-
 	pkDecoded, err := decodePrivateKey(pkEncoded)
 	if err != nil {
 		panic(err)
 	}
-
 	if !bytes.Equal(pk.Bytes(), pkDecoded.Bytes()) {
 		panic(fmt.Errorf("pk.Bytes %s != pkDecoded.Bytes %s", pk.Bytes(), pkDecoded.Bytes()))
 	}
 
-	xMainAddr, err := encodeAddr(pk, "X", constants.GetHRP(1))
+	xMainAddr, err := encodeAddr(pk, "X", constants.GetHRP(uint32(networkID)))
 	if err != nil {
 		panic(err)
 	}
-	pMainAddr, err := encodeAddr(pk, "P", constants.GetHRP(1))
+	pMainAddr, err := encodeAddr(pk, "P", constants.GetHRP(uint32(networkID)))
 	if err != nil {
 		panic(err)
 	}
-	cMainAddr, err := encodeAddr(pk, "C", constants.GetHRP(1))
+	cMainAddr, err := encodeAddr(pk, "C", constants.GetHRP(uint32(networkID)))
 	if err != nil {
 		panic(err)
 	}
-	shortAddr := encodeShortAddr(pk)
+	shortAddr := encodeShortAddr1(pk)
+	if addr2 := encodeShortAddr2(pk); shortAddr != addr2 {
+		panic(fmt.Errorf("short address %s != %s", shortAddr, addr2))
+	}
 
-	fmt.Println("xMainAddr:", xMainAddr)
-	fmt.Println("pMainAddr:", pMainAddr)
-	fmt.Println("cMainAddr:", cMainAddr)
-	fmt.Println("shortAddr:", shortAddr)
+	b, err := json.Marshal(key{
+		EncodedPrivateKey: pkEncoded,
+		XChainAddress:     xMainAddr,
+		PChainAddress:     pMainAddr,
+		CChainAddress:     cMainAddr,
+		ShortAddress:      shortAddr,
+		EthAddress:        encodeEthAddr(pk),
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(string(b))
 }
 
-const (
-	privKeyEncPfx = "PrivateKey-"
-	privKeySize   = 64
+type key struct {
+	EncodedPrivateKey string `json:"encoded_private_key"`
+	XChainAddress     string `json:"x_chain_address"`
+	PChainAddress     string `json:"p_chain_address"`
+	CChainAddress     string `json:"c_chain_address"`
+	ShortAddress      string `json:"short_address"`
+	EthAddress        string `json:"eth_address"`
+}
 
-	rawEwoqPk      = "ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN"
-	EwoqPrivateKey = "PrivateKey-" + rawEwoqPk
-)
+const privKeyEncPfx = "PrivateKey-"
 
 func encodePrivateKey(pk *crypto.PrivateKeySECP256K1R) (string, error) {
 	privKeyRaw := pk.Bytes()
@@ -105,12 +123,23 @@ func decodePrivateKey(enc string) (*crypto.PrivateKeySECP256K1R, error) {
 	return privKey, nil
 }
 
+func encodeShortAddr1(pk *crypto.PrivateKeySECP256K1R) string {
+	pubBytes := pk.PublicKey().Address().Bytes()
+	str, _ := formatting.EncodeWithChecksum(formatting.CB58, pubBytes)
+	return str
+}
+
+func encodeShortAddr2(pk *crypto.PrivateKeySECP256K1R) string {
+	pubAddr := pk.PublicKey().Address()
+	return pubAddr.String()
+}
+
 func encodeAddr(pk *crypto.PrivateKeySECP256K1R, chainIDAlias string, hrp string) (string, error) {
 	pubBytes := pk.PublicKey().Address().Bytes()
 	return formatting.FormatAddress(chainIDAlias, hrp, pubBytes)
 }
 
-func encodeShortAddr(pk *crypto.PrivateKeySECP256K1R) string {
-	pubAddr := pk.PublicKey().Address()
-	return pubAddr.String()
+func encodeEthAddr(pk *crypto.PrivateKeySECP256K1R) string {
+	ethAddr := eth_crypto.PubkeyToAddress(pk.ToECDSA().PublicKey)
+	return ethAddr.String()
 }

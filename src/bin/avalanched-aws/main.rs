@@ -8,14 +8,14 @@ use std::{
 };
 
 use aws_sdk_s3::model::Object;
-use clap::{App, Arg};
+use clap::{Arg, Command};
 use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress,
-    envelope, id, node, random,
+    envelope, node, random,
 };
 
 const APP_NAME: &str = "avalanched-aws";
@@ -23,7 +23,7 @@ const APP_NAME: &str = "avalanched-aws";
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not change node ID)
 fn main() {
-    let matches = App::new(APP_NAME)
+    let matches = Command::new(APP_NAME)
         .about("Avalanche agent (daemon) on AWS")
         .arg(
             Arg::new("LOG_LEVEL")
@@ -261,7 +261,7 @@ fn main() {
         )
         .unwrap();
     }
-    let node_id = id::load_node_id(&tls_cert_path).unwrap();
+    let node_id = node::load_id(&tls_cert_path).unwrap();
     info!("loaded node ID from cert: {}", node_id);
 
     if !spec.avalanchego_config.is_mainnet()

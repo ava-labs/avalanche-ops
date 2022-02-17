@@ -19,11 +19,14 @@ pub mod aws_sts;
 pub mod bash;
 pub mod cert;
 pub mod compress;
+pub mod constants;
 pub mod envelope;
 pub mod errors;
+pub mod formatting;
 pub mod http;
 pub mod humanize;
 pub mod id;
+pub mod key;
 pub mod node;
 pub mod random;
 mod time;
@@ -189,32 +192,7 @@ impl Spec {
             aws_resources: Some(aws::Resources {
                 region: String::from("us-west-2"),
                 bucket,
-
-                identity: None,
-
-                kms_cmk_id: None,
-                kms_cmk_arn: None,
-
-                ec2_key_name: None,
-                ec2_key_path: None,
-
-                cloudformation_ec2_instance_role: None,
-                cloudformation_ec2_instance_profile_arn: None,
-
-                cloudformation_vpc: None,
-                cloudformation_vpc_id: None,
-                cloudformation_vpc_security_group_id: None,
-                cloudformation_vpc_public_subnet_ids: None,
-
-                cloudformation_asg_beacon_nodes: None,
-                cloudformation_asg_beacon_nodes_logical_id: None,
-
-                cloudformation_asg_non_beacon_nodes: None,
-                cloudformation_asg_non_beacon_nodes_logical_id: None,
-
-                cloudformation_asg_nlb_arn: None,
-                cloudformation_asg_nlb_target_group_arn: None,
-                cloudformation_asg_nlb_dns_name: None,
+                ..aws::Resources::default()
             }),
 
             machine: Machine {
@@ -296,7 +274,7 @@ impl Spec {
             }
         };
         serde_yaml::from_reader(f).map_err(|e| {
-            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
+            return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
         })
     }
 
@@ -643,32 +621,7 @@ avalanchego_config:
         aws_resources: Some(aws::Resources {
             region: String::from("us-west-2"),
             bucket: bucket.clone(),
-
-            identity: None,
-
-            kms_cmk_id: None,
-            kms_cmk_arn: None,
-
-            ec2_key_name: None,
-            ec2_key_path: None,
-
-            cloudformation_ec2_instance_role: None,
-            cloudformation_ec2_instance_profile_arn: None,
-
-            cloudformation_vpc: None,
-            cloudformation_vpc_id: None,
-            cloudformation_vpc_security_group_id: None,
-            cloudformation_vpc_public_subnet_ids: None,
-
-            cloudformation_asg_beacon_nodes: None,
-            cloudformation_asg_beacon_nodes_logical_id: None,
-
-            cloudformation_asg_non_beacon_nodes: None,
-            cloudformation_asg_non_beacon_nodes_logical_id: None,
-
-            cloudformation_asg_nlb_arn: None,
-            cloudformation_asg_nlb_target_group_arn: None,
-            cloudformation_asg_nlb_dns_name: None,
+            ..aws::Resources::default()
         }),
 
         machine: Machine {

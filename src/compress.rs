@@ -53,7 +53,7 @@ pub fn from_zstd_base58(contents: String) -> io::Result<Vec<u8>> {
         Err(e) => {
             return Err(Error::new(
                 ErrorKind::Other,
-                format!("failed base64::decode {}", e),
+                format!("failed bs58::decode {}", e),
             ));
         }
     };

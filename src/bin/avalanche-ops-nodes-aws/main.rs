@@ -9,7 +9,7 @@ use std::{
 
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_s3::model::Object;
-use clap::{App, AppSettings, Arg};
+use clap::{Arg, Command};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
@@ -33,11 +33,8 @@ const SUBCOMMAND_DELETE: &str = "delete";
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
 fn main() {
-    let matches = App::new(APP_NAME)
+    let matches = Command::new(APP_NAME)
         .about("Avalanche node operations on AWS")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .setting(AppSettings::AllowExternalSubcommands)
-        .setting(AppSettings::AllowInvalidUtf8ForExternalSubcommands)
         .subcommands(vec![
             create_default_spec_command(),
             create_apply_command(),
@@ -90,8 +87,8 @@ fn main() {
     }
 }
 
-fn create_default_spec_command() -> App<'static> {
-    App::new(SUBCOMMAND_DEFAULT_SPEC)
+fn create_default_spec_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_DEFAULT_SPEC)
         .about("Writes a default configuration")
         .arg(
             Arg::new("LOG_LEVEL")
@@ -160,8 +157,8 @@ fn create_default_spec_command() -> App<'static> {
         )
 }
 
-fn create_apply_command() -> App<'static> {
-    App::new(SUBCOMMAND_APPLY)
+fn create_apply_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_APPLY)
         .about("Applies/creates resources based on configuration")
         .arg(
             Arg::new("LOG_LEVEL")
@@ -194,8 +191,8 @@ fn create_apply_command() -> App<'static> {
         )
 }
 
-fn create_delete_command() -> App<'static> {
-    App::new(SUBCOMMAND_DELETE)
+fn create_delete_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_DELETE)
         .about("Deletes resources based on configuration")
         .arg(
             Arg::new("LOG_LEVEL")

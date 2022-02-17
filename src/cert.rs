@@ -47,8 +47,8 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
     let mut issuer = X509NameBuilder::new().unwrap();
     issuer.append_entry_by_text("C", "US").unwrap();
     issuer.append_entry_by_text("ST", "NY").unwrap();
-    issuer.append_entry_by_text("O", "Avalabs").unwrap();
-    issuer.append_entry_by_text("CN", "ava").unwrap();
+    issuer.append_entry_by_text("O", "Ava Labs").unwrap();
+    issuer.append_entry_by_text("CN", "avalanche-ops").unwrap();
     let issuer = issuer.build();
     cert_builder.set_subject_name(issuer.as_ref()).unwrap();
     cert_builder.set_issuer_name(issuer.as_ref()).unwrap();
