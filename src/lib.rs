@@ -19,11 +19,14 @@ pub mod aws_sts;
 pub mod bash;
 pub mod cert;
 pub mod compress;
+pub mod constants;
 pub mod envelope;
 pub mod errors;
+pub mod formatting;
 pub mod http;
 pub mod humanize;
 pub mod id;
+pub mod key;
 pub mod node;
 pub mod random;
 mod time;
@@ -71,6 +74,10 @@ pub struct Spec {
     /// in the remote machines.
     /// Must be "kebab-case" to be compatible with "avalanchego".
     pub avalanchego_config: avalanchego::Config,
+    /// Generated key infos.
+    /// Only pre-funded for custom networks with a custom genesis file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generated_keys: Option<Vec<key::Info>>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -112,109 +119,70 @@ pub struct InstallArtifacts {
     #[serde(default)]
     pub plugins_dir: Option<String>,
     /// Genesis "DRAFT" file path in the local machine.
-    /// Some fields to be overwritten (e.g., initial stakers).
-    /// TODO: to deprecated in favor of configurable genesis file.
+    /// Some fields to be overwritten (e.g., initial stakers with beacon nodes).
     /// MUST BE NON-EMPTY for custom network.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genesis_draft_file_path: Option<String>,
 }
 
+pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
+
 impl Spec {
     /// Creates a default Status based on the network ID.
+    /// For custom networks, it generates the "keys" number of keys
+    /// and pre-funds them in the genesis file path, which is
+    /// included in "InstallArtifacts.genesis_draft_file_path".
     pub fn default_aws(
         avalanched_bin: &str,
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
-        genesis_draft_file_path: Option<String>,
         avalanchego_config: avalanchego::Config,
+        keys: usize,
     ) -> Self {
-        let (id, beacon_nodes, non_beacon_nodes) = match avalanchego_config.network_id {
-            Some(network_id) => match network_id {
-                // "mainnet"
-                1 => (
-                    crate::id::generate("avax-mainnet"),
+        // [year][month][date]-[system host-based id]
+        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
+
+        let network_id = avalanchego_config.network_id.unwrap_or(1);
+        let (id, beacon_nodes, non_beacon_nodes) =
+            match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
+                Some(v) => (
+                    crate::id::generate(format!("avax-{}", *v).as_str()),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
-
-                // "cascade"
-                2 => (
-                    crate::id::generate("avax-cascade"),
-                    0,
-                    DEFAULT_MACHINE_NON_BEACON_NODES,
-                ),
-
-                // "denali"
-                3 => (
-                    crate::id::generate("avax-denali"),
-                    0,
-                    DEFAULT_MACHINE_NON_BEACON_NODES,
-                ),
-
-                // "everest"
-                4 => (
-                    crate::id::generate("avax-everest"),
-                    0,
-                    DEFAULT_MACHINE_NON_BEACON_NODES,
-                ),
-
-                // "fuji"
-                5 => (
-                    crate::id::generate("everest-fuji"),
-                    0,
-                    DEFAULT_MACHINE_NON_BEACON_NODES,
-                ),
-
-                // custom
-                _ => (
-                    crate::id::generate(format!("avax-{}", network_id).as_str()),
+                None => (
+                    crate::id::generate("avax-custom"),
                     DEFAULT_MACHINE_BEACON_NODES,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
-            },
+            };
 
-            // mainnet
-            _ => (
-                crate::id::generate("avax-mainnet"),
-                0,
-                DEFAULT_MACHINE_NON_BEACON_NODES,
-            ),
-        };
+        let mut generated_keys: Vec<key::Info> = Vec::new();
+        let mut genesis_draft_file_path = Some(random::tmp_path(15).unwrap());
+        if avalanchego_config.is_custom_network() {
+            let (genesis, _generated_keys) = avalanchego::Genesis::new(network_id, keys).unwrap();
+            genesis
+                .sync(&genesis_draft_file_path.clone().unwrap())
+                .unwrap();
+            generated_keys = _generated_keys;
+        } else {
+            let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY).unwrap();
+            generated_keys.push(ewoq_key.to_info(network_id).unwrap());
+            for _ in 1..keys {
+                let k = key::Key::generate().unwrap();
+                let info = k.to_info(network_id).unwrap();
+                generated_keys.push(info);
+            }
+            genesis_draft_file_path = None;
+        }
 
-        // [year][month][date]-[system host-based id]
-        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
         Self {
             id,
 
             aws_resources: Some(aws::Resources {
                 region: String::from("us-west-2"),
                 bucket,
-
-                identity: None,
-
-                kms_cmk_id: None,
-                kms_cmk_arn: None,
-
-                ec2_key_name: None,
-                ec2_key_path: None,
-
-                cloudformation_ec2_instance_role: None,
-                cloudformation_ec2_instance_profile_arn: None,
-
-                cloudformation_vpc: None,
-                cloudformation_vpc_id: None,
-                cloudformation_vpc_security_group_id: None,
-                cloudformation_vpc_public_subnet_ids: None,
-
-                cloudformation_asg_beacon_nodes: None,
-                cloudformation_asg_beacon_nodes_logical_id: None,
-
-                cloudformation_asg_non_beacon_nodes: None,
-                cloudformation_asg_non_beacon_nodes_logical_id: None,
-
-                cloudformation_asg_nlb_arn: None,
-                cloudformation_asg_nlb_target_group_arn: None,
-                cloudformation_asg_nlb_dns_name: None,
+                ..aws::Resources::default()
             }),
 
             machine: Machine {
@@ -236,6 +204,7 @@ impl Spec {
             },
 
             avalanchego_config,
+            generated_keys: Some(generated_keys),
         }
     }
 
@@ -296,7 +265,7 @@ impl Spec {
             }
         };
         serde_yaml::from_reader(f).map_err(|e| {
-            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
+            return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
         })
     }
 
@@ -377,142 +346,113 @@ impl Spec {
             ));
         }
 
-        if self.avalanchego_config.network_id.is_some() {
+        if !self.avalanchego_config.is_custom_network() {
+            if self.machine.beacon_nodes.unwrap_or(0) > 0 {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "cannot specify non-zero 'machine.beacon_nodes' for network_id {:?}",
+                        self.avalanchego_config.network_id
+                    ),
+                ));
+            }
+            if self.install_artifacts.genesis_draft_file_path.is_some() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {:?}", self.avalanchego_config.network_id),
+                ));
+            }
+            if self.avalanchego_config.genesis.is_some() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "cannot specify 'avalanchego_config.genesis' for network_id {:?}",
+                        self.avalanchego_config.network_id
+                    ),
+                ));
+            }
+        }
+
+        if self.avalanchego_config.is_custom_network() {
+            if self.avalanchego_config.network_id.is_none() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "custom network requires non-empty avalanchego_config.network_id",
+                ));
+            }
+
             let network_id = self.avalanchego_config.network_id.unwrap();
-            match network_id {
-                1 => {
-                    // already defined "mainnet"
-                    if self.machine.beacon_nodes.unwrap_or(0) > 0 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify non-zero 'machine.beacon_nodes' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                    if self.install_artifacts.genesis_draft_file_path.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {}", network_id),
-                        ));
-                    }
-                    if self.avalanchego_config.genesis.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify 'avalanchego_config.genesis' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                }
-                2 => {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "network '{}' is not supported yet in this tooling",
-                            network_id
-                        ),
-                    ));
-                }
-                3 => {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "network '{}' is not supported yet in this tooling",
-                            network_id
-                        ),
-                    ));
-                }
-                4 => {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "network '{}' is not supported yet in this tooling",
-                            network_id
-                        ),
-                    ));
-                }
-                5 => {
-                    // fuji
-                    if self.machine.beacon_nodes.unwrap_or(0) > 0 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify non-zero 'machine.beacon_nodes' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                    if self.install_artifacts.genesis_draft_file_path.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {}", network_id),
-                        ));
-                    }
-                    if self.avalanchego_config.genesis.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify 'avalanchego_config.genesis' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                }
-                _ => {
-                    if network_id > 10000 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify >10,000 for 'network_id' (got {})",
-                                network_id
-                            ),
-                        ));
-                    }
-                    if self.machine.beacon_nodes.unwrap_or(0) == 0 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            "cannot specify 0 for 'machine.beacon_nodes' for custom network",
-                        ));
-                    }
-                    if self.machine.beacon_nodes.unwrap_or(0) < MIN_MACHINE_BEACON_NODES {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "'machine.beacon_nodes' {} below min {}",
-                                self.machine.beacon_nodes.unwrap_or(0),
-                                MIN_MACHINE_BEACON_NODES
-                            ),
-                        ));
-                    }
-                    if self.machine.beacon_nodes.unwrap_or(0) > MAX_MACHINE_BEACON_NODES {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "'machine.beacon_nodes' {} exceeds limit {}",
-                                self.machine.beacon_nodes.unwrap_or(0),
-                                MAX_MACHINE_BEACON_NODES
-                            ),
-                        ));
-                    }
-                    if self.install_artifacts.genesis_draft_file_path.is_none() {
-                        return Err(Error::new(
+            if network_id > 10000 {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "cannot specify >10,000 for 'network_id' (got {})",
+                        network_id
+                    ),
+                ));
+            }
+            if self.machine.beacon_nodes.unwrap_or(0) == 0 {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "cannot specify 0 for 'machine.beacon_nodes' for custom network",
+                ));
+            }
+            if self.machine.beacon_nodes.unwrap_or(0) < MIN_MACHINE_BEACON_NODES {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "'machine.beacon_nodes' {} below min {}",
+                        self.machine.beacon_nodes.unwrap_or(0),
+                        MIN_MACHINE_BEACON_NODES
+                    ),
+                ));
+            }
+            if self.machine.beacon_nodes.unwrap_or(0) > MAX_MACHINE_BEACON_NODES {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "'machine.beacon_nodes' {} exceeds limit {}",
+                        self.machine.beacon_nodes.unwrap_or(0),
+                        MAX_MACHINE_BEACON_NODES
+                    ),
+                ));
+            }
+
+            if self.avalanchego_config.genesis.is_none() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "MUST specify 'avalanchego_config.genesis' for custom network_id {}",
+                        network_id
+                    ),
+                ));
+            }
+
+            if self.install_artifacts.genesis_draft_file_path.is_none() {
+                return Err(Error::new(
                             ErrorKind::InvalidInput,
                             format!("MUST specify 'install_artifacts.genesis_draft_file_path' for custom network_id {}", network_id),
                         ));
-                    }
-                    if self.avalanchego_config.genesis.is_none() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "MUST specify 'avalanchego_config.genesis' for custom network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                }
+            }
+            if !Path::new(
+                &self
+                    .install_artifacts
+                    .genesis_draft_file_path
+                    .clone()
+                    .unwrap(),
+            )
+            .exists()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "install_artifacts.genesis_draft_file_path {} does not exist",
+                        self.install_artifacts
+                            .genesis_draft_file_path
+                            .clone()
+                            .unwrap()
+                    ),
+                ));
             }
         }
 
@@ -643,32 +583,7 @@ avalanchego_config:
         aws_resources: Some(aws::Resources {
             region: String::from("us-west-2"),
             bucket: bucket.clone(),
-
-            identity: None,
-
-            kms_cmk_id: None,
-            kms_cmk_arn: None,
-
-            ec2_key_name: None,
-            ec2_key_path: None,
-
-            cloudformation_ec2_instance_role: None,
-            cloudformation_ec2_instance_profile_arn: None,
-
-            cloudformation_vpc: None,
-            cloudformation_vpc_id: None,
-            cloudformation_vpc_security_group_id: None,
-            cloudformation_vpc_public_subnet_ids: None,
-
-            cloudformation_asg_beacon_nodes: None,
-            cloudformation_asg_beacon_nodes_logical_id: None,
-
-            cloudformation_asg_non_beacon_nodes: None,
-            cloudformation_asg_non_beacon_nodes_logical_id: None,
-
-            cloudformation_asg_nlb_arn: None,
-            cloudformation_asg_nlb_target_group_arn: None,
-            cloudformation_asg_nlb_dns_name: None,
+            ..aws::Resources::default()
         }),
 
         machine: Machine {
@@ -690,6 +605,7 @@ avalanchego_config:
         },
 
         avalanchego_config: avago_config,
+        generated_keys: None,
     };
 
     assert_eq!(cfg, orig);

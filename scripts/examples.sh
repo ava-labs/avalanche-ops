@@ -23,4 +23,6 @@ pushd ./avalanchego-compatibility
 go run ./load-node-id/main.go /tmp/test.insecure.key /tmp/test.insecure.cert
 popd
 
+cargo run --example key -- ./artifacts/ewoq.key.json
+
 echo "ALL SUCCESS!"

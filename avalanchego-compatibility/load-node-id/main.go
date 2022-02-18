@@ -30,8 +30,12 @@ func main() {
 		panic(err)
 	}
 
-	// "go run main.go ../../artifacts/staker1.key ../../artifacts/staker1.crt"
-	// should return "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"
-	// ref. https://docs.avax.network/build/tutorials/platform/create-a-local-test-network/#manually
 	fmt.Println("Node ID:", nodeID.PrefixedString(constants.NodeIDPrefix))
 }
+
+// go run main.go ../../artifacts/staker1.insecure.key ../../artifacts/staker1.insecure.crt => NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
+// go run main.go ../../artifacts/staker2.insecure.key ../../artifacts/staker2.insecure.crt => NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ
+// go run main.go ../../artifacts/staker3.insecure.key ../../artifacts/staker3.insecure.crt => NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN
+// go run main.go ../../artifacts/staker4.insecure.key ../../artifacts/staker4.insecure.crt => NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu
+// go run main.go ../../artifacts/staker5.insecure.key ../../artifacts/staker5.insecure.crt => NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5
+// go run main.go ../../artifacts/test.insecure.key ../../artifacts/test.insecure.crt => NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG
