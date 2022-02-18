@@ -18,6 +18,7 @@ var keyFactory = new(crypto.FactorySECP256K1R)
 
 // e.g., go run main.go
 // e.g., go run main.go 1 PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN
+// e.g., go run main.go 9999 PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN > ../../artifacts/ewoq.key.json
 func main() {
 	var (
 		networkID uint64
@@ -73,12 +74,12 @@ func main() {
 	}
 
 	b, err := json.Marshal(key{
-		EncodedPrivateKey: pkEncoded,
-		XChainAddress:     xMainAddr,
-		PChainAddress:     pMainAddr,
-		CChainAddress:     cMainAddr,
-		ShortAddress:      shortAddr,
-		EthAddress:        encodeEthAddr(pk),
+		PrivateKey:   pkEncoded,
+		XAddress:     xMainAddr,
+		PAddress:     pMainAddr,
+		CAddress:     cMainAddr,
+		ShortAddress: shortAddr,
+		EthAddress:   encodeEthAddr(pk),
 	})
 	if err != nil {
 		panic(err)
@@ -87,12 +88,12 @@ func main() {
 }
 
 type key struct {
-	EncodedPrivateKey string `json:"encoded_private_key"`
-	XChainAddress     string `json:"x_chain_address"`
-	PChainAddress     string `json:"p_chain_address"`
-	CChainAddress     string `json:"c_chain_address"`
-	ShortAddress      string `json:"short_address"`
-	EthAddress        string `json:"eth_address"`
+	PrivateKey   string `json:"private_key"`
+	XAddress     string `json:"x_address"`
+	PAddress     string `json:"p_address"`
+	CAddress     string `json:"c_address"`
+	ShortAddress string `json:"short_address"`
+	EthAddress   string `json:"eth_address"`
 }
 
 const privKeyEncPfx = "PrivateKey-"

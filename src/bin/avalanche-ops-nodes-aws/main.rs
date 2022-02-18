@@ -44,22 +44,37 @@ fn main() {
 
     match matches.subcommand() {
         Some((SUBCOMMAND_DEFAULT_SPEC, sub_matches)) => {
-            run_default_spec(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches
+            let keys_to_generate = sub_matches.value_of("KEYS_TO_GENERATE").unwrap_or("");
+            let keys_to_generate = keys_to_generate.parse::<usize>().unwrap();
+            let opt = DefaultSpecOption {
+                log_level: sub_matches
+                    .value_of("LOG_LEVEL")
+                    .unwrap_or("info")
+                    .to_string(),
+                install_artifacts_avalanched_bin: sub_matches
                     .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
-                    .unwrap(),
-                sub_matches
+                    .unwrap()
+                    .to_string(),
+                install_artifacts_avalanche_bin: sub_matches
                     .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
-                    .unwrap(),
-                sub_matches
+                    .unwrap()
+                    .to_string(),
+                install_artifacts_plugins_dir: sub_matches
                     .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
-                    .unwrap_or(""),
-                sub_matches.value_of("NETWORK_NAME").unwrap_or(""),
-                sub_matches.value_of("AVALANCHEGO_LOG_LEVEL").unwrap(),
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-            )
-            .unwrap();
+                    .unwrap_or("")
+                    .to_string(),
+                network_name: sub_matches
+                    .value_of("NETWORK_NAME")
+                    .unwrap_or("")
+                    .to_string(),
+                keys_to_generate,
+                avalanchego_log_level: sub_matches
+                    .value_of("AVALANCHEGO_LOG_LEVEL")
+                    .unwrap()
+                    .to_string(),
+                spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
+            };
+            run_default_spec(opt).unwrap();
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
@@ -132,6 +147,16 @@ fn create_default_spec_command() -> Command<'static> {
                 .short('n')
                 .help("Sets the type of network by name (e.g., mainnet, fuji, custom)")
                 .default_value("custom")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("KEYS_TO_GENERATE") 
+                .long("keys-to-generate")
+                .short('k')
+                .help("Sets the number of keys to generate")
+                .default_value("5") // ref. "avalanche_ops::DEFAULT_KEYS_TO_GENERATE"
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -233,55 +258,50 @@ fn create_delete_command() -> Command<'static> {
         )
 }
 
-fn run_default_spec(
-    log_level: &str,
-    install_artifacts_avalanched_bin: &str,
-    install_artifacts_avalanche_bin: &str,
-    install_artifacts_plugins_dir: &str,
-    network_name: &str,
-    avalanchego_log_level: &str,
-    spec_file_path: &str,
-) -> io::Result<()> {
+struct DefaultSpecOption {
+    log_level: String,
+    install_artifacts_avalanched_bin: String,
+    install_artifacts_avalanche_bin: String,
+    install_artifacts_plugins_dir: String,
+    network_name: String,
+    keys_to_generate: usize,
+    avalanchego_log_level: String,
+    spec_file_path: String,
+}
+
+fn run_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
 
-    let mut _install_artifacts_plugins_dir = Some(String::from(install_artifacts_plugins_dir));
-    if install_artifacts_plugins_dir.is_empty() {
+    let mut _install_artifacts_plugins_dir = Some(opt.install_artifacts_plugins_dir.clone());
+    if opt.install_artifacts_plugins_dir.is_empty() {
         _install_artifacts_plugins_dir = None;
     }
 
-    let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(&network_name) {
+    let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opt.network_name.as_str()) {
         Some(v) => *v,
-        None => 9999 as u32,
+        None => 9999_u32,
     };
     let mut avalanchego_config = avalanchego::Config::default();
     avalanchego_config.network_id = Some(network_id);
-    avalanchego_config.log_level = Some(String::from(avalanchego_log_level));
-
-    let mut generated_genesis_draft_file_path = Some(random::tmp_path(15).unwrap());
-    if avalanchego_config.is_custom_network() {
-        info!("creating genesis file");
-        let _genesis = avalanchego::Genesis::load("install_artifacts_genesis_draft_file_path")?;
-    } else {
-        generated_genesis_draft_file_path = None
-    }
+    avalanchego_config.log_level = Some(opt.avalanchego_log_level);
 
     let spec = avalanche_ops::Spec::default_aws(
-        install_artifacts_avalanched_bin,
-        install_artifacts_avalanche_bin,
+        opt.install_artifacts_avalanched_bin.as_str(),
+        opt.install_artifacts_avalanche_bin.as_str(),
         _install_artifacts_plugins_dir,
-        generated_genesis_draft_file_path,
         avalanchego_config,
+        opt.keys_to_generate,
     );
     spec.validate()?;
-    spec.sync(spec_file_path)?;
+    spec.sync(&opt.spec_file_path)?;
 
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("\nSaved spec: '{}'\n", spec_file_path)),
+        Print(format!("\nSaved spec: '{}'\n", opt.spec_file_path)),
         ResetColor
     )?;
     let spec_contents = spec.encode_yaml().unwrap();

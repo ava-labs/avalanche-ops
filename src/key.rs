@@ -1,4 +1,9 @@
-use std::io::{self, Error, ErrorKind};
+use std::{
+    fs::File,
+    io::{self, Error, ErrorKind},
+    path::Path,
+    string::String,
+};
 
 use bitcoin::hashes::hex::ToHex;
 use ethereum_types::{Address, H256};
@@ -112,6 +117,20 @@ impl Key {
         // ref. "formatting.FormatAddress(chainIDAlias, hrp, pubBytes)"
         formatting::address(chain_id_alias, hrp, &short_address_bytes)
     }
+
+    pub fn to_info(&self, network_id: u32) -> io::Result<Info> {
+        let x = self.address("X", network_id)?;
+        let p = self.address("P", network_id)?;
+        let c = self.address("C", network_id)?;
+        Ok(Info {
+            private_key: self.encoded_private_key.clone(),
+            x_address: x,
+            p_address: p,
+            c_address: c,
+            short_address: self.short_address.clone(),
+            eth_address: self.eth_address.clone(),
+        })
+    }
 }
 
 /// "hashing.PubkeyBytesToAddress"
@@ -189,7 +208,7 @@ fn keccak256(data: impl AsRef<[u8]>) -> H256 {
 
 /// ref. https://github.com/Ethereum/EIPs/blob/master/EIPS/eip-55.md
 fn eth_checksum(addr: &str) -> String {
-    let addr_lower_case = strip_0x(&addr).to_lowercase();
+    let addr_lower_case = strip_0x(addr).to_lowercase();
     let digest_h256 = keccak256(&addr_lower_case.as_bytes());
 
     // this also works...
@@ -632,4 +651,55 @@ fn test_key() {
         random_key.eth_address,
         "0x04d6C02f9232D93EF5A6A9ec0867503a28D44Ea5"
     );
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Info {
+    /// CB58-encoded private key with the prefix "PrivateKey-".
+    pub private_key: String,
+    pub x_address: String,
+    pub p_address: String,
+    pub c_address: String,
+    pub short_address: String,
+    pub eth_address: String,
+}
+
+impl Info {
+    /// Converts to string.
+    pub fn to_string(&self) -> io::Result<String> {
+        match serde_yaml::to_string(&self) {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize Info to YAML {}", e),
+                ));
+            }
+        }
+    }
+
+    pub fn load(file_path: &str) -> io::Result<Self> {
+        info!("loading Info from {}", file_path);
+
+        if !Path::new(file_path).exists() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("file {} does not exists", file_path),
+            ));
+        }
+
+        let f = match File::open(&file_path) {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to open {} ({})", file_path, e),
+                ));
+            }
+        };
+        serde_yaml::from_reader(f).map_err(|e| {
+            return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
+        })
+    }
 }
