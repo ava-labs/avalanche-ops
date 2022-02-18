@@ -447,6 +447,7 @@ pub struct Genesis {
     )]
     pub initial_stake_duration_offset: Option<u64>,
     /// Must be come from "initial_stakers".
+    /// Initial staked funds cannot be empty.
     #[serde(rename = "initialStakedFunds", skip_serializing_if = "Option::is_none")]
     pub initial_staked_funds: Option<Vec<String>>,
     /// Must be non-empty for an existing network.

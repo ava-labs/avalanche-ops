@@ -308,6 +308,7 @@ fn main() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: collect all seed/bootstrapping beacon nodes information from S3 key for initial stakers");
         let mut stakers: Vec<avalanchego::Staker> = vec![];
+        let keys = spec.generated_keys.unwrap();
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
 
@@ -315,18 +316,10 @@ fn main() {
             // to reduce "s3_manager.get_object" call volume
             let seed_beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
 
-            let staker = avalanchego::Staker {
-                node_id: Some(seed_beacon_node.id),
+            let mut staker = avalanchego::Staker::default();
+            staker.node_id = Some(seed_beacon_node.id);
+            staker.reward_address = Some(keys[0].x_address.clone());
 
-                // ewoq wallet address
-                // TODO: make this configurable
-                reward_address: Some(String::from(
-                    "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
-                )),
-
-                // TODO: make this configurable
-                delegation_fee: Some(62500),
-            };
             stakers.push(staker);
         }
         info!(
@@ -351,6 +344,11 @@ fn main() {
             genesis_path
         );
         let mut genesis_draft = avalanchego::Genesis::load(&tmp_genesis_path).unwrap();
+        let mut initial_staked_funds: Vec<String> = Vec::new();
+        for s in stakers.iter() {
+            initial_staked_funds.push(s.node_id.clone().unwrap());
+        }
+        genesis_draft.initial_staked_funds = Some(initial_staked_funds);
         genesis_draft.initial_stakers = Some(stakers);
         genesis_draft.sync(&genesis_path).unwrap();
 
