@@ -54,7 +54,7 @@ find /tmp/avalanchego-v${VERSION}
 
 **`avalanche-ops`** is the client (or "control plane") that runs on the operator's host machine or test runner, which provisions a set of remote machines based on user-provided configuration. **`avalanched`** is an agent (or daemon) that runs on every remote machine, which creates and installs Avalanche-specific resources (e.g., TLS certificate generation, beacon-node discovery, write avalanche node service file).
 
-First, provide **`avalanche-ops`** with genesis file and executable binaries to run in remote machines. Which then controls remote machines to download and set up such user-provided artifacts. Setting up a custom network requires two groups of machines: (1) beacon node (only required for custom network), and (2) non-beacon node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-beacon nodes list the storage to discover beacon nodes.
+To set up a custom network, provide **`avalanche-ops`** with executable binaries to run in remote machines. Which then generates a genesis file with pre-funded keys and provisions remote machines to install the user-provided artifacts. A custom network requires two groups of machines: (1) beacon node (only required for custom network), and (2) non-beacon node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-beacon nodes list the storage to discover beacon nodes.
 
 ## `avalanche-ops` on AWS
 
@@ -65,7 +65,8 @@ avalanche-ops-nodes-aws default-spec \
 --install-artifacts-avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
 --install-artifacts-avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
 --install-artifacts-plugins-dir /tmp/avalanchego-v1.7.5/plugins \
---install-artifacts-genesis-draft-file-path artifacts/sample.genesis.json \
+--network-name custom \
+--keys-to-generate 5 \
 --spec-file-path /tmp/test.yaml \
 ```
 
@@ -176,7 +177,6 @@ To shut down the network, run `avalanche-ops-nodes-aws delete` command:
 
 ## Roadmap
 
-- Genesis file generator with pre-funded wallets
 - Failure injection testing
 - Stress testing
 - Metrics collection

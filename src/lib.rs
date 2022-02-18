@@ -139,6 +139,9 @@ impl Spec {
         avalanchego_config: avalanchego::Config,
         keys: usize,
     ) -> Self {
+        // [year][month][date]-[system host-based id]
+        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
+
         let network_id = avalanchego_config.network_id.unwrap_or(1);
         let (id, beacon_nodes, non_beacon_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
@@ -148,17 +151,14 @@ impl Spec {
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
                 None => (
-                    crate::id::generate(format!("avax-{}", network_id).as_str()),
+                    crate::id::generate("avax-custom"),
                     DEFAULT_MACHINE_BEACON_NODES,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
             };
 
-        // [year][month][date]-[system host-based id]
-        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
-
-        let mut genesis_draft_file_path = Some(random::tmp_path(15).unwrap());
         let mut generated_keys: Vec<key::Info> = Vec::new();
+        let mut genesis_draft_file_path = Some(random::tmp_path(15).unwrap());
         if avalanchego_config.is_custom_network() {
             let (genesis, _generated_keys) = avalanchego::Genesis::new(network_id, keys).unwrap();
             genesis
@@ -166,8 +166,6 @@ impl Spec {
                 .unwrap();
             generated_keys = _generated_keys;
         } else {
-            genesis_draft_file_path = None;
-
             let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY).unwrap();
             generated_keys.push(ewoq_key.to_info(network_id).unwrap());
             for _ in 1..keys {
@@ -175,6 +173,7 @@ impl Spec {
                 let info = k.to_info(network_id).unwrap();
                 generated_keys.push(info);
             }
+            genesis_draft_file_path = None;
         }
 
         Self {
