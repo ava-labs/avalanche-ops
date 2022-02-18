@@ -364,7 +364,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     if aws_resources.cloudformation_vpc.is_none() {
         aws_resources.cloudformation_vpc = Some(format!("{}-vpc", spec.id));
     }
-    if !spec.avalanchego_config.is_custom_network()
+    if spec.avalanchego_config.is_custom_network()
         && aws_resources.cloudformation_asg_beacon_nodes.is_none()
     {
         aws_resources.cloudformation_asg_beacon_nodes =
@@ -1218,9 +1218,9 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 "health check failed for network id {}",
                 &spec.avalanchego_config.network_id.unwrap_or(1)
             );
-            if !spec.avalanchego_config.is_custom_network() {
-                // mainnet/fuji nodes will take awhile to bootstrap
-                return Err(Error::new(ErrorKind::Other, "health check failed"));
+            if spec.avalanchego_config.is_custom_network() {
+                // TODO: mainnet/fuji nodes will take awhile to bootstrap, only error for cutstom network
+                // return Err(Error::new(ErrorKind::Other, "health check failed"));
             }
         }
 
