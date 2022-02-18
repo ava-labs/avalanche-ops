@@ -235,9 +235,17 @@ impl Config {
         config
     }
 
-    /// Returns true if the topology is mainnet.
+    /// Returns true if the configuration is mainnet.
     pub fn is_mainnet(&self) -> bool {
         self.network_id.is_none() || self.network_id.unwrap() == 1
+    }
+
+    /// Returns true if the configuration is a custom network
+    /// thus requires a custom genesis file.
+    pub fn is_custom_network(&self) -> bool {
+        !self.is_mainnet()
+            && self.network_id.is_some()
+            && (self.network_id.unwrap() == 0 || self.network_id.unwrap() > 5)
     }
 
     /// Converts to string with JSON encoder.

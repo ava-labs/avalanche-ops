@@ -115,8 +115,7 @@ pub struct InstallArtifacts {
     #[serde(default)]
     pub plugins_dir: Option<String>,
     /// Genesis "DRAFT" file path in the local machine.
-    /// Some fields to be overwritten (e.g., initial stakers).
-    /// TODO: to deprecated in favor of configurable genesis file.
+    /// Some fields to be overwritten (e.g., initial stakers with beacon nodes).
     /// MUST BE NON-EMPTY for custom network.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genesis_draft_file_path: Option<String>,
@@ -355,142 +354,113 @@ impl Spec {
             ));
         }
 
-        if self.avalanchego_config.network_id.is_some() {
+        if !self.avalanchego_config.is_custom_network() {
+            if self.machine.beacon_nodes.unwrap_or(0) > 0 {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "cannot specify non-zero 'machine.beacon_nodes' for network_id {:?}",
+                        self.avalanchego_config.network_id
+                    ),
+                ));
+            }
+            if self.install_artifacts.genesis_draft_file_path.is_some() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {:?}", self.avalanchego_config.network_id),
+                ));
+            }
+            if self.avalanchego_config.genesis.is_some() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "cannot specify 'avalanchego_config.genesis' for network_id {:?}",
+                        self.avalanchego_config.network_id
+                    ),
+                ));
+            }
+        }
+
+        if self.avalanchego_config.is_custom_network() {
+            if self.avalanchego_config.network_id.is_none() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "custom network requires non-empty avalanchego_config.network_id",
+                ));
+            }
+
             let network_id = self.avalanchego_config.network_id.unwrap();
-            match network_id {
-                1 => {
-                    // already defined "mainnet"
-                    if self.machine.beacon_nodes.unwrap_or(0) > 0 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify non-zero 'machine.beacon_nodes' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                    if self.install_artifacts.genesis_draft_file_path.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {}", network_id),
-                        ));
-                    }
-                    if self.avalanchego_config.genesis.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify 'avalanchego_config.genesis' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                }
-                2 => {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "network '{}' is not supported yet in this tooling",
-                            network_id
-                        ),
-                    ));
-                }
-                3 => {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "network '{}' is not supported yet in this tooling",
-                            network_id
-                        ),
-                    ));
-                }
-                4 => {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "network '{}' is not supported yet in this tooling",
-                            network_id
-                        ),
-                    ));
-                }
-                5 => {
-                    // fuji
-                    if self.machine.beacon_nodes.unwrap_or(0) > 0 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify non-zero 'machine.beacon_nodes' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                    if self.install_artifacts.genesis_draft_file_path.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {}", network_id),
-                        ));
-                    }
-                    if self.avalanchego_config.genesis.is_some() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify 'avalanchego_config.genesis' for network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                }
-                _ => {
-                    if network_id > 10000 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "cannot specify >10,000 for 'network_id' (got {})",
-                                network_id
-                            ),
-                        ));
-                    }
-                    if self.machine.beacon_nodes.unwrap_or(0) == 0 {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            "cannot specify 0 for 'machine.beacon_nodes' for custom network",
-                        ));
-                    }
-                    if self.machine.beacon_nodes.unwrap_or(0) < MIN_MACHINE_BEACON_NODES {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "'machine.beacon_nodes' {} below min {}",
-                                self.machine.beacon_nodes.unwrap_or(0),
-                                MIN_MACHINE_BEACON_NODES
-                            ),
-                        ));
-                    }
-                    if self.machine.beacon_nodes.unwrap_or(0) > MAX_MACHINE_BEACON_NODES {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "'machine.beacon_nodes' {} exceeds limit {}",
-                                self.machine.beacon_nodes.unwrap_or(0),
-                                MAX_MACHINE_BEACON_NODES
-                            ),
-                        ));
-                    }
-                    if self.install_artifacts.genesis_draft_file_path.is_none() {
-                        return Err(Error::new(
+            if network_id > 10000 {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "cannot specify >10,000 for 'network_id' (got {})",
+                        network_id
+                    ),
+                ));
+            }
+            if self.machine.beacon_nodes.unwrap_or(0) == 0 {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "cannot specify 0 for 'machine.beacon_nodes' for custom network",
+                ));
+            }
+            if self.machine.beacon_nodes.unwrap_or(0) < MIN_MACHINE_BEACON_NODES {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "'machine.beacon_nodes' {} below min {}",
+                        self.machine.beacon_nodes.unwrap_or(0),
+                        MIN_MACHINE_BEACON_NODES
+                    ),
+                ));
+            }
+            if self.machine.beacon_nodes.unwrap_or(0) > MAX_MACHINE_BEACON_NODES {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "'machine.beacon_nodes' {} exceeds limit {}",
+                        self.machine.beacon_nodes.unwrap_or(0),
+                        MAX_MACHINE_BEACON_NODES
+                    ),
+                ));
+            }
+
+            if self.avalanchego_config.genesis.is_none() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "MUST specify 'avalanchego_config.genesis' for custom network_id {}",
+                        network_id
+                    ),
+                ));
+            }
+
+            if self.install_artifacts.genesis_draft_file_path.is_none() {
+                return Err(Error::new(
                             ErrorKind::InvalidInput,
                             format!("MUST specify 'install_artifacts.genesis_draft_file_path' for custom network_id {}", network_id),
                         ));
-                    }
-                    if self.avalanchego_config.genesis.is_none() {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!(
-                                "MUST specify 'avalanchego_config.genesis' for custom network_id {}",
-                                network_id
-                            ),
-                        ));
-                    }
-                }
+            }
+            if !Path::new(
+                &self
+                    .install_artifacts
+                    .genesis_draft_file_path
+                    .clone()
+                    .unwrap(),
+            )
+            .exists()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "install_artifacts.genesis_draft_file_path {} does not exist",
+                        self.install_artifacts
+                            .genesis_draft_file_path
+                            .clone()
+                            .unwrap()
+                    ),
+                ));
             }
         }
 

@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudformation, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, aws_sts,
-    compress, envelope, http, node, random,
+    compress, constants, envelope, http, node, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -55,9 +55,7 @@ fn main() {
                 sub_matches
                     .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
                     .unwrap_or(""),
-                sub_matches
-                    .value_of("INSTALL_ARTIFACTS_GENESIS_DRAFT_FILE_PATH")
-                    .unwrap(),
+                sub_matches.value_of("NETWORK_NAME").unwrap_or(""),
                 sub_matches.value_of("AVALANCHEGO_LOG_LEVEL").unwrap(),
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
             )
@@ -129,11 +127,12 @@ fn create_default_spec_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_GENESIS_DRAFT_FILE_PATH") 
-                .long("install-artifacts-genesis-draft-file-path")
-                .short('g')
-                .help("Sets the genesis draft file path in the local machine to load and share with remote machines")
-                .required(true)
+            Arg::new("NETWORK_NAME") 
+                .long("network-name")
+                .short('n')
+                .help("Sets the type of network by name (e.g., mainnet, fuji, custom)")
+                .default_value("custom")
+                .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
@@ -239,7 +238,7 @@ fn run_default_spec(
     install_artifacts_avalanched_bin: &str,
     install_artifacts_avalanche_bin: &str,
     install_artifacts_plugins_dir: &str,
-    install_artifacts_genesis_draft_file_path: &str,
+    network_name: &str,
     avalanchego_log_level: &str,
     spec_file_path: &str,
 ) -> io::Result<()> {
@@ -252,23 +251,28 @@ fn run_default_spec(
     if install_artifacts_plugins_dir.is_empty() {
         _install_artifacts_plugins_dir = None;
     }
-    let mut _install_artifacts_genesis_draft_file_path =
-        Some(String::from(install_artifacts_genesis_draft_file_path));
-    if install_artifacts_genesis_draft_file_path.is_empty() {
-        _install_artifacts_genesis_draft_file_path = None;
-    }
 
+    let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(&network_name) {
+        Some(v) => *v,
+        None => 9999 as u32,
+    };
     let mut avalanchego_config = avalanchego::Config::default();
-
-    let genesis = avalanchego::Genesis::load(install_artifacts_genesis_draft_file_path)?;
-    avalanchego_config.network_id = Some(genesis.network_id);
+    avalanchego_config.network_id = Some(network_id);
     avalanchego_config.log_level = Some(String::from(avalanchego_log_level));
+
+    let mut generated_genesis_draft_file_path = Some(random::tmp_path(15).unwrap());
+    if avalanchego_config.is_custom_network() {
+        info!("creating genesis file");
+        let _genesis = avalanchego::Genesis::load("install_artifacts_genesis_draft_file_path")?;
+    } else {
+        generated_genesis_draft_file_path = None
+    }
 
     let spec = avalanche_ops::Spec::default_aws(
         install_artifacts_avalanched_bin,
         install_artifacts_avalanche_bin,
         _install_artifacts_plugins_dir,
-        _install_artifacts_genesis_draft_file_path,
+        generated_genesis_draft_file_path,
         avalanchego_config,
     );
     spec.validate()?;
@@ -340,7 +344,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     if aws_resources.cloudformation_vpc.is_none() {
         aws_resources.cloudformation_vpc = Some(format!("{}-vpc", spec.id));
     }
-    if !spec.avalanchego_config.is_mainnet()
+    if !spec.avalanchego_config.is_custom_network()
         && aws_resources.cloudformation_asg_beacon_nodes.is_none()
     {
         aws_resources.cloudformation_asg_beacon_nodes =
@@ -1194,8 +1198,8 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
                 "health check failed for network id {}",
                 &spec.avalanchego_config.network_id.unwrap_or(1)
             );
-            if !spec.avalanchego_config.is_mainnet() {
-                // mainnet nodes will take awhile to bootstrap
+            if !spec.avalanchego_config.is_custom_network() {
+                // mainnet/fuji nodes will take awhile to bootstrap
                 return Err(Error::new(ErrorKind::Other, "health check failed"));
             }
         }
