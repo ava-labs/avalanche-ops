@@ -352,9 +352,31 @@ impl Manager {
             });
         }
 
+        let ret = self
+            .cli
+            .head_object()
+            .bucket(bucket_name)
+            .key(s3_key)
+            .send()
+            .await;
+        let output = match ret {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("head_object failed {}", e);
+                return Err(API {
+                    message: format!("failed head_object {:?}", e),
+                    is_retryable: is_error_retryable(&e),
+                });
+            }
+        };
+
         info!(
-            "downloading '{}/{}' to '{}'",
-            bucket_name, s3_key, file_path,
+            "downloading '{}/{}' (content type '{}', size {}) to '{}'",
+            bucket_name,
+            s3_key,
+            output.content_type().unwrap(),
+            crate::humanize::bytes(output.content_length() as f64),
+            file_path,
         );
 
         let ret = self
@@ -367,7 +389,7 @@ impl Manager {
         let output = match ret {
             Ok(v) => v,
             Err(e) => {
-                warn!("get failed {}", e);
+                warn!("get_object failed {}", e);
                 return Err(API {
                     message: format!("failed get_object {:?}", e),
                     is_retryable: is_error_retryable(&e),
