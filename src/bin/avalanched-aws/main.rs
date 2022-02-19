@@ -19,12 +19,12 @@ use avalanche_ops::{
 };
 
 const APP_NAME: &str = "avalanched-aws";
+const SUBCOMMAND_RUN: &str = "run";
+const SUBCOMMAND_BACKUP: &str = "backup";
 
-/// Should be able to run with idempotency
-/// (e.g., multiple restarts should not change node ID)
-fn main() {
-    let matches = Command::new(APP_NAME)
-        .about("Avalanche agent (daemon) on AWS")
+fn create_run_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_RUN)
+        .about("Runs an Avalanche agent (daemon) on AWS")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -54,9 +54,57 @@ fn main() {
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
+}
+
+fn create_backup_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_BACKUP)
+        .about("Back ups local data to remote storage")
+        .arg(
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
+                .required(false)
+                .takes_value(true)
+                .possible_value("debug")
+                .possible_value("info")
+                .allow_invalid_utf8(false),
+        )
+}
+
+/// Should be able to run with idempotency
+/// (e.g., multiple restarts should not change node ID)
+fn main() {
+    let matches = Command::new(APP_NAME)
+        .about("Avalanche agent (daemon) on AWS")
+        .subcommands(vec![create_run_command(), create_backup_command()])
         .get_matches();
 
-    let log_level = matches.value_of("LOG_LEVEL").unwrap_or("info");
+    match matches.subcommand() {
+        Some((SUBCOMMAND_RUN, sub_matches)) => {
+            execute_run(
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches.value_of("AVALANCHE_BIN").unwrap(),
+                sub_matches
+                    .value_of("CLOUDWATCH_CONFIG_FILE_PATH")
+                    .unwrap_or(aws_cloudwatch::DEFAULT_CONFIG_FILE_PATH),
+            )
+            .unwrap();
+        }
+
+        Some((SUBCOMMAND_BACKUP, sub_matches)) => {
+            execute_backup(sub_matches.value_of("LOG_LEVEL").unwrap_or("info")).unwrap();
+        }
+
+        _ => unreachable!("unknown subcommand"),
+    }
+}
+
+fn execute_run(
+    log_level: &str,
+    avalanche_bin: &str,
+    cloudwatch_config_file_path: &str,
+) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -128,7 +176,6 @@ fn main() {
     }
     let envelope = envelope::Envelope::new(Some(kms_manager), Some(kms_cmk_arn));
 
-    let avalanche_bin = matches.value_of("AVALANCHE_BIN").unwrap();
     if !Path::new(avalanche_bin).exists() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading avalanche binary from S3");
@@ -171,9 +218,6 @@ fn main() {
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: writing CloudWatch configuration JSON file");
-    let cloudwatch_config_file_path = matches
-        .value_of("CLOUDWATCH_CONFIG_FILE_PATH")
-        .unwrap_or(aws_cloudwatch::DEFAULT_CONFIG_FILE_PATH);
 
     // ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
     // TODO: add more logs for plugins
@@ -598,4 +642,18 @@ fn extract_filename(p: &str) -> String {
     let path = Path::new(p);
     let file_stemp = path.file_stem().unwrap();
     String::from(file_stemp.to_str().unwrap())
+}
+
+fn execute_backup(log_level: &str) -> io::Result<()> {
+    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
+    );
+
+    let _rt = Runtime::new().unwrap();
+
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: starting backup");
+
+    Ok(())
 }

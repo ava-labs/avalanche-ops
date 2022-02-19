@@ -32,6 +32,8 @@ const SUBCOMMAND_DELETE: &str = "delete";
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
+/// Should be able to run with idempotency
+/// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
 fn main() {
     let matches = Command::new(APP_NAME)
         .about("Avalanche node operations on AWS")
@@ -74,11 +76,11 @@ fn main() {
                     .to_string(),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
-            run_default_spec(opt).unwrap();
+            execute_default_spec(opt).unwrap();
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
-            run_apply(
+            execute_apply(
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
                 sub_matches.is_present("SKIP_PROMPT"),
@@ -87,7 +89,7 @@ fn main() {
         }
 
         Some((SUBCOMMAND_DELETE, sub_matches)) => {
-            run_delete(
+            execute_delete(
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
                 sub_matches.is_present("DELETE_ALL"),
@@ -269,7 +271,7 @@ struct DefaultSpecOption {
     spec_file_path: String,
 }
 
-fn run_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
+fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
@@ -310,7 +312,7 @@ fn run_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     Ok(())
 }
 
-fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
+fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     #[derive(RustEmbed)]
     #[folder = "cloudformation/"]
     #[prefix = "cloudformation/"]
@@ -1235,7 +1237,7 @@ fn run_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Re
     Ok(())
 }
 
-fn run_delete(
+fn execute_delete(
     log_level: &str,
     spec_file_path: &str,
     delete_all: bool,

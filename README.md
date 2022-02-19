@@ -104,7 +104,8 @@ avalanche-ops-nodes-aws delete \
 Avalanche node daemon that provisions and manages the software on the remote machine (e.g., generate certs, encrypt, upload to S3):
 
 ```bash
-avalanched-aws
+avalanched-aws run
+avalanched-aws backup
 ```
 
 ### Example: set up custom network on AWS
