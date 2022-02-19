@@ -29,79 +29,6 @@ const SUBCOMMAND_DEFAULT_SPEC: &str = "default-spec";
 const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
 
-// 50-minute
-const MAX_WAIT_SECONDS: u64 = 50 * 60;
-
-/// Should be able to run with idempotency
-/// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
-fn main() {
-    let matches = Command::new(APP_NAME)
-        .about("Avalanche node operations on AWS")
-        .subcommands(vec![
-            create_default_spec_command(),
-            create_apply_command(),
-            create_delete_command(),
-        ])
-        .get_matches();
-
-    match matches.subcommand() {
-        Some((SUBCOMMAND_DEFAULT_SPEC, sub_matches)) => {
-            let keys_to_generate = sub_matches.value_of("KEYS_TO_GENERATE").unwrap_or("");
-            let keys_to_generate = keys_to_generate.parse::<usize>().unwrap();
-            let opt = DefaultSpecOption {
-                log_level: sub_matches
-                    .value_of("LOG_LEVEL")
-                    .unwrap_or("info")
-                    .to_string(),
-                install_artifacts_avalanched_bin: sub_matches
-                    .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
-                    .unwrap()
-                    .to_string(),
-                install_artifacts_avalanche_bin: sub_matches
-                    .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
-                    .unwrap()
-                    .to_string(),
-                install_artifacts_plugins_dir: sub_matches
-                    .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
-                    .unwrap_or("")
-                    .to_string(),
-                network_name: sub_matches
-                    .value_of("NETWORK_NAME")
-                    .unwrap_or("")
-                    .to_string(),
-                keys_to_generate,
-                avalanchego_log_level: sub_matches
-                    .value_of("AVALANCHEGO_LOG_LEVEL")
-                    .unwrap()
-                    .to_string(),
-                spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
-            };
-            execute_default_spec(opt).unwrap();
-        }
-
-        Some((SUBCOMMAND_APPLY, sub_matches)) => {
-            execute_apply(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.is_present("SKIP_PROMPT"),
-            )
-            .unwrap();
-        }
-
-        Some((SUBCOMMAND_DELETE, sub_matches)) => {
-            execute_delete(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.is_present("DELETE_ALL"),
-                sub_matches.is_present("SKIP_PROMPT"),
-            )
-            .unwrap();
-        }
-
-        _ => unreachable!("unknown subcommand"),
-    }
-}
-
 fn create_default_spec_command() -> Command<'static> {
     Command::new(SUBCOMMAND_DEFAULT_SPEC)
         .about("Writes a default configuration")
@@ -260,6 +187,76 @@ fn create_delete_command() -> Command<'static> {
         )
 }
 
+/// Should be able to run with idempotency
+/// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
+fn main() {
+    let matches = Command::new(APP_NAME)
+        .about("Avalanche node operations on AWS")
+        .subcommands(vec![
+            create_default_spec_command(),
+            create_apply_command(),
+            create_delete_command(),
+        ])
+        .get_matches();
+
+    match matches.subcommand() {
+        Some((SUBCOMMAND_DEFAULT_SPEC, sub_matches)) => {
+            let keys_to_generate = sub_matches.value_of("KEYS_TO_GENERATE").unwrap_or("");
+            let keys_to_generate = keys_to_generate.parse::<usize>().unwrap();
+            let opt = DefaultSpecOption {
+                log_level: sub_matches
+                    .value_of("LOG_LEVEL")
+                    .unwrap_or("info")
+                    .to_string(),
+                install_artifacts_avalanched_bin: sub_matches
+                    .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
+                    .unwrap()
+                    .to_string(),
+                install_artifacts_avalanche_bin: sub_matches
+                    .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
+                    .unwrap()
+                    .to_string(),
+                install_artifacts_plugins_dir: sub_matches
+                    .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
+                    .unwrap_or("")
+                    .to_string(),
+                network_name: sub_matches
+                    .value_of("NETWORK_NAME")
+                    .unwrap_or("")
+                    .to_string(),
+                keys_to_generate,
+                avalanchego_log_level: sub_matches
+                    .value_of("AVALANCHEGO_LOG_LEVEL")
+                    .unwrap()
+                    .to_string(),
+                spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
+            };
+            execute_default_spec(opt).unwrap();
+        }
+
+        Some((SUBCOMMAND_APPLY, sub_matches)) => {
+            execute_apply(
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
+                sub_matches.is_present("SKIP_PROMPT"),
+            )
+            .unwrap();
+        }
+
+        Some((SUBCOMMAND_DELETE, sub_matches)) => {
+            execute_delete(
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
+                sub_matches.is_present("DELETE_ALL"),
+                sub_matches.is_present("SKIP_PROMPT"),
+            )
+            .unwrap();
+        }
+
+        _ => unreachable!("unknown subcommand"),
+    }
+}
+
 struct DefaultSpecOption {
     log_level: String,
     install_artifacts_avalanched_bin: String,
@@ -311,6 +308,9 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
 
     Ok(())
 }
+
+// 50-minute
+const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
 fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     #[derive(RustEmbed)]

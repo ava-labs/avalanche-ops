@@ -22,6 +22,7 @@ const APP_NAME: &str = "avalanched-aws";
 const SUBCOMMAND_RUN: &str = "run";
 const SUBCOMMAND_BACKUP: &str = "backup";
 
+// TODO: support download mainnet database from s3
 fn create_run_command() -> Command<'static> {
     Command::new(SUBCOMMAND_RUN)
         .about("Runs an Avalanche agent (daemon) on AWS")
@@ -56,6 +57,7 @@ fn create_run_command() -> Command<'static> {
         )
 }
 
+// TODO: make this periodic
 fn create_backup_command() -> Command<'static> {
     Command::new(SUBCOMMAND_BACKUP)
         .about("Back ups local data to remote storage")
@@ -68,6 +70,56 @@ fn create_backup_command() -> Command<'static> {
                 .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("ARCHIVE_METHOD")
+                .long("archive-method")
+                .short('c')
+                .help("Sets the archive method")
+                .required(true)
+                .takes_value(true)
+                .possible_value("tar")
+                .possible_value("zip")
+                .allow_invalid_utf8(false)
+                .default_value("tar"),
+        )
+        .arg(
+            Arg::new("COMPRESSION_METHOD")
+                .long("compression-method")
+                .short('c')
+                .help("Sets the compression method")
+                .required(false)
+                .takes_value(true)
+                .possible_value("zstd")
+                .allow_invalid_utf8(false)
+                .default_value("zstd"),
+        )
+        .arg(
+            Arg::new("SOURCE_DIRECTORY_PATH")
+                .long("source-directory-path")
+                .short('s')
+                .help("Sets the source directory path to compress/archive")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("S3_BUCKET")
+                .long("s3-bucket")
+                .short('b')
+                .help("Sets the S3 bucket name to upload to")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("S3_KEY")
+                .long("s3-key")
+                .short('k')
+                .help("Sets the S3 key name for uploading")
+                .required(true)
+                .takes_value(true)
                 .allow_invalid_utf8(false),
         )
 }
@@ -93,7 +145,15 @@ fn main() {
         }
 
         Some((SUBCOMMAND_BACKUP, sub_matches)) => {
-            execute_backup(sub_matches.value_of("LOG_LEVEL").unwrap_or("info")).unwrap();
+            execute_backup(
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches.value_of("ARCHIVE_METHOD").unwrap_or("tar"),
+                sub_matches.value_of("COMPRESSION_METHOD").unwrap_or("zstd"),
+                sub_matches.value_of("SOURCE_DIRECTORY_PATH").unwrap(),
+                sub_matches.value_of("S3_BUCKET").unwrap(),
+                sub_matches.value_of("S3_KEY").unwrap(),
+            )
+            .unwrap();
         }
 
         _ => unreachable!("unknown subcommand"),
@@ -548,7 +608,7 @@ WantedBy=multi-user.target",
     bash::run("sudo systemctl enable avalanche.service").unwrap();
     bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
 
-    info!("avalanched all success!");
+    info!("'avalanched run' all success!");
 
     // TODO: check upgrade artifacts by polling s3
     // e.g., we can update avalanche node software
@@ -644,16 +704,78 @@ fn extract_filename(p: &str) -> String {
     String::from(file_stemp.to_str().unwrap())
 }
 
-fn execute_backup(log_level: &str) -> io::Result<()> {
+fn execute_backup(
+    log_level: &str,
+    archive_method: &str,
+    compression_method: &str,
+    src_dir_path: &str,
+    s3_bucket: &str,
+    s3_key: &str,
+) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let _rt = Runtime::new().unwrap();
+    match archive_method {
+        "tar" => {}
+        "zip" => {}
+        _ => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("unsupported archive_method {}", archive_method),
+            ));
+        }
+    }
+    match compression_method {
+        "zstd" => {}
+        _ => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("unsupported compression_method {}", compression_method),
+            ));
+        }
+    }
+
+    let rt = Runtime::new().unwrap();
+
+    let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
+    info!("fetched region {}", reg);
+
+    let instance_id = rt.block_on(aws_ec2::fetch_instance_id()).unwrap();
+    info!("fetched instance ID {}", instance_id);
 
     thread::sleep(Duration::from_secs(1));
-    info!("STEP: starting backup");
+    info!("STEP: loading AWS config");
+    let shared_config = rt.block_on(aws::load_config(Some(reg))).unwrap();
+    let s3_manager = aws_s3::Manager::new(&shared_config);
 
+    thread::sleep(Duration::from_secs(1));
+    info!(
+        "STEP: backup {} with compression {} and archive {}",
+        src_dir_path, compression_method, archive_method
+    );
+    let output_path = format!(
+        "{}.{}.{}",
+        random::tmp_path(10).unwrap(),
+        archive_method,
+        compression_method
+    );
+    match archive_method {
+        "tar" => {
+            compress::to_tar_zstd(src_dir_path, &output_path, None)?;
+        }
+        "zip" => {
+            compress::to_zip_zstd(src_dir_path, &output_path, None)?;
+        }
+        _ => {}
+    }
+
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: upload output {} to S3", output_path);
+    rt.block_on(s3_manager.put_object(s3_bucket, &output_path, s3_key))
+        .unwrap();
+
+    info!("'avalanched backup' all success!");
     Ok(())
 }
