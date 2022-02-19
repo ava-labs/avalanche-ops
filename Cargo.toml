@@ -24,11 +24,13 @@ crossterm = "0.23.0"
 dialoguer = "0.10.0"
 env_logger = "0.9.0"
 ethereum-types = "0.13.1"
+fs_extra = "1.2.0"
 hex = "0.4.3"
 hyper = { version = "0.14.16", features = ["full"] }
 lazy_static = "1.4.0"
 log = "0.4.14"
 openssl = "0.10.38"
+path-clean = "0.1.0"
 ring = "0.16.20"
 ripemd = "0.1.0"
 rust-embed = "6.3.0"
@@ -37,11 +39,14 @@ serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.78"
 serde_yaml = "0.8.23"
 sha3 = "0.10.1"
+tar = "0.4.38"
 tempfile = "3.3.0"
 thiserror = "1.0.30"
 tokio = { version = "1.16.1", features = ["full"] }
 url = "2.2.2"
+walkdir = "2.3.2"
 whoami = "1.2.1"
+zip = "0.5.13"
 zstd = "0.10.0"
 
 [dev-dependencies]
