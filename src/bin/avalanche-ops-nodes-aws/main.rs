@@ -41,7 +41,8 @@ fn create_default_spec_command() -> Command<'static> {
                 .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("info"),
         )
         .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
@@ -75,29 +76,29 @@ fn create_default_spec_command() -> Command<'static> {
                 .long("network-name")
                 .short('n')
                 .help("Sets the type of network by name (e.g., mainnet, fuji, custom)")
-                .default_value("custom")
                 .required(false)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("custom"),
         )
         .arg(
             Arg::new("KEYS_TO_GENERATE") 
                 .long("keys-to-generate")
                 .short('k')
                 .help("Sets the number of keys to generate")
-                .default_value("5") // ref. "avalanche_ops::DEFAULT_KEYS_TO_GENERATE"
                 .required(false)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("5"), // ref. "avalanche_ops::DEFAULT_KEYS_TO_GENERATE"
         )
         .arg(
             Arg::new("AVALANCHEGO_LOG_LEVEL") 
                 .long("avalanchego-log-level")
                 .help("Sets log-level for avalanchego")
-                .default_value(avalanchego::DEFAULT_LOG_LEVEL)
                 .required(false)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value(avalanchego::DEFAULT_LOG_LEVEL),
         )
         .arg(
             Arg::new("SPEC_FILE_PATH")
@@ -122,7 +123,8 @@ fn create_apply_command() -> Command<'static> {
                 .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("info"),
         )
         .arg(
             Arg::new("SPEC_FILE_PATH")
@@ -156,7 +158,8 @@ fn create_delete_command() -> Command<'static> {
                 .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("info"),
         )
         .arg(
             Arg::new("SPEC_FILE_PATH")
@@ -364,20 +367,21 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     }
     if aws_resources.cloudformation_ec2_instance_role.is_none() {
         aws_resources.cloudformation_ec2_instance_role =
-            Some(format!("{}-ec2-instance-role", spec.id));
+            Some(aws_cloudformation::StackName::Ec2InstanceRole(spec.id.clone()).encode());
     }
     if aws_resources.cloudformation_vpc.is_none() {
-        aws_resources.cloudformation_vpc = Some(format!("{}-vpc", spec.id));
+        aws_resources.cloudformation_vpc =
+            Some(aws_cloudformation::StackName::Vpc(spec.id.clone()).encode());
     }
     if spec.avalanchego_config.is_custom_network()
         && aws_resources.cloudformation_asg_beacon_nodes.is_none()
     {
         aws_resources.cloudformation_asg_beacon_nodes =
-            Some(format!("{}-asg-beacon-nodes", spec.id));
+            Some(aws_cloudformation::StackName::AsgBeaconNodes(spec.id.clone()).encode());
     }
     if aws_resources.cloudformation_asg_non_beacon_nodes.is_none() {
         aws_resources.cloudformation_asg_non_beacon_nodes =
-            Some(format!("{}-asg-non-beacon-nodes", spec.id));
+            Some(aws_cloudformation::StackName::AsgNonBeaconNodes(spec.id.clone()).encode());
     }
     spec.aws_resources = Some(aws_resources.clone());
     spec.sync(spec_file_path)?;
@@ -801,6 +805,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             ResetColor
         )?;
 
+        // TODO: support other platforms
         let cloudformation_asg_beacon_nodes_yaml =
             Asset::get("cloudformation/asg_ubuntu_amd64.yaml").unwrap();
         let cloudformation_asg_beacon_nodes_tmpl =
@@ -1308,6 +1313,78 @@ fn execute_delete(
     let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
     let cw_manager = aws_cloudwatch::Manager::new(&shared_config);
 
+    // delete this first since EC2 key delete does not depend on ASG/VPC
+    // (mainly to speed up delete operation)
+    if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
+        thread::sleep(Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete EC2 key pair\n"),
+            ResetColor
+        )?;
+
+        let ec2_key_path = aws_resources.ec2_key_path.unwrap();
+        if Path::new(ec2_key_path.as_str()).exists() {
+            fs::remove_file(ec2_key_path.as_str()).unwrap();
+        }
+        let ec2_key_path_compressed = format!("{}.zstd", ec2_key_path);
+        if Path::new(ec2_key_path_compressed.as_str()).exists() {
+            fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
+        }
+        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
+        if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
+            fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
+        }
+        rt.block_on(ec2_manager.delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str()))
+            .unwrap();
+    }
+
+    // delete this first since KMS key delete does not depend on ASG/VPC
+    // (mainly to speed up delete operation)
+    if aws_resources.kms_cmk_id.is_some() && aws_resources.kms_cmk_arn.is_some() {
+        thread::sleep(Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete KMS key\n"),
+            ResetColor
+        )?;
+
+        let cmk_id = aws_resources.kms_cmk_id.unwrap();
+        rt.block_on(kms_manager.schedule_to_delete(cmk_id.as_str()))
+            .unwrap();
+    }
+
+    // IAM roles can be deleted without being blocked on ASG/VPC
+    if aws_resources
+        .cloudformation_ec2_instance_profile_arn
+        .is_some()
+    {
+        thread::sleep(Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: trigger delete EC2 instance role\n"),
+            ResetColor
+        )?;
+
+        let ec2_instance_role_stack_name = aws_resources
+            .cloudformation_ec2_instance_role
+            .clone()
+            .unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
+            .unwrap();
+        thread::sleep(Duration::from_secs(5));
+        rt.block_on(cloudformation_manager.poll_stack(
+            ec2_instance_role_stack_name.as_str(),
+            StackStatus::DeleteComplete,
+            Duration::from_secs(500),
+            Duration::from_secs(20),
+        ))
+        .unwrap();
+    }
+
     if aws_resources
         .cloudformation_asg_non_beacon_nodes_logical_id
         .is_some()
@@ -1316,20 +1393,59 @@ fn execute_delete(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete ASG for non-beacon nodes\n"),
+            Print("\n\n\nSTEP: triggering delete ASG for non-beacon nodes\n"),
             ResetColor
         )?;
+
+        let asg_non_beacon_nodes_stack_name = aws_resources
+            .cloudformation_asg_non_beacon_nodes
+            .clone()
+            .unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(asg_non_beacon_nodes_stack_name.as_str()))
+            .unwrap();
+    }
+
+    if spec.machine.beacon_nodes.unwrap_or(0) > 0
+        && aws_resources
+            .cloudformation_asg_beacon_nodes_logical_id
+            .is_some()
+    {
+        thread::sleep(Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: triggering delete ASG for beacon nodes\n"),
+            ResetColor
+        )?;
+
+        let asg_beacon_nodes_stack_name = aws_resources
+            .cloudformation_asg_beacon_nodes
+            .clone()
+            .unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(asg_beacon_nodes_stack_name.as_str()))
+            .unwrap();
+    }
+
+    if aws_resources
+        .cloudformation_asg_non_beacon_nodes_logical_id
+        .is_some()
+    {
+        thread::sleep(Duration::from_secs(2));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: confirming delete ASG for non-beacon nodes\n"),
+            ResetColor
+        )?;
+
+        let asg_non_beacon_nodes_stack_name =
+            aws_resources.cloudformation_asg_non_beacon_nodes.unwrap();
 
         let desired_capacity = spec.machine.non_beacon_nodes;
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
-        let asg_non_beacon_nodes_stack_name =
-            aws_resources.cloudformation_asg_non_beacon_nodes.unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(asg_non_beacon_nodes_stack_name.as_str()))
-            .unwrap();
-        thread::sleep(Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
             asg_non_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -1348,19 +1464,17 @@ fn execute_delete(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: confirming delete ASG for beacon nodes\n"),
             ResetColor
         )?;
+
+        let asg_beacon_nodes_stack_name = aws_resources.cloudformation_asg_beacon_nodes.unwrap();
 
         let desired_capacity = spec.machine.beacon_nodes.unwrap();
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
-        let asg_beacon_nodes_stack_name = aws_resources.cloudformation_asg_beacon_nodes.unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(asg_beacon_nodes_stack_name.as_str()))
-            .unwrap();
-        thread::sleep(Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
             asg_beacon_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -1370,6 +1484,7 @@ fn execute_delete(
         .unwrap();
     }
 
+    // VPC delete must run after associated EC2 instances are terminated due to dependencies
     if aws_resources.cloudformation_vpc_id.is_some()
         && aws_resources.cloudformation_vpc_security_group_id.is_some()
         && aws_resources.cloudformation_vpc_public_subnet_ids.is_some()
@@ -1403,14 +1518,11 @@ fn execute_delete(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete EC2 instance role\n"),
+            Print("\n\n\nSTEP: confirming delete EC2 instance role\n"),
             ResetColor
         )?;
 
         let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
-            .unwrap();
-        thread::sleep(Duration::from_secs(10));
         rt.block_on(cloudformation_manager.poll_stack(
             ec2_instance_role_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -1418,45 +1530,6 @@ fn execute_delete(
             Duration::from_secs(30),
         ))
         .unwrap();
-    }
-
-    if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
-        thread::sleep(Duration::from_secs(2));
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete EC2 key pair\n"),
-            ResetColor
-        )?;
-
-        let ec2_key_path = aws_resources.ec2_key_path.unwrap();
-        if Path::new(ec2_key_path.as_str()).exists() {
-            fs::remove_file(ec2_key_path.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed = format!("{}.zstd", ec2_key_path);
-        if Path::new(ec2_key_path_compressed.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
-        if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
-        }
-        rt.block_on(ec2_manager.delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str()))
-            .unwrap();
-    }
-
-    if aws_resources.kms_cmk_id.is_some() && aws_resources.kms_cmk_arn.is_some() {
-        thread::sleep(Duration::from_secs(2));
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete KMS key\n"),
-            ResetColor
-        )?;
-
-        let cmk_id = aws_resources.kms_cmk_id.unwrap();
-        rt.block_on(kms_manager.schedule_to_delete(cmk_id.as_str()))
-            .unwrap();
     }
 
     if delete_all {

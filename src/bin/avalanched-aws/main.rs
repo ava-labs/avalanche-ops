@@ -35,7 +35,8 @@ fn create_run_command() -> Command<'static> {
                 .takes_value(true)
                 .possible_value("debug")
                 .possible_value("info")
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("info"),
         )
         .arg(
             Arg::new("AVALANCHE_BIN")
@@ -44,7 +45,8 @@ fn create_run_command() -> Command<'static> {
                 .help("Sets the Avalanche node binary path to locate the downloaded file")
                 .required(true)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("/usr/local/bin/avalanche"),
         )
         .arg(
             Arg::new("CLOUDWATCH_CONFIG_FILE_PATH")
@@ -53,7 +55,8 @@ fn create_run_command() -> Command<'static> {
                 .help("Sets CloudWatch configuration JSON file path to output")
                 .required(true)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
+                .default_value("/opt/aws/amazon-cloudwatch-agent/bin/config.json"),
         )
 }
 

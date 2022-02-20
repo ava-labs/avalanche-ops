@@ -492,7 +492,7 @@ impl KeyPath {
     pub fn encode(&self) -> String {
         match self {
             KeyPath::GenesisDraftFile(id) => format!("{}/install/genesis.draft.json", id),
-            KeyPath::GenesisFile(id) => format!("{}/install/genesis.json", id),
+            KeyPath::GenesisFile(id) => format!("{}/genesis.json", id),
 
             KeyPath::AvalanchedBin(id) => format!("{}/install/avalanched", id),
             KeyPath::AvalancheBin(id) => format!("{}/install/avalanche", id),
@@ -537,7 +537,7 @@ impl KeyPath {
                 )
             }
 
-            KeyPath::ConfigFile(id) => format!("{}/config.yaml", id),
+            KeyPath::ConfigFile(id) => format!("{}/avalanche-ops.config.yaml", id),
         }
     }
 
