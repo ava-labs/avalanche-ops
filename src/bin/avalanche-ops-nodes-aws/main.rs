@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudformation, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, aws_sts,
-    compress, constants, envelope, http, node, random,
+    compress, constants, envelope, node, random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
@@ -437,7 +437,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     ))
     .unwrap();
     let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
-    crate::compress::to_zstd_file(
+    compress::to_zstd_file(
         &spec.install_artifacts.avalanchego_bin,
         &tmp_avalanche_bin_compressed_path,
         None,
@@ -466,7 +466,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             let file_name = file_name.as_os_str().to_str().unwrap();
 
             let tmp_plugin_compressed_path = random::tmp_path(15).unwrap();
-            crate::compress::to_zstd_file(file_path, &tmp_plugin_compressed_path, None).unwrap();
+            compress::to_zstd_file(file_path, &tmp_plugin_compressed_path, None).unwrap();
 
             info!(
                 "uploading {} (compressed from {}) from plugins directory {}",
@@ -1186,11 +1186,12 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
     println!("http://{}:{}/ext/metrics", dns_name, http_port);
     println!("http://{}:{}/ext/health", dns_name, http_port);
+    println!("http://{}:{}/ext/health/liveness", dns_name, http_port);
     let mut uris: Vec<String> = vec![];
     for node in all_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(get_health(
+            let ret = rt.block_on(avalanchego::check_health_liveness(
                 format!("http://{}:{}", node.ip, http_port).as_str(),
             ));
             let (res, err) = match ret {
@@ -1205,34 +1206,26 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             };
             success = res.healthy.is_some() && res.healthy.unwrap();
             if success {
-                info!("health check success for {}", node.machine_id);
+                info!("health/liveness check success for {}", node.machine_id);
                 break;
             }
             warn!(
-                "health check failed for {} ({:?}, {:?})",
+                "health/liveness check failed for {} ({:?}, {:?})",
                 node.machine_id, res, err
             );
-            if !spec.avalanchego_config.is_custom_network() {
-                // mainnet nodes will take awhile to bootstrap
-                // TODO: instead use liveness API
-                // TODO: remove this when custom network boots from existing db with different network ID
-                break;
-            }
             thread::sleep(Duration::from_secs(10));
         }
         if !success {
             warn!(
-                "health check failed for network id {}",
+                "health/liveness check failed for network id {}",
                 &spec.avalanchego_config.network_id
             );
-            if spec.avalanchego_config.is_custom_network() {
-                // TODO: mainnet/fuji nodes will take awhile to bootstrap, only error for cutstom network
-                // return Err(Error::new(ErrorKind::Other, "health check failed"));
-            }
+            return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
         }
 
         println!("http://{}:{}/ext/metrics", node.ip, http_port);
         println!("http://{}:{}/ext/health", node.ip, http_port);
+        println!("http://{}:{}/ext/health/liveness", node.ip, http_port);
         uris.push(format!("http://{}:{}", node.ip, http_port))
     }
     println!("\nURIs: {}", uris.join(","));
@@ -1515,27 +1508,4 @@ fn get_ec2_key_path(spec_file_path: &str) -> String {
             .to_str()
             .unwrap(),
     )
-}
-
-async fn get_health(u: &str) -> io::Result<avalanchego::APIHealthReply> {
-    info!("checking /ext/health for {}", u);
-    let req = http::create_get(u, "ext/health")?;
-
-    // TODO: fix this; avalanchego /ext/health returns 503...
-    let buf = match http::read_bytes(req, Duration::from_secs(5), false).await {
-        Ok(u) => u,
-        Err(e) => return Err(e),
-    };
-
-    let resp = match serde_json::from_slice(&buf) {
-        Ok(p) => p,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to decode {}", e),
-            ));
-        }
-    };
-
-    Ok(resp)
 }

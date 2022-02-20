@@ -19,9 +19,9 @@ pub fn get(n: usize) -> String {
 
 #[test]
 fn test_get() {
-    let _ = env_logger::builder().is_test(true).try_init();
     use log::info;
     use std::{thread, time};
+    let _ = env_logger::builder().is_test(true).try_init();
 
     let ts1 = get(12);
     thread::sleep(time::Duration::from_millis(1001));

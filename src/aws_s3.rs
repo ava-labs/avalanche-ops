@@ -17,7 +17,7 @@ use crate::{
         Error::{Other, API},
         Result,
     },
-    node,
+    humanize, node,
 };
 
 /// Implements AWS S3 manager.
@@ -318,7 +318,7 @@ impl Manager {
             file_path,
             bucket_name,
             s3_key,
-            crate::humanize::bytes(contents.len() as f64)
+            humanize::bytes(contents.len() as f64)
         );
         let ret = self
             .cli
@@ -375,7 +375,7 @@ impl Manager {
             bucket_name,
             s3_key,
             output.content_type().unwrap(),
-            crate::humanize::bytes(output.content_length() as f64),
+            humanize::bytes(output.content_length() as f64),
             file_path,
         );
 
@@ -581,10 +581,11 @@ impl KeyPath {
 
 #[test]
 fn test_key_path() {
+    use crate::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let id = crate::random::string(10);
-    let instance_id = crate::random::string(5);
+    let id = random::string(10);
+    let instance_id = random::string(5);
     let node_id = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg";
     let node_ip = "1.2.3.4";
 

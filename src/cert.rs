@@ -92,17 +92,18 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
 
 #[test]
 fn test_cert() {
-    let _ = env_logger::builder().is_test(true).try_init();
+    use crate::random;
     use std::fs;
+    let _ = env_logger::builder().is_test(true).try_init();
 
     let tmp_dir = tempfile::tempdir().unwrap();
 
-    let key_path = tmp_dir.path().join(crate::random::string(20));
+    let key_path = tmp_dir.path().join(random::string(20));
     let key_path = key_path.as_os_str().to_str().unwrap();
     let mut key_path = String::from(key_path);
     key_path.push_str(".key");
 
-    let cert_path = tmp_dir.path().join(crate::random::string(20));
+    let cert_path = tmp_dir.path().join(random::string(20));
     let cert_path = cert_path.as_os_str().to_str().unwrap();
     let mut cert_path = String::from(cert_path);
     cert_path.push_str(".cert");

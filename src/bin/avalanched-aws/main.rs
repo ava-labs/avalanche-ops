@@ -9,7 +9,7 @@ use std::{
 
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 
@@ -603,7 +603,36 @@ WantedBy=multi-user.target",
     bash::run("sudo systemctl enable avalanche.service").unwrap();
     bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
 
-    info!("'avalanched run' all success!");
+    info!("'avalanched run' all success -- now waiting for local node liveness check");
+    loop {
+        thread::sleep(Duration::from_secs(10));
+        let ret = rt.block_on(avalanchego::check_health_liveness(
+            format!(
+                "http://{}:{}",
+                public_ipv4,
+                spec.avalanchego_config.http_port.unwrap()
+            )
+            .as_str(),
+        ));
+        let (res, err) = match ret {
+            Ok(res) => (res, None),
+            Err(e) => (
+                avalanchego::APIHealthReply {
+                    checks: None,
+                    healthy: Some(false),
+                },
+                Some(e),
+            ),
+        };
+        if res.healthy.is_some() && res.healthy.unwrap() {
+            info!("health/liveness check success for {}", instance_id);
+            break;
+        }
+        warn!(
+            "health/liveness check failed for {} ({:?}, {:?})",
+            instance_id, res, err
+        );
+    }
 
     // TODO: check upgrade artifacts by polling s3
     // e.g., we can update avalanche node software

@@ -14,21 +14,20 @@ use walkdir::{DirEntry, WalkDir};
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
 use zstd::stream;
 
+use crate::{humanize, random};
+
 pub fn to_zstd(d: &[u8], level: Option<i32>) -> io::Result<Vec<u8>> {
     let lvl = level.unwrap_or(3);
 
     let size = d.len() as f64;
     info!(
         "compressing to zstd (current size {})",
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
     );
 
     let compressed = stream::encode_all(Cursor::new(d), lvl)?;
     let size = compressed.len() as f64;
-    info!(
-        "compressed to zstd (new size {})",
-        crate::humanize::bytes(size),
-    );
+    info!("compressed to zstd (new size {})", humanize::bytes(size),);
 
     Ok(compressed)
 }
@@ -37,15 +36,12 @@ pub fn from_zstd(d: &[u8]) -> io::Result<Vec<u8>> {
     let size = d.len() as f64;
     info!(
         "decompressing zstd (current size {})",
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
     );
 
     let decompressed = stream::decode_all(Cursor::new(d))?;
     let size = decompressed.len() as f64;
-    info!(
-        "decompressed zstd (new size {})",
-        crate::humanize::bytes(size),
-    );
+    info!("decompressed zstd (new size {})", humanize::bytes(size),);
 
     Ok(decompressed)
 }
@@ -80,7 +76,7 @@ pub fn to_zstd_file(src_path: &str, dst_path: &str, level: Option<i32>) -> io::R
         "compressing '{}' to '{}' (current size {})",
         src_path,
         dst_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
     );
 
     let d = fs::read(src_path)?;
@@ -94,7 +90,7 @@ pub fn to_zstd_file(src_path: &str, dst_path: &str, level: Option<i32>) -> io::R
         "compressed '{}' to '{}' (new size {})",
         src_path,
         dst_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
     );
 
     Ok(())
@@ -110,7 +106,7 @@ pub fn from_zstd_file(src_path: &str, dst_path: &str) -> io::Result<()> {
         "decompressing '{}' to '{}' (current size {})",
         src_path,
         dst_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
     );
 
     let d = fs::read(src_path)?;
@@ -124,7 +120,7 @@ pub fn from_zstd_file(src_path: &str, dst_path: &str) -> io::Result<()> {
         "decompressed '{}' to '{}' (new size {})",
         src_path,
         dst_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
     );
 
     Ok(())
@@ -134,7 +130,7 @@ pub fn from_zstd_file(src_path: &str, dst_path: &str) -> io::Result<()> {
 fn test_compress() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let contents = crate::random::string(10);
+    let contents = random::string(10);
     let contents_compressed = to_zstd(&contents.as_bytes(), None).unwrap();
     let contents_compressed_decompressed = from_zstd(&contents_compressed).unwrap();
     assert_eq!(contents.as_bytes(), contents_compressed_decompressed);
@@ -148,7 +144,7 @@ fn test_compress() {
         contents_compressed_base64
     );
 
-    let contents = crate::random::string(4000);
+    let contents = random::string(4000);
     let mut f1 = tempfile::NamedTempFile::new().unwrap();
     let ret = f1.write_all(contents.as_bytes());
     assert!(ret.is_ok());
@@ -156,10 +152,10 @@ fn test_compress() {
 
     let tmp_dir = tempfile::tempdir().unwrap();
 
-    let p2 = tmp_dir.path().join(crate::random::string(20));
+    let p2 = tmp_dir.path().join(random::string(20));
     let p2 = p2.as_os_str().to_str().unwrap();
 
-    let p3 = tmp_dir.path().join(crate::random::string(20));
+    let p3 = tmp_dir.path().join(random::string(20));
     let p3 = p3.as_os_str().to_str().unwrap();
 
     let ret = to_zstd_file(p1, p2, None);
@@ -195,14 +191,14 @@ pub fn to_zip_zstd(src_dir_path: &str, dst_path: &str, level: Option<i32>) -> io
     info!(
         "start to_zip_zstd directory '{}' (original size {}) to '{}'",
         src_dir_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
         dst_path
     );
 
     let options = FileOptions::default()
         .compression_method(zip::CompressionMethod::Stored)
         .unix_permissions(0o755);
-    let zip_path = crate::random::tmp_path(10)?;
+    let zip_path = random::tmp_path(10)?;
     let zip_file = File::create(&zip_path)?;
     let mut zip = ZipWriter::new(zip_file);
 
@@ -263,7 +259,7 @@ pub fn to_zip_zstd(src_dir_path: &str, dst_path: &str, level: Option<i32>) -> io
         "done to_zip_zstd '{}' to '{}' (final zipped, compressed size {})",
         src_dir_path,
         dst_path,
-        crate::humanize::bytes(size)
+        humanize::bytes(size)
     );
     Ok(())
 }
@@ -284,11 +280,11 @@ pub fn to_tar_zstd(src_dir_path: &str, dst_path: &str, level: Option<i32>) -> io
     info!(
         "start to_tar_zstd directory '{}' (original size {}) to '{}'",
         src_dir_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
         dst_path
     );
 
-    let tar_path = crate::random::tmp_path(10)?;
+    let tar_path = random::tmp_path(10)?;
     let tar_file = File::create(&tar_path)?;
     let mut tar = Builder::new(tar_file);
     let src_dir = Path::new(src_dir_path);
@@ -336,7 +332,7 @@ pub fn to_tar_zstd(src_dir_path: &str, dst_path: &str, level: Option<i32>) -> io
         "done to_tar_zstd '{}' to '{}' (final tar-ed, compressed size {})",
         src_dir_path,
         dst_path,
-        crate::humanize::bytes(size)
+        humanize::bytes(size)
     );
     Ok(())
 }
@@ -349,13 +345,13 @@ pub fn from_zip_zstd(src_archive_path: &str, dst_dir_path: &str) -> io::Result<(
     info!(
         "start from_zip_zstd archive '{}' (original size {}) to '{}'",
         src_archive_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
         dst_dir_path
     );
     fs::create_dir_all(dst_dir_path)?;
     let dst_dir_path = Path::new(dst_dir_path);
 
-    let zip_path = crate::random::tmp_path(10)?;
+    let zip_path = random::tmp_path(10)?;
     from_zstd_file(src_archive_path, &zip_path)?;
 
     let zip_file = File::open(&zip_path)?;
@@ -422,7 +418,7 @@ pub fn from_zip_zstd(src_archive_path: &str, dst_dir_path: &str) -> io::Result<(
         "done from_zip_zstd '{}' to '{}' (final decompressed, unzipped size {})",
         src_archive_path,
         dst_dir_path.display(),
-        crate::humanize::bytes(size)
+        humanize::bytes(size)
     );
     Ok(())
 }
@@ -435,13 +431,13 @@ pub fn from_tar_zstd(src_archive_path: &str, dst_dir_path: &str) -> io::Result<(
     info!(
         "start from_tar_zstd archive '{}' (original size {}) to '{}'",
         src_archive_path,
-        crate::humanize::bytes(size),
+        humanize::bytes(size),
         dst_dir_path
     );
     fs::create_dir_all(dst_dir_path)?;
     let dst_dir_path = Path::new(dst_dir_path);
 
-    let tar_path = crate::random::tmp_path(10)?;
+    let tar_path = random::tmp_path(10)?;
     from_zstd_file(src_archive_path, &tar_path)?;
 
     let tar_file = File::open(&tar_path)?;
@@ -482,7 +478,7 @@ pub fn from_tar_zstd(src_archive_path: &str, dst_dir_path: &str) -> io::Result<(
         "done from_tar_zstd '{}' to '{}' (final decompressed, un-tar-ed size {})",
         src_archive_path,
         dst_dir_path.display(),
-        crate::humanize::bytes(size)
+        humanize::bytes(size)
     );
     Ok(())
 }
@@ -508,25 +504,25 @@ fn absolute_path(path: impl AsRef<Path>) -> io::Result<PathBuf> {
 fn test_archive() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let src_dir_path = env::temp_dir().join(crate::random::string(10));
+    let src_dir_path = env::temp_dir().join(random::string(10));
     fs::create_dir_all(&src_dir_path).unwrap();
     info!("created {}", src_dir_path.display());
     for _i in 0..10 {
-        let p = src_dir_path.join(crate::random::string(10));
+        let p = src_dir_path.join(random::string(10));
         let mut f = File::create(&p).unwrap();
-        f.write_all(crate::random::string(1000).as_bytes()).unwrap();
+        f.write_all(random::string(1000).as_bytes()).unwrap();
     }
     info!("wrote to {}", src_dir_path.display());
 
-    let zip_path = crate::random::tmp_path(10).unwrap();
+    let zip_path = random::tmp_path(10).unwrap();
     to_zip_zstd(src_dir_path.as_os_str().to_str().unwrap(), &zip_path, None).unwrap();
-    let dst_dir_path2 = env::temp_dir().join(crate::random::string(10));
+    let dst_dir_path2 = env::temp_dir().join(random::string(10));
     let dst_dir_path2 = dst_dir_path2.as_os_str().to_str().unwrap();
     from_zip_zstd(&zip_path, dst_dir_path2).unwrap();
 
-    let tar_path = crate::random::tmp_path(10).unwrap();
+    let tar_path = random::tmp_path(10).unwrap();
     to_tar_zstd(src_dir_path.as_os_str().to_str().unwrap(), &tar_path, None).unwrap();
-    let dst_dir_path2 = env::temp_dir().join(crate::random::string(10));
+    let dst_dir_path2 = env::temp_dir().join(random::string(10));
     let dst_dir_path2 = dst_dir_path2.as_os_str().to_str().unwrap();
     from_tar_zstd(&tar_path, dst_dir_path2).unwrap();
 }

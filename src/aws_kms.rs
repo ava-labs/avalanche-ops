@@ -16,9 +16,12 @@ use aws_sdk_kms::{
 use aws_smithy_types::Blob;
 use log::{info, warn};
 
-use crate::errors::{
-    Error::{Other, API},
-    Result,
+use crate::{
+    errors::{
+        Error::{Other, API},
+        Result,
+    },
+    humanize,
 };
 
 /// Represents the data encryption key.
@@ -151,7 +154,7 @@ impl Manager {
         let key_spec = spec.unwrap_or(EncryptionAlgorithmSpec::SymmetricDefault);
         info!(
             "encrypting data (plaintext size {})",
-            crate::humanize::bytes(plaintext.len() as f64),
+            humanize::bytes(plaintext.len() as f64),
         );
 
         let ret = self
@@ -185,7 +188,7 @@ impl Manager {
 
         info!(
             "encrypted data (ciphertext size {})",
-            crate::humanize::bytes(ciphertext.len() as f64),
+            humanize::bytes(ciphertext.len() as f64),
         );
         Ok(ciphertext)
     }
@@ -203,7 +206,7 @@ impl Manager {
         let key_spec = spec.unwrap_or(EncryptionAlgorithmSpec::SymmetricDefault);
         info!(
             "decrypting data (ciphertext size {})",
-            crate::humanize::bytes(ciphertext.len() as f64),
+            humanize::bytes(ciphertext.len() as f64),
         );
 
         let ret = self
@@ -237,7 +240,7 @@ impl Manager {
 
         info!(
             "decrypted data (plaintext size {})",
-            crate::humanize::bytes(plaintext.len() as f64),
+            humanize::bytes(plaintext.len() as f64),
         );
         Ok(plaintext)
     }

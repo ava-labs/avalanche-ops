@@ -4,6 +4,7 @@ use std::{
     io::{self, Error, ErrorKind, Write},
     path::Path,
     string::String,
+    time::Duration,
     time::SystemTime,
 };
 
@@ -11,7 +12,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use log::info;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::key;
+use crate::{http, key};
 
 /// Default "config-file" path on the remote linux machines.
 /// Must be a valid path in remote host machine.
@@ -414,8 +415,8 @@ impl Config {
 
 #[test]
 fn test_config() {
+    use crate::random;
     use std::fs;
-
     let _ = env_logger::builder().is_test(true).try_init();
 
     let mut config = Config::new();
@@ -426,7 +427,7 @@ fn test_config() {
     let s = ret.unwrap();
     info!("config: {}", s);
 
-    let p = crate::random::tmp_path(10).unwrap();
+    let p = random::tmp_path(10).unwrap();
     let ret = config.sync(Some(p.clone()));
     assert!(ret.is_ok());
 
@@ -743,6 +744,7 @@ impl Staker {
 
 #[test]
 fn test_genesis() {
+    use crate::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let genesis = Genesis {
@@ -778,7 +780,7 @@ fn test_genesis() {
     let s = ret.unwrap();
     info!("genesis: {}", s);
 
-    let p = crate::random::tmp_path(10).unwrap();
+    let p = random::tmp_path(10).unwrap();
     let ret = genesis.sync(&p);
     assert!(ret.is_ok());
 
@@ -871,4 +873,48 @@ fn test_api_health() {
     let parsed = APIHealthReply::parse_from_str(data).unwrap();
     info!("parsed: {:?}", parsed);
     assert!(parsed.healthy.unwrap());
+}
+
+pub async fn check_health(u: &str) -> io::Result<APIHealthReply> {
+    info!("checking /ext/health for {}", u);
+    let req = http::create_get(u, "ext/health")?;
+
+    let buf = match http::read_bytes(req, Duration::from_secs(5), false).await {
+        Ok(u) => u,
+        Err(e) => return Err(e),
+    };
+
+    let resp = match serde_json::from_slice(&buf) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
+        }
+    };
+
+    Ok(resp)
+}
+
+pub async fn check_health_liveness(u: &str) -> io::Result<APIHealthReply> {
+    info!("checking /ext/health/liveness for {}", u);
+    let req = http::create_get(u, "ext/health/liveness")?;
+
+    let buf = match http::read_bytes(req, Duration::from_secs(5), false).await {
+        Ok(u) => u,
+        Err(e) => return Err(e),
+    };
+
+    let resp = match serde_json::from_slice(&buf) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
+        }
+    };
+
+    Ok(resp)
 }

@@ -14,6 +14,7 @@ use ring::rand::{SecureRandom, SystemRandom};
 use crate::{
     aws_kms,
     errors::{Error::Other, Result},
+    humanize,
 };
 
 const DEK_AES_256_LENGTH: usize = 32;
@@ -41,7 +42,7 @@ impl Envelope {
     pub async fn seal_aes_256(&self, d: &[u8]) -> Result<Vec<u8>> {
         info!(
             "AES_256 envelope-encrypting data (size before encryption {})",
-            crate::humanize::bytes(d.len() as f64)
+            humanize::bytes(d.len() as f64)
         );
 
         if self.aws_kms_manager.is_none() || self.aws_kms_key_id.is_none() {
@@ -170,7 +171,7 @@ impl Envelope {
 
         info!(
             "AES_256 envelope-encrypted data (encrypted size {})",
-            crate::humanize::bytes(encrypted.len() as f64)
+            humanize::bytes(encrypted.len() as f64)
         );
         Ok(encrypted)
     }
@@ -181,7 +182,7 @@ impl Envelope {
     pub async fn unseal_aes_256(&self, d: &[u8]) -> Result<Vec<u8>> {
         info!(
             "AES_256 envelope-decrypting data (size before decryption {})",
-            crate::humanize::bytes(d.len() as f64)
+            humanize::bytes(d.len() as f64)
         );
 
         if self.aws_kms_manager.is_none() || self.aws_kms_key_id.is_none() {
@@ -301,7 +302,7 @@ impl Envelope {
 
         info!(
             "AES_256 envelope-decrypted data (decrypted size {})",
-            crate::humanize::bytes(decrypted.len() as f64)
+            humanize::bytes(decrypted.len() as f64)
         );
         Ok(decrypted)
     }

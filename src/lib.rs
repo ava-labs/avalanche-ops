@@ -140,18 +140,18 @@ impl Spec {
         keys: usize,
     ) -> Self {
         // [year][month][date]-[system host-based id]
-        let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
+        let bucket = format!("avax-{}-{}", time::get(6), id::sid(7));
 
         let network_id = avalanchego_config.network_id;
         let (id, beacon_nodes, non_beacon_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 Some(v) => (
-                    crate::id::generate(format!("avax-{}", *v).as_str()),
+                    id::generate(format!("avax-{}", *v).as_str()),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
                 None => (
-                    crate::id::generate("avax-custom"),
+                    id::generate("avax-custom"),
                     DEFAULT_MACHINE_BEACON_NODES,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
@@ -426,7 +426,6 @@ impl Spec {
 #[test]
 fn test_spec() {
     use std::fs;
-
     let _ = env_logger::builder().is_test(true).try_init();
 
     use rust_embed::RustEmbed;
@@ -453,7 +452,7 @@ fn test_spec() {
     let avalanchego_bin = f.path().to_str().unwrap();
 
     let tmp_dir = tempfile::tempdir().unwrap();
-    let plugin_path = tmp_dir.path().join(crate::random::string(10));
+    let plugin_path = tmp_dir.path().join(random::string(10));
     let mut f = File::create(&plugin_path).unwrap();
     let ret = f.write_all(&vec![0]);
     assert!(ret.is_ok());
@@ -466,8 +465,8 @@ fn test_spec() {
         info!("read_dir: {:?}", path);
     }
 
-    let id = crate::random::string(10);
-    let bucket = format!("test-{}", crate::time::get(8));
+    let id = random::string(10);
+    let bucket = format!("test-{}", time::get(8));
 
     let contents = format!(
         r#"

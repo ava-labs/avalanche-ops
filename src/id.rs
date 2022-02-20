@@ -10,8 +10,8 @@ pub fn generate(pfx: &str) -> String {
 
 #[test]
 fn test_generate() {
-    let _ = env_logger::builder().is_test(true).try_init();
     use log::info;
+    let _ = env_logger::builder().is_test(true).try_init();
 
     let id1 = generate("avax");
     let id2 = generate("avax");

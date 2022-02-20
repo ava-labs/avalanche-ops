@@ -301,8 +301,8 @@ impl Config {
 
 #[test]
 fn test_config() {
+    use crate::random;
     use std::fs;
-
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = Config::default();
@@ -311,7 +311,7 @@ fn test_config() {
     let s = ret.unwrap();
     info!("config: {}", s);
 
-    let p = crate::random::tmp_path(10).unwrap();
+    let p = random::tmp_path(10).unwrap();
     let ret = config.sync(&p);
     assert!(ret.is_ok());
     fs::remove_file(p).unwrap();

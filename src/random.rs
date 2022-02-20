@@ -30,8 +30,8 @@ fn secure_random() -> &'static dyn SecureRandom {
 
 #[test]
 fn test_string() {
-    let _ = env_logger::builder().is_test(true).try_init();
     use log::info;
+    let _ = env_logger::builder().is_test(true).try_init();
 
     let word1 = string(100);
     let word2 = string(100);
