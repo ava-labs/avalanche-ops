@@ -127,6 +127,7 @@ jobs:
 
           fi
 
+      # release tip from latest commits
       # https://github.com/softprops/action-gh-release
       # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
       - name: Release latest
@@ -143,6 +144,8 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanched }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
 
+      # release only for tags
+      # https://github.com/softprops/action-gh-release
       # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
       - name: Release tag
         uses: softprops/action-gh-release@v1
