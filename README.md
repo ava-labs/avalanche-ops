@@ -1,13 +1,9 @@
 
 <br>
 
-![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/tests-release.yml/badge.svg) ![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/static-analysis.yml/badge.svg)
+![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/test-and-release.yml/badge.svg) ![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/static-analysis.yml/badge.svg)
 
 # Avalanche Ops
-
-Distributed systems are full of subtle edge cases. The fact that such event or bug may only emerge under special circumstances warrants exhaustive test coverage beyond simple unit testing. Furthermore, the lack of tests slows down software release process, let alone long-term architectural changes.
-
-`avalanche-ops` aims to find vulnerabilities in Avalanche protocol by intentionally causing failures, and provides a reliable and faster way to validate the ﬁx. In addition, `avalanche-ops` implements some basic principles and best practices for operating Avalanche node in production.
 
 `avalanche-ops` is an operation toolkit for Avalanche nodes:
 - 🦀 Written in Rust
@@ -24,6 +20,8 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 - 🚫 NOT implementing any Avalanche-specific test cases (focus on infrastructure setups)
 - 🚫 NOT using Kubernetes, prefers physical machines (or cloud VMs)
 - 🚫 **NOT production ready** (under heavy development)
+
+Distributed systems are full of subtle edge cases. The fact that such event or bug may only emerge under special circumstances warrants exhaustive test coverage beyond simple unit testing. Furthermore, the lack of tests slows down software release process, let alone long-term architectural changes. `avalanche-ops` aims to find vulnerabilities in Avalanche protocol by intentionally causing failures, and provides a reliable and faster way to validate the ﬁx. In addition, `avalanche-ops` implements some basic principles and best practices for operating Avalanche node in production.
 
 ## Installation
 
@@ -163,23 +161,33 @@ Check how non-beacon nodes discovered other beacon nodes and publish non-beacon 
 
 ![demo-aws-17](./img/demo-aws-17.png)
 
-Check logs from nodes are being published:
-
 ![demo-aws-18](./img/demo-aws-18.png)
 
-Now that the network is ready, check the metrics URL (or access via public IPv4 address):
+Check logs from nodes are being published:
 
 ![demo-aws-19](./img/demo-aws-19.png)
 
-![demo-aws-20](./img/demo-aws-20.png)
+Now that the network is ready, check the metrics and health URL (or access via public IPv4 address):
 
-To shut down the network, run `avalanche-ops-nodes-aws delete` command:
+![demo-aws-20](./img/demo-aws-20.png)
 
 ![demo-aws-21](./img/demo-aws-21.png)
 
 ![demo-aws-22](./img/demo-aws-22.png)
 
+Now the custom network is ready! Check out the genesis file for pre-funded keys:
+
 ![demo-aws-23](./img/demo-aws-23.png)
+
+![demo-aws-24](./img/demo-aws-24.png)
+
+To shut down the network, run `avalanche-ops-nodes-aws delete` command:
+
+![demo-aws-25](./img/demo-aws-25.png)
+
+![demo-aws-26](./img/demo-aws-26.png)
+
+![demo-aws-27](./img/demo-aws-27.png)
 
 ## Roadmap
 
