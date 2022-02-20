@@ -448,11 +448,6 @@ fn execute_run(
             genesis_path
         );
         let mut genesis_draft = avalanchego::Genesis::load(&tmp_genesis_path).unwrap();
-        let mut initial_staked_funds: Vec<String> = Vec::new();
-        for s in stakers.iter() {
-            initial_staked_funds.push(s.node_id.clone().unwrap());
-        }
-        genesis_draft.initial_staked_funds = Some(initial_staked_funds);
         genesis_draft.initial_stakers = Some(stakers);
         genesis_draft.sync(&genesis_path).unwrap();
 

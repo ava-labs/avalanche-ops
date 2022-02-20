@@ -462,6 +462,7 @@ pub struct Genesis {
     )]
     pub initial_stake_duration_offset: Option<u64>,
     /// Must be come from "initial_stakers".
+    /// Must be the list of X-chain addresses.
     /// Initial staked funds cannot be empty.
     #[serde(rename = "initialStakedFunds", skip_serializing_if = "Option::is_none")]
     pub initial_staked_funds: Option<Vec<String>>,
@@ -547,6 +548,7 @@ impl Genesis {
     /// Creates a new Genesis object with "keys" number of generated
     /// pre-funded keys.
     pub fn new(network_id: u32, keys: usize) -> io::Result<(Self, Vec<key::Info>)> {
+        let mut initial_staked_funds: Vec<String> = Vec::new();
         let mut allocations: Vec<Allocation> = Vec::new();
         let mut infos: Vec<key::Info> = Vec::new();
         for _ in 0..keys {
@@ -558,12 +560,14 @@ impl Genesis {
             alloc.avax_addr = Some(info.x_address.clone());
             alloc.eth_addr = Some(info.eth_address.clone());
 
+            initial_staked_funds.push(info.x_address.clone());
             allocations.push(alloc);
             infos.push(info);
         }
         Ok((
             Self {
                 network_id,
+                initial_staked_funds: Some(initial_staked_funds),
                 allocations: Some(allocations),
                 ..Default::default()
             },
