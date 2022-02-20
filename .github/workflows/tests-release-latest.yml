@@ -27,7 +27,7 @@ jobs:
           cache-on-failure: true
 
       - name: Run unit tests
-        run: scripts/tests.unit.sh
+        run: scripts/unit.tests.sh
 
   release_latest:
     name: Build release latest for ${{ matrix.job.target }} (${{ matrix.job.os }})
