@@ -368,7 +368,7 @@ fn execute_run(
     let node_id = node::load_id(&tls_cert_path).unwrap();
     info!("loaded node ID from cert: {}", node_id);
 
-    if !spec.avalanchego_config.is_mainnet()
+    if spec.avalanchego_config.is_custom_network()
         && node_kind.eq("beacon")
         && spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
@@ -467,7 +467,7 @@ fn execute_run(
         .unwrap();
     }
 
-    if !spec.avalanchego_config.is_mainnet()
+    if spec.avalanchego_config.is_custom_network()
         && node_kind.eq("non-beacon")
         && spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
@@ -496,7 +496,7 @@ fn execute_run(
 
     // mainnet/other pre-defined test nets have hard-coded beacon nodes
     // thus no need for beacon nodes
-    if !spec.avalanchego_config.is_mainnet() && node_kind.eq("non-beacon") {
+    if spec.avalanchego_config.is_custom_network() && node_kind.eq("non-beacon") {
         thread::sleep(Duration::from_secs(1));
         info!(
             "STEP: downloading beacon node information for network '{}'",
@@ -615,7 +615,7 @@ WantedBy=multi-user.target",
     info!("avalanched now periodically publishing node information...");
     loop {
         // to be downloaded in bootstrapping non-beacon nodes
-        if !spec.avalanchego_config.is_mainnet() && node_kind.eq("beacon") {
+        if spec.avalanchego_config.is_custom_network() && node_kind.eq("beacon") {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing beacon node information");
             let node = node::Node::new(node::Kind::Beacon, &instance_id, &node_id, &public_ipv4);

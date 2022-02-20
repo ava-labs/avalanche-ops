@@ -1212,8 +1212,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                 "health check failed for {} ({:?}, {:?})",
                 node.machine_id, res, err
             );
-            if spec.avalanchego_config.is_mainnet() {
+            if !spec.avalanchego_config.is_custom_network() {
                 // mainnet nodes will take awhile to bootstrap
+                // TODO: instead use liveness API
+                // TODO: remove this when custom network boots from existing db with different network ID
                 break;
             }
             thread::sleep(Duration::from_secs(10));
