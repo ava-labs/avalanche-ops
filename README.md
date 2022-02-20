@@ -1,7 +1,7 @@
 
 <br>
 
-![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/tests-release-latest.yml/badge.svg) ![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/static-analysis.yml/badge.svg)
+![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/tests-release.yml/badge.svg) ![Github Actions](https://github.com/gyuho/avalanche-ops/actions/workflows/static-analysis.yml/badge.svg)
 
 # Avalanche Ops
 

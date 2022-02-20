@@ -1,4 +1,4 @@
-name: Tests (and release latest)
+name: Tests and release
 
 on:
   push:
@@ -48,6 +48,7 @@ jobs:
           # - os: ubuntu-latest
           #   platform: linux
           #   target: aarch64-unknown-linux-gnu
+
           # TODO: NOT WORKING "openssl-sys-0.9.72/build/find_normal.rs:180:5"
           # - os: macos-latest
           #   platform: darwin
