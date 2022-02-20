@@ -500,7 +500,7 @@ fn execute_run(
         thread::sleep(Duration::from_secs(1));
         info!(
             "STEP: downloading beacon node information for network '{}'",
-            spec.avalanchego_config.network_id.unwrap_or(0),
+            spec.avalanchego_config.network_id,
         );
 
         // "avalanche-ops" should always set up beacon nodes first

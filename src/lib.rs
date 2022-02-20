@@ -142,7 +142,7 @@ impl Spec {
         // [year][month][date]-[system host-based id]
         let bucket = format!("avax-{}-{}", crate::time::get(6), crate::id::sid(7));
 
-        let network_id = avalanchego_config.network_id.unwrap_or(1);
+        let network_id = avalanchego_config.network_id;
         let (id, beacon_nodes, non_beacon_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 Some(v) => (
@@ -362,35 +362,9 @@ impl Spec {
                     format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {:?}", self.avalanchego_config.network_id),
                 ));
             }
-            if self.avalanchego_config.genesis.is_some() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "cannot specify 'avalanchego_config.genesis' for network_id {:?}",
-                        self.avalanchego_config.network_id
-                    ),
-                ));
-            }
         }
 
         if self.avalanchego_config.is_custom_network() {
-            if self.avalanchego_config.network_id.is_none() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    "custom network requires non-empty avalanchego_config.network_id",
-                ));
-            }
-
-            let network_id = self.avalanchego_config.network_id.unwrap();
-            if network_id > 10000 {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "cannot specify >10,000 for 'network_id' (got {})",
-                        network_id
-                    ),
-                ));
-            }
             if self.machine.beacon_nodes.unwrap_or(0) == 0 {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -417,21 +391,10 @@ impl Spec {
                     ),
                 ));
             }
-
-            if self.avalanchego_config.genesis.is_none() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "MUST specify 'avalanchego_config.genesis' for custom network_id {}",
-                        network_id
-                    ),
-                ));
-            }
-
             if self.install_artifacts.genesis_draft_file_path.is_none() {
                 return Err(Error::new(
                             ErrorKind::InvalidInput,
-                            format!("MUST specify 'install_artifacts.genesis_draft_file_path' for custom network_id {}", network_id),
+                            format!("MUST specify 'install_artifacts.genesis_draft_file_path' for custom network_id {}", self.avalanchego_config.network_id),
                         ));
             }
             if !Path::new(
@@ -570,7 +533,7 @@ avalanchego_config:
     let mut avago_config = avalanchego::Config::new();
     avago_config.config_file = Some(String::from(avalanchego::DEFAULT_CONFIG_FILE_PATH));
     avago_config.genesis = Some(String::from(avalanchego::DEFAULT_GENESIS_PATH));
-    avago_config.network_id = Some(1337);
+    avago_config.network_id = 1337;
     avago_config.snow_sample_size = Some(avalanchego::DEFAULT_SNOW_SAMPLE_SIZE);
     avago_config.snow_quorum_size = Some(avalanchego::DEFAULT_SNOW_QUORUM_SIZE);
     avago_config.http_port = Some(avalanchego::DEFAULT_HTTP_PORT);
@@ -644,7 +607,7 @@ avalanchego_config:
     assert_eq!(instance_types[2], "r5.large");
     assert_eq!(instance_types[3], "t3.large");
 
-    assert_eq!(cfg.avalanchego_config.clone().network_id.unwrap(), 1337);
+    assert_eq!(cfg.avalanchego_config.clone().network_id, 1337);
     assert_eq!(
         cfg.avalanchego_config
             .clone()

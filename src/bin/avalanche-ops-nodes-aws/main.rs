@@ -281,11 +281,14 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
 
     let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opt.network_name.as_str()) {
         Some(v) => *v,
-        None => 9999_u32,
+        None => avalanchego::DEFAULT_CUSTOM_NETWORK_ID,
     };
     let mut avalanchego_config = avalanchego::Config::default();
-    avalanchego_config.network_id = Some(network_id);
+    avalanchego_config.network_id = network_id;
     avalanchego_config.log_level = Some(opt.avalanchego_log_level);
+    if !avalanchego_config.is_custom_network() {
+        avalanchego_config.genesis = None;
+    }
 
     let spec = avalanche_ops::Spec::default_aws(
         opt.install_artifacts_avalanched_bin.as_str(),
@@ -735,7 +738,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         build_param("Id", &spec.id),
         build_param(
             "NetworkId",
-            format!("{}", &spec.avalanchego_config.network_id.unwrap_or(1)).as_str(),
+            format!("{}", &spec.avalanchego_config.network_id).as_str(),
         ),
         build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
         build_param("S3BucketName", &aws_resources.bucket),
@@ -1218,7 +1221,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         if !success {
             warn!(
                 "health check failed for network id {}",
-                &spec.avalanchego_config.network_id.unwrap_or(1)
+                &spec.avalanchego_config.network_id
             );
             if spec.avalanchego_config.is_custom_network() {
                 // TODO: mainnet/fuji nodes will take awhile to bootstrap, only error for cutstom network

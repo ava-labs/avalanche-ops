@@ -13,9 +13,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::key;
 
-/// Default "config-file" path for remote linux machines.
+/// Default "config-file" path on the remote linux machines.
+/// Must be a valid path in remote host machine.
 pub const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/avalanche.config.json";
-/// Default "genesis" path for remote linux machines.
+/// Default "genesis" path on the remote linux machines.
+/// Must be a valid path in remote host machine.
 pub const DEFAULT_GENESIS_PATH: &str = "/etc/avalanche.genesis.json";
 
 /// Default snow sample size.
@@ -40,15 +42,19 @@ pub const DEFAULT_STAKING_PORT: u32 = 9651;
 
 /// Default "db-dir" directory path for remote linux machines.
 /// Must be matched with the attached physical storage volume path.
+/// Must be a valid path in remote host machine.
 /// ref. See "cloudformation/asg_ubuntu_amd64.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_DB_DIR: &str = "/avalanche-data";
 /// Default "log-dir" directory path for remote linux machines.
+/// Must be a valid path in remote host machine.
 /// ref. See "cloudformation/asg_ubuntu_amd64.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
 pub const DEFAULT_LOG_LEVEL: &str = "INFO";
 
 pub const DEFAULT_STAKING_ENABLED: bool = true;
+/// Must be a valid path in remote host machine.
 pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.key";
+/// Must be a valid path in remote host machine.
 pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.crt";
 
 pub const DEFAULT_INDEX_ENABLED: bool = true;
@@ -59,7 +65,11 @@ pub const DEFAULT_API_METRICS_ENABLED: bool = true;
 pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
 pub const DEFAULT_API_IPCS_ENABLED: bool = true;
 
-/// Represents AvalancheGo genesis configuration.
+/// Represents AvalancheGo configuration.
+/// All file paths must be valid on the remote machines.
+/// For example, you may configure cert paths on your local laptop
+/// but the actual Avalanche nodes run on the remote machines
+/// so the paths will be invalid.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/config
 /// ref. https://serde.rs/container-attrs.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -74,19 +84,21 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genesis: Option<String>,
 
-    /// Network ID.
-    /// MUST NOT BE EMPTY.
+    /// Network ID. Default to custom network ID.
+    /// Set it to 1 for mainnet.
     /// e.g., "mainnet" is 1, "fuji" is 4, "local" is 12345.
     /// "utils/constants/NetworkID" only accepts string for known networks.
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#pkg-constants
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#NetworkName
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub network_id: Option<u32>,
+    pub network_id: u32,
 
     /// Public IP of this node for P2P communication.
     /// If empty, try to discover with NAT.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub public_ip: Option<String>,
 
+    /// HTTP host, which avalanchego defaults to 127.0.0.1.
+    /// Set it to 0.0.0.0 to expose the HTTP API to all incoming traffic.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub http_host: Option<String>,
     /// HTTP port.
@@ -98,9 +110,11 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_port: Option<u32>,
 
+    /// Database directory, must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub db_dir: Option<String>,
 
+    /// Logging directory, must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_dir: Option<String>,
     /// "avalanchego" logging level.
@@ -117,8 +131,10 @@ pub struct Config {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_enabled: Option<bool>,
+    /// Must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_tls_key_file: Option<String>,
+    /// Must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_tls_cert_file: Option<String>,
 
@@ -169,7 +185,7 @@ impl Config {
             config_file: None,
             genesis: None,
 
-            network_id: None,
+            network_id: DEFAULT_CUSTOM_NETWORK_ID,
 
             public_ip: None,
 
@@ -210,6 +226,8 @@ impl Config {
 
     pub fn default() -> Self {
         let mut config = Self::new();
+
+        config.network_id = DEFAULT_CUSTOM_NETWORK_ID;
         config.config_file = Some(String::from(DEFAULT_CONFIG_FILE_PATH));
         config.genesis = Some(String::from(DEFAULT_GENESIS_PATH));
 
@@ -240,15 +258,13 @@ impl Config {
 
     /// Returns true if the configuration is mainnet.
     pub fn is_mainnet(&self) -> bool {
-        self.network_id.is_none() || self.network_id.unwrap() == 1
+        self.network_id == 1
     }
 
     /// Returns true if the configuration is a custom network
     /// thus requires a custom genesis file.
     pub fn is_custom_network(&self) -> bool {
-        !self.is_mainnet()
-            && self.network_id.is_some()
-            && (self.network_id.unwrap() == 0 || self.network_id.unwrap() > 5)
+        !self.is_mainnet() && (self.network_id == 0 || self.network_id > 5)
     }
 
     /// Converts to string with JSON encoder.
@@ -325,23 +341,24 @@ impl Config {
         info!("validating the avalanchego configuration");
 
         // mainnet does not need genesis file
-        if self.network_id.is_none() && self.genesis.is_some() {
+        if !self.is_custom_network() && self.genesis.is_some() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
-                    "non-empty '--genesis={}' but empty '--network-id'",
-                    self.genesis.clone().unwrap()
+                    "non-empty '--genesis={}' for network_id {}",
+                    self.genesis.clone().unwrap(),
+                    self.network_id,
                 ),
             ));
         }
 
         // custom network requires genesis file
-        if self.network_id.is_some() && self.genesis.is_none() {
+        if self.is_custom_network() && self.genesis.is_none() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "non-empty '--network-id={}' but empty '--genesis'",
-                    self.network_id.unwrap()
+                    self.network_id
                 ),
             ));
         }
@@ -361,14 +378,12 @@ impl Config {
         if self.genesis.is_some() {
             let genesis_file_path = self.genesis.clone().unwrap();
             let genesis_config = Genesis::load(&genesis_file_path).unwrap();
-            let genesis_network_id = self.network_id.unwrap();
-            if genesis_config.network_id.ne(&genesis_network_id) {
+            if genesis_config.network_id.ne(&self.network_id) {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
                         "'genesis' network ID {} != avalanchego::Config.network_id {}",
-                        genesis_network_id,
-                        self.network_id.unwrap()
+                        genesis_config.network_id, self.network_id
                     ),
                 ));
             }
@@ -404,7 +419,7 @@ fn test_config() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let mut config = Config::new();
-    config.network_id = Some(1337);
+    config.network_id = 1337;
 
     let ret = config.encode_json();
     assert!(ret.is_ok());
