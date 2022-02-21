@@ -173,7 +173,7 @@ Resources:
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref Id, "dev-machine-arm64"]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, "arm64"]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -209,10 +209,10 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-dev-machine-arm64" }
+              - { Key: Name, Value: !Sub "${Id}-arm64" }
           - ResourceType: volume
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-dev-machine-arm64" }
+              - { Key: Name, Value: !Sub "${Id}-arm64" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -306,7 +306,7 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      AutoScalingGroupName: !Join ["-", [!Ref Id, "dev-machine-arm64"]]
+      AutoScalingGroupName: !Join ["-", [!Ref Id, "arm64"]]
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
@@ -318,7 +318,7 @@ Resources:
       Tags:
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Join ["-", [!Ref Id, "dev-machine-arm64"]]
+          Value: !Join ["-", [!Ref Id, "arm64"]]
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id
