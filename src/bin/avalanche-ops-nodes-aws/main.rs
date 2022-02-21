@@ -453,12 +453,12 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         &aws_s3::KeyPath::AvalancheBinCompressed(spec.id.clone()).encode(),
     ))
     .unwrap();
-    rt.block_on(s3_manager.put_object(
-        &aws_resources.bucket,
-        &spec.install_artifacts.avalanchego_bin,
-        &aws_s3::KeyPath::AvalancheBin(spec.id.clone()).encode(),
-    ))
-    .unwrap();
+    // rt.block_on(s3_manager.put_object(
+    //     &aws_resources.bucket,
+    //     &spec.install_artifacts.avalanchego_bin,
+    //     &aws_s3::KeyPath::AvalancheBin(spec.id.clone()).encode(),
+    // ))
+    // .unwrap();
     if spec.install_artifacts.plugins_dir.is_some() {
         let plugins_dir = spec.install_artifacts.plugins_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
