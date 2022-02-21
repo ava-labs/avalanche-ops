@@ -246,35 +246,6 @@ Resources:
               amazon-linux-extras
               sudo amazon-linux-extras enable vim=latest epel docker=latest
               sudo amazon-linux-extras install -y vim epel docker
-
-              # install Rust
-              # sudo amazon-linux-extras enable rust1=latest
-              # sudo amazon-linux-extras install -y rust1
-              # /usr/bin/rustc --version
-              # /usr/bin/cargo --version
-
-              # install Rust
-              # https://www.rust-lang.org/tools/install
-              curl -sSf https://sh.rustup.rs | sh -s -- -y \
-              && . /home/ec2-user/.cargo/env && rustc --version && cargo --version
-              export PATH=/home/ec2-user/.cargo/bin:$PATH
-              sudo cp /home/ec2-user/.cargo/bin/* /usr/bin/
-              /usr/bin/rustc --version
-              /usr/bin/cargo --version
-              rustc --version
-              cargo --version
-
-              # install Go
-              # https://go.dev/dl/
-              export GOPATH=/home/ec2-user/go
-              export PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
-              sudo rm -rf /usr/local/go
-              GO_VERSION=1.17.7
-              sudo curl -s https://storage.googleapis.com/golang/go$GO_VERSION.linux-arm64.tar.gz | sudo tar -v -C /usr/local/ -xz
-              /usr/local/go/bin/go version
-              sudo /usr/local/go/bin/go /usr/bin/
-              go version
-
               sudo systemctl daemon-reload
               sudo systemctl start --no-block docker
               sleep 2
@@ -317,6 +288,31 @@ Resources:
               sudo mount --all
               lsblk
               df -h
+
+              # TODO: does not work
+              #
+              # export GOPATH=/home/ec2-user/go
+              # export PATH=/usr/local/go/bin:/home/ec2-user/go/bin:/home/ec2-user/.cargo/bin:$PATH
+              #
+              # install Rust
+              # sudo amazon-linux-extras enable rust1=latest
+              # sudo amazon-linux-extras install -y rust1
+              # /usr/bin/rustc --version
+              # /usr/bin/cargo --version
+              #
+              # https://www.rust-lang.org/tools/install
+              # curl -sSf https://sh.rustup.rs | sh -s -- -y \
+              # && . /home/ec2-user/.cargo/env \
+              # && rustc --version && cargo --version \
+              # && which rustc && which cargo
+              #
+              # install Go
+              # https://go.dev/dl/
+              # sudo rm -rf /usr/local/go
+              # GO_VERSION=1.17.7
+              # sudo curl -s https://storage.googleapis.com/golang/go$GO_VERSION.linux-arm64.tar.gz | sudo tar -v -C /usr/local/ -xz
+              # /usr/local/go/bin/go version
+              # go version
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:
