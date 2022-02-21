@@ -276,7 +276,7 @@ Resources:
                         Name=attachment.device,Values=/dev/xvdb \
                       --query Volumes[].Attachments[].State \
                       --output text)
-                sleep 2
+                sleep 5
               done
 
               # TODO: why device name is not "/dev/xvdb"?
