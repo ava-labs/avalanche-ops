@@ -704,7 +704,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         ))
         .unwrap();
 
-        info!("waiting for beacon nodes bootstrap and ready (to be safe)");
+        info!("waiting for bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));
     }
 
@@ -872,7 +872,7 @@ fn execute_delete(
             ResetColor
         )?;
 
-        let asg_non_beacon_nodes_stack_name = aws_resources.cloudformation_asg.unwrap();
+        let asg_stack_name = aws_resources.cloudformation_asg.unwrap();
 
         let desired_capacity = spec.machine.machines;
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
@@ -880,7 +880,7 @@ fn execute_delete(
             wait_secs = MAX_WAIT_SECONDS;
         }
         rt.block_on(cloudformation_manager.poll_stack(
-            asg_non_beacon_nodes_stack_name.as_str(),
+            asg_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(wait_secs),
             Duration::from_secs(30),
