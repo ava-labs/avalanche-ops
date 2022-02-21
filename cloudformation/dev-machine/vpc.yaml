@@ -40,16 +40,6 @@ Parameters:
     AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
     Description: IP range for SSH/HTTP inbound traffic
 
-  HttpPort:
-    Type: Number
-    Default: 9650
-    Description: HTTP port
-
-  StakingPort:
-    Type: Number
-    Default: 9651
-    Description: HTTP port
-
 Conditions:
   Has2Azs:
     Fn::Or:
@@ -230,26 +220,6 @@ Resources:
       IpProtocol: tcp
       FromPort: 22
       ToPort: 22
-      CidrIp: !Ref IngressIpv4Range
-
-  # TODO: can this be more strict
-  HttpIngress:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref SecurityGroup
-      IpProtocol: tcp
-      FromPort: !Ref HttpPort
-      ToPort: !Ref HttpPort
-      CidrIp: !Ref IngressIpv4Range
-
-  # TODO: can this be more strict
-  StakingIngress:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref SecurityGroup
-      IpProtocol: tcp
-      FromPort: !Ref StakingPort
-      ToPort: !Ref StakingPort
       CidrIp: !Ref IngressIpv4Range
 
   # TODO: can this be more strict

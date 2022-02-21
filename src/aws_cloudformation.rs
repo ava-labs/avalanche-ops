@@ -263,22 +263,3 @@ fn is_error_describe_stacks_does_not_exist(e: &SdkError<DescribeStacksError>) ->
         _ => false,
     }
 }
-
-/// Represents the CloudFormation stack name.
-pub enum StackName {
-    Ec2InstanceRole(String),
-    Vpc(String),
-    AsgBeaconNodes(String),
-    AsgNonBeaconNodes(String),
-}
-
-impl StackName {
-    pub fn encode(&self) -> String {
-        match self {
-            StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
-            StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::AsgBeaconNodes(id) => format!("{}-asg-beacon-nodes", id),
-            StackName::AsgNonBeaconNodes(id) => format!("{}-asg-non-beacon-nodes", id),
-        }
-    }
-}

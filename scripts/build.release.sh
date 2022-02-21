@@ -10,7 +10,9 @@ fi
 cargo build \
 --release \
 --bin avalanche-ops-nodes-aws \
---bin avalanched-aws
+--bin avalanched-aws \
+--bin dev-machine
 
 ./target/release/avalanche-ops-nodes-aws --help
 ./target/release/avalanched-aws --help
+./target/release/dev-machine --help

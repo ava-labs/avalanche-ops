@@ -86,7 +86,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin avalanche-ops-nodes-aws --bin avalanched-aws --target ${{ matrix.job.target }}
+          args: --release --bin avalanche-ops-nodes-aws --bin avalanched-aws --bin dev-machine --target ${{ matrix.job.target }}
 
       - name: Compress binaries
         id: release_artifacts
@@ -109,6 +109,12 @@ jobs:
             tar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
             echo "::set-output name=file_name_avalanched_tar_gz::avalanched-aws_${TARGET}.tar.gz"
 
+            ./target/${TARGET}/release/dev-machine --help
+            cp ./target/${TARGET}/release/dev-machine dev-machine.${TARGET}
+            echo "::set-output name=file_name_dev_machine::dev-machine.${TARGET}"
+            tar -czvf dev-machine_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine
+            echo "::set-output name=file_name_dev_machine_tar_gz::dev-machine_${TARGET}.tar.gz"
+
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
             cp ./target/${TARGET}/release/avalanche-ops-nodes-aws avalanche-ops-nodes-aws.${TARGET}
@@ -120,6 +126,11 @@ jobs:
             echo "::set-output name=file_name_avalanched::avalanched-aws.${TARGET}"
             gtar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
             echo "::set-output name=file_name_avalanched_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+
+            cp ./target/${TARGET}/release/dev-machine dev-machine.${TARGET}
+            echo "::set-output name=file_name_dev_machine::dev-machine.${TARGET}"
+            gtar -czvf dev-machine_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine
+            echo "::set-output name=file_name_dev_machine_tar_gz::dev-machine_${TARGET}.tar.gz"
 
           else
 
@@ -143,6 +154,8 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_tar_gz }}
 
       # release only for tags
       # https://github.com/softprops/action-gh-release
@@ -161,3 +174,5 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_tar_gz }}

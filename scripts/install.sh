@@ -9,8 +9,10 @@ fi
 cargo install --verbose \
 --path . \
 --bin avalanche-ops-nodes-aws \
---bin avalanched-aws
+--bin avalanched-aws \
+--bin dev-machine
 
 # e.g., "${HOME}/.cargo/bin" should in local ${PATH}
 avalanche-ops-nodes-aws --help
 avalanched-aws --help
+dev-machine --help

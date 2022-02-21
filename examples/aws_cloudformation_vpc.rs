@@ -75,7 +75,7 @@ fn main() {
                 .parameter_value("10.0.192.0/19")
                 .build(),
             Parameter::builder()
-                .parameter_key("IngressEgressIpv4Range")
+                .parameter_key("IngressIpv4Range")
                 .parameter_value("0.0.0.0/0")
                 .build(),
             Parameter::builder()

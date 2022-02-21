@@ -12,6 +12,7 @@ RUN apt update \
 # to install nightly
 # ARG rust_toolchain=nightly-2018-12-18
 # -y --default-toolchain $rust_toolchain
+# https://www.rust-lang.org/tools/install
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y \
 && . $HOME/.cargo/env \
 && rustc --version \

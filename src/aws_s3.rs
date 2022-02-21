@@ -463,6 +463,9 @@ fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
 /// Represents the S3 key path.
 /// MUST be kept in sync with "cloudformation/avalanche-node/ec2_instance_role.yaml".
 pub enum KeyPath {
+    ConfigFile(String),
+    Ec2AccessKeyCompressedEncrypted(String),
+
     // basic, common, top-level genesis, not ready for full use
     // e.g., initial stakers are empty since there's no beacon node yet
     GenesisDraftFile(String),
@@ -475,7 +478,6 @@ pub enum KeyPath {
     AvalancheBinCompressed(String),
     PluginsDir(String),
 
-    Ec2AccessKeyCompressedEncrypted(String),
     PkiKeyDir(String),
 
     DiscoverBootstrappingBeaconNodesDir(String),
@@ -484,13 +486,16 @@ pub enum KeyPath {
     DiscoverReadyBeaconNode(String, node::Node),
     DiscoverReadyNonBeaconNodesDir(String),
     DiscoverReadyNonBeaconNode(String, node::Node),
-
-    ConfigFile(String),
 }
 
 impl KeyPath {
     pub fn encode(&self) -> String {
         match self {
+            KeyPath::ConfigFile(id) => format!("{}/avalanche-ops.config.yaml", id),
+            KeyPath::Ec2AccessKeyCompressedEncrypted(id) => {
+                format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
+            }
+
             KeyPath::GenesisDraftFile(id) => format!("{}/install/genesis.draft.json", id),
             KeyPath::GenesisFile(id) => format!("{}/genesis.json", id),
 
@@ -499,9 +504,6 @@ impl KeyPath {
             KeyPath::AvalancheBinCompressed(id) => format!("{}/install/avalanche.zstd", id),
             KeyPath::PluginsDir(id) => format!("{}/install/plugins", id),
 
-            KeyPath::Ec2AccessKeyCompressedEncrypted(id) => {
-                format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
-            }
             KeyPath::PkiKeyDir(id) => {
                 format!("{}/pki", id)
             }
@@ -536,8 +538,6 @@ impl KeyPath {
                     id, node.machine_id, compressed_id
                 )
             }
-
-            KeyPath::ConfigFile(id) => format!("{}/avalanche-ops.config.yaml", id),
         }
     }
 

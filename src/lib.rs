@@ -20,6 +20,7 @@ pub mod bash;
 pub mod cert;
 pub mod compress;
 pub mod constants;
+pub mod dev_machine;
 pub mod envelope;
 pub mod errors;
 pub mod formatting;
@@ -30,6 +31,8 @@ pub mod key;
 pub mod node;
 pub mod random;
 mod time;
+
+pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
 
 /// Default machine beacon nodes size.
 pub const DEFAULT_MACHINE_BEACON_NODES: u32 = 3;
@@ -125,7 +128,24 @@ pub struct InstallArtifacts {
     pub genesis_draft_file_path: Option<String>,
 }
 
-pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
+/// Represents the CloudFormation stack name.
+pub enum StackName {
+    Ec2InstanceRole(String),
+    Vpc(String),
+    AsgBeaconNodes(String),
+    AsgNonBeaconNodes(String),
+}
+
+impl StackName {
+    pub fn encode(&self) -> String {
+        match self {
+            StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
+            StackName::Vpc(id) => format!("{}-vpc", id),
+            StackName::AsgBeaconNodes(id) => format!("{}-asg-beacon-nodes", id),
+            StackName::AsgNonBeaconNodes(id) => format!("{}-asg-non-beacon-nodes", id),
+        }
+    }
+}
 
 impl Spec {
     /// Creates a default Status based on the network ID.
