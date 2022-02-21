@@ -615,6 +615,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         // must deep-copy as shared with other machine kind
         let mut parameters = asg_parameters.clone();
+
+        // 64-bit Arm with Kernel 5.10
+        // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2" returns Kernel 4.14
+        parameters.push(build_param("ImageId", "ami-021e15f46d293ec60"));
         parameters.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
@@ -674,8 +678,9 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         println!("\nchmod 400 {}", ec2_key_path);
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
+            // TODO: support other user name?
             println!(
-                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
+                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ec2-user@{}",
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
@@ -839,14 +844,6 @@ fn execute_delete(
             .unwrap();
         rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
             .unwrap();
-        thread::sleep(Duration::from_secs(5));
-        rt.block_on(cloudformation_manager.poll_stack(
-            ec2_instance_role_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(20),
-        ))
-        .unwrap();
     }
 
     if spec.machine.machines > 0 && aws_resources.cloudformation_asg_logical_id.is_some() {

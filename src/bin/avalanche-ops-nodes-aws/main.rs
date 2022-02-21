@@ -1376,14 +1376,6 @@ fn execute_delete(
             .unwrap();
         rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
             .unwrap();
-        thread::sleep(Duration::from_secs(5));
-        rt.block_on(cloudformation_manager.poll_stack(
-            ec2_instance_role_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(20),
-        ))
-        .unwrap();
     }
 
     if aws_resources

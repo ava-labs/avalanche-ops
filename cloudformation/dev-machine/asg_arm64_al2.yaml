@@ -245,7 +245,6 @@ Resources:
 
               amazon-linux-extras
               sudo amazon-linux-extras enable vim epel docker=latest
-              # sudo yum -y install docker
               sudo amazon-linux-extras install -y vim epel docker
 
               sudo systemctl daemon-reload
@@ -262,7 +261,7 @@ Resources:
 
               # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-manual-agent-install.html
               sudo yum install -y https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_arm64/amazon-ssm-agent.rpm
-              sudo systemctl enable amazon-ssm-agent
+              sudo systemctl enable amazon-ssm-agent || true
               sudo systemctl start --no-block amazon-ssm-agent
               sudo systemctl status amazon-ssm-agent
 
