@@ -616,9 +616,12 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         // must deep-copy as shared with other machine kind
         let mut parameters = asg_parameters.clone();
 
-        // 64-bit Arm with Kernel 5.10
-        // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2" returns Kernel 4.14
-        parameters.push(build_param("ImageId", "ami-021e15f46d293ec60"));
+        // TODO: remove this... doesn't work for amd64 and other regions
+        if aws_resources.region == "us-west-2" && spec.machine.arch == "arm64" {
+            // 64-bit Arm with Kernel 5.10
+            // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2" returns Kernel 4.14
+            parameters.push(build_param("ImageId", "ami-021e15f46d293ec60"));
+        }
         parameters.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
