@@ -417,6 +417,7 @@ Resources:
               RestartSec=60s
               EOF
 
+              # TODO: signal instance ready
               # NOT WORKING; "print 'revision: %(revno)s' % version_info"
               # curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
               # pip install /tmp/aws-cfn-bootstrap-latest.tar.gz

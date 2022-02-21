@@ -289,30 +289,8 @@ Resources:
               lsblk
               df -h
 
-              # TODO: does not work
-              #
-              # export GOPATH=/home/ec2-user/go
-              # export PATH=/usr/local/go/bin:/home/ec2-user/go/bin:/home/ec2-user/.cargo/bin:$PATH
-              #
-              # install Rust
-              # sudo amazon-linux-extras enable rust1=latest
-              # sudo amazon-linux-extras install -y rust1
-              # /usr/bin/rustc --version
-              # /usr/bin/cargo --version
-              #
-              # https://www.rust-lang.org/tools/install
-              # curl -sSf https://sh.rustup.rs | sh -s -- -y \
-              # && . /home/ec2-user/.cargo/env \
-              # && rustc --version && cargo --version \
-              # && which rustc && which cargo
-              #
-              # install Go
-              # https://go.dev/dl/
-              # sudo rm -rf /usr/local/go
-              # GO_VERSION=1.17.7
-              # sudo curl -s https://storage.googleapis.com/golang/go$GO_VERSION.linux-arm64.tar.gz | sudo tar -v -C /usr/local/ -xz
-              # /usr/local/go/bin/go version
-              # go version
+              # TODO: install Rust/Go for all users
+              # TODO: signal instance ready
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:
