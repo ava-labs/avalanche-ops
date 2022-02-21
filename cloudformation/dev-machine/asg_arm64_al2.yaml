@@ -258,6 +258,7 @@ Resources:
               unzip awscliv2.zip
               sudo ./aws/install
               /usr/local/bin/aws --version
+              aws s3 ls s3://${S3BucketName}/
 
               # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-manual-agent-install.html
               sudo yum install -y https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_arm64/amazon-ssm-agent.rpm
@@ -292,20 +293,18 @@ Resources:
               # install Rust
               # https://www.rust-lang.org/tools/install
               curl -sSf https://sh.rustup.rs | sh -s -- -y \
-              && . $HOME/.cargo/env \
+              && . /home/ec2-user/.cargo/env \
               && rustc --version \
               && cargo --version
 
               # install Go
               # https://go.dev/dl/
-              export GOPATH=$HOME/go
+              export GOPATH=/home/ec2-user/go
               export PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
               sudo rm -rf /usr/local/go
               GO_VERSION=1.17.7
               sudo curl -s https://storage.googleapis.com/golang/go$GO_VERSION.linux-arm64.tar.gz | sudo tar -v -C /usr/local/ -xz
               go version
-
-              aws s3 ls s3://${S3BucketName}/
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:
