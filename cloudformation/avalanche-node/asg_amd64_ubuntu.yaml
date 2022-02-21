@@ -340,7 +340,7 @@ Resources:
                         Name=attachment.device,Values=/dev/xvdb \
                       --query Volumes[].Attachments[].State \
                       --output text)
-                sleep 2
+                sleep 5
               done
 
               # TODO: why device name is not "/dev/xvdb"?
@@ -404,8 +404,6 @@ Resources:
                 do
                 echo "waiting for /opt/aws/amazon-cloudwatch-agent/bin/config.json creation"
                 sleep 5
-                # wait up to 5-minute
-                ((c++)) && ((c==60)) && break
               done
 
               cat /opt/aws/amazon-cloudwatch-agent/bin/config.json
