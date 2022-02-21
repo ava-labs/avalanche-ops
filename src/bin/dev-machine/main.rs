@@ -329,7 +329,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         &aws_resources.bucket,
         spec_file_path,
-        &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+        &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
     ))
     .unwrap();
 
@@ -354,7 +354,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -397,7 +397,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -467,7 +467,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -550,7 +550,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -700,7 +700,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &aws_resources.bucket,
             spec_file_path,
-            &aws_s3::KeyPath::ConfigFile(spec.id).encode(),
+            &aws_s3::KeyPath::DevMachineConfigFile(spec.id).encode(),
         ))
         .unwrap();
 

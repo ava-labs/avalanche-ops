@@ -464,6 +464,7 @@ fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
 /// MUST be kept in sync with "cloudformation/avalanche-node/ec2_instance_role.yaml".
 pub enum KeyPath {
     ConfigFile(String),
+    DevMachineConfigFile(String),
     Ec2AccessKeyCompressedEncrypted(String),
 
     // basic, common, top-level genesis, not ready for full use
@@ -492,6 +493,7 @@ impl KeyPath {
     pub fn encode(&self) -> String {
         match self {
             KeyPath::ConfigFile(id) => format!("{}/avalanche-ops.config.yaml", id),
+            KeyPath::DevMachineConfigFile(id) => format!("{}/dev-machine.config.yaml", id),
             KeyPath::Ec2AccessKeyCompressedEncrypted(id) => {
                 format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
             }
