@@ -299,8 +299,8 @@ Resources:
 
               # install Go
               # https://go.dev/dl/
-              export GOPATH=${HOME}/go
-              export PATH=/usr/local/go/bin:${GOPATH}/bin:$PATH
+              export GOPATH=$HOME/go
+              export PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
               sudo rm -rf /usr/local/go
               GO_VERSION=1.17.7
               sudo curl -s https://storage.googleapis.com/golang/go$GO_VERSION.linux-arm64.tar.gz | sudo tar -v -C /usr/local/ -xz

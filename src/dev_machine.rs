@@ -130,8 +130,18 @@ impl StackName {
 }
 
 impl Spec {
-    pub fn default() -> Self {
-        Self {
+    pub fn default(arch: &str) -> io::Result<Self> {
+        match arch {
+            DEFAULT_ARCH => {}
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("arch {} is not supported yet", arch),
+                ));
+            }
+        }
+
+        Ok(Self {
             id: id::generate("dev-machine"),
 
             aws_resources: Some(AWSResources {
@@ -142,7 +152,9 @@ impl Spec {
 
             machine: Machine {
                 machines: 1,
-                arch: DEFAULT_ARCH.to_string(),
+                arch: arch.to_string(),
+
+                // TODO: support amd64?
                 instance_types: Some(vec![
                     String::from("c6g.2xlarge"),
                     String::from("m6g.2xlarge"),
@@ -150,7 +162,7 @@ impl Spec {
                     String::from("t4g.2xlarge"),
                 ]),
             },
-        }
+        })
     }
 
     /// Converts to string in YAML format.

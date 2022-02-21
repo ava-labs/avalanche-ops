@@ -44,6 +44,17 @@ fn create_default_spec_command() -> Command<'static> {
                 .default_value("info"),
         )
         .arg(
+            Arg::new("ARCH")
+                .long("arch")
+                .short('a')
+                .help("Sets the machine architecture")
+                .required(true)
+                .takes_value(true)
+                .possible_value("arm64")
+                .allow_invalid_utf8(false)
+                .default_value(dev_machine::DEFAULT_ARCH),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
@@ -152,6 +163,7 @@ fn main() {
                     .value_of("LOG_LEVEL")
                     .unwrap_or("info")
                     .to_string(),
+                arch: sub_matches.value_of("ARCH").unwrap().to_string(),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
             execute_default_spec(opt).unwrap();
@@ -182,6 +194,7 @@ fn main() {
 
 struct DefaultSpecOption {
     log_level: String,
+    arch: String,
     spec_file_path: String,
 }
 
@@ -191,7 +204,7 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
 
-    let spec = dev_machine::Spec::default();
+    let spec = dev_machine::Spec::default(&opt.arch).unwrap();
     spec.validate()?;
     spec.sync(&opt.spec_file_path)?;
 
