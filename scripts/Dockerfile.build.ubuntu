@@ -6,7 +6,7 @@ FROM public.ecr.aws/ubuntu/ubuntu:latest
 # "libssl-dev" for development packages of openssl
 RUN apt update \
 && apt install -y \
-   curl build-essential pkg-config libssl-dev \
+   curl build-essential pkg-config libssl-dev libc6 \
 && uname -r
 
 # to install nightly
