@@ -461,7 +461,7 @@ fn is_error_bucket_does_not_exist(e: &SdkError<DeleteBucketError>) -> bool {
 }
 
 /// Represents the S3 key path.
-/// MUST be kept in sync with "cloudformation/ec2_instance_role.yaml".
+/// MUST be kept in sync with "cloudformation/avalanche-node/ec2_instance_role.yaml".
 pub enum KeyPath {
     // basic, common, top-level genesis, not ready for full use
     // e.g., initial stakers are empty since there's no beacon node yet

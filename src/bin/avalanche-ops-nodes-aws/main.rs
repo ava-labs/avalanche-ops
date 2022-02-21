@@ -320,8 +320,8 @@ const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
 fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     #[derive(RustEmbed)]
-    #[folder = "cloudformation/"]
-    #[prefix = "cloudformation/"]
+    #[folder = "cloudformation/avalanche-node/"]
+    #[prefix = "cloudformation/avalanche-node/"]
     struct Asset;
 
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -594,7 +594,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             ResetColor
         )?;
 
-        let ec2_instance_role_yaml = Asset::get("cloudformation/ec2_instance_role.yaml").unwrap();
+        let ec2_instance_role_yaml =
+            Asset::get("cloudformation/avalanche-node/ec2_instance_role.yaml").unwrap();
         let ec2_instance_role_tmpl =
             std::str::from_utf8(ec2_instance_role_yaml.data.as_ref()).unwrap();
         let ec2_instance_role_stack_name = aws_resources
@@ -660,7 +661,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             ResetColor
         )?;
 
-        let vpc_yaml = Asset::get("cloudformation/vpc.yaml").unwrap();
+        let vpc_yaml = Asset::get("cloudformation/avalanche-node/vpc.yaml").unwrap();
         let vpc_tmpl = std::str::from_utf8(vpc_yaml.data.as_ref()).unwrap();
         let vpc_stack_name = aws_resources.cloudformation_vpc.clone().unwrap();
 
@@ -807,7 +808,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         // TODO: support other platforms
         let cloudformation_asg_beacon_nodes_yaml =
-            Asset::get("cloudformation/asg_amd64_ubuntu.yaml").unwrap();
+            Asset::get("cloudformation/avalanche-node/asg_amd64_ubuntu.yaml").unwrap();
         let cloudformation_asg_beacon_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_beacon_nodes_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_beacon_nodes_stack_name = aws_resources
@@ -982,7 +983,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         )?;
 
         let cloudformation_asg_non_beacon_nodes_yaml =
-            Asset::get("cloudformation/asg_amd64_ubuntu.yaml").unwrap();
+            Asset::get("cloudformation/avalanche-node/asg_amd64_ubuntu.yaml").unwrap();
         let cloudformation_asg_non_beacon_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_non_beacon_nodes_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_non_beacon_nodes_stack_name = aws_resources

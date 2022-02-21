@@ -25,11 +25,12 @@ fn main() {
     info!("creating AWS CloudFormation resources!");
 
     #[derive(RustEmbed)]
-    #[folder = "cloudformation/"]
-    #[prefix = "cloudformation/"]
+    #[folder = "cloudformation/avalanche-node/"]
+    #[prefix = "cloudformation/avalanche-node/"]
     struct Asset;
 
-    let ec2_instance_role_yaml = Asset::get("cloudformation/ec2_instance_role.yaml").unwrap();
+    let ec2_instance_role_yaml =
+        Asset::get("cloudformation/avalanche-node/ec2_instance_role.yaml").unwrap();
     let ret = std::str::from_utf8(ec2_instance_role_yaml.data.as_ref());
     let template_body = ret.unwrap();
     info!("{:?}", template_body);

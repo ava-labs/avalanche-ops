@@ -25,11 +25,11 @@ fn main() {
     info!("creating AWS CloudFormation resources!");
 
     #[derive(RustEmbed)]
-    #[folder = "cloudformation/"]
-    #[prefix = "cloudformation/"]
+    #[folder = "cloudformation/avalanche-node/"]
+    #[prefix = "cloudformation/avalanche-node/"]
     struct Asset;
 
-    let vpc_yaml = Asset::get("cloudformation/vpc.yaml").unwrap();
+    let vpc_yaml = Asset::get("cloudformation/avalanche-node/vpc.yaml").unwrap();
     let ret = std::str::from_utf8(vpc_yaml.data.as_ref());
     let template_body = ret.unwrap();
     info!("{:?}", template_body);
