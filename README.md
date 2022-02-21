@@ -29,8 +29,8 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 # to build manually
 ./scripts/build.release.sh
 
-# TODO: not working
-# ./scripts/build.cross.sh
+# to build for linux and others
+./scripts/build.cross.sh
 ```
 
 ```bash

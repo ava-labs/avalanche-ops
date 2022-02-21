@@ -807,7 +807,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         // TODO: support other platforms
         let cloudformation_asg_beacon_nodes_yaml =
-            Asset::get("cloudformation/asg_ubuntu_amd64.yaml").unwrap();
+            Asset::get("cloudformation/asg_amd64_ubuntu.yaml").unwrap();
         let cloudformation_asg_beacon_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_beacon_nodes_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_beacon_nodes_stack_name = aws_resources
@@ -982,7 +982,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         )?;
 
         let cloudformation_asg_non_beacon_nodes_yaml =
-            Asset::get("cloudformation/asg_ubuntu_amd64.yaml").unwrap();
+            Asset::get("cloudformation/asg_amd64_ubuntu.yaml").unwrap();
         let cloudformation_asg_non_beacon_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_non_beacon_nodes_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_non_beacon_nodes_stack_name = aws_resources

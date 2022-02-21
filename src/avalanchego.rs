@@ -44,11 +44,11 @@ pub const DEFAULT_STAKING_PORT: u32 = 9651;
 /// Default "db-dir" directory path for remote linux machines.
 /// Must be matched with the attached physical storage volume path.
 /// Must be a valid path in remote host machine.
-/// ref. See "cloudformation/asg_ubuntu_amd64.yaml" "ASGLaunchTemplate"
+/// ref. See "cloudformation/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_DB_DIR: &str = "/avalanche-data";
 /// Default "log-dir" directory path for remote linux machines.
 /// Must be a valid path in remote host machine.
-/// ref. See "cloudformation/asg_ubuntu_amd64.yaml" "ASGLaunchTemplate"
+/// ref. See "cloudformation/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
 pub const DEFAULT_LOG_LEVEL: &str = "INFO";
 
