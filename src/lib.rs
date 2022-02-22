@@ -80,7 +80,7 @@ pub struct Spec {
     /// Generated key infos.
     /// Only pre-funded for custom networks with a custom genesis file.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_keys: Option<Vec<key::Info>>,
+    pub generated_seed_private_keys: Option<Vec<key::PrivateKeyInfo>>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -177,21 +177,22 @@ impl Spec {
                 ),
             };
 
-        let mut generated_keys: Vec<key::Info> = Vec::new();
+        let mut generated_seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
         let mut genesis_draft_file_path = Some(random::tmp_path(15).unwrap());
         if avalanchego_config.is_custom_network() {
-            let (genesis, _generated_keys) = avalanchego::Genesis::new(network_id, keys).unwrap();
+            let (genesis, _generated_seed_keys) =
+                avalanchego::Genesis::new(network_id, keys).unwrap();
             genesis
                 .sync(&genesis_draft_file_path.clone().unwrap())
                 .unwrap();
-            generated_keys = _generated_keys;
+            generated_seed_keys = _generated_seed_keys;
         } else {
             let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY).unwrap();
-            generated_keys.push(ewoq_key.to_info(network_id).unwrap());
+            generated_seed_keys.push(ewoq_key.to_info(network_id).unwrap());
             for _ in 1..keys {
                 let k = key::Key::generate().unwrap();
                 let info = k.to_info(network_id).unwrap();
-                generated_keys.push(info);
+                generated_seed_keys.push(info);
             }
             genesis_draft_file_path = None;
         }
@@ -224,7 +225,7 @@ impl Spec {
             },
 
             avalanchego_config,
-            generated_keys: Some(generated_keys),
+            generated_seed_private_keys: Some(generated_seed_keys),
         }
     }
 
@@ -587,7 +588,7 @@ avalanchego_config:
         },
 
         avalanchego_config: avago_config,
-        generated_keys: None,
+        generated_seed_private_keys: None,
     };
 
     assert_eq!(cfg, orig);

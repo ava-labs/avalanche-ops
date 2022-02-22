@@ -548,10 +548,10 @@ impl Genesis {
 
     /// Creates a new Genesis object with "keys" number of generated
     /// pre-funded keys.
-    pub fn new(network_id: u32, keys: usize) -> io::Result<(Self, Vec<key::Info>)> {
+    pub fn new(network_id: u32, keys: usize) -> io::Result<(Self, Vec<key::PrivateKeyInfo>)> {
         let mut initial_staked_funds: Vec<String> = Vec::new();
         let mut allocations: Vec<Allocation> = Vec::new();
-        let mut infos: Vec<key::Info> = Vec::new();
+        let mut seed_priv_keys: Vec<key::PrivateKeyInfo> = Vec::new();
         for _ in 0..keys {
             let k = key::Key::generate()?;
             let info = k.to_info(network_id)?;
@@ -563,7 +563,7 @@ impl Genesis {
 
             initial_staked_funds.push(info.x_address.clone());
             allocations.push(alloc);
-            infos.push(info);
+            seed_priv_keys.push(info);
         }
         Ok((
             Self {
@@ -572,7 +572,7 @@ impl Genesis {
                 allocations: Some(allocations),
                 ..Default::default()
             },
-            infos,
+            seed_priv_keys,
         ))
     }
 

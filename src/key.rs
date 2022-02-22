@@ -118,11 +118,11 @@ impl Key {
         formatting::address(chain_id_alias, hrp, &short_address_bytes)
     }
 
-    pub fn to_info(&self, network_id: u32) -> io::Result<Info> {
+    pub fn to_info(&self, network_id: u32) -> io::Result<PrivateKeyInfo> {
         let x = self.address("X", network_id)?;
         let p = self.address("P", network_id)?;
         let c = self.address("C", network_id)?;
-        Ok(Info {
+        Ok(PrivateKeyInfo {
             private_key: self.encoded_private_key.clone(),
             x_address: x,
             p_address: p,
@@ -655,7 +655,7 @@ fn test_key() {
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct Info {
+pub struct PrivateKeyInfo {
     /// CB58-encoded private key with the prefix "PrivateKey-".
     pub private_key: String,
     pub x_address: String,
@@ -665,7 +665,7 @@ pub struct Info {
     pub eth_address: String,
 }
 
-impl Info {
+impl PrivateKeyInfo {
     /// Converts to string.
     pub fn to_string(&self) -> io::Result<String> {
         match serde_yaml::to_string(&self) {
@@ -673,14 +673,14 @@ impl Info {
             Err(e) => {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    format!("failed to serialize Info to YAML {}", e),
+                    format!("failed to serialize PrivateKeyInfo to YAML {}", e),
                 ));
             }
         }
     }
 
     pub fn load(file_path: &str) -> io::Result<Self> {
-        info!("loading Info from {}", file_path);
+        info!("loading PrivateKeyInfo from {}", file_path);
 
         if !Path::new(file_path).exists() {
             return Err(Error::new(

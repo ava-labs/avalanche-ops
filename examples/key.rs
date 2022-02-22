@@ -13,7 +13,7 @@ fn main() {
 
     info!("loading key");
     let key_path = args().nth(1).expect("no key path given");
-    let info = key::Info::load(&key_path).unwrap();
+    let info = key::PrivateKeyInfo::load(&key_path).unwrap();
     println!("{}", info.to_string().unwrap());
 
     let k = key::Key::from_private_key(&info.private_key).unwrap();

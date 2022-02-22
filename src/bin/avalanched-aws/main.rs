@@ -415,7 +415,7 @@ fn execute_run(
         thread::sleep(Duration::from_secs(1));
         info!("STEP: collect all seed/bootstrapping beacon nodes information from S3 key for initial stakers");
         let mut stakers: Vec<avalanchego::Staker> = vec![];
-        let keys = spec.generated_keys.unwrap();
+        let seed_priv_keys = spec.generated_seed_private_keys.unwrap();
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
 
@@ -425,7 +425,7 @@ fn execute_run(
 
             let mut staker = avalanchego::Staker::default();
             staker.node_id = Some(seed_beacon_node.id);
-            staker.reward_address = Some(keys[0].x_address.clone());
+            staker.reward_address = Some(seed_priv_keys[0].x_address.clone());
 
             stakers.push(staker);
         }
