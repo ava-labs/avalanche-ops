@@ -379,8 +379,8 @@ Resources:
               RestartSec=5s
               LimitNOFILE=40000
               ExecStart=/usr/local/bin/avalanched run --avalanche-bin /usr/local/bin/avalanche --cloudwatch-config-file-path /opt/aws/amazon-cloudwatch-agent/bin/config.json
-              StandardOutput=file:/var/log/avalanched/avalanched.log
-              StandardError=file:/var/log/avalanched/avalanched.log
+              StandardOutput=append:/var/log/avalanched/avalanched.log
+              StandardError=append:/var/log/avalanched/avalanched.log
 
               [Install]
               WantedBy=multi-user.target

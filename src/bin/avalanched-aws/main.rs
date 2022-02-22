@@ -583,8 +583,8 @@ Restart=always
 RestartSec=5s
 LimitNOFILE=40000
 ExecStart={} --config-file={}
-StandardOutput=file:/var/log/avalanche/avalanche.log
-StandardError=file:/var/log/avalanche/avalanche.log
+StandardOutput=append:/var/log/avalanche/avalanche.log
+StandardError=append:/var/log/avalanche/avalanche.log
 
 [Install]
 WantedBy=multi-user.target",
