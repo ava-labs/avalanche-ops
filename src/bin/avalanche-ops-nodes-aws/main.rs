@@ -918,14 +918,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
-                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\naws ssm start-session --region {} --target {}",
+                "# instance '{}' ({}, {})\naws ssm start-session --region {} --target {}\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
-                ec2_key_path,
-                d.public_ipv4,
                 aws_resources.region,
                 d.instance_id,
+                ec2_key_path,
+                d.public_ipv4,
             );
         }
         println!();
@@ -1119,14 +1119,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
-                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\naws ssm start-session --region {} --target {}",
+                "# instance '{}' ({}, {})\naws ssm start-session --region {} --target {}\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
-                ec2_key_path,
-                d.public_ipv4,
                 aws_resources.region,
                 d.instance_id,
+                ec2_key_path,
+                d.public_ipv4,
             );
         }
         println!();
