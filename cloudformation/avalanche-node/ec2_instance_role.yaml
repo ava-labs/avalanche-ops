@@ -18,6 +18,9 @@ Parameters:
     Type: String
     Description: S3 bucket name to store.
 
+  # TODO: add backup s3 bucket, key names
+  # to grant access to mainnet/fuji database backups
+
 Mappings:
   ServicePrincipals:
     aws-cn:
