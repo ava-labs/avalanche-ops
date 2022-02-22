@@ -637,7 +637,7 @@ WantedBy=multi-user.target",
         );
     }
 
-    // TODO: check upgrade artifacts by polling s3
+    // TODO: check upgrade artifacts by polling s3 /events directory
     // e.g., we can update avalanche node software
     info!("avalanched now periodically publishing node information...");
     loop {
@@ -674,6 +674,8 @@ WantedBy=multi-user.target",
                 .unwrap();
         }
 
+        // e.g., "--source-directory-path /avalanche-data/network-9999/v1.4.5"
+        println!("/usr/local/bin/avalanched backup --archive-method tar --compression-method zstd --s3-bucket {} --s3-key {}/backup.tar.zstd --source-directory-path /avalanche-data", &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
         thread::sleep(Duration::from_secs(60));
     }
 }

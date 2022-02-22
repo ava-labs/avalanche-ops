@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "AWS IAM instance role"
+Description: "IAM instance role"
 
 # takes about 3-minute
 
@@ -141,6 +141,16 @@ Resources:
                         "/",
                         !Ref Id,
                         "/discover/ready-non-beacon-nodes/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/backups/*",
                       ],
                     ]
                   - !Join [

@@ -487,6 +487,9 @@ pub enum KeyPath {
     DiscoverReadyBeaconNode(String, node::Node),
     DiscoverReadyNonBeaconNodesDir(String),
     DiscoverReadyNonBeaconNode(String, node::Node),
+
+    BackupsDir(String),
+    EventsDir(String),
 }
 
 impl KeyPath {
@@ -539,6 +542,13 @@ impl KeyPath {
                     "{}/discover/ready-non-beacon-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
+            }
+
+            KeyPath::BackupsDir(id) => {
+                format!("{}/backups", id)
+            }
+            KeyPath::EventsDir(id) => {
+                format!("{}/events", id)
             }
         }
     }

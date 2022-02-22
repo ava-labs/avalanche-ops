@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "AWS VPC"
+Description: "VPC"
 
 # takes about 6-minute
 
