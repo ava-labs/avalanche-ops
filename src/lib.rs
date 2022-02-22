@@ -160,18 +160,18 @@ impl Spec {
         keys: usize,
     ) -> Self {
         // [year][month][date]-[system host-based id]
-        let bucket = format!("avax-{}-{}", time::get(6), id::sid(7));
+        let bucket = format!("avalanche-ops-{}-{}", time::get(6), id::sid(7));
 
         let network_id = avalanchego_config.network_id;
         let (id, beacon_nodes, non_beacon_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 Some(v) => (
-                    id::generate(format!("avax-{}", *v).as_str()),
+                    id::generate(format!("aops-{}", *v).as_str()),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
                 None => (
-                    id::generate("avax-custom"),
+                    id::generate("aops-custom"),
                     DEFAULT_MACHINE_BEACON_NODES,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
