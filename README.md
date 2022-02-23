@@ -30,12 +30,14 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 ./scripts/build.release.sh
 
 # to build for linux and others
+# TODO: fix this... not working...
 ./scripts/build.cross.sh
 ```
 
 ```bash
 # to download from the github release page
 # https://github.com/ava-labs/avalanche-ops/releases/tag/latest
+# or visit https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
 https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
 -o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
