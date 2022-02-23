@@ -125,15 +125,17 @@ Then apply the configuration:
 
 ![demo-aws-04](./img/demo-aws-04.png)
 
-![demo-aws-05](./img/demo-aws-05.png)
-
 Wait for beacon nodes to be ready:
+
+![demo-aws-05](./img/demo-aws-05.png)
 
 ![demo-aws-06](./img/demo-aws-06.png)
 
+Check your S3 bucket for generated artifacts **(all keys are encrypted using KMS)**:
+
 ![demo-aws-07](./img/demo-aws-07.png)
 
-Check your S3 bucket for generated artifacts **(all keys are encrypted using KMS)**:
+Check the beacon nodes:
 
 ![demo-aws-08](./img/demo-aws-08.png)
 
@@ -145,17 +147,15 @@ Check your S3 bucket for generated artifacts **(all keys are encrypted using KMS
 
 ![demo-aws-12](./img/demo-aws-12.png)
 
-Check the beacon nodes:
+Check non-beacon nodes created in a separate Auto Scaling Groups:
 
 ![demo-aws-13](./img/demo-aws-13.png)
 
-Check non-beacon nodes created in a separate Auto Scaling Groups:
-
 ![demo-aws-14](./img/demo-aws-14.png)
 
-![demo-aws-15](./img/demo-aws-15.png)
-
 Check how non-beacon nodes discovered other beacon nodes and publish non-beacon nodes information:
+
+![demo-aws-15](./img/demo-aws-15.png)
 
 ![demo-aws-16](./img/demo-aws-16.png)
 
@@ -175,19 +175,21 @@ Now that the network is ready, check the metrics and health URL (or access via p
 
 ![demo-aws-22](./img/demo-aws-22.png)
 
-Now the custom network is ready! Check out the genesis file for pre-funded keys:
-
 ![demo-aws-23](./img/demo-aws-23.png)
 
-![demo-aws-24](./img/demo-aws-24.png)
+Now the custom network is ready! Check out the genesis file for pre-funded keys:
 
-To shut down the network, run `avalanche-ops-nodes-aws delete` command:
+![demo-aws-24](./img/demo-aws-24.png)
 
 ![demo-aws-25](./img/demo-aws-25.png)
 
 ![demo-aws-26](./img/demo-aws-26.png)
 
+To shut down the network, run `avalanche-ops-nodes-aws delete` command:
+
 ![demo-aws-27](./img/demo-aws-27.png)
+
+![demo-aws-28](./img/demo-aws-28.png)
 
 ## Roadmap
 
