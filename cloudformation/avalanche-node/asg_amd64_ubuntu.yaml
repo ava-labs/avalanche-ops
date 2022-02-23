@@ -374,8 +374,9 @@ Resources:
               Description=avalanched (avalanche agent)
 
               [Service]
-              Type=notify
-              Restart=always
+              Type=exec
+              TimeoutStartSec=300
+              Restart=on-failure
               RestartSec=5s
               LimitNOFILE=40000
               ExecStart=/usr/local/bin/avalanched run

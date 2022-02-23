@@ -627,7 +627,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 Description=avalanche node
 
 [Service]
-Type=simple
+Type=exec
 TimeoutStartSec=300
 Restart=always
 RestartSec=5s

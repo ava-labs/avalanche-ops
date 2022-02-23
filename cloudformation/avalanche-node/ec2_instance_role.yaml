@@ -20,6 +20,7 @@ Parameters:
 
   S3BucketDbBackupName:
     Type: String
+    Default: ""
     Description: S3 bucket name to download backups from.
 
 Mappings:
@@ -28,6 +29,13 @@ Mappings:
       ec2: ec2.amazonaws.com.cn
     aws:
       ec2: ec2.amazonaws.com
+
+Conditions:
+  HasS3BucketDbBackupName:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: S3BucketDbBackupName
+          - ""
 
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
@@ -169,18 +177,6 @@ Resources:
                     ]
               - Effect: Allow
                 Action:
-                  - s3:GetObject # to download backups
-                Resource:
-                  - !Join [
-                      "",
-                      [
-                        !Sub "arn:${AWS::Partition}:s3:::",
-                        !Ref S3BucketDbBackupName,
-                        "/*",
-                      ],
-                    ]
-              - Effect: Allow
-                Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
@@ -189,6 +185,25 @@ Resources:
                   # Ref: http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-cloudwatch-logs
                   - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}"
                   - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}:log-stream:*"
+        - Fn::If:
+            - HasS3BucketDbBackupName
+            - PolicyName: avalanche-ops-instance-role-policy-for-db-backup
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - s3:GetObject # to download backups
+                    Resource:
+                      - !Join [
+                          "",
+                          [
+                            !Sub "arn:${AWS::Partition}:s3:::",
+                            !Ref S3BucketDbBackupName,
+                            "/*",
+                          ],
+                        ]
+            - !Ref AWS::NoValue
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
   InstanceProfile:
