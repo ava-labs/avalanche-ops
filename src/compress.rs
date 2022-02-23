@@ -416,11 +416,11 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
     };
     let size = size as f64;
     info!(
-        "packing directory with {} from '{}' (original size {}) to '{}'",
-        enc.id(),
+        "packing directory from '{}' to '{}' with {} (original size {})",
         src_dir_path,
+        dst_path,
+        enc.id(),
         humanize::bytes(size),
-        dst_path
     );
 
     match enc {
@@ -639,11 +639,11 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
     let meta = fs::metadata(dst_path)?;
     let size = meta.len() as f64;
     info!(
-        "packed directory with {} from '{}' to '{}' (new size {})",
-        enc.id(),
+        "packed directory from '{}' to '{}' with {} (new size {})",
         src_dir_path,
         dst_path,
-        humanize::bytes(size)
+        enc.id(),
+        humanize::bytes(size),
     );
     Ok(())
 }
@@ -658,14 +658,14 @@ pub fn unpack_directory(
     let meta = fs::metadata(src_archive_path)?;
     let size = meta.len() as f64;
     info!(
-        "unpacking directory with {} from '{}' (original size {}) to '{}'",
-        dec.id(),
+        "unpacking directory from '{}' to '{}' with {} (original size {})",
         src_archive_path,
+        dst_dir_path,
+        dec.id(),
         humanize::bytes(size),
-        dst_dir_path
     );
     fs::create_dir_all(dst_dir_path)?;
-    let dst_dir_path = Path::new(dst_dir_path);
+    let _dst_dir_path = Path::new(dst_dir_path);
 
     match dec {
         DirDecoder::ZipZstd => {
@@ -698,7 +698,7 @@ pub fn unpack_directory(
                     Some(p) => p.to_owned(),
                     None => continue,
                 };
-                let output_path = dst_dir_path.join(output_path);
+                let output_path = _dst_dir_path.join(output_path);
 
                 let is_dir = (*f.name()).ends_with('/');
                 if is_dir {
@@ -730,7 +730,7 @@ pub fn unpack_directory(
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = dst_dir_path.join(output_path);
+                let output_path = _dst_dir_path.join(output_path);
                 info!("extracting file {}", output_path.display());
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
@@ -772,7 +772,7 @@ pub fn unpack_directory(
                     Some(p) => p.to_owned(),
                     None => continue,
                 };
-                let output_path = dst_dir_path.join(output_path);
+                let output_path = _dst_dir_path.join(output_path);
 
                 let is_dir = (*f.name()).ends_with('/');
                 if is_dir {
@@ -804,7 +804,7 @@ pub fn unpack_directory(
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = dst_dir_path.join(output_path);
+                let output_path = _dst_dir_path.join(output_path);
                 info!("extracting file {}", output_path.display());
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
@@ -818,7 +818,7 @@ pub fn unpack_directory(
         }
     }
 
-    let size = match fs_extra::dir::get_size(dst_dir_path) {
+    let size = match fs_extra::dir::get_size(_dst_dir_path) {
         Ok(v) => v,
         Err(e) => {
             return Err(Error::new(
@@ -826,18 +826,18 @@ pub fn unpack_directory(
                 format!(
                     "failed get_size {} for directory {}",
                     e,
-                    dst_dir_path.display()
+                    _dst_dir_path.display()
                 ),
             ));
         }
     };
     let size = size as f64;
     info!(
-        "unpacked directory with {} from '{}' to '{}' (new size {})",
-        dec.id(),
+        "unpacked directory from '{}' to '{}' with {} (new size {})",
         src_archive_path,
-        dst_dir_path.display(),
-        humanize::bytes(size)
+        dst_dir_path,
+        dec.id(),
+        humanize::bytes(size),
     );
     Ok(())
 }
