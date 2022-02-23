@@ -226,14 +226,19 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     if !Path::new(&avalanche_bin).exists() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading avalanche binary from S3");
-        let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
+        let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
             &aws_s3::KeyPath::AvalancheBinCompressed(id.clone()).encode(),
             &tmp_avalanche_bin_compressed_path,
         ))
         .unwrap();
-        compress::from_zstd_file(&tmp_avalanche_bin_compressed_path, &avalanche_bin).unwrap();
+        compress::unpack_file(
+            &tmp_avalanche_bin_compressed_path,
+            &avalanche_bin,
+            compress::Decoder::Zstd,
+        )
+        .unwrap();
         let f = File::open(&avalanche_bin).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
     }
@@ -256,10 +261,10 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             let file_name = extract_filename(s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
 
-            let tmp_path = random::tmp_path(15).unwrap();
+            let tmp_path = random::tmp_path(15, None).unwrap();
             rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
                 .unwrap();
-            compress::from_zstd_file(&tmp_path, &file_path).unwrap();
+            compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
             let f = File::open(file_path).unwrap();
             f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
         }
@@ -301,7 +306,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading avalanche-ops::Spec from S3");
-    let tmp_spec_file_path = random::tmp_path(15).unwrap();
+    let tmp_spec_file_path = random::tmp_path(15, Some(".yaml")).unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
         &aws_s3::KeyPath::ConfigFile(id.clone()).encode(),
@@ -334,10 +339,15 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         cert::generate(&tls_key_path, &tls_cert_path).unwrap();
 
         info!("uploading generated TLS certs to S3");
-        let tmp_compressed_path = random::tmp_path(15).unwrap();
-        compress::to_zstd_file(&tls_key_path, &tmp_compressed_path, None).unwrap();
+        let tmp_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+        compress::pack_file(
+            &tls_key_path,
+            &tmp_compressed_path,
+            compress::Encoder::Zstd(3),
+        )
+        .unwrap();
 
-        let tmp_encrypted_path = random::tmp_path(15).unwrap();
+        let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
             .unwrap();
 
@@ -388,7 +398,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             let s3_key_db_backup = aws_resources.s3_key_db_backup.unwrap();
             info!("downloading db backup '{}'", s3_key_db_backup);
 
-            let tmp_db_backup_compressed_path = random::tmp_path(15).unwrap();
+            let tmp_db_backup_compressed_path = random::tmp_path(15, Some(".db")).unwrap();
             rt.block_on(s3_manager.get_object(
                 &s3_bucket_name,
                 &s3_key_db_backup,
@@ -398,15 +408,17 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             // TODO: support other compression methods than "zstd"
             if s3_key_db_backup.contains(".tar") {
-                compress::from_tar_zstd(
+                compress::unpack_directory(
                     &tmp_db_backup_compressed_path,
                     &spec.avalanchego_config.db_dir.clone().unwrap(),
+                    compress::DirDecoder::TarZstd,
                 )
                 .unwrap();
             } else if s3_key_db_backup.contains(".zip") {
-                compress::from_zip_zstd(
+                compress::unpack_directory(
                     &tmp_db_backup_compressed_path,
                     &spec.avalanchego_config.db_dir.clone().unwrap(),
+                    compress::DirDecoder::ZipZstd,
                 )
                 .unwrap();
             }
@@ -431,7 +443,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             node,
             avalanchego_config: spec.avalanchego_config.clone(),
         };
-        let tmp_path = random::tmp_path(10).unwrap();
+        let tmp_path = random::tmp_path(10, Some(".yaml")).unwrap();
         node_info.sync(tmp_path.clone()).unwrap();
         rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
             .unwrap();
@@ -484,7 +496,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading genesis draft file from S3");
-        let tmp_genesis_path = random::tmp_path(15).unwrap();
+        let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
             &aws_s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
@@ -520,7 +532,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading genesis file from S3");
-        let tmp_genesis_path = random::tmp_path(15).unwrap();
+        let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
             &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
@@ -702,7 +714,7 @@ WantedBy=multi-user.target",
                 node,
                 avalanchego_config: spec.avalanchego_config.clone(),
             };
-            let tmp_path = random::tmp_path(10).unwrap();
+            let tmp_path = random::tmp_path(10, Some(".yaml")).unwrap();
             node_info.sync(tmp_path.clone()).unwrap();
             rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
                 .unwrap();
@@ -718,7 +730,7 @@ WantedBy=multi-user.target",
                 node,
                 avalanchego_config: spec.avalanchego_config.clone(),
             };
-            let tmp_path = random::tmp_path(10).unwrap();
+            let tmp_path = random::tmp_path(10, Some(".yaml")).unwrap();
             node_info.sync(tmp_path.clone()).unwrap();
             rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
                 .unwrap();
@@ -836,16 +848,16 @@ fn execute_backup(
     );
     let output_path = format!(
         "{}.{}.{}",
-        random::tmp_path(10).unwrap(),
+        random::tmp_path(10, None).unwrap(),
         archive_method,
         compression_method
     );
     match archive_method {
         "tar" => {
-            compress::to_tar_zstd(src_db_dir, &output_path, None)?;
+            compress::pack_directory(src_db_dir, &output_path, compress::DirEncoder::TarZstd(3))?;
         }
         "zip" => {
-            compress::to_zip_zstd(src_db_dir, &output_path, None)?;
+            compress::pack_directory(src_db_dir, &output_path, compress::DirEncoder::ZipZstd(3))?;
         }
         _ => {}
     }

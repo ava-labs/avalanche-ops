@@ -131,12 +131,13 @@ impl Node {
                 ));
             }
         };
-        compress::to_zstd_base58(&d, None)
+        let compressed = compress::pack(&d, compress::Encoder::ZstdBase58(3))?;
+        Ok(String::from_utf8(compressed).unwrap())
     }
 
     /// Reverse of "compress_base64".
     pub fn decompress_base58(d: String) -> io::Result<Self> {
-        let decompressed = compress::from_zstd_base58(d)?;
+        let decompressed = compress::unpack(d.as_bytes(), compress::Decoder::ZstdBase58)?;
         serde_yaml::from_slice(&decompressed).map_err(|e| {
             return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
         })

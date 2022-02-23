@@ -178,7 +178,7 @@ impl Spec {
             };
 
         let mut generated_seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
-        let mut genesis_draft_file_path = Some(random::tmp_path(15).unwrap());
+        let mut genesis_draft_file_path = Some(random::tmp_path(15, Some(".json")).unwrap());
         if avalanchego_config.is_custom_network() {
             let (genesis, _generated_seed_keys) =
                 avalanchego::Genesis::new(network_id, keys).unwrap();

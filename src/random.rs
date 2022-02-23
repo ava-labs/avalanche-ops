@@ -46,9 +46,9 @@ fn test_string() {
 
 /// Returns a file path randomly generated in tmp directory.
 /// The file does not exist yet.
-pub fn tmp_path(n: usize) -> io::Result<String> {
+pub fn tmp_path(n: usize, sfx: Option<&str>) -> io::Result<String> {
     let tmp_dir = env::temp_dir();
-    let tmp_file_path = tmp_dir.join(string(n));
+    let tmp_file_path = tmp_dir.join(format!("{}{}", string(n), sfx.unwrap_or("")));
     let tmp_file_path = tmp_file_path.as_os_str().to_str().unwrap();
     Ok(String::from(tmp_file_path))
 }
@@ -58,8 +58,8 @@ fn test_temp_path() {
     let _ = env_logger::builder().is_test(true).try_init();
     use log::info;
 
-    let p1 = tmp_path(10).unwrap();
-    let p2 = tmp_path(10).unwrap();
+    let p1 = tmp_path(10, Some(".zstd")).unwrap();
+    let p2 = tmp_path(10, Some(".zstd")).unwrap();
     assert_ne!(p1, p2);
 
     info!("p1: {:?}", p1);

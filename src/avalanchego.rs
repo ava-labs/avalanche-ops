@@ -427,7 +427,7 @@ fn test_config() {
     let s = ret.unwrap();
     info!("config: {}", s);
 
-    let p = random::tmp_path(10).unwrap();
+    let p = random::tmp_path(10, Some(".yaml")).unwrap();
     let ret = config.sync(Some(p.clone()));
     assert!(ret.is_ok());
 
@@ -780,7 +780,7 @@ fn test_genesis() {
     let s = ret.unwrap();
     info!("genesis: {}", s);
 
-    let p = random::tmp_path(10).unwrap();
+    let p = random::tmp_path(10, Some(".json")).unwrap();
     let ret = genesis.sync(&p);
     assert!(ret.is_ok());
 

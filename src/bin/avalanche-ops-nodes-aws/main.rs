@@ -444,11 +444,11 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         &aws_s3::KeyPath::AvalanchedBin(spec.id.clone()).encode(),
     ))
     .unwrap();
-    let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
-    compress::to_zstd_file(
+    let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+    compress::pack_file(
         &spec.install_artifacts.avalanchego_bin,
         &tmp_avalanche_bin_compressed_path,
-        None,
+        compress::Encoder::Zstd(3),
     )
     .unwrap();
     rt.block_on(s3_manager.put_object(
@@ -473,8 +473,13 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             let file_name = entry.file_name();
             let file_name = file_name.as_os_str().to_str().unwrap();
 
-            let tmp_plugin_compressed_path = random::tmp_path(15).unwrap();
-            compress::to_zstd_file(file_path, &tmp_plugin_compressed_path, None).unwrap();
+            let tmp_plugin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+            compress::pack_file(
+                file_path,
+                &tmp_plugin_compressed_path,
+                compress::Encoder::Zstd(3),
+            )
+            .unwrap();
 
             info!(
                 "uploading {} (compressed from {}) from plugins directory {}",
@@ -560,10 +565,15 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         ))
         .unwrap();
 
-        let tmp_compressed_path = random::tmp_path(15).unwrap();
-        compress::to_zstd_file(ec2_key_path.as_str(), &tmp_compressed_path, None).unwrap();
+        let tmp_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+        compress::pack_file(
+            ec2_key_path.as_str(),
+            &tmp_compressed_path,
+            compress::Encoder::Zstd(3),
+        )
+        .unwrap();
 
-        let tmp_encrypted_path = random::tmp_path(15).unwrap();
+        let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
             .unwrap();
         rt.block_on(s3_manager.put_object(
