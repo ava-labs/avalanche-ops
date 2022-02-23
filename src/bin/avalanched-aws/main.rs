@@ -38,26 +38,6 @@ fn create_run_command() -> Command<'static> {
                 .allow_invalid_utf8(false)
                 .default_value("info"),
         )
-        .arg(
-            Arg::new("AVALANCHE_BIN")
-                .long("avalanche-bin")
-                .short('b')
-                .help("Sets the Avalanche node binary path to locate the downloaded file")
-                .required(true)
-                .takes_value(true)
-                .allow_invalid_utf8(false)
-                .default_value("/usr/local/bin/avalanche"),
-        )
-        .arg(
-            Arg::new("CLOUDWATCH_CONFIG_FILE_PATH")
-                .long("cloudwatch-config-file-path")
-                .short('c')
-                .help("Sets CloudWatch configuration JSON file path to output")
-                .required(true)
-                .takes_value(true)
-                .allow_invalid_utf8(false)
-                .default_value("/opt/aws/amazon-cloudwatch-agent/bin/config.json"),
-        )
 }
 
 // TODO: make this periodic
@@ -99,8 +79,8 @@ fn create_backup_command() -> Command<'static> {
                 .default_value("zstd"),
         )
         .arg(
-            Arg::new("SOURCE_DIRECTORY_PATH")
-                .long("source-directory-path")
+            Arg::new("SOURCE_DB_DIR")
+                .long("source-db-dir")
                 .short('s')
                 .help("Sets the source directory path to compress/archive")
                 .required(true)
@@ -137,14 +117,7 @@ fn main() {
 
     match matches.subcommand() {
         Some((SUBCOMMAND_RUN, sub_matches)) => {
-            execute_run(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("AVALANCHE_BIN").unwrap(),
-                sub_matches
-                    .value_of("CLOUDWATCH_CONFIG_FILE_PATH")
-                    .unwrap_or(aws_cloudwatch::DEFAULT_CONFIG_FILE_PATH),
-            )
-            .unwrap();
+            execute_run(sub_matches.value_of("LOG_LEVEL").unwrap_or("info")).unwrap();
         }
 
         Some((SUBCOMMAND_BACKUP, sub_matches)) => {
@@ -152,7 +125,7 @@ fn main() {
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
                 sub_matches.value_of("ARCHIVE_METHOD").unwrap_or("tar"),
                 sub_matches.value_of("COMPRESSION_METHOD").unwrap_or("zstd"),
-                sub_matches.value_of("SOURCE_DIRECTORY_PATH").unwrap(),
+                sub_matches.value_of("SOURCE_DB_DIR").unwrap(),
                 sub_matches.value_of("S3_BUCKET").unwrap(),
                 sub_matches.value_of("S3_KEY").unwrap(),
             )
@@ -163,11 +136,7 @@ fn main() {
     }
 }
 
-fn execute_run(
-    log_level: &str,
-    avalanche_bin: &str,
-    cloudwatch_config_file_path: &str,
-) -> io::Result<()> {
+fn execute_run(log_level: &str) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -205,6 +174,8 @@ fn execute_run(
     let mut node_kind: String = String::new();
     let mut kms_cmk_arn: String = String::new();
     let mut s3_bucket_name: String = String::new();
+    let mut cloudwatch_config_file_path: String = String::new();
+    let mut avalanche_bin: String = String::new();
     for c in tags {
         let k = c.key().unwrap();
         let v = c.value().unwrap();
@@ -222,6 +193,12 @@ fn execute_run(
             "S3_BUCKET_NAME" => {
                 s3_bucket_name = v.to_string();
             }
+            "CLOUDWATCH_CONFIG_FILE_PATH" => {
+                cloudwatch_config_file_path = v.to_string();
+            }
+            "AVALANCHE_BIN" => {
+                avalanche_bin = v.to_string();
+            }
             _ => {}
         }
     }
@@ -237,9 +214,16 @@ fn execute_run(
     if s3_bucket_name.is_empty() {
         panic!("'S3_BUCKET_NAME' tag not found")
     }
+    if cloudwatch_config_file_path.is_empty() {
+        panic!("'CLOUDWATCH_CONFIG_FILE_PATH' tag not found")
+    }
+    if avalanche_bin.is_empty() {
+        panic!("'AVALANCHE_BIN' tag not found")
+    }
+
     let envelope = envelope::Envelope::new(Some(kms_manager), Some(kms_cmk_arn));
 
-    if !Path::new(avalanche_bin).exists() {
+    if !Path::new(&avalanche_bin).exists() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading avalanche binary from S3");
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15).unwrap();
@@ -249,12 +233,12 @@ fn execute_run(
             &tmp_avalanche_bin_compressed_path,
         ))
         .unwrap();
-        compress::from_zstd_file(&tmp_avalanche_bin_compressed_path, avalanche_bin).unwrap();
-        let f = File::open(avalanche_bin).unwrap();
+        compress::from_zstd_file(&tmp_avalanche_bin_compressed_path, &avalanche_bin).unwrap();
+        let f = File::open(&avalanche_bin).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
     }
 
-    let plugins_dir = get_plugins_dir(avalanche_bin);
+    let plugins_dir = get_plugins_dir(&avalanche_bin);
     if !Path::new(&plugins_dir).exists() {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading plugins from S3");
@@ -262,7 +246,9 @@ fn execute_run(
         let objects = rt
             .block_on(s3_manager.list_objects(
                 &s3_bucket_name,
-                Some(aws_s3::KeyPath::PluginsDir(id.clone()).encode()),
+                Some(aws_s3::append_slash(
+                    &aws_s3::KeyPath::PluginsDir(id.clone()).encode(),
+                )),
             ))
             .unwrap();
         for obj in objects.iter() {
@@ -279,11 +265,10 @@ fn execute_run(
         }
     }
 
-    thread::sleep(Duration::from_secs(1));
-    info!("STEP: writing CloudWatch configuration JSON file");
-
     // ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
     // TODO: add more logs for plugins
+    thread::sleep(Duration::from_secs(1));
+    info!("STEP: writing CloudWatch configuration JSON file");
     let mut cloudwatch_config = aws_cloudwatch::Config::default();
     cloudwatch_config.logs = Some(aws_cloudwatch::Logs {
         force_flush_interval: Some(60),
@@ -310,7 +295,9 @@ fn execute_run(
             }),
         }),
     });
-    cloudwatch_config.sync(cloudwatch_config_file_path).unwrap();
+    cloudwatch_config
+        .sync(&cloudwatch_config_file_path)
+        .unwrap();
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading avalanche-ops::Spec from S3");
@@ -371,6 +358,65 @@ fn execute_run(
     let node_id = node::load_id(&tls_cert_path).unwrap();
     info!("loaded node ID from cert: {}", node_id);
 
+    if spec.aws_resources.is_some() {
+        let mut aws_resources = spec.aws_resources.unwrap();
+        if aws_resources.s3_bucket_db_backup.is_some() {
+            thread::sleep(Duration::from_secs(1));
+            info!("STEP: downloading the latest database backup from S3");
+
+            let s3_bucket_db_backup = aws_resources.s3_bucket_db_backup.clone().unwrap();
+            if aws_resources.s3_key_db_backup.is_none() {
+                // list to find the latest key
+                // in the descending order of "last_modified" timestamps
+                let pfx = format!("{}/", spec.avalanchego_config.network_id);
+                let objects = rt
+                    .block_on(s3_manager.list_objects(&s3_bucket_db_backup, Some(pfx)))
+                    .unwrap();
+                if objects.is_empty() {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!(
+                            "failed to find any s3 object in {} for backups",
+                            s3_bucket_db_backup
+                        ),
+                    ));
+                }
+                let key = objects[0].key().unwrap();
+                aws_resources.s3_key_db_backup = Some(key.to_string());
+            }
+
+            let s3_key_db_backup = aws_resources.s3_key_db_backup.unwrap();
+            info!("downloading db backup '{}'", s3_key_db_backup);
+
+            let tmp_db_backup_compressed_path = random::tmp_path(15).unwrap();
+            rt.block_on(s3_manager.get_object(
+                &s3_bucket_name,
+                &s3_key_db_backup,
+                &tmp_db_backup_compressed_path,
+            ))
+            .unwrap();
+
+            // TODO: support other compression methods than "zstd"
+            if s3_key_db_backup.contains(".tar") {
+                compress::from_tar_zstd(
+                    &tmp_db_backup_compressed_path,
+                    &spec.avalanchego_config.db_dir.clone().unwrap(),
+                )
+                .unwrap();
+            } else if s3_key_db_backup.contains(".zip") {
+                compress::from_zip_zstd(
+                    &tmp_db_backup_compressed_path,
+                    &spec.avalanchego_config.db_dir.clone().unwrap(),
+                )
+                .unwrap();
+            }
+
+            // TODO: override network id
+        }
+    } else {
+        info!("STEP: s3_bucket_db_backup is empty, skipping database backup downloads from S3")
+    }
+
     if spec.avalanchego_config.is_custom_network()
         && node_kind.eq("beacon")
         && spec.avalanchego_config.genesis.is_some()
@@ -399,7 +445,9 @@ fn execute_run(
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &s3_bucket_name,
-                    Some(aws_s3::KeyPath::DiscoverBootstrappingBeaconNodesDir(id.clone()).encode()),
+                    Some(aws_s3::append_slash(
+                        &aws_s3::KeyPath::DiscoverBootstrappingBeaconNodesDir(id.clone()).encode(),
+                    )),
                 ))
                 .unwrap();
             info!(
@@ -520,7 +568,9 @@ fn execute_run(
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &s3_bucket_name,
-                    Some(aws_s3::KeyPath::DiscoverReadyBeaconNodesDir(id.clone()).encode()),
+                    Some(aws_s3::append_slash(
+                        &aws_s3::KeyPath::DiscoverReadyBeaconNodesDir(id.clone()).encode(),
+                    )),
                 ))
                 .unwrap();
             info!(
@@ -674,8 +724,8 @@ WantedBy=multi-user.target",
                 .unwrap();
         }
 
-        // e.g., "--source-directory-path /avalanche-data/network-9999/v1.4.5"
-        println!("/usr/local/bin/avalanched backup --archive-method tar --compression-method zstd --s3-bucket {} --s3-key {}/backup.tar.zstd --source-directory-path /avalanche-data", &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
+        // e.g., "--source-db-dir /avalanche-data/network-9999/v1.4.5"
+        println!("/usr/local/bin/avalanched backup --archive-method tar --compression-method zstd --s3-bucket {} --s3-key {}/backup.tar.zstd --source-db-dir /avalanche-data", &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
         thread::sleep(Duration::from_secs(60));
     }
 }
@@ -737,7 +787,7 @@ fn execute_backup(
     log_level: &str,
     archive_method: &str,
     compression_method: &str,
-    src_dir_path: &str,
+    src_db_dir: &str,
     s3_bucket: &str,
     s3_key: &str,
 ) -> io::Result<()> {
@@ -782,7 +832,7 @@ fn execute_backup(
     thread::sleep(Duration::from_secs(1));
     info!(
         "STEP: backup {} with compression {} and archive {}",
-        src_dir_path, compression_method, archive_method
+        src_db_dir, compression_method, archive_method
     );
     let output_path = format!(
         "{}.{}.{}",
@@ -792,10 +842,10 @@ fn execute_backup(
     );
     match archive_method {
         "tar" => {
-            compress::to_tar_zstd(src_dir_path, &output_path, None)?;
+            compress::to_tar_zstd(src_db_dir, &output_path, None)?;
         }
         "zip" => {
-            compress::to_zip_zstd(src_dir_path, &output_path, None)?;
+            compress::to_zip_zstd(src_db_dir, &output_path, None)?;
         }
         _ => {}
     }

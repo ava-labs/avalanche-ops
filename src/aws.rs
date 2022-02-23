@@ -33,7 +33,15 @@ pub struct Resources {
     /// If exists, it skips creation and uses the existing one.
     /// MUST BE NON-EMPTY.
     #[serde(default)]
-    pub bucket: String,
+    pub s3_bucket: String,
+
+    /// Bucket to download backups from.
+    /// Non-empty to download the database for bootstrapping.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub s3_bucket_db_backup: Option<String>,
+    /// Non-empty to download the database for bootstrapping.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub s3_key_db_backup: Option<String>,
 
     /// AWS STS caller loaded from its local environment.
     /// Read-only.
@@ -134,7 +142,10 @@ impl Resources {
     pub fn default() -> Self {
         Self {
             region: String::from("us-west-2"),
-            bucket: String::from(""),
+            s3_bucket: String::from(""),
+
+            s3_bucket_db_backup: None,
+            s3_key_db_backup: None,
 
             identity: None,
 

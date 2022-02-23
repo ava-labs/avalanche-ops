@@ -421,11 +421,15 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: create S3 bucket\n"),
+        Print("\n\n\nSTEP: create S3 buckets\n"),
         ResetColor
     )?;
-    rt.block_on(s3_manager.create_bucket(&aws_resources.bucket))
+    rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket))
         .unwrap();
+    if aws_resources.s3_bucket_db_backup.is_some() {
+        rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket_db_backup.clone().unwrap()))
+            .unwrap();
+    }
 
     thread::sleep(Duration::from_secs(2));
     execute!(
@@ -435,7 +439,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         ResetColor
     )?;
     rt.block_on(s3_manager.put_object(
-        &aws_resources.bucket,
+        &aws_resources.s3_bucket,
         &spec.install_artifacts.avalanched_bin,
         &aws_s3::KeyPath::AvalanchedBin(spec.id.clone()).encode(),
     ))
@@ -448,7 +452,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     )
     .unwrap();
     rt.block_on(s3_manager.put_object(
-        &aws_resources.bucket,
+        &aws_resources.s3_bucket,
         &tmp_avalanche_bin_compressed_path,
         &aws_s3::KeyPath::AvalancheBinCompressed(spec.id.clone()).encode(),
     ))
@@ -478,7 +482,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             );
             rt.block_on(
                 s3_manager.put_object(
-                    &aws_resources.bucket,
+                    &aws_resources.s3_bucket,
                     &tmp_plugin_compressed_path,
                     format!(
                         "{}/{}.zstd",
@@ -499,7 +503,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             .unwrap();
         if Path::new(&genesis_draft_file_path).exists() {
             rt.block_on(s3_manager.put_object(
-                &aws_resources.bucket,
+                &aws_resources.s3_bucket,
                 &genesis_draft_file_path,
                 &aws_s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
             ))
@@ -507,7 +511,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         }
     }
     rt.block_on(s3_manager.put_object(
-        &aws_resources.bucket,
+        &aws_resources.s3_bucket,
         spec_file_path,
         &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
     ))
@@ -532,7 +536,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
+            &aws_resources.s3_bucket,
             spec_file_path,
             &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
@@ -563,7 +567,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
             .unwrap();
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
+            &aws_resources.s3_bucket,
             &tmp_encrypted_path,
             &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
         ))
@@ -575,7 +579,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
+            &aws_resources.s3_bucket,
             spec_file_path,
             &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
@@ -603,6 +607,18 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             .clone()
             .unwrap();
 
+        let mut role_params = Vec::from([
+            build_param("Id", &spec.id),
+            build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
+            build_param("S3BucketName", &aws_resources.s3_bucket),
+        ]);
+        if aws_resources.s3_bucket_db_backup.is_some() {
+            let param = build_param(
+                "S3BucketDbBackupName",
+                &aws_resources.s3_bucket_db_backup.clone().unwrap(),
+            );
+            role_params.push(param);
+        }
         rt.block_on(cloudformation_manager.create_stack(
             ec2_instance_role_stack_name.as_str(),
             Some(vec![Capability::CapabilityNamedIam]),
@@ -611,11 +627,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             Some(Vec::from([
                 Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
-            Some(Vec::from([
-                build_param("Id", &spec.id),
-                build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
-                build_param("S3BucketName", &aws_resources.bucket),
-            ])),
+            Some(role_params),
         ))
         .unwrap();
 
@@ -642,7 +654,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
+            &aws_resources.s3_bucket,
             spec_file_path,
             &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
@@ -732,7 +744,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
+            &aws_resources.s3_bucket,
             spec_file_path,
             &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
@@ -746,7 +758,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             format!("{}", &spec.avalanchego_config.network_id).as_str(),
         ),
         build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
-        build_param("S3BucketName", &aws_resources.bucket),
+        build_param("S3BucketName", &aws_resources.s3_bucket),
         build_param(
             "Ec2KeyPairName",
             &aws_resources.ec2_key_name.clone().unwrap(),
@@ -938,8 +950,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             thread::sleep(Duration::from_secs(30));
             objects = rt
                 .block_on(s3_manager.list_objects(
-                    &aws_resources.bucket,
-                    Some(aws_s3::KeyPath::DiscoverReadyBeaconNodesDir(spec.id.clone()).encode()),
+                    &aws_resources.s3_bucket,
+                    Some(aws_s3::append_slash(
+                        &aws_s3::KeyPath::DiscoverReadyBeaconNodesDir(spec.id.clone()).encode(),
+                    )),
                 ))
                 .unwrap();
             info!(
@@ -963,7 +977,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
+            &aws_resources.s3_bucket,
             spec_file_path,
             &aws_s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
         ))
@@ -1139,8 +1153,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             thread::sleep(Duration::from_secs(30));
             objects = rt
                 .block_on(s3_manager.list_objects(
-                    &aws_resources.bucket,
-                    Some(aws_s3::KeyPath::DiscoverReadyNonBeaconNodesDir(spec.id.clone()).encode()),
+                    &aws_resources.s3_bucket,
+                    Some(aws_s3::append_slash(
+                        &aws_s3::KeyPath::DiscoverReadyNonBeaconNodesDir(spec.id.clone()).encode(),
+                    )),
                 ))
                 .unwrap();
             info!(
@@ -1164,7 +1180,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
+            &aws_resources.s3_bucket,
             spec_file_path,
             &aws_s3::KeyPath::ConfigFile(spec.id).encode(),
         ))
@@ -1542,18 +1558,30 @@ fn execute_delete(
         )?;
         rt.block_on(cw_manager.delete_log_group(&spec.id)).unwrap();
 
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete S3 bucket\n"),
+            Print("\n\n\nSTEP: delete S3 bucket and all objects\n"),
             ResetColor
         )?;
+        thread::sleep(Duration::from_secs(5));
 
-        rt.block_on(s3_manager.delete_objects(&aws_resources.bucket, None))
+        rt.block_on(s3_manager.delete_objects(&aws_resources.s3_bucket, None))
             .unwrap();
-        rt.block_on(s3_manager.delete_bucket(&aws_resources.bucket))
+        rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
             .unwrap();
+        if aws_resources.s3_bucket_db_backup.is_some() {
+            rt.block_on(
+                s3_manager
+                    .delete_objects(&aws_resources.s3_bucket_db_backup.clone().unwrap(), None),
+            )
+            .unwrap();
+            rt.block_on(
+                s3_manager.delete_bucket(&aws_resources.s3_bucket_db_backup.clone().unwrap()),
+            )
+            .unwrap();
+        }
     }
 
     println!();

@@ -18,8 +18,9 @@ Parameters:
     Type: String
     Description: S3 bucket name to store.
 
-  # TODO: add backup s3 bucket, key names
-  # to grant access to mainnet/fuji database backups
+  S3BucketDbBackupName:
+    Type: String
+    Description: S3 bucket name to download backups from.
 
 Mappings:
   ServicePrincipals:
@@ -164,6 +165,18 @@ Resources:
                         "/",
                         !Ref Id,
                         "/events/*",
+                      ],
+                    ]
+              - Effect: Allow
+                Action:
+                  - s3:GetObject # to download backups
+                Resource:
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketDbBackupName,
+                        "/*",
                       ],
                     ]
               - Effect: Allow

@@ -617,3 +617,21 @@ fn test_key_path() {
     let node_parsed = KeyPath::parse_node_from_s3_path(&s3_path).unwrap();
     assert_eq!(node, node_parsed);
 }
+
+#[test]
+fn test_append_slash() {
+    let s = "hello";
+    assert_eq!(append_slash(s), "hello/");
+
+    let s = "hello/";
+    assert_eq!(append_slash(s), "hello/");
+}
+
+pub fn append_slash(k: &str) -> String {
+    let n = k.len();
+    if &k[n - 1..] == "/" {
+        String::from(k)
+    } else {
+        format!("{}/", k)
+    }
+}

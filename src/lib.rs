@@ -160,7 +160,7 @@ impl Spec {
         keys: usize,
     ) -> Self {
         // [year][month][date]-[system host-based id]
-        let bucket = format!("avalanche-ops-{}-{}", time::get(6), id::sid(7));
+        let s3_bucket = format!("avalanche-ops-{}-{}", time::get(6), id::sid(7));
 
         let network_id = avalanchego_config.network_id;
         let (id, beacon_nodes, non_beacon_nodes) =
@@ -202,7 +202,7 @@ impl Spec {
 
             aws_resources: Some(aws::Resources {
                 region: String::from("us-west-2"),
-                bucket,
+                s3_bucket,
                 ..aws::Resources::default()
             }),
 
@@ -496,7 +496,7 @@ id: {}
 
 aws_resources:
   region: us-west-2
-  bucket: {}
+  s3_bucket: {}
 
 machine:
   beacon_nodes: 10
@@ -550,22 +550,22 @@ avalanchego_config:
     let ret = cfg.sync(config_path);
     assert!(ret.is_ok());
 
-    let mut avago_config = avalanchego::Config::new();
-    avago_config.config_file = Some(String::from(avalanchego::DEFAULT_CONFIG_FILE_PATH));
-    avago_config.genesis = Some(String::from(avalanchego::DEFAULT_GENESIS_PATH));
-    avago_config.network_id = 1337;
-    avago_config.snow_sample_size = Some(avalanchego::DEFAULT_SNOW_SAMPLE_SIZE);
-    avago_config.snow_quorum_size = Some(avalanchego::DEFAULT_SNOW_QUORUM_SIZE);
-    avago_config.http_port = Some(avalanchego::DEFAULT_HTTP_PORT);
-    avago_config.staking_port = Some(avalanchego::DEFAULT_STAKING_PORT);
-    avago_config.db_dir = Some(String::from(avalanchego::DEFAULT_DB_DIR));
+    let mut avalanchego_config = avalanchego::Config::new();
+    avalanchego_config.config_file = Some(String::from(avalanchego::DEFAULT_CONFIG_FILE_PATH));
+    avalanchego_config.genesis = Some(String::from(avalanchego::DEFAULT_GENESIS_PATH));
+    avalanchego_config.network_id = 1337;
+    avalanchego_config.snow_sample_size = Some(avalanchego::DEFAULT_SNOW_SAMPLE_SIZE);
+    avalanchego_config.snow_quorum_size = Some(avalanchego::DEFAULT_SNOW_QUORUM_SIZE);
+    avalanchego_config.http_port = Some(avalanchego::DEFAULT_HTTP_PORT);
+    avalanchego_config.staking_port = Some(avalanchego::DEFAULT_STAKING_PORT);
+    avalanchego_config.db_dir = Some(String::from(avalanchego::DEFAULT_DB_DIR));
 
     let orig = Spec {
         id: id.clone(),
 
         aws_resources: Some(aws::Resources {
             region: String::from("us-west-2"),
-            bucket: bucket.clone(),
+            s3_bucket: bucket.clone(),
             ..aws::Resources::default()
         }),
 
@@ -587,7 +587,7 @@ avalanchego_config:
             genesis_draft_file_path: Some(String::from(genesis_draft_file_path)),
         },
 
-        avalanchego_config: avago_config,
+        avalanchego_config,
         generated_seed_private_keys: None,
     };
 
@@ -601,7 +601,7 @@ avalanchego_config:
     assert!(cfg.aws_resources.is_some());
     let aws_reesources = cfg.aws_resources.unwrap();
     assert_eq!(aws_reesources.region, "us-west-2");
-    assert_eq!(aws_reesources.bucket, bucket);
+    assert_eq!(aws_reesources.s3_bucket, bucket);
 
     assert_eq!(cfg.install_artifacts.avalanched_bin, avalanched_bin);
     assert_eq!(cfg.install_artifacts.avalanchego_bin, avalanchego_bin);

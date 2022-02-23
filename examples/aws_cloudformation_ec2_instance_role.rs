@@ -67,6 +67,10 @@ fn main() {
                 .parameter_key("S3BucketName")
                 .parameter_value(id::generate("id"))
                 .build(),
+            Parameter::builder()
+                .parameter_key("S3BucketDbBackupName")
+                .parameter_value(id::generate("id"))
+                .build(),
         ])),
     ));
     let stack = ret.unwrap();

@@ -378,7 +378,7 @@ Resources:
               Restart=always
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched run --avalanche-bin /usr/local/bin/avalanche --cloudwatch-config-file-path /opt/aws/amazon-cloudwatch-agent/bin/config.json
+              ExecStart=/usr/local/bin/avalanched run
               StandardOutput=append:/var/log/avalanched/avalanched.log
               StandardError=append:/var/log/avalanched/avalanched.log
 
@@ -459,6 +459,9 @@ Resources:
       MetricsCollection:
         - Granularity: "1Minute"
       Tags:
+        # we can either propagate these information
+        # via tags, CLI flags, avalanche-ops spec, etc.
+        # use tags for relatively static configurations
         - Key: Name
           PropagateAtLaunch: true
           Value: !Join ["-", [!Ref Id, !Ref NodeKind, "amd64"]]
@@ -477,6 +480,12 @@ Resources:
         - Key: S3_BUCKET_NAME
           PropagateAtLaunch: true
           Value: !Ref S3BucketName
+        - Key: CLOUDWATCH_CONFIG_FILE_PATH
+          PropagateAtLaunch: true
+          Value: /opt/aws/amazon-cloudwatch-agent/bin/config.json
+        - Key: AVALANCHE_BIN
+          PropagateAtLaunch: true
+          Value: /usr/local/bin/avalanche
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       MixedInstancesPolicy:
         InstancesDistribution:
