@@ -60,3 +60,7 @@ path = "src/bin/avalanche-ops-nodes-aws/main.rs"
 [[bin]]
 name = "avalanched-aws"
 path = "src/bin/avalanched-aws/main.rs"
+
+[[bin]]
+name = "dev-machine"
+path = "src/bin/dev-machine/main.rs"
