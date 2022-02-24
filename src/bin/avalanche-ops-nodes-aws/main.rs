@@ -195,6 +195,14 @@ fn create_delete_command() -> Command<'static> {
                 .takes_value(false)
                 .allow_invalid_utf8(false),
         )
+        .arg(
+            Arg::new("DELETE_S3_BUCKET")
+                .long("delete-s3-bucket")
+                .help("Enables delete S3 bucket (use with caution!)")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
 }
 
 /// Should be able to run with idempotency
