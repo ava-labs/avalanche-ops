@@ -940,14 +940,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
-                "# instance '{}' ({}, {})\naws ssm start-session --region {} --target {}\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
+                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\naws ssm start-session --region {} --target {}",
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
-                aws_resources.region,
-                d.instance_id,
                 ec2_key_path,
                 d.public_ipv4,
+                aws_resources.region,
+                d.instance_id,
             );
         }
         println!();
@@ -1143,14 +1143,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
-                "# instance '{}' ({}, {})\naws ssm start-session --region {} --target {}\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}",
+                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}\naws ssm start-session --region {} --target {}",
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
-                aws_resources.region,
-                d.instance_id,
                 ec2_key_path,
                 d.public_ipv4,
+                aws_resources.region,
+                d.instance_id,
             );
         }
         println!();
@@ -1251,6 +1251,12 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                 "health/liveness check failed for {} ({:?}, {:?})",
                 node.machine_id, res, err
             );
+            if aws_resources.s3_bucket_db_backup.is_some() {
+                // TODO: fix this
+                warn!("node may be still downloading database backup... skipping for now...");
+                success = true;
+                break;
+            }
             thread::sleep(Duration::from_secs(10));
         }
         if !success {

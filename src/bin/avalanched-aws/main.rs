@@ -493,7 +493,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             let tmp_db_backup_compressed_path = random::tmp_path(15, Some(".db")).unwrap();
             rt.block_on(s3_manager.get_object(
-                &s3_bucket_name,
+                &s3_key_db_backup,
                 &s3_key_db_backup,
                 &tmp_db_backup_compressed_path,
             ))
