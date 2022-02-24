@@ -1270,6 +1270,12 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
     println!();
     info!("apply all success!");
+    println!();
+    println!("# run the following to delete resources");
+    println!(
+        "avalanche-ops-nodes-aws delete --spec-file-path {}",
+        spec_file_path
+    );
     Ok(())
 }
 
@@ -1581,16 +1587,22 @@ fn execute_delete(
             .unwrap();
         rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
             .unwrap();
+
+        // NOTE: do not delete db backups...
         if aws_resources.s3_bucket_db_backup.is_some() {
-            rt.block_on(
-                s3_manager
-                    .delete_objects(&aws_resources.s3_bucket_db_backup.clone().unwrap(), None),
-            )
-            .unwrap();
-            rt.block_on(
-                s3_manager.delete_bucket(&aws_resources.s3_bucket_db_backup.clone().unwrap()),
-            )
-            .unwrap();
+            info!(
+                "skipping deleting {}",
+                aws_resources.s3_bucket_db_backup.clone().unwrap()
+            );
+            // rt.block_on(
+            //     s3_manager
+            //         .delete_objects(&aws_resources.s3_bucket_db_backup.clone().unwrap(), None),
+            // )
+            // .unwrap();
+            // rt.block_on(
+            //     s3_manager.delete_bucket(&aws_resources.s3_bucket_db_backup.clone().unwrap()),
+            // )
+            // .unwrap();
         }
     }
 

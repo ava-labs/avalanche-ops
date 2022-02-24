@@ -435,6 +435,22 @@ impl DirDecoder {
             }
         }
     }
+    pub fn new_from_ext(ext: &str) -> io::Result<Self> {
+        if ext.ends_with(DirDecoder::ZipZstd.ext()) {
+            Ok(DirDecoder::ZipZstd)
+        } else if ext.ends_with(DirDecoder::TarZstd.ext()) {
+            Ok(DirDecoder::TarZstd)
+        } else if ext.ends_with(DirDecoder::ZipGzip.ext()) {
+            Ok(DirDecoder::ZipGzip)
+        } else if ext.ends_with(DirDecoder::TarGzip.ext()) {
+            Ok(DirDecoder::TarGzip)
+        } else {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("unknown ext {}", ext),
+            ));
+        }
+    }
     pub fn ext(&self) -> &str {
         match self {
             DirDecoder::ZipZstd => ".zip.zstd",

@@ -497,27 +497,18 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             ))
             .unwrap();
 
-            // TODO: support other compression methods than "zstd"
-            if s3_key_db_backup.contains(".tar") {
-                compress::unpack_directory(
-                    &tmp_db_backup_compressed_path,
-                    &spec.avalanchego_config.db_dir.clone().unwrap(),
-                    compress::DirDecoder::TarZstd,
-                )
-                .unwrap();
-            } else if s3_key_db_backup.contains(".zip") {
-                compress::unpack_directory(
-                    &tmp_db_backup_compressed_path,
-                    &spec.avalanchego_config.db_dir.clone().unwrap(),
-                    compress::DirDecoder::ZipZstd,
-                )
-                .unwrap();
-            }
+            let dec = compress::DirDecoder::new_from_ext(&s3_key_db_backup).unwrap();
+            compress::unpack_directory(
+                &tmp_db_backup_compressed_path,
+                &spec.avalanchego_config.db_dir.clone().unwrap(),
+                dec,
+            )
+            .unwrap();
 
             // TODO: override network id
+        } else {
+            info!("STEP: s3_bucket_db_backup is empty, skipping database backup download from S3")
         }
-    } else {
-        info!("STEP: s3_bucket_db_backup is empty, skipping database backup downloads from S3")
     }
 
     if spec.avalanchego_config.is_custom_network()
@@ -828,8 +819,21 @@ WantedBy=multi-user.target",
         }
 
         // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"
-        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method tar-gzip --pack-dir /avalanche-data --s3-bucket {} --s3-key {}/backup.tar.zstd", reg.clone(), &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
-        println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method tar-gzip --s3-bucket {} --s3-key {}/backup.tar.zstd --unpack-dir /tmp", reg, &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
+        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {} --s3-bucket {} --s3-key {}/backup.{}", 
+            reg.clone(),
+            compress::DirEncoder::TarGzip.id(),
+            spec.avalanchego_config.db_dir.clone().unwrap(),
+            &s3_bucket_name,
+            aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
+            compress::DirEncoder::TarGzip.ext(),
+        );
+        println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup.{} --unpack-dir /tmp/avalanche-data",
+            reg,
+            compress::DirDecoder::TarGzip.id(),
+            &s3_bucket_name,
+            aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
+            compress::DirDecoder::TarGzip.ext(),
+        );
         thread::sleep(Duration::from_secs(60));
     }
 }
