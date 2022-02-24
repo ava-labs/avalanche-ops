@@ -327,8 +327,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         .unwrap();
     thread::sleep(Duration::from_secs(2));
     rt.block_on(s3_manager.put_object(
-        &aws_resources.bucket,
         spec_file_path,
+        &aws_resources.bucket,
         &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
     ))
     .unwrap();
@@ -352,8 +352,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
             spec_file_path,
+            &aws_resources.bucket,
             &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
@@ -388,8 +388,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
             .unwrap();
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
             &tmp_encrypted_path,
+            &aws_resources.bucket,
             &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
         ))
         .unwrap();
@@ -400,8 +400,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
             spec_file_path,
+            &aws_resources.bucket,
             &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
@@ -470,8 +470,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
             spec_file_path,
+            &aws_resources.bucket,
             &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
@@ -553,8 +553,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
             spec_file_path,
+            &aws_resources.bucket,
             &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
@@ -706,8 +706,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         thread::sleep(Duration::from_secs(1));
         rt.block_on(s3_manager.put_object(
-            &aws_resources.bucket,
             spec_file_path,
+            &aws_resources.bucket,
             &aws_s3::KeyPath::DevMachineConfigFile(spec.id).encode(),
         ))
         .unwrap();

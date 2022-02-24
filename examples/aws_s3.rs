@@ -51,9 +51,9 @@ fn main() {
     let p2 = tmp_dir.path().join(random::string(10));
     let p2 = p2.as_os_str().to_str().unwrap();
 
-    let ret = ab!(s3_manager.put_object(&bucket_name, p1, "directory/aaa.txt"));
+    let ret = ab!(s3_manager.put_object(p1, &bucket_name, "directory/aaa.txt"));
     assert!(ret.is_ok());
-    let ret = ab!(s3_manager.put_object(&bucket_name, p1, "directory/bbb.txt"));
+    let ret = ab!(s3_manager.put_object(p1, &bucket_name, "directory/bbb.txt"));
     assert!(ret.is_ok());
 
     let ret = ab!(s3_manager.get_object(&bucket_name, "directory/aaa.txt", &p2));

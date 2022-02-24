@@ -1,13 +1,15 @@
 use std::{
-    env,
+    env, fmt,
     fs::{self, File},
     io::{self, BufReader, Cursor, Error, ErrorKind, Read, Write},
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
 };
 
-use flate2::bufread::{GzDecoder, GzEncoder};
-use flate2::Compression;
+use flate2::{
+    bufread::{GzDecoder, GzEncoder},
+    Compression,
+};
 use fs_extra;
 use log::info;
 use path_clean::PathClean;
@@ -29,15 +31,49 @@ pub enum Encoder {
     Gzip,
 }
 
-impl Encoder {
-    pub fn id(&self) -> String {
+impl fmt::Display for Encoder {
+    /// The last integer is the zstd compression level.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Encoder::Zstd(level) => format!("zstd with level {}", level),
-            Encoder::ZstdBase58(level) => format!("zstd-base58 with level {}", level),
-            Encoder::Gzip => String::from("gzip"),
+            Encoder::Zstd(level) => write!(f, "zstd{}", level),
+            Encoder::ZstdBase58(level) => {
+                write!(f, "zstd-base58{}", level)
+            }
+            Encoder::Gzip => write!(f, "gzip"),
         }
     }
+}
 
+impl Encoder {
+    pub fn id(&self) -> &str {
+        match self {
+            Encoder::Zstd(1) => "zstd1",
+            Encoder::Zstd(2) => "zstd2",
+            Encoder::Zstd(3) => "zstd3",
+            Encoder::ZstdBase58(1) => "zstd1-base58",
+            Encoder::ZstdBase58(2) => "zstd2-base58",
+            Encoder::ZstdBase58(3) => "zstd3-base58",
+            Encoder::Gzip => "gzip",
+            _ => "unknown",
+        }
+    }
+    pub fn new(id: &str) -> io::Result<Self> {
+        match id {
+            "zstd1" => Ok(Encoder::Zstd(1)),
+            "zstd2" => Ok(Encoder::Zstd(2)),
+            "zstd3" => Ok(Encoder::Zstd(3)),
+            "zstd1-base58" => Ok(Encoder::ZstdBase58(1)),
+            "zstd2-base58" => Ok(Encoder::ZstdBase58(2)),
+            "zstd3-base58" => Ok(Encoder::ZstdBase58(3)),
+            "gzip" => Ok(Encoder::Gzip),
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("unknown id {}", id),
+                ));
+            }
+        }
+    }
     pub fn ext(&self) -> &str {
         match self {
             Encoder::Zstd(_) => ".zstd",
@@ -55,12 +91,35 @@ pub enum Decoder {
     Gzip,
 }
 
-impl Decoder {
-    pub fn id(&self) -> String {
+impl fmt::Display for Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Decoder::Zstd => String::from("zstd"),
-            Decoder::ZstdBase58 => String::from("zstd-base58"),
-            Decoder::Gzip => String::from("gzip"),
+            Decoder::Zstd => write!(f, "zstd"),
+            Decoder::ZstdBase58 => write!(f, "zstd-base58"),
+            Decoder::Gzip => write!(f, "gzip"),
+        }
+    }
+}
+
+impl Decoder {
+    pub fn id(&self) -> &str {
+        match self {
+            Decoder::Zstd => "zstd",
+            Decoder::ZstdBase58 => "zstd-base58",
+            Decoder::Gzip => "gzip",
+        }
+    }
+    pub fn new(id: &str) -> io::Result<Self> {
+        match id {
+            "zstd" => Ok(Decoder::Zstd),
+            "zstd-base58" => Ok(Decoder::ZstdBase58),
+            "gzip" => Ok(Decoder::Gzip),
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("unknown id {}", id),
+                ));
+            }
         }
     }
 }
@@ -69,7 +128,7 @@ pub fn pack(d: &[u8], enc: Encoder) -> io::Result<Vec<u8>> {
     let size_before = d.len() as f64;
     info!(
         "packing (algorithm {}, current size {})",
-        enc.id(),
+        enc.to_string(),
         humanize::bytes(size_before),
     );
 
@@ -90,7 +149,7 @@ pub fn pack(d: &[u8], enc: Encoder) -> io::Result<Vec<u8>> {
     let size_after = packed.len() as f64;
     info!(
         "packed to {} (before {}, new size {})",
-        enc.id(),
+        enc.to_string(),
         humanize::bytes(size_before),
         humanize::bytes(size_after),
     );
@@ -101,7 +160,7 @@ pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
     let size_before = d.len() as f64;
     info!(
         "unpacking (algorithm {}, current size {})",
-        dec.id(),
+        dec.to_string(),
         humanize::bytes(size_before),
     );
 
@@ -130,7 +189,7 @@ pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
     let size_after = unpacked.len() as f64;
     info!(
         "unpacked to {} (before {}, new size {})",
-        dec.id(),
+        dec.to_string(),
         humanize::bytes(size_before),
         humanize::bytes(size_after),
     );
@@ -147,7 +206,7 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
         "packing file '{}' to '{}' (algorithm {}, current size {})",
         src_path,
         dst_path,
-        enc.id(),
+        enc.to_string(),
         humanize::bytes(size_before),
     );
 
@@ -192,7 +251,7 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
         "packed file '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_path,
         dst_path,
-        enc.id(),
+        enc.to_string(),
         humanize::bytes(size_before),
         humanize::bytes(size_after),
     );
@@ -209,7 +268,7 @@ pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<(
         "unpacking file '{}' to '{}' (algorithm {}, current size {})",
         src_path,
         dst_path,
-        dec.id(),
+        dec.to_string(),
         humanize::bytes(size_before),
     );
 
@@ -255,7 +314,7 @@ pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<(
         "unpacked file '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_path,
         dst_path,
-        dec.id(),
+        dec.to_string(),
         humanize::bytes(size_before),
         humanize::bytes(size_after),
     );
@@ -279,13 +338,48 @@ pub enum DirEncoder {
     TarGzip,
 }
 
-impl DirEncoder {
-    pub fn id(&self) -> String {
+impl fmt::Display for DirEncoder {
+    /// The last integer is the zstd compression level.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DirEncoder::ZipZstd(level) => format!("zip-zstd (level {})", level),
-            DirEncoder::TarZstd(level) => format!("tar-zstd (level {})", level),
-            DirEncoder::ZipGzip => String::from("zip-gzip"),
-            DirEncoder::TarGzip => String::from("tar-gzip"),
+            DirEncoder::ZipZstd(level) => write!(f, "zip-zstd{}", level),
+            DirEncoder::TarZstd(level) => write!(f, "tar-zstd{}", level),
+            DirEncoder::ZipGzip => write!(f, "zip-gzip"),
+            DirEncoder::TarGzip => write!(f, "tar-gzip"),
+        }
+    }
+}
+
+impl DirEncoder {
+    pub fn id(&self) -> &str {
+        match self {
+            DirEncoder::ZipZstd(1) => "zip-zstd1",
+            DirEncoder::ZipZstd(2) => "zip-zstd2",
+            DirEncoder::ZipZstd(3) => "zip-zstd3",
+            DirEncoder::TarZstd(1) => "tar-zstd1",
+            DirEncoder::TarZstd(2) => "tar-zstd2",
+            DirEncoder::TarZstd(3) => "tar-zstd3",
+            DirEncoder::ZipGzip => "zip-gzip",
+            DirEncoder::TarGzip => "tar-gzip",
+            _ => "unknown",
+        }
+    }
+    pub fn new(id: &str) -> io::Result<Self> {
+        match id {
+            "zip-zstd1" => Ok(DirEncoder::ZipZstd(1)),
+            "zip-zstd2" => Ok(DirEncoder::ZipZstd(2)),
+            "zip-zstd3" => Ok(DirEncoder::ZipZstd(3)),
+            "tar-zstd1" => Ok(DirEncoder::TarZstd(1)),
+            "tar-zstd2" => Ok(DirEncoder::TarZstd(2)),
+            "tar-zstd3" => Ok(DirEncoder::TarZstd(3)),
+            "zip-gzip" => Ok(DirEncoder::ZipGzip),
+            "tar-gzip" => Ok(DirEncoder::TarGzip),
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("unknown id {}", id),
+                ));
+            }
         }
     }
     pub fn ext(&self) -> &str {
@@ -307,13 +401,38 @@ pub enum DirDecoder {
     TarGzip,
 }
 
-impl DirDecoder {
-    pub fn id(&self) -> String {
+impl fmt::Display for DirDecoder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DirDecoder::ZipZstd => String::from("zip-zstd"),
-            DirDecoder::TarZstd => String::from("tar-zstd"),
-            DirDecoder::ZipGzip => String::from("zip-gzip"),
-            DirDecoder::TarGzip => String::from("tar-gzip"),
+            DirDecoder::ZipZstd => write!(f, "zip-zstd"),
+            DirDecoder::TarZstd => write!(f, "tar-zstd"),
+            DirDecoder::ZipGzip => write!(f, "zip-gzip"),
+            DirDecoder::TarGzip => write!(f, "tar-gzip"),
+        }
+    }
+}
+
+impl DirDecoder {
+    pub fn id(&self) -> &str {
+        match self {
+            DirDecoder::ZipZstd => "zip-zstd",
+            DirDecoder::TarZstd => "tar-zstd",
+            DirDecoder::ZipGzip => "zip-gzip",
+            DirDecoder::TarGzip => "tar-gzip",
+        }
+    }
+    pub fn new(id: &str) -> io::Result<Self> {
+        match id {
+            "zip-zstd" => Ok(DirDecoder::ZipZstd),
+            "tar-zstd" => Ok(DirDecoder::TarZstd),
+            "zip-gzip" => Ok(DirDecoder::ZipGzip),
+            "tar-gzip" => Ok(DirDecoder::TarGzip),
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("unknown id {}", id),
+                ));
+            }
         }
     }
     pub fn ext(&self) -> &str {
@@ -343,7 +462,7 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
         "packing directory from '{}' to '{}' (algorithm {}, current size {})",
         src_dir_path,
         dst_path,
-        enc.id(),
+        enc.to_string(),
         humanize::bytes(size_before),
     );
 
@@ -554,7 +673,7 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
         "packed directory from '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_dir_path,
         dst_path,
-        enc.id(),
+        enc.to_string(),
         humanize::bytes(size_before),
         humanize::bytes(size_after),
     );
@@ -574,7 +693,7 @@ pub fn unpack_directory(
         "unpacking directory from '{}' to '{}' (algorithm {}, current size {})",
         src_archive_path,
         dst_dir_path,
-        dec.id(),
+        dec.to_string(),
         humanize::bytes(size_before),
     );
     fs::create_dir_all(dst_dir_path)?;
@@ -738,7 +857,7 @@ pub fn unpack_directory(
         "unpacked directory from '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_archive_path,
         dst_dir_path,
-        dec.id(),
+        dec.to_string(),
         humanize::bytes(size_before),
         humanize::bytes(size_after),
     );
@@ -768,17 +887,33 @@ fn test_pack_unpack() {
 
     let contents = random::string(1024 * 10);
 
-    let encs = vec![Encoder::Zstd(3), Encoder::ZstdBase58(3), Encoder::Gzip];
-    let decs = vec![Decoder::Zstd, Decoder::ZstdBase58, Decoder::Gzip];
+    let encs = vec![
+        "zstd1",
+        "zstd2",
+        "zstd3",
+        "zstd1-base58",
+        "zstd2-base58",
+        "zstd3-base58",
+        "gzip",
+    ];
+    let decs = vec![
+        "zstd",
+        "zstd",
+        "zstd",
+        "zstd-base58",
+        "zstd-base58",
+        "zstd-base58",
+        "gzip",
+    ];
     for (i, _) in encs.iter().enumerate() {
-        let packed = pack(&contents.as_bytes(), encs[i].clone()).unwrap();
+        let packed = pack(&contents.as_bytes(), Encoder::new(encs[i]).unwrap()).unwrap();
 
         // compressed should be smaller
-        if encs[i] != Encoder::ZstdBase58(3) {
+        if !encs[i].contains("base58") {
             assert!(contents.len() > packed.len());
         }
 
-        let unpacked = unpack(&packed, decs[i].clone()).unwrap();
+        let unpacked = unpack(&packed, Decoder::new(decs[i]).unwrap()).unwrap();
 
         // decompressed should be same as original
         assert_eq!(contents.as_bytes(), unpacked);
@@ -791,17 +926,17 @@ fn test_pack_unpack() {
     for (i, _) in encs.iter().enumerate() {
         let packed = tempfile::NamedTempFile::new().unwrap();
         let packed_path = packed.path().to_str().unwrap();
-        pack_file(&orig_path, packed_path, encs[i].clone()).unwrap();
+        pack_file(&orig_path, packed_path, Encoder::new(encs[i]).unwrap()).unwrap();
 
         // compressed file should be smaller
-        if encs[i] != Encoder::ZstdBase58(3) {
+        if !encs[i].contains("base58") {
             let meta_packed = fs::metadata(packed_path).unwrap();
             assert!(orig_meta.len() > meta_packed.len());
         }
 
         let unpacked = tempfile::NamedTempFile::new().unwrap();
         let unpacked_path = unpacked.path().to_str().unwrap();
-        unpack_file(packed_path, unpacked_path, decs[i].clone()).unwrap();
+        unpack_file(packed_path, unpacked_path, Decoder::new(decs[i]).unwrap()).unwrap();
 
         // decompressed file should be same as original
         let contents_unpacked = fs::read(unpacked_path).unwrap();
@@ -820,21 +955,34 @@ fn test_pack_unpack() {
     let src_dir_size = fs_extra::dir::get_size(src_dir_path.clone()).unwrap();
 
     let encs = vec![
-        DirEncoder::ZipZstd(3),
-        DirEncoder::TarZstd(3),
-        DirEncoder::ZipGzip,
-        DirEncoder::TarGzip,
+        "zip-zstd1",
+        "zip-zstd2",
+        "zip-zstd3",
+        "tar-zstd1",
+        "tar-zstd2",
+        "tar-zstd3",
+        "zip-gzip",
+        "tar-gzip",
     ];
     let decs = vec![
-        DirDecoder::ZipZstd,
-        DirDecoder::TarZstd,
-        DirDecoder::ZipGzip,
-        DirDecoder::TarGzip,
+        "zip-zstd", // decoder has no zstd level
+        "zip-zstd", // decoder has no zstd level
+        "zip-zstd", // decoder has no zstd level
+        "tar-zstd", // decoder has no zstd level
+        "tar-zstd", // decoder has no zstd level
+        "tar-zstd", // decoder has no zstd level
+        "zip-gzip", // gzip has no level
+        "tar-gzip", // gzip has no level
     ];
     for (i, _) in encs.iter().enumerate() {
         let packed = tempfile::NamedTempFile::new().unwrap();
         let packed_path = packed.path().to_str().unwrap();
-        pack_directory(_src_dir_path, packed_path, encs[i].clone()).unwrap();
+        pack_directory(
+            _src_dir_path,
+            packed_path,
+            DirEncoder::new(encs[i]).unwrap(),
+        )
+        .unwrap();
 
         // archived/compressed file should be smaller
         let meta_packed = fs::metadata(packed_path).unwrap();
@@ -842,7 +990,12 @@ fn test_pack_unpack() {
 
         let unpacked_path = env::temp_dir().join(random::string(10));
         let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
-        unpack_directory(packed_path, unpacked_path, decs[i].clone()).unwrap();
+        unpack_directory(
+            packed_path,
+            unpacked_path,
+            DirDecoder::new(decs[i]).unwrap(),
+        )
+        .unwrap();
         fs::remove_dir_all(unpacked_path).unwrap();
     }
     fs::remove_dir_all(_src_dir_path).unwrap();

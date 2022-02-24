@@ -110,7 +110,8 @@ Avalanche node daemon that provisions and manages the software on the remote mac
 
 ```bash
 avalanched-aws run
-avalanched-aws backup
+avalanched-aws upload-backup
+avalanched-aws download-backup
 ```
 
 ### Example: set up custom network on AWS

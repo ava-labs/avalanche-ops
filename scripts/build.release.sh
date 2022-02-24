@@ -15,4 +15,6 @@ cargo build \
 
 ./target/release/avalanche-ops-nodes-aws --help
 ./target/release/avalanched-aws --help
+./target/release/avalanched-aws upload-backup --help
+./target/release/avalanched-aws download-backup --help
 ./target/release/dev-machine --help

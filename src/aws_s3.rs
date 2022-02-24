@@ -279,7 +279,7 @@ impl Manager {
     }
 
     /// Writes an object to a S3 bucket.
-    pub async fn put_object(&self, bucket_name: &str, file_path: &str, s3_key: &str) -> Result<()> {
+    pub async fn put_object(&self, file_path: &str, bucket_name: &str, s3_key: &str) -> Result<()> {
         if !Path::new(file_path).exists() {
             return Err(Other {
                 message: format!("file path {} does not exist", file_path),

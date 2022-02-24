@@ -20,7 +20,8 @@ use avalanche_ops::{
 
 const APP_NAME: &str = "avalanched-aws";
 const SUBCOMMAND_RUN: &str = "run";
-const SUBCOMMAND_BACKUP: &str = "backup";
+const SUBCOMMAND_UPLOAD_BACKUP: &str = "upload-backup";
+const SUBCOMMAND_DOWNLOAD_BACKUP: &str = "download-backup";
 
 // TODO: support download mainnet database from s3
 fn create_run_command() -> Command<'static> {
@@ -41,9 +42,19 @@ fn create_run_command() -> Command<'static> {
 }
 
 // TODO: make this periodic
-fn create_backup_command() -> Command<'static> {
-    Command::new(SUBCOMMAND_BACKUP)
-        .about("Back ups local data to remote storage")
+fn create_upload_backup_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_UPLOAD_BACKUP)
+        .about("Uploads the local data directory to remote storage")
+        .arg(
+            Arg::new("REGION")
+                .long("region")
+                .short('r')
+                .help("Sets the AWS region")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+                .default_value("us-west-2"),
+        )
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -56,32 +67,27 @@ fn create_backup_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("ARCHIVE_METHOD")
-                .long("archive-method")
+            Arg::new("ARCHIVE_COMPRESSION_METHOD")
+                .long("archive-compression-method")
                 .short('c')
-                .help("Sets the archive method")
+                .help("Sets the archive and compression method")
                 .required(true)
                 .takes_value(true)
-                .possible_value("tar")
-                .possible_value("zip")
                 .allow_invalid_utf8(false)
-                .default_value("tar"),
+                .possible_value(compress::DirEncoder::ZipZstd(1).id())
+                .possible_value(compress::DirEncoder::ZipZstd(2).id())
+                .possible_value(compress::DirEncoder::ZipZstd(3).id())
+                .possible_value(compress::DirEncoder::TarZstd(1).id())
+                .possible_value(compress::DirEncoder::TarZstd(2).id())
+                .possible_value(compress::DirEncoder::TarZstd(3).id())
+                .possible_value(compress::DirEncoder::ZipGzip.id())
+                .possible_value(compress::DirEncoder::TarGzip.id())
+                .default_value(compress::DirEncoder::TarGzip.id()),
         )
         .arg(
-            Arg::new("COMPRESSION_METHOD")
-                .long("compression-method")
-                .short('c')
-                .help("Sets the compression method")
-                .required(false)
-                .takes_value(true)
-                .possible_value("zstd")
-                .allow_invalid_utf8(false)
-                .default_value("zstd"),
-        )
-        .arg(
-            Arg::new("SOURCE_DB_DIR")
-                .long("source-db-dir")
-                .short('s')
+            Arg::new("PACK_DIR")
+                .long("pack-dir")
+                .short('p')
                 .help("Sets the source directory path to compress/archive")
                 .required(true)
                 .takes_value(true)
@@ -107,12 +113,83 @@ fn create_backup_command() -> Command<'static> {
         )
 }
 
+fn create_download_backup_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_DOWNLOAD_BACKUP)
+        .about("Downloads compressed/archived backup file from remote storage")
+        .arg(
+            Arg::new("REGION")
+                .long("region")
+                .short('r')
+                .help("Sets the AWS region")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+                .default_value("us-west-2"),
+        )
+        .arg(
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
+                .required(false)
+                .takes_value(true)
+                .possible_value("debug")
+                .possible_value("info")
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("DECOMPRESSION_UNARCHIVE_METHOD")
+                .long("decompression-unarchive-method")
+                .short('c')
+                .help("Sets the decompression and unarchive method")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+                .possible_value(compress::DirDecoder::ZipZstd.id())
+                .possible_value(compress::DirDecoder::TarZstd.id())
+                .possible_value(compress::DirDecoder::ZipGzip.id())
+                .possible_value(compress::DirDecoder::TarGzip.id())
+                .default_value(compress::DirDecoder::TarGzip.id()),
+        )
+        .arg(
+            Arg::new("S3_BUCKET")
+                .long("s3-bucket")
+                .short('b')
+                .help("Sets the S3 bucket name to upload to")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("S3_KEY")
+                .long("s3-key")
+                .short('k')
+                .help("Sets the S3 key name for uploading")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("UNPACK_DIR")
+                .long("unpack-dir")
+                .short('u')
+                .help("Sets the destition db directory path to unpack")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+}
+
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not change node ID)
 fn main() {
     let matches = Command::new(APP_NAME)
         .about("Avalanche agent (daemon) on AWS")
-        .subcommands(vec![create_run_command(), create_backup_command()])
+        .subcommands(vec![
+            create_run_command(),
+            create_upload_backup_command(),
+            create_download_backup_command(),
+        ])
         .get_matches();
 
     match matches.subcommand() {
@@ -120,14 +197,28 @@ fn main() {
             execute_run(sub_matches.value_of("LOG_LEVEL").unwrap_or("info")).unwrap();
         }
 
-        Some((SUBCOMMAND_BACKUP, sub_matches)) => {
-            execute_backup(
+        Some((SUBCOMMAND_UPLOAD_BACKUP, sub_matches)) => {
+            execute_upload_backup(
+                sub_matches.value_of("REGION").unwrap_or("us-west-2"),
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("ARCHIVE_METHOD").unwrap_or("tar"),
-                sub_matches.value_of("COMPRESSION_METHOD").unwrap_or("zstd"),
-                sub_matches.value_of("SOURCE_DB_DIR").unwrap(),
+                sub_matches.value_of("ARCHIVE_COMPRESSION_METHOD").unwrap(),
+                sub_matches.value_of("PACK_DIR").unwrap(),
                 sub_matches.value_of("S3_BUCKET").unwrap(),
                 sub_matches.value_of("S3_KEY").unwrap(),
+            )
+            .unwrap();
+        }
+
+        Some((SUBCOMMAND_DOWNLOAD_BACKUP, sub_matches)) => {
+            execute_download_backup(
+                sub_matches.value_of("REGION").unwrap_or("us-west-2"),
+                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                sub_matches
+                    .value_of("DECOMPRESSION_UNARCHIVE_METHOD")
+                    .unwrap(),
+                sub_matches.value_of("S3_BUCKET").unwrap(),
+                sub_matches.value_of("S3_KEY").unwrap(),
+                sub_matches.value_of("UNPACK_DIR").unwrap(),
             )
             .unwrap();
         }
@@ -161,7 +252,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: loading AWS config");
-    let shared_config = rt.block_on(aws::load_config(Some(reg))).unwrap();
+    let shared_config = rt.block_on(aws::load_config(Some(reg.clone()))).unwrap();
 
     let ec2_manager = aws_ec2::Manager::new(&shared_config);
     let kms_manager = aws_kms::Manager::new(&shared_config);
@@ -353,8 +444,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
         rt.block_on(
             s3_manager.put_object(
-                &s3_bucket_name,
                 &tmp_encrypted_path,
+                &s3_bucket_name,
                 format!(
                     "{}/{}.key.zstd.seal_aes_256.encrypted",
                     aws_s3::KeyPath::PkiKeyDir(id.clone()).encode(),
@@ -445,7 +536,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         };
         let tmp_path = random::tmp_path(10, Some(".yaml")).unwrap();
         node_info.sync(tmp_path.clone()).unwrap();
-        rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
+        rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
             .unwrap();
 
         thread::sleep(Duration::from_secs(30));
@@ -518,8 +609,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: upload the new genesis file, to be shared with beacon/non-beacon nodes");
         rt.block_on(s3_manager.put_object(
-            &s3_bucket_name,
             &genesis_path,
+            &s3_bucket_name,
             &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
         ))
         .unwrap();
@@ -716,7 +807,7 @@ WantedBy=multi-user.target",
             };
             let tmp_path = random::tmp_path(10, Some(".yaml")).unwrap();
             node_info.sync(tmp_path.clone()).unwrap();
-            rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
+            rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
                 .unwrap();
         }
 
@@ -732,12 +823,13 @@ WantedBy=multi-user.target",
             };
             let tmp_path = random::tmp_path(10, Some(".yaml")).unwrap();
             node_info.sync(tmp_path.clone()).unwrap();
-            rt.block_on(s3_manager.put_object(&s3_bucket_name, &tmp_path, &s3_key))
+            rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
                 .unwrap();
         }
 
-        // e.g., "--source-db-dir /avalanche-data/network-9999/v1.4.5"
-        println!("/usr/local/bin/avalanched backup --archive-method tar --compression-method zstd --s3-bucket {} --s3-key {}/backup.tar.zstd --source-db-dir /avalanche-data", &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
+        // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"
+        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method .tar.gz --pack-dir /avalanche-data --s3-bucket {} --s3-key {}/backup.tar.zstd", reg.clone(), &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
+        println!("/usr/local/bin/avalanched download-backup --region {} --decompression-unarchive-method .tar.gz --s3-bucket {} --s3-key {}/backup.tar.zstd --unpack-dir /tmp", reg, &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
         thread::sleep(Duration::from_secs(60));
     }
 }
@@ -795,11 +887,11 @@ fn extract_filename(p: &str) -> String {
     String::from(file_stemp.to_str().unwrap())
 }
 
-fn execute_backup(
+fn execute_upload_backup(
+    reg: &str,
     log_level: &str,
-    archive_method: &str,
-    compression_method: &str,
-    src_db_dir: &str,
+    archive_compression_method: &str,
+    pack_dir: &str,
     s3_bucket: &str,
     s3_key: &str,
 ) -> io::Result<()> {
@@ -808,65 +900,75 @@ fn execute_backup(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    match archive_method {
-        "tar" => {}
-        "zip" => {}
-        _ => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("unsupported archive_method {}", archive_method),
-            ));
-        }
-    }
-    match compression_method {
-        "zstd" => {}
-        _ => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("unsupported compression_method {}", compression_method),
-            ));
-        }
-    }
+    let rt = Runtime::new().unwrap();
+
+    // let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
+    // info!("fetched region {}", reg);
+    // let instance_id = rt.block_on(aws_ec2::fetch_instance_id()).unwrap();
+    // info!("fetched instance ID {}", instance_id);
+
+    info!("STEP: loading AWS config");
+    let shared_config = rt
+        .block_on(aws::load_config(Some(reg.to_string())))
+        .unwrap();
+    let s3_manager = aws_s3::Manager::new(&shared_config);
+
+    let enc = compress::DirEncoder::new(archive_compression_method)?;
+    info!("STEP: backup {} with {}", pack_dir, enc.to_string());
+    let output_path = format!("{}.{}", random::tmp_path(10, None).unwrap(), enc.ext());
+    compress::pack_directory(pack_dir, &output_path, enc)?;
+
+    info!("STEP: upload output {} to S3", output_path);
+    rt.block_on(s3_manager.put_object(&output_path, s3_bucket, s3_key))
+        .unwrap();
+
+    info!("'avalanched upload-backup' all success!");
+    Ok(())
+}
+
+fn execute_download_backup(
+    reg: &str,
+    log_level: &str,
+    decompression_unarchive_method: &str,
+    s3_bucket: &str,
+    s3_key: &str,
+    unpack_dir: &str,
+) -> io::Result<()> {
+    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
+    );
 
     let rt = Runtime::new().unwrap();
 
-    let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
-    info!("fetched region {}", reg);
+    // let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
+    // info!("fetched region {}", reg);
+    // let instance_id = rt.block_on(aws_ec2::fetch_instance_id()).unwrap();
+    // info!("fetched instance ID {}", instance_id);
 
-    let instance_id = rt.block_on(aws_ec2::fetch_instance_id()).unwrap();
-    info!("fetched instance ID {}", instance_id);
-
-    thread::sleep(Duration::from_secs(1));
     info!("STEP: loading AWS config");
-    let shared_config = rt.block_on(aws::load_config(Some(reg))).unwrap();
+    let shared_config = rt
+        .block_on(aws::load_config(Some(reg.to_string())))
+        .unwrap();
     let s3_manager = aws_s3::Manager::new(&shared_config);
 
-    thread::sleep(Duration::from_secs(1));
+    let dec = compress::DirDecoder::new(decompression_unarchive_method)?;
+    let output_path = random::tmp_path(10, Some(dec.ext())).unwrap();
     info!(
-        "STEP: backup {} with compression {} and archive {}",
-        src_db_dir, compression_method, archive_method
+        "STEP: downloading from S3 {} {} to {}",
+        s3_bucket, s3_key, output_path
     );
-    let output_path = format!(
-        "{}.{}.{}",
-        random::tmp_path(10, None).unwrap(),
-        archive_method,
-        compression_method
-    );
-    match archive_method {
-        "tar" => {
-            compress::pack_directory(src_db_dir, &output_path, compress::DirEncoder::TarZstd(3))?;
-        }
-        "zip" => {
-            compress::pack_directory(src_db_dir, &output_path, compress::DirEncoder::ZipZstd(3))?;
-        }
-        _ => {}
-    }
-
-    thread::sleep(Duration::from_secs(1));
-    info!("STEP: upload output {} to S3", output_path);
-    rt.block_on(s3_manager.put_object(s3_bucket, &output_path, s3_key))
+    rt.block_on(s3_manager.get_object(s3_bucket, s3_key, &output_path))
         .unwrap();
 
-    info!("'avalanched backup' all success!");
+    info!(
+        "STEP: unpack backup {} to {} with {}",
+        output_path,
+        unpack_dir,
+        dec.to_string()
+    );
+    compress::unpack_directory(&output_path, unpack_dir, dec)?;
+
+    info!("'avalanched download-backup' all success!");
     Ok(())
 }
