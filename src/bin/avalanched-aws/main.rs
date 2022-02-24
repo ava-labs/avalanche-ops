@@ -465,10 +465,14 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let mut aws_resources = spec.aws_resources.unwrap();
         if aws_resources.s3_bucket_db_backup.is_some() {
             thread::sleep(Duration::from_secs(1));
-            info!("STEP: downloading the latest database backup from S3");
+            info!("STEP: downloading database backup from S3");
 
             let s3_bucket_db_backup = aws_resources.s3_bucket_db_backup.clone().unwrap();
             if aws_resources.s3_key_db_backup.is_none() {
+                info!(
+                    "s3 key is not specified, querying '{}' for latest files",
+                    s3_bucket_db_backup
+                );
                 // list to find the latest key
                 // in the descending order of "last_modified" timestamps
                 let pfx = format!("{}/", spec.avalanchego_config.network_id);
