@@ -819,7 +819,7 @@ WantedBy=multi-user.target",
         }
 
         // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"
-        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {} --s3-bucket {} --s3-key {}/backup.{}", 
+        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {} --s3-bucket {} --s3-key {}/backup{}", 
             reg.clone(),
             compress::DirEncoder::TarGzip.id(),
             spec.avalanchego_config.db_dir.clone().unwrap(),
@@ -827,7 +827,7 @@ WantedBy=multi-user.target",
             aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
             compress::DirEncoder::TarGzip.ext(),
         );
-        println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup.{} --unpack-dir /tmp/avalanche-data",
+        println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir /tmp/avalanche-data",
             reg,
             compress::DirDecoder::TarGzip.id(),
             &s3_bucket_name,
