@@ -11,10 +11,9 @@ use aws_sdk_kms::{
         ScheduleKeyDeletionErrorKind,
     },
     model::{DataKeySpec, EncryptionAlgorithmSpec, Tag},
-    types::SdkError,
+    types::{Blob, SdkError},
     Client,
 };
-use aws_smithy_types::Blob;
 use log::{info, warn};
 
 use crate::{
