@@ -420,6 +420,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         .clone()
         .staking_tls_cert_file
         .unwrap();
+
+    // TODO: reuse TLS certs for static node IDs
     let tls_cert_exists = Path::new(&tls_cert_path).exists();
     if !tls_key_exists || !tls_cert_exists {
         thread::sleep(Duration::from_secs(1));
@@ -497,7 +499,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             ))
             .unwrap();
 
-            let dec = compress::DirDecoder::new_from_ext(&s3_key_db_backup).unwrap();
+            let dec = compress::DirDecoder::new_from_file_name(&s3_key_db_backup).unwrap();
             compress::unpack_directory(
                 &tmp_db_backup_compressed_path,
                 &spec.avalanchego_config.db_dir.clone().unwrap(),
@@ -919,7 +921,7 @@ fn execute_upload_backup(
 
     let enc = compress::DirEncoder::new(archive_compression_method)?;
     info!("STEP: backup {} with {}", pack_dir, enc.to_string());
-    let output_path = format!("{}.{}", random::tmp_path(10, None).unwrap(), enc.ext());
+    let output_path = random::tmp_path(10, Some(enc.ext())).unwrap();
     compress::pack_directory(pack_dir, &output_path, enc)?;
 
     info!("STEP: upload output {} to S3", output_path);

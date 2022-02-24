@@ -74,6 +74,13 @@ impl Encoder {
             }
         }
     }
+    pub fn suffix(&self) -> &str {
+        match self {
+            Encoder::Zstd(_) => "zstd",
+            Encoder::ZstdBase58(_) => "zstd.base58",
+            Encoder::Gzip => "gz",
+        }
+    }
     pub fn ext(&self) -> &str {
         match self {
             Encoder::Zstd(_) => ".zstd",
@@ -382,6 +389,14 @@ impl DirEncoder {
             }
         }
     }
+    pub fn suffix(&self) -> &str {
+        match self {
+            DirEncoder::ZipZstd(_) => "zip.zstd",
+            DirEncoder::TarZstd(_) => "tar.zstd",
+            DirEncoder::ZipGzip => "zip.gz",
+            DirEncoder::TarGzip => "tar.gz",
+        }
+    }
     pub fn ext(&self) -> &str {
         match self {
             DirEncoder::ZipZstd(_) => ".zip.zstd",
@@ -435,20 +450,28 @@ impl DirDecoder {
             }
         }
     }
-    pub fn new_from_ext(ext: &str) -> io::Result<Self> {
-        if ext.ends_with(DirDecoder::ZipZstd.ext()) {
+    pub fn new_from_file_name(name: &str) -> io::Result<Self> {
+        if name.ends_with(DirDecoder::ZipZstd.suffix()) {
             Ok(DirDecoder::ZipZstd)
-        } else if ext.ends_with(DirDecoder::TarZstd.ext()) {
+        } else if name.ends_with(DirDecoder::TarZstd.suffix()) {
             Ok(DirDecoder::TarZstd)
-        } else if ext.ends_with(DirDecoder::ZipGzip.ext()) {
+        } else if name.ends_with(DirDecoder::ZipGzip.suffix()) {
             Ok(DirDecoder::ZipGzip)
-        } else if ext.ends_with(DirDecoder::TarGzip.ext()) {
+        } else if name.ends_with(DirDecoder::TarGzip.suffix()) {
             Ok(DirDecoder::TarGzip)
         } else {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("unknown ext {}", ext),
+                format!("unknown suffix {}", name),
             ));
+        }
+    }
+    pub fn suffix(&self) -> &str {
+        match self {
+            DirDecoder::ZipZstd => "zip.zstd",
+            DirDecoder::TarZstd => "tar.zstd",
+            DirDecoder::ZipGzip => "zip.gz",
+            DirDecoder::TarGzip => "tar.gz",
         }
     }
     pub fn ext(&self) -> &str {
