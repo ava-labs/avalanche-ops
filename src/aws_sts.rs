@@ -1,4 +1,4 @@
-use aws_sdk_sts::{Client, SdkError};
+use aws_sdk_sts::{types::SdkError, Client};
 use log::info;
 use serde::{Deserialize, Serialize};
 

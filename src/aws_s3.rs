@@ -7,7 +7,8 @@ use aws_sdk_s3::{
         ObjectCannedAcl, ObjectIdentifier, PublicAccessBlockConfiguration, ServerSideEncryption,
         ServerSideEncryptionByDefault, ServerSideEncryptionConfiguration, ServerSideEncryptionRule,
     },
-    ByteStream, Client, SdkError,
+    types::{ByteStream, SdkError},
+    Client,
 };
 use log::{debug, info, warn};
 use tokio::{fs::File, io::AsyncWriteExt};

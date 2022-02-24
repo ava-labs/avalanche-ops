@@ -9,7 +9,8 @@ use aws_sdk_cloudwatchlogs::{
     error::{
         CreateLogGroupError, CreateLogGroupErrorKind, DeleteLogGroupError, DeleteLogGroupErrorKind,
     },
-    Client, SdkError,
+    types::SdkError,
+    Client,
 };
 use log::{info, warn};
 use serde::{Deserialize, Serialize};

@@ -6,7 +6,8 @@ use std::{
 use aws_sdk_cloudformation::{
     error::{DeleteStackError, DescribeStacksError},
     model::{Capability, OnFailure, Output, Parameter, StackStatus, Tag},
-    Client, SdkError,
+    types::SdkError,
+    Client,
 };
 use log::{info, warn};
 

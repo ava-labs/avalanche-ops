@@ -3,7 +3,8 @@ use std::{fs::File, io::prelude::*, path::Path, time::Duration};
 use aws_sdk_ec2::{
     error::DeleteKeyPairError,
     model::{Filter, Instance, InstanceState, InstanceStateName, Tag},
-    Client, SdkError,
+    types::SdkError,
+    Client,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use hyper::{Body, Method, Request};
