@@ -314,6 +314,20 @@ impl Spec {
             }
             None => {}
         }
+        if self.aws_resources.is_some() {
+            let aws_resources = self.aws_resources.clone().unwrap();
+            if aws_resources.s3_bucket_db_backup.is_some()
+                && aws_resources.s3_key_db_backup.is_none()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "{} missing corresponding key",
+                        aws_resources.s3_bucket_db_backup.unwrap()
+                    ),
+                ));
+            }
+        }
 
         if self.machine.non_beacon_nodes < MIN_MACHINE_NON_BEACON_NODES {
             return Err(Error::new(

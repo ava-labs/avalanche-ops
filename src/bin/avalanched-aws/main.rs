@@ -462,40 +462,21 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     info!("loaded node ID from cert: {}", node_id);
 
     if spec.aws_resources.is_some() {
-        let mut aws_resources = spec.aws_resources.unwrap();
+        let aws_resources = spec.aws_resources.unwrap();
         if aws_resources.s3_bucket_db_backup.is_some() {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: downloading database backup from S3");
 
             let s3_bucket_db_backup = aws_resources.s3_bucket_db_backup.clone().unwrap();
-            if aws_resources.s3_key_db_backup.is_none() {
-                info!(
-                    "s3 key is not specified, querying '{}' for latest files",
-                    s3_bucket_db_backup
-                );
-                // list to find the latest key
-                // in the descending order of "last_modified" timestamps
-                let pfx = format!("{}/", spec.avalanchego_config.network_id);
-                let objects = rt
-                    .block_on(s3_manager.list_objects(&s3_bucket_db_backup, Some(pfx)))
-                    .unwrap();
-                if objects.is_empty() {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!(
-                            "failed to find any s3 object in {} for backups",
-                            s3_bucket_db_backup
-                        ),
-                    ));
-                }
-                let key = objects[0].key().unwrap();
-                aws_resources.s3_key_db_backup = Some(key.to_string());
-            }
-
             let s3_key_db_backup = aws_resources.s3_key_db_backup.unwrap();
-            info!("downloading db backup '{}'", s3_key_db_backup);
+            info!(
+                "downloading db backup '{}' from bucket {}",
+                s3_key_db_backup, s3_bucket_db_backup
+            );
 
-            let tmp_db_backup_compressed_path = random::tmp_path(15, Some(".db")).unwrap();
+            let dec = compress::DirDecoder::new_from_file_name(&s3_key_db_backup).unwrap();
+
+            let tmp_db_backup_compressed_path = random::tmp_path(15, Some(dec.ext())).unwrap();
             rt.block_on(s3_manager.get_object(
                 &s3_key_db_backup,
                 &s3_key_db_backup,
@@ -503,7 +484,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             ))
             .unwrap();
 
-            let dec = compress::DirDecoder::new_from_file_name(&s3_key_db_backup).unwrap();
             compress::unpack_directory(
                 &tmp_db_backup_compressed_path,
                 &spec.avalanchego_config.db_dir.clone().unwrap(),
