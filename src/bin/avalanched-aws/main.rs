@@ -465,27 +465,26 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let aws_resources = spec.aws_resources.unwrap();
         if aws_resources.s3_bucket_db_backup.is_some() {
             thread::sleep(Duration::from_secs(1));
-            info!("STEP: downloading database backup from S3");
-
             let s3_bucket_db_backup = aws_resources.s3_bucket_db_backup.clone().unwrap();
             let s3_key_db_backup = aws_resources.s3_key_db_backup.unwrap();
+            let dec = compress::DirDecoder::new_from_file_name(&s3_key_db_backup).unwrap();
             info!(
-                "downloading db backup '{}' from bucket {}",
-                s3_key_db_backup, s3_bucket_db_backup
+                "STEP: downloading db backup 's3://{}/{}' [{}]",
+                s3_bucket_db_backup,
+                s3_key_db_backup,
+                dec.id()
             );
 
-            let dec = compress::DirDecoder::new_from_file_name(&s3_key_db_backup).unwrap();
-
-            let tmp_db_backup_compressed_path = random::tmp_path(15, Some(dec.ext())).unwrap();
+            let download_path = random::tmp_path(15, Some(dec.ext())).unwrap();
             rt.block_on(s3_manager.get_object(
                 &s3_key_db_backup,
                 &s3_key_db_backup,
-                &tmp_db_backup_compressed_path,
+                &download_path,
             ))
             .unwrap();
 
             compress::unpack_directory(
-                &tmp_db_backup_compressed_path,
+                &download_path,
                 &spec.avalanchego_config.db_dir.clone().unwrap(),
                 dec,
             )

@@ -1172,6 +1172,17 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         }
         println!();
 
+        // TODO: if downloading mainnet db, it will take a while
+        // TODO: better handle this
+        println!();
+        let require_db_download = aws_resources.s3_bucket_db_backup.is_some();
+        if !require_db_download {
+            warn!(
+                "non-beacon nodes are downloading db backups, can take awhile, check back later..."
+            );
+            return Ok(());
+        }
+
         // wait for non-beacon nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
         let target_nodes = spec.machine.non_beacon_nodes;
