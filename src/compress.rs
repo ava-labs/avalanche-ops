@@ -18,6 +18,7 @@ use zstd;
 
 use crate::{humanize, random};
 
+#[derive(Eq, PartialEq, Clone)]
 /// Represents the compression encoding algorithm.
 pub enum Encoder {
     /// Encodes with "Zstandard" compression.
@@ -31,13 +32,22 @@ pub enum Encoder {
 impl Encoder {
     pub fn id(&self) -> String {
         match self {
-            Encoder::Zstd(level) => format!("zstd (level {})", level),
-            Encoder::ZstdBase58(level) => format!("zstd-base58 (level {})", level),
+            Encoder::Zstd(level) => format!("zstd with level {}", level),
+            Encoder::ZstdBase58(level) => format!("zstd-base58 with level {}", level),
             Encoder::Gzip => String::from("gzip"),
+        }
+    }
+
+    pub fn ext(&self) -> &str {
+        match self {
+            Encoder::Zstd(_) => ".zstd",
+            Encoder::ZstdBase58(_) => ".zstd.base58",
+            Encoder::Gzip => ".gz",
         }
     }
 }
 
+#[derive(Clone)]
 /// Represents the compression decoding algorithm.
 pub enum Decoder {
     Zstd,
@@ -56,11 +66,11 @@ impl Decoder {
 }
 
 pub fn pack(d: &[u8], enc: Encoder) -> io::Result<Vec<u8>> {
-    let size = d.len() as f64;
+    let size_before = d.len() as f64;
     info!(
-        "packing with {} (current size {})",
+        "packing (algorithm {}, current size {})",
         enc.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
     );
 
     let packed = match enc {
@@ -77,22 +87,22 @@ pub fn pack(d: &[u8], enc: Encoder) -> io::Result<Vec<u8>> {
         }
     };
 
-    let size = packed.len() as f64;
+    let size_after = packed.len() as f64;
     info!(
-        "packed to {} (new size {})",
+        "packed to {} (before {}, new size {})",
         enc.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
+        humanize::bytes(size_after),
     );
-
     Ok(packed)
 }
 
 pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
-    let size = d.len() as f64;
+    let size_before = d.len() as f64;
     info!(
-        "unpacking with {} (current size {})",
+        "unpacking (algorithm {}, current size {})",
         dec.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
     );
 
     let unpacked = match dec {
@@ -117,13 +127,13 @@ pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
         }
     };
 
-    let size = unpacked.len() as f64;
+    let size_after = unpacked.len() as f64;
     info!(
-        "unpacked to {} (new size {})",
+        "unpacked to {} (before {}, new size {})",
         dec.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
+        humanize::bytes(size_after),
     );
-
     Ok(unpacked)
 }
 
@@ -132,13 +142,13 @@ pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
 /// it truncates (overwrites).
 pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()> {
     let meta = fs::metadata(src_path)?;
-    let size = meta.len() as f64;
+    let size_before = meta.len() as f64;
     info!(
-        "packing file '{}' to '{}' with {} (current size {})",
+        "packing file '{}' to '{}' (algorithm {}, current size {})",
         src_path,
         dst_path,
         enc.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
     );
 
     match enc {
@@ -177,15 +187,15 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
     };
 
     let meta = fs::metadata(dst_path)?;
-    let size = meta.len() as f64;
+    let size_after = meta.len() as f64;
     info!(
-        "packed file '{}' to '{}' with {} (new size {})",
+        "packed file '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_path,
         dst_path,
         enc.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
+        humanize::bytes(size_after),
     );
-
     Ok(())
 }
 
@@ -194,13 +204,13 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
 /// it truncates (overwrites).
 pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<()> {
     let meta = fs::metadata(src_path)?;
-    let size = meta.len() as f64;
+    let size_before = meta.len() as f64;
     info!(
-        "unpacking file '{}' to '{}' with {} (current size {})",
+        "unpacking file '{}' to '{}' (algorithm {}, current size {})",
         src_path,
         dst_path,
         dec.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
     );
 
     match dec {
@@ -240,106 +250,19 @@ pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<(
     };
 
     let meta = fs::metadata(dst_path)?;
-    let size = meta.len() as f64;
+    let size_after = meta.len() as f64;
     info!(
-        "unpacked file '{}' to '{}' with {} (new size {})",
+        "unpacked file '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_path,
         dst_path,
         dec.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
+        humanize::bytes(size_after),
     );
-
     Ok(())
 }
 
-#[test]
-fn test_pack_zstd() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
-    let contents = random::string(10);
-    let contents_compressed = pack(&contents.as_bytes(), Encoder::Zstd(3)).unwrap();
-    let contents_compressed_decompressed = unpack(&contents_compressed, Decoder::Zstd).unwrap();
-    assert_eq!(contents.as_bytes(), contents_compressed_decompressed);
-    let contents_compressed_base58 = pack(&contents.as_bytes(), Encoder::ZstdBase58(3)).unwrap();
-    let contents_compressed_base58_decompressed =
-        unpack(&contents_compressed_base58, Decoder::ZstdBase58).unwrap();
-    assert_eq!(contents.as_bytes(), contents_compressed_base58_decompressed);
-    info!(
-        "contents_compressed_base58: {}",
-        String::from_utf8(contents_compressed_base58).unwrap()
-    );
-
-    let contents = random::string(4000);
-    let mut f1 = tempfile::NamedTempFile::new().unwrap();
-    let ret = f1.write_all(contents.as_bytes());
-    assert!(ret.is_ok());
-    let p1 = f1.path().to_str().unwrap();
-
-    let tmp_dir = tempfile::tempdir().unwrap();
-
-    let p2 = tmp_dir.path().join(random::string(20));
-    let p2 = p2.as_os_str().to_str().unwrap();
-
-    let p3 = tmp_dir.path().join(random::string(20));
-    let p3 = p3.as_os_str().to_str().unwrap();
-
-    let ret = pack_file(p1, p2, Encoder::Zstd(3));
-    assert!(ret.is_ok());
-
-    // compressed file should be smaller
-    let meta1 = fs::metadata(p1).unwrap();
-    let meta2 = fs::metadata(p2).unwrap();
-    assert!(meta1.len() > meta2.len());
-
-    let ret = unpack_file(p2, p3, Decoder::Zstd);
-    assert!(ret.is_ok());
-
-    // decompressed file should be same as original
-    let contents1 = fs::read(p1).unwrap();
-    let contents3 = fs::read(p3).unwrap();
-    assert_eq!(contents1, contents3);
-}
-
-#[test]
-fn test_pack_gzip() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
-    let contents = random::string(10);
-    let contents_compressed = pack(&contents.as_bytes(), Encoder::Gzip).unwrap();
-    let contents_compressed_decompressed = unpack(&contents_compressed, Decoder::Gzip).unwrap();
-    assert_eq!(contents.as_bytes(), contents_compressed_decompressed);
-
-    let contents = random::string(4000);
-    let mut f1 = tempfile::NamedTempFile::new().unwrap();
-    let ret = f1.write_all(contents.as_bytes());
-    assert!(ret.is_ok());
-    let p1 = f1.path().to_str().unwrap();
-
-    let tmp_dir = tempfile::tempdir().unwrap();
-
-    let p2 = tmp_dir.path().join(random::string(20));
-    let p2 = p2.as_os_str().to_str().unwrap();
-
-    let p3 = tmp_dir.path().join(random::string(20));
-    let p3 = p3.as_os_str().to_str().unwrap();
-
-    let ret = pack_file(p1, p2, Encoder::Gzip);
-    assert!(ret.is_ok());
-
-    // compressed file should be smaller
-    let meta1 = fs::metadata(p1).unwrap();
-    let meta2 = fs::metadata(p2).unwrap();
-    assert!(meta1.len() > meta2.len());
-
-    let ret = unpack_file(p2, p3, Decoder::Gzip);
-    assert!(ret.is_ok());
-
-    // decompressed file should be same as original
-    let contents1 = fs::read(p1).unwrap();
-    let contents3 = fs::read(p3).unwrap();
-    assert_eq!(contents1, contents3);
-}
-
+#[derive(Clone)]
 /// Represents the compression encoding algorithm for directory.
 pub enum DirEncoder {
     /// Archives the directory with "zip" and
@@ -375,6 +298,7 @@ impl DirEncoder {
     }
 }
 
+#[derive(Clone)]
 /// Represents the compression decoding algorithm for directory.
 pub enum DirDecoder {
     ZipZstd,
@@ -414,27 +338,28 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
             ));
         }
     };
-    let size = size as f64;
+    let size_before = size as f64;
     info!(
-        "packing directory from '{}' to '{}' with {} (original size {})",
+        "packing directory from '{}' to '{}' (algorithm {}, current size {})",
         src_dir_path,
         dst_path,
         enc.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
     );
 
+    let archive_path = random::tmp_path(10, None)?;
+    let archive_file = File::create(&archive_path)?;
     match enc {
         DirEncoder::ZipZstd(lvl) => {
-            let options = FileOptions::default()
-                .compression_method(zip::CompressionMethod::Stored)
-                .unix_permissions(0o755);
-            let zip_path = random::tmp_path(10, Some(".zip"))?;
-            let zip_file = File::create(&zip_path)?;
-            let mut zip = ZipWriter::new(zip_file);
+            let mut zip = ZipWriter::new(archive_file);
 
             let mut buffer = Vec::new();
             let src_dir = Path::new(src_dir_path);
             let src_dir_full_path = absolute_path(src_dir)?;
+
+            let options = FileOptions::default()
+                .compression_method(zip::CompressionMethod::Stored)
+                .unix_permissions(0o755);
             for entry in WalkDir::new(src_dir_path).into_iter() {
                 let entry = match entry {
                     Ok(v) => v,
@@ -478,15 +403,11 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 zip.write_all(&*buffer)?;
                 buffer.clear();
             }
-
             zip.finish()?;
-            info!("wrote zip file {}", zip_path);
-            pack_file(&zip_path, dst_path, Encoder::Zstd(lvl))?;
+            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
         }
         DirEncoder::TarZstd(lvl) => {
-            let tar_path = random::tmp_path(10, Some(".tar"))?;
-            let tar_file = File::create(&tar_path)?;
-            let mut tar = Builder::new(tar_file);
+            let mut tar = Builder::new(archive_file);
             let src_dir = Path::new(src_dir_path);
             let src_dir_full_path = absolute_path(src_dir)?;
             for entry in WalkDir::new(src_dir_path).into_iter() {
@@ -522,21 +443,18 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
             }
-
-            info!("wrote tar file {}", tar_path);
-            pack_file(&tar_path, dst_path, Encoder::Zstd(lvl))?;
+            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
         }
         DirEncoder::ZipGzip => {
-            let options = FileOptions::default()
-                .compression_method(zip::CompressionMethod::Stored)
-                .unix_permissions(0o755);
-            let zip_path = random::tmp_path(10, Some(".zip"))?;
-            let zip_file = File::create(&zip_path)?;
-            let mut zip = ZipWriter::new(zip_file);
+            let mut zip = ZipWriter::new(archive_file);
 
             let mut buffer = Vec::new();
             let src_dir = Path::new(src_dir_path);
             let src_dir_full_path = absolute_path(src_dir)?;
+
+            let options = FileOptions::default()
+                .compression_method(zip::CompressionMethod::Stored)
+                .unix_permissions(0o755);
             for entry in WalkDir::new(src_dir_path).into_iter() {
                 let entry = match entry {
                     Ok(v) => v,
@@ -580,10 +498,8 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 zip.write_all(&*buffer)?;
                 buffer.clear();
             }
-
             zip.finish()?;
-            info!("wrote zip file {}", zip_path);
-            pack_file(&zip_path, dst_path, Encoder::Gzip)?;
+            pack_file(&archive_path, dst_path, Encoder::Gzip)?;
         }
         DirEncoder::TarGzip => {
             // e.g.,
@@ -592,9 +508,7 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
             // -z to enable "--gzip" mode
             // -v to enable verbose mode
             // -f to specify the file
-            let tar_path = random::tmp_path(10, Some(".tar"))?;
-            let tar_file = File::create(&tar_path)?;
-            let mut tar = Builder::new(tar_file);
+            let mut tar = Builder::new(archive_file);
             let src_dir = Path::new(src_dir_path);
             let src_dir_full_path = absolute_path(src_dir)?;
             for entry in WalkDir::new(src_dir_path).into_iter() {
@@ -630,20 +544,19 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
             }
-
-            info!("wrote tar file {}", tar_path);
-            pack_file(&tar_path, dst_path, Encoder::Gzip)?;
+            pack_file(&archive_path, dst_path, Encoder::Gzip)?;
         }
     }
 
     let meta = fs::metadata(dst_path)?;
-    let size = meta.len() as f64;
+    let size_after = meta.len() as f64;
     info!(
-        "packed directory from '{}' to '{}' with {} (new size {})",
+        "packed directory from '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_dir_path,
         dst_path,
         enc.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
+        humanize::bytes(size_after),
     );
     Ok(())
 }
@@ -656,34 +569,32 @@ pub fn unpack_directory(
     dec: DirDecoder,
 ) -> io::Result<()> {
     let meta = fs::metadata(src_archive_path)?;
-    let size = meta.len() as f64;
+    let size_before = meta.len() as f64;
     info!(
-        "unpacking directory from '{}' to '{}' with {} (original size {})",
+        "unpacking directory from '{}' to '{}' (algorithm {}, current size {})",
         src_archive_path,
         dst_dir_path,
         dec.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
     );
     fs::create_dir_all(dst_dir_path)?;
     let _dst_dir_path = Path::new(dst_dir_path);
 
+    let unpacked_path = random::tmp_path(10, None)?;
     match dec {
         DirDecoder::ZipZstd => {
-            let zip_path = random::tmp_path(10, Some(".zip"))?;
-            unpack_file(src_archive_path, &zip_path, Decoder::Zstd)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Zstd)?;
 
-            let zip_file = File::open(&zip_path)?;
+            let zip_file = File::open(&unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
                 Err(e) => {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        format!("failed ZipArchive::new on {} ({})", zip_path, e),
+                        format!("failed ZipArchive::new on {} ({})", unpacked_path, e),
                     ));
                 }
             };
-            info!("opened zip file {}", zip_path);
-
             for i in 0..zip.len() {
                 let mut f = match zip.by_index(i) {
                     Ok(v) => v,
@@ -719,14 +630,11 @@ pub fn unpack_directory(
             }
         }
         DirDecoder::TarZstd => {
-            let tar_path = random::tmp_path(10, Some(".tar"))?;
-            unpack_file(src_archive_path, &tar_path, Decoder::Zstd)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Zstd)?;
 
-            let tar_file = File::open(&tar_path)?;
+            let tar_file = File::open(&unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
-            info!("opened tar file {}", tar_path);
-
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
@@ -743,21 +651,18 @@ pub fn unpack_directory(
             }
         }
         DirDecoder::ZipGzip => {
-            let zip_path = random::tmp_path(10, Some(".zip"))?;
-            unpack_file(src_archive_path, &zip_path, Decoder::Gzip)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Gzip)?;
 
-            let zip_file = File::open(&zip_path)?;
+            let zip_file = File::open(&unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
                 Err(e) => {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        format!("failed ZipArchive::new on {} ({})", zip_path, e),
+                        format!("failed ZipArchive::new on {} ({})", unpacked_path, e),
                     ));
                 }
             };
-            info!("opened zip file {}", zip_path);
-
             for i in 0..zip.len() {
                 let mut f = match zip.by_index(i) {
                     Ok(v) => v,
@@ -793,14 +698,11 @@ pub fn unpack_directory(
             }
         }
         DirDecoder::TarGzip => {
-            let tar_path = random::tmp_path(10, Some(".tar"))?;
-            unpack_file(src_archive_path, &tar_path, Decoder::Gzip)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Gzip)?;
 
-            let tar_file = File::open(&tar_path)?;
+            let tar_file = File::open(&unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
-            info!("opened tar file {}", tar_path);
-
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
@@ -831,13 +733,14 @@ pub fn unpack_directory(
             ));
         }
     };
-    let size = size as f64;
+    let size_after = size as f64;
     info!(
-        "unpacked directory from '{}' to '{}' with {} (new size {})",
+        "unpacked directory from '{}' to '{}' (algorithm {}, before {}, new size {})",
         src_archive_path,
         dst_dir_path,
         dec.id(),
-        humanize::bytes(size),
+        humanize::bytes(size_before),
+        humanize::bytes(size_after),
     );
     Ok(())
 }
@@ -860,75 +763,87 @@ fn absolute_path(path: impl AsRef<Path>) -> io::Result<PathBuf> {
 }
 
 #[test]
-fn test_pack_directory_zip_zstd() {
+fn test_pack_unpack() {
     let _ = env_logger::builder().is_test(true).try_init();
+
+    let contents = random::string(1024 * 10);
+
+    let encs = vec![Encoder::Zstd(3), Encoder::ZstdBase58(3), Encoder::Gzip];
+    let decs = vec![Decoder::Zstd, Decoder::ZstdBase58, Decoder::Gzip];
+    for (i, _) in encs.iter().enumerate() {
+        let packed = pack(&contents.as_bytes(), encs[i].clone()).unwrap();
+
+        // compressed should be smaller
+        if encs[i] != Encoder::ZstdBase58(3) {
+            assert!(contents.len() > packed.len());
+        }
+
+        let unpacked = unpack(&packed, decs[i].clone()).unwrap();
+
+        // decompressed should be same as original
+        assert_eq!(contents.as_bytes(), unpacked);
+    }
+
+    let mut orig_file = tempfile::NamedTempFile::new().unwrap();
+    orig_file.write_all(contents.as_bytes()).unwrap();
+    let orig_path = orig_file.path().to_str().unwrap();
+    let orig_meta = fs::metadata(orig_path).unwrap();
+    for (i, _) in encs.iter().enumerate() {
+        let packed = tempfile::NamedTempFile::new().unwrap();
+        let packed_path = packed.path().to_str().unwrap();
+        pack_file(&orig_path, packed_path, encs[i].clone()).unwrap();
+
+        // compressed file should be smaller
+        if encs[i] != Encoder::ZstdBase58(3) {
+            let meta_packed = fs::metadata(packed_path).unwrap();
+            assert!(orig_meta.len() > meta_packed.len());
+        }
+
+        let unpacked = tempfile::NamedTempFile::new().unwrap();
+        let unpacked_path = unpacked.path().to_str().unwrap();
+        unpack_file(packed_path, unpacked_path, decs[i].clone()).unwrap();
+
+        // decompressed file should be same as original
+        let contents_unpacked = fs::read(unpacked_path).unwrap();
+        assert_eq!(contents.as_bytes(), contents_unpacked);
+    }
 
     let src_dir_path = env::temp_dir().join(random::string(10));
     fs::create_dir_all(&src_dir_path).unwrap();
-    info!("created {}", src_dir_path.display());
-    for _i in 0..10 {
+    let _src_dir_path = src_dir_path.to_str().unwrap();
+    for _i in 0..20 {
         let p = src_dir_path.join(random::string(10));
         let mut f = File::create(&p).unwrap();
-        f.write_all(random::string(1000).as_bytes()).unwrap();
+        f.write_all(contents.as_bytes()).unwrap();
     }
-    info!("wrote to {}", src_dir_path.display());
+    info!("created {}", src_dir_path.display());
+    let src_dir_size = fs_extra::dir::get_size(src_dir_path.clone()).unwrap();
 
-    let zip_path = random::tmp_path(10, Some(".zip")).unwrap();
-    pack_directory(
-        src_dir_path.as_os_str().to_str().unwrap(),
-        &zip_path,
+    let encs = vec![
         DirEncoder::ZipZstd(3),
-    )
-    .unwrap();
-    let dst_dir_path2 = env::temp_dir().join(random::string(10));
-    let dst_dir_path2 = dst_dir_path2.as_os_str().to_str().unwrap();
-    unpack_directory(&zip_path, dst_dir_path2, DirDecoder::ZipZstd).unwrap();
-
-    let tar_path = random::tmp_path(10, Some(".tar")).unwrap();
-    pack_directory(
-        src_dir_path.as_os_str().to_str().unwrap(),
-        &tar_path,
         DirEncoder::TarZstd(3),
-    )
-    .unwrap();
-    let dst_dir_path2 = env::temp_dir().join(random::string(10));
-    let dst_dir_path2 = dst_dir_path2.as_os_str().to_str().unwrap();
-    unpack_directory(&tar_path, dst_dir_path2, DirDecoder::TarZstd).unwrap();
-}
-
-#[test]
-fn test_pack_directory_zip_gzip() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
-    let src_dir_path = env::temp_dir().join(random::string(10));
-    fs::create_dir_all(&src_dir_path).unwrap();
-    info!("created {}", src_dir_path.display());
-    for _i in 0..10 {
-        let p = src_dir_path.join(random::string(10));
-        let mut f = File::create(&p).unwrap();
-        f.write_all(random::string(1000).as_bytes()).unwrap();
-    }
-    info!("wrote to {}", src_dir_path.display());
-
-    let zip_path = random::tmp_path(10, Some(".zip")).unwrap();
-    pack_directory(
-        src_dir_path.as_os_str().to_str().unwrap(),
-        &zip_path,
-        DirEncoder::ZipZstd(3),
-    )
-    .unwrap();
-    let dst_dir_path2 = env::temp_dir().join(random::string(10));
-    let dst_dir_path2 = dst_dir_path2.as_os_str().to_str().unwrap();
-    unpack_directory(&zip_path, dst_dir_path2, DirDecoder::ZipZstd).unwrap();
-
-    let tar_path = random::tmp_path(10, Some(".tar")).unwrap();
-    pack_directory(
-        src_dir_path.as_os_str().to_str().unwrap(),
-        &tar_path,
+        DirEncoder::ZipGzip,
         DirEncoder::TarGzip,
-    )
-    .unwrap();
-    let dst_dir_path2 = env::temp_dir().join(random::string(10));
-    let dst_dir_path2 = dst_dir_path2.as_os_str().to_str().unwrap();
-    unpack_directory(&tar_path, dst_dir_path2, DirDecoder::TarGzip).unwrap();
+    ];
+    let decs = vec![
+        DirDecoder::ZipZstd,
+        DirDecoder::TarZstd,
+        DirDecoder::ZipGzip,
+        DirDecoder::TarGzip,
+    ];
+    for (i, _) in encs.iter().enumerate() {
+        let packed = tempfile::NamedTempFile::new().unwrap();
+        let packed_path = packed.path().to_str().unwrap();
+        pack_directory(_src_dir_path, packed_path, encs[i].clone()).unwrap();
+
+        // archived/compressed file should be smaller
+        let meta_packed = fs::metadata(packed_path).unwrap();
+        assert!(src_dir_size > meta_packed.len());
+
+        let unpacked_path = env::temp_dir().join(random::string(10));
+        let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
+        unpack_directory(packed_path, unpacked_path, decs[i].clone()).unwrap();
+        fs::remove_dir_all(unpacked_path).unwrap();
+    }
+    fs::remove_dir_all(_src_dir_path).unwrap();
 }
