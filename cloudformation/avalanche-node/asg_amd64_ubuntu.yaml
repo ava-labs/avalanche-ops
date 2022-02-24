@@ -240,6 +240,9 @@ Resources:
           Value: 60
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
+  # TODO: support "HTTPS"
+  # https://aws.amazon.com/premiumsupport/knowledge-center/associate-acm-certificate-alb-nlb/
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html#cfn-elasticloadbalancingv2-listener-certificates
   NLBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Condition: EmptyNlbTargetGroupArn
