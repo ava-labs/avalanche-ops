@@ -180,10 +180,17 @@ fn create_delete_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("DELETE_ALL")
-                .long("delete-all")
-                .short('a')
-                .help("Enables delete all mode (e.g., delete S3 bucket)")
+            Arg::new("DELETE_CLOUDWATCH_LOG_GROUP")
+                .long("delete-cloudwatch-log-group")
+                .help("Enables to delete CloudWatch log group")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("DELETE_S3_OBJECTS")
+                .long("delete-s3-objects")
+                .help("Enables to delete S3 objects")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),
@@ -250,7 +257,9 @@ fn main() {
             execute_delete(
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.is_present("DELETE_ALL"),
+                sub_matches.is_present("DELETE_CLOUDWATCH_LOG_GROUP"),
+                sub_matches.is_present("DELETE_S3_OBJECTS"),
+                sub_matches.is_present("DELETE_S3_BUCKET"),
                 sub_matches.is_present("SKIP_PROMPT"),
             )
             .unwrap();
@@ -1288,7 +1297,9 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 fn execute_delete(
     log_level: &str,
     spec_file_path: &str,
-    delete_all: bool,
+    delete_cloudwatch_log_group: bool,
+    delete_s3_objects: bool,
+    delete_s3_bucket: bool,
     skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -1569,7 +1580,7 @@ fn execute_delete(
         .unwrap();
     }
 
-    if delete_all {
+    if delete_cloudwatch_log_group {
         // deletes the one auto-created by nodes
         thread::sleep(Duration::from_secs(2));
         execute!(
@@ -1579,21 +1590,32 @@ fn execute_delete(
             ResetColor
         )?;
         rt.block_on(cw_manager.delete_log_group(&spec.id)).unwrap();
+    }
 
+    if delete_s3_objects {
         thread::sleep(Duration::from_secs(1));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete S3 bucket and all objects\n"),
+            Print("\n\n\nSTEP: delete S3 objects\n"),
             ResetColor
         )?;
         thread::sleep(Duration::from_secs(5));
-
         rt.block_on(s3_manager.delete_objects(&aws_resources.s3_bucket, None))
             .unwrap();
+    }
+
+    if delete_s3_bucket {
+        thread::sleep(Duration::from_secs(1));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete S3 bucket\n"),
+            ResetColor
+        )?;
+        thread::sleep(Duration::from_secs(5));
         rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
             .unwrap();
-
         // NOTE: do not delete db backups...
         if aws_resources.s3_bucket_db_backup.is_some() {
             info!(

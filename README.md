@@ -108,13 +108,6 @@ avalanche-ops-nodes-aws apply \
 # to clean up resources
 avalanche-ops-nodes-aws delete \
 --spec-file-path /tmp/test.yaml
-
-# specify "--delete-all" to delete auto-created S3 bucket,
-# CloudWatch log groups, etc.
-# otherwise, some resources won't be deleted
-avalanche-ops-nodes-aws delete \
---spec-file-path /tmp/test.yaml \
---delete-all
 ```
 
 ## `avalanched` on AWS
