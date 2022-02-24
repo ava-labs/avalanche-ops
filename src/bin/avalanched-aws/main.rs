@@ -138,8 +138,8 @@ fn create_download_backup_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("DECOMPRESSION_UNARCHIVE_METHOD")
-                .long("decompression-unarchive-method")
+            Arg::new("UNARCHIVE_DECOMPRESSION_METHOD")
+                .long("unarchive-decompression-method")
                 .short('c')
                 .help("Sets the decompression and unarchive method")
                 .required(true)
@@ -214,7 +214,7 @@ fn main() {
                 sub_matches.value_of("REGION").unwrap_or("us-west-2"),
                 sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
                 sub_matches
-                    .value_of("DECOMPRESSION_UNARCHIVE_METHOD")
+                    .value_of("UNARCHIVE_DECOMPRESSION_METHOD")
                     .unwrap(),
                 sub_matches.value_of("S3_BUCKET").unwrap(),
                 sub_matches.value_of("S3_KEY").unwrap(),
@@ -828,8 +828,8 @@ WantedBy=multi-user.target",
         }
 
         // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"
-        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method .tar.gz --pack-dir /avalanche-data --s3-bucket {} --s3-key {}/backup.tar.zstd", reg.clone(), &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
-        println!("/usr/local/bin/avalanched download-backup --region {} --decompression-unarchive-method .tar.gz --s3-bucket {} --s3-key {}/backup.tar.zstd --unpack-dir /tmp", reg, &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
+        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method tar-gzip --pack-dir /avalanche-data --s3-bucket {} --s3-key {}/backup.tar.zstd", reg.clone(), &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
+        println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method tar-gzip --s3-bucket {} --s3-key {}/backup.tar.zstd --unpack-dir /tmp", reg, &s3_bucket_name, aws_s3::KeyPath::BackupsDir(id.clone()).encode());
         thread::sleep(Duration::from_secs(60));
     }
 }
