@@ -23,6 +23,19 @@
 
 Distributed systems are full of subtle edge cases. The fact that such event or bug may only emerge under special circumstances warrants exhaustive test coverage beyond simple unit testing. Furthermore, the lack of tests slows down software release process, let alone long-term architectural changes. `avalanche-ops` aims to find vulnerabilities in Avalanche protocol by intentionally causing failures, and provides a reliable and faster way to validate the ﬁx. In addition, `avalanche-ops` implements some basic principles and best practices for operating Avalanche node in production.
 
+## TODOs
+
+- Document how to run `subnet-evm`
+- Support more static node ID (by reusing generated certs)
+- Support mainnet fork
+- Failure injection testing
+- Stress testing
+- Metrics collection
+- Support custom VMs
+- Support ARM
+- Support Raspberry Pi
+- Support key rotation
+
 ## Installation
 
 ```bash
@@ -193,16 +206,6 @@ To shut down the network, run `avalanche-ops-nodes-aws delete` command:
 ![demo-aws-27](./img/demo-aws-27.png)
 
 ![demo-aws-28](./img/demo-aws-28.png)
-
-## Roadmap
-
-- Failure injection testing
-- Stress testing
-- Metrics collection
-- Support custom VMs
-- Support ARM
-- Support Raspberry Pi
-- Support key rotation
 
 ## Other projects
 
