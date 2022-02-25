@@ -736,9 +736,9 @@ pub fn unpack_directory(
         humanize::bytes(size_before),
     );
     fs::create_dir_all(dst_dir_path)?;
-    let _dst_dir_path = Path::new(dst_dir_path);
+    let target_dir = Path::new(dst_dir_path);
 
-    let unpacked_path = _dst_dir_path.join(random::string(10));
+    let unpacked_path = target_dir.join(random::string(10));
     let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
     match dec {
         DirDecoder::ZipZstd => {
@@ -768,7 +768,7 @@ pub fn unpack_directory(
                     Some(p) => p.to_owned(),
                     None => continue,
                 };
-                let output_path = _dst_dir_path.join(output_path);
+                let output_path = target_dir.join(output_path);
 
                 let is_dir = (*f.name()).ends_with('/');
                 if is_dir {
@@ -797,7 +797,7 @@ pub fn unpack_directory(
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = _dst_dir_path.join(output_path);
+                let output_path = target_dir.join(output_path);
                 info!("extracting file {}", output_path.display());
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
@@ -836,7 +836,7 @@ pub fn unpack_directory(
                     Some(p) => p.to_owned(),
                     None => continue,
                 };
-                let output_path = _dst_dir_path.join(output_path);
+                let output_path = target_dir.join(output_path);
 
                 let is_dir = (*f.name()).ends_with('/');
                 if is_dir {
@@ -865,7 +865,7 @@ pub fn unpack_directory(
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = _dst_dir_path.join(output_path);
+                let output_path = target_dir.join(output_path);
                 info!("extracting file {}", output_path.display());
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
@@ -879,7 +879,10 @@ pub fn unpack_directory(
         }
     }
 
-    let size = match fs_extra::dir::get_size(_dst_dir_path) {
+    info!("removing unpacked file {} after unarchive", unpacked_path);
+    fs::remove_file(unpacked_path)?;
+
+    let size = match fs_extra::dir::get_size(target_dir) {
         Ok(v) => v,
         Err(e) => {
             return Err(Error::new(
@@ -887,7 +890,7 @@ pub fn unpack_directory(
                 format!(
                     "failed get_size {} for directory {}",
                     e,
-                    _dst_dir_path.display()
+                    target_dir.display()
                 ),
             ));
         }
