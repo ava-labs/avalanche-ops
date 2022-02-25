@@ -197,9 +197,9 @@ Check logs from nodes are being published:
 
 ![demo-aws-19](./img/demo-aws-19.png)
 
-Now that the network is ready, check the metrics and health URL (or access via public IPv4 address):
-
 ![demo-aws-20](./img/demo-aws-20.png)
+
+Now that the network is ready, check the metrics and health URL (or access via public IPv4 address):
 
 ![demo-aws-21](./img/demo-aws-21.png)
 
@@ -207,9 +207,9 @@ Now that the network is ready, check the metrics and health URL (or access via p
 
 ![demo-aws-23](./img/demo-aws-23.png)
 
-Now the custom network is ready! Check out the genesis file for pre-funded keys:
-
 ![demo-aws-24](./img/demo-aws-24.png)
+
+Now the custom network is ready! Check out the genesis file for pre-funded keys:
 
 ![demo-aws-25](./img/demo-aws-25.png)
 
