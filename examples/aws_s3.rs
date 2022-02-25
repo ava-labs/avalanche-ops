@@ -1,9 +1,10 @@
-use std::{io::Write, thread, time};
+use std::{fs, io::Write, thread, time};
 
 use log::info;
+use tokio::runtime::Runtime;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_s3, id, random};
+use avalanche_ops::{aws, aws_s3, id, random, time as atime};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -11,75 +12,76 @@ fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
-    macro_rules! ab {
-        ($e:expr) => {
-            tokio_test::block_on($e)
-        };
-    }
+    let rt = Runtime::new().unwrap();
 
+    println!();
+    println!();
+    println!();
     info!("creating AWS S3 resources!");
-
-    let ret = ab!(aws::load_config(None));
-    let shared_config = ret.unwrap();
+    let shared_config = rt.block_on(aws::load_config(None)).unwrap();
     let s3_manager = aws_s3::Manager::new(&shared_config);
 
-    let mut bucket_name = id::generate("test");
-    bucket_name.push_str("-bucket");
+    println!();
+    println!();
+    println!();
+    let bucket = format!("avalanche-ops-examples-s3-{}-{}", atime::get(6), id::sid(7));
+    rt.block_on(s3_manager.delete_bucket(&bucket)).unwrap(); // error should be ignored if it does not exist
 
-    // error should be ignored if it does not exist
-    let ret = ab!(s3_manager.delete_bucket(&bucket_name));
-    assert!(ret.is_ok());
-
+    println!();
+    println!();
+    println!();
     thread::sleep(time::Duration::from_secs(5));
+    rt.block_on(s3_manager.create_bucket(&bucket)).unwrap();
 
-    let ret = ab!(s3_manager.create_bucket(&bucket_name));
-    assert!(ret.is_ok());
+    println!();
+    println!();
+    println!();
+    thread::sleep(time::Duration::from_secs(3));
+    rt.block_on(s3_manager.create_bucket(&bucket)).unwrap();
 
-    thread::sleep(time::Duration::from_secs(5));
+    println!();
+    println!();
+    println!();
+    thread::sleep(time::Duration::from_secs(3));
+    let text = random::string(1000);
+    let mut upload_file = tempfile::NamedTempFile::new().unwrap();
+    upload_file.write_all(text.as_bytes()).unwrap();
+    let upload_path = upload_file.path().to_str().unwrap();
+    let s3_path = "sub-dir/aaa.txt";
+    rt.block_on(s3_manager.put_object(upload_path, &bucket, s3_path))
+        .unwrap();
 
-    // already exists so should just succeed with warnings
-    let ret = ab!(s3_manager.create_bucket(&bucket_name));
-    assert!(ret.is_ok());
-
-    let text = "Hello World!";
-    let mut f1 = tempfile::NamedTempFile::new().unwrap();
-    let ret = f1.write_all(text.as_bytes());
-    assert!(ret.is_ok());
-    let p1 = f1.path().to_str().unwrap();
-
-    let tmp_dir = tempfile::tempdir().unwrap();
-    let p2 = tmp_dir.path().join(random::string(10));
-    let p2 = p2.as_os_str().to_str().unwrap();
-
-    let ret = ab!(s3_manager.put_object(p1, &bucket_name, "directory/aaa.txt"));
-    assert!(ret.is_ok());
-    let ret = ab!(s3_manager.put_object(p1, &bucket_name, "directory/bbb.txt"));
-    assert!(ret.is_ok());
-
-    let ret = ab!(s3_manager.get_object(&bucket_name, "directory/aaa.txt", &p2));
-    match ret {
-        Ok(_) => {}
-        Err(e) => panic!("failed!!!! {}", e.message()),
-    }
-
-    let ret = ab!(s3_manager.list_objects(&bucket_name, Some(String::from("directory/"))));
-    let objects = ret.unwrap();
-    for o in objects {
-        info!(
-            "key {:?} (last modified {:?}, size {:?})",
-            o.key(),
-            o.last_modified(),
-            o.size()
-        );
-    }
-
-    thread::sleep(time::Duration::from_secs(5));
-
-    let ret = ab!(s3_manager.delete_objects(&bucket_name, None));
-    assert!(ret.is_ok());
-
+    println!();
+    println!();
+    println!();
     thread::sleep(time::Duration::from_secs(2));
+    let download_path = random::tmp_path(10, None).unwrap();
+    rt.block_on(s3_manager.get_object(&bucket, s3_path, &download_path))
+        .unwrap();
+    let download_contents = fs::read(download_path).unwrap();
+    assert_eq!(download_contents, text.as_bytes());
 
-    let ret = ab!(s3_manager.delete_bucket(&bucket_name));
-    assert!(ret.is_ok());
+    println!();
+    println!();
+    println!();
+    thread::sleep(time::Duration::from_secs(1));
+    let objects = rt
+        .block_on(s3_manager.list_objects(&bucket, Some(String::from("sub-dir/"))))
+        .unwrap();
+    for obj in objects.iter() {
+        info!("object: {}", obj.key().unwrap());
+    }
+
+    println!();
+    println!();
+    println!();
+    thread::sleep(time::Duration::from_secs(1));
+    rt.block_on(s3_manager.delete_objects(&bucket, None))
+        .unwrap();
+
+    println!();
+    println!();
+    println!();
+    thread::sleep(time::Duration::from_secs(2));
+    rt.block_on(s3_manager.delete_bucket(&bucket)).unwrap();
 }

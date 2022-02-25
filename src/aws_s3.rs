@@ -12,6 +12,7 @@ use aws_sdk_s3::{
 };
 use log::{debug, info, warn};
 use tokio::{fs::File, io::AsyncWriteExt};
+use tokio_stream::StreamExt;
 
 use crate::{
     errors::{
@@ -279,8 +280,13 @@ impl Manager {
         Ok(objects)
     }
 
-    /// Writes an object to a S3 bucket.
-    pub async fn put_object(&self, file_path: &str, bucket_name: &str, s3_key: &str) -> Result<()> {
+    /// Writes an object to a S3 bucket using stream.
+    ///
+    /// WARN: use stream! otherwise it can cause OOM -- don't do the following!
+    ///       "fs::read" reads all data onto memory
+    ///       ".body(ByteStream::from(contents))" passes the whole data to an API call
+    ///
+    pub async fn put_object(&self, file_path: &str, s3_bucket: &str, s3_key: &str) -> Result<()> {
         if !Path::new(file_path).exists() {
             return Err(Other {
                 message: format!("file path {} does not exist", file_path),
@@ -288,65 +294,48 @@ impl Manager {
             });
         }
 
-        // this will fail with
-        // "failed read_to_string stream did not contain valid UTF-8"
-        //
-        // tokio::io::AsyncReadExt
-        // let mut file = File::open(file_path).await.map_err(|e| Other {
-        //     message: format!("failed open {}", e),
-        //     is_retryable: false,
-        // })?;
-        // let mut contents = String::new();
-        // file.read_to_string(&mut contents)
-        //     .await
-        //     .map_err(|e| Other {
-        //         message: format!("failed read_to_string {}", e),
-        //         is_retryable: false,
-        //     })?;
-
-        let contents = match fs::read(file_path) {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(Other {
-                    message: format!("failed read {:?}", e),
-                    is_retryable: false,
-                });
-            }
-        };
-
+        let meta = fs::metadata(file_path).map_err(|e| Other {
+            message: format!("failed metadata {}", e),
+            is_retryable: false,
+        })?;
+        let size = meta.len() as f64;
         info!(
-            "writing '{}' to '{}/{}' (size {})",
+            "starting put_object '{}' (size {}) to 's3://{}/{}'",
             file_path,
-            bucket_name,
-            s3_key,
-            humanize::bytes(contents.len() as f64)
+            humanize::bytes(size),
+            s3_bucket,
+            s3_key
         );
-        let ret = self
-            .cli
+
+        let byte_stream = ByteStream::from_path(Path::new(file_path))
+            .await
+            .map_err(|e| Other {
+                message: format!("failed ByteStream::from_file {}", e),
+                is_retryable: false,
+            })?;
+        self.cli
             .put_object()
-            .bucket(bucket_name)
+            .bucket(s3_bucket)
             .key(s3_key)
-            .body(ByteStream::from(contents))
+            .body(byte_stream)
             .acl(ObjectCannedAcl::Private)
             .send()
-            .await;
-        match ret {
-            Ok(_) => {}
-            Err(e) => {
-                return Err(API {
-                    message: format!("failed put_object {:?}", e),
-                    is_retryable: is_error_retryable(&e),
-                });
-            }
-        };
-        info!("uploaded {} to S3 bucket '{}'", file_path, bucket_name);
+            .await
+            .map_err(|e| API {
+                message: format!("failed put_object {}", e),
+                is_retryable: is_error_retryable(&e),
+            })?;
 
         Ok(())
     }
 
-    /// Downloads an object from a S3 bucket.
-    /// TODO: make this stream, prevent OOM
-    pub async fn get_object(&self, bucket_name: &str, s3_key: &str, file_path: &str) -> Result<()> {
+    /// Downloads an object from a S3 bucket using stream.
+    ///
+    /// WARN: use stream! otherwise it can cause OOM -- don't do the following!
+    ///       "aws_smithy_http::byte_stream:ByteStream.collect" reads all the data into memory
+    ///       "File.write_all_buf(&mut bytes)" to write bytes
+    ///
+    pub async fn get_object(&self, s3_bucket: &str, s3_key: &str, file_path: &str) -> Result<()> {
         if Path::new(file_path).exists() {
             return Err(Other {
                 message: format!("file path {} already exists", file_path),
@@ -354,74 +343,55 @@ impl Manager {
             });
         }
 
-        let ret = self
+        let head_output = self
             .cli
             .head_object()
-            .bucket(bucket_name)
+            .bucket(s3_bucket)
             .key(s3_key)
             .send()
-            .await;
-        let output = match ret {
-            Ok(v) => v,
-            Err(e) => {
-                warn!("head_object failed {}", e);
-                return Err(API {
-                    message: format!("failed head_object {:?}", e),
-                    is_retryable: is_error_retryable(&e),
-                });
-            }
-        };
+            .await
+            .map_err(|e| API {
+                message: format!("failed head_object {}", e),
+                is_retryable: is_error_retryable(&e),
+            })?;
 
         info!(
-            "get_object '{}/{}' (content type '{}', size {}) to '{}'",
-            bucket_name,
+            "starting get_object 's3://{}/{}' (content type '{}', size {})",
+            s3_bucket,
             s3_key,
-            output.content_type().unwrap(),
-            humanize::bytes(output.content_length() as f64),
-            file_path,
+            head_output.content_type().unwrap(),
+            humanize::bytes(head_output.content_length() as f64),
         );
-        let ret = self
+        let mut output = self
             .cli
             .get_object()
-            .bucket(bucket_name)
+            .bucket(s3_bucket)
             .key(s3_key)
             .send()
-            .await;
-        let output = match ret {
-            Ok(v) => v,
-            Err(e) => {
-                warn!("get_object failed {}", e);
-                return Err(API {
-                    message: format!("failed get_object {:?}", e),
-                    is_retryable: is_error_retryable(&e),
-                });
-            }
-        };
+            .await
+            .map_err(|e| API {
+                message: format!("failed get_object {}", e),
+                is_retryable: is_error_retryable(&e),
+            })?;
 
-        info!("collect aggregated bytes");
-        let ret = output.body.collect().await;
-        let mut bytes = match ret {
-            Ok(v) => v,
-            Err(e) => {
-                warn!("get failed {}", e);
-                return Err(Other {
-                    message: format!("failed output.body.collect {:?}", e),
-                    is_retryable: false,
-                });
-            }
-        };
-
-        info!("write all bytes buffer to file");
+        // ref. https://docs.rs/tokio-stream/latest/tokio_stream/
         let mut file = File::create(file_path).await.map_err(|e| Other {
-            message: format!("failed create {}", e),
+            message: format!("failed File::create {}", e),
             is_retryable: false,
         })?;
-        file.write_all_buf(&mut bytes).await.map_err(|e| Other {
-            message: format!("failed write_all_buf {}", e),
+
+        info!("writing byte stream to file {}", file_path);
+        while let Some(bytes) = output.body.try_next().await.map_err(|e| API {
+            message: format!("failed ByteStream.try_next {}", e),
             is_retryable: false,
-        })?;
+        })? {
+            file.write(&bytes).await.map_err(|e| API {
+                message: format!("failed File.write {}", e),
+                is_retryable: false,
+            })?;
+        }
         file.flush().await.map_err(|e| Other {
-            message: format!("failed flush {}", e),
+            message: format!("failed File.flush {}", e),
             is_retryable: false,
         })?;
 

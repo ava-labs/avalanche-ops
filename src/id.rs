@@ -38,7 +38,7 @@ pub fn sid(n: usize) -> String {
     if n > 0 && id.len() > n {
         id.truncate(n);
     }
-    id
+    id.to_lowercase()
 }
 
 #[test]
