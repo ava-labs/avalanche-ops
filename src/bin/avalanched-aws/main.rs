@@ -49,8 +49,8 @@ fn create_upload_backup_command() -> Command<'static> {
             Arg::new("REGION")
                 .long("region")
                 .short('r')
-                .help("Sets the AWS region")
-                .required(false)
+                .help("Sets the AWS region for API calls/endpoints")
+                .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
                 .default_value("us-west-2"),
@@ -120,8 +120,8 @@ fn create_download_backup_command() -> Command<'static> {
             Arg::new("REGION")
                 .long("region")
                 .short('r')
-                .help("Sets the AWS region")
-                .required(false)
+                .help("Sets the AWS region for API calls/endpoints")
+                .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
                 .default_value("us-west-2"),

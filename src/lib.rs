@@ -150,6 +150,7 @@ impl Spec {
     /// and pre-funds them in the genesis file path, which is
     /// included in "InstallArtifacts.genesis_draft_file_path".
     pub fn default_aws(
+        region: &str,
         avalanched_bin: &str,
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
@@ -198,7 +199,7 @@ impl Spec {
             id,
 
             aws_resources: Some(aws::Resources {
-                region: String::from("us-west-2"),
+                region: String::from(region),
                 s3_bucket,
                 ..aws::Resources::default()
             }),
@@ -316,6 +317,17 @@ impl Spec {
         }
         if self.aws_resources.is_some() {
             let aws_resources = self.aws_resources.clone().unwrap();
+            if aws_resources.db_backup_s3_region.is_some()
+                && aws_resources.db_backup_s3_bucket.is_none()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "{} missing corresponding bucket",
+                        aws_resources.db_backup_s3_bucket.unwrap()
+                    ),
+                ));
+            }
             if aws_resources.db_backup_s3_bucket.is_some()
                 && aws_resources.db_backup_s3_key.is_none()
             {

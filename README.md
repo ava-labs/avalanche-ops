@@ -80,6 +80,7 @@ A single command to create a new Avalanche node from scratch and join any networ
 
 ```bash
 avalanche-ops-nodes-aws default-spec \
+--region us-west-2 \
 --install-artifacts-avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
 --install-artifacts-avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
 --install-artifacts-plugins-dir /tmp/avalanchego-v1.7.5/plugins \

@@ -45,6 +45,40 @@ fn create_default_spec_command() -> Command<'static> {
                 .default_value("info"),
         )
         .arg(
+            Arg::new("REGION")
+                .long("region")
+                .short('r')
+                .help("Sets the AWS region for API calls/endpoints")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+                .default_value("us-west-2"),
+        )
+        .arg(
+            Arg::new("DB_BACKUP_S3_REGION") 
+                .long("db-backup-s3-region")
+                .help("Sets S3 region for database backup download")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("DB_BACKUP_S3_BUCKET") 
+                .long("db-backup-s3-bucket")
+                .help("Sets S3 bucket for database backup download")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("DB_BACKUP_S3_KEY") 
+                .long("db-backup-s3-key")
+                .help("Sets S3 key for database backup download")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
                 .long("install-artifacts-avalanched-bin")
                 .short('d')
@@ -226,6 +260,19 @@ fn main() {
                     .value_of("LOG_LEVEL")
                     .unwrap_or("info")
                     .to_string(),
+                region: sub_matches.value_of("REGION").unwrap().to_string(),
+                db_backup_s3_region: sub_matches
+                    .value_of("DB_BACKUP_S3_REGION")
+                    .unwrap_or("")
+                    .to_string(),
+                db_backup_s3_bucket: sub_matches
+                    .value_of("DB_BACKUP_S3_BUCKET")
+                    .unwrap_or("")
+                    .to_string(),
+                db_backup_s3_key: sub_matches
+                    .value_of("DB_BACKUP_S3_KEY")
+                    .unwrap_or("")
+                    .to_string(),
                 install_artifacts_avalanched_bin: sub_matches
                     .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
                     .unwrap()
@@ -279,6 +326,10 @@ fn main() {
 
 struct DefaultSpecOption {
     log_level: String,
+    region: String,
+    db_backup_s3_region: String,
+    db_backup_s3_bucket: String,
+    db_backup_s3_key: String,
     install_artifacts_avalanched_bin: String,
     install_artifacts_avalanche_bin: String,
     install_artifacts_plugins_dir: String,
@@ -310,13 +361,21 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         avalanchego_config.genesis = None;
     }
 
-    let spec = avalanche_ops::Spec::default_aws(
+    let mut spec = avalanche_ops::Spec::default_aws(
+        opt.region.as_str(),
         opt.install_artifacts_avalanched_bin.as_str(),
         opt.install_artifacts_avalanche_bin.as_str(),
         _install_artifacts_plugins_dir,
         avalanchego_config,
         opt.keys_to_generate,
     );
+
+    let mut aws_resources = spec.aws_resources.unwrap();
+    aws_resources.db_backup_s3_region = Some(opt.db_backup_s3_region);
+    aws_resources.db_backup_s3_bucket = Some(opt.db_backup_s3_bucket);
+    aws_resources.db_backup_s3_key = Some(opt.db_backup_s3_key);
+    spec.aws_resources = Some(aws_resources);
+
     spec.validate()?;
     spec.sync(&opt.spec_file_path)?;
 
