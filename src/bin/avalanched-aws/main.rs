@@ -267,6 +267,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let mut s3_bucket_name: String = String::new();
     let mut cloudwatch_config_file_path: String = String::new();
     let mut avalanche_bin: String = String::new();
+    let mut avalanche_data_volume_path: String = String::new();
     for c in tags {
         let k = c.key().unwrap();
         let v = c.value().unwrap();
@@ -290,6 +291,9 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             "AVALANCHE_BIN" => {
                 avalanche_bin = v.to_string();
             }
+            "AVALANCHE_DATA_VOLUME_PATH" => {
+                avalanche_data_volume_path = v.to_string();
+            }
             _ => {}
         }
     }
@@ -310,6 +314,9 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     }
     if avalanche_bin.is_empty() {
         panic!("'AVALANCHE_BIN' tag not found")
+    }
+    if avalanche_data_volume_path.is_empty() {
+        panic!("'AVALANCHE_DATA_VOLUME_PATH' tag not found")
     }
 
     let envelope = envelope::Envelope::new(Some(kms_manager), Some(kms_cmk_arn));
@@ -391,6 +398,13 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             }),
         }),
     });
+    let mut cw_metrics = aws_cloudwatch::Metrics {
+        namespace: id.clone(),
+        ..Default::default()
+    };
+    cw_metrics.metrics_collected.disk =
+        Some(aws_cloudwatch::Disk::new(vec![avalanche_data_volume_path]));
+    cloudwatch_config.metrics = Some(cw_metrics);
     cloudwatch_config
         .sync(&cloudwatch_config_file_path)
         .unwrap();

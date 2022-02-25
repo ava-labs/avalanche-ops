@@ -490,6 +490,9 @@ Resources:
         - Key: AVALANCHE_BIN
           PropagateAtLaunch: true
           Value: /usr/local/bin/avalanche
+        - Key: AVALANCHE_DATA_VOLUME_PATH
+          PropagateAtLaunch: true
+          Value: /avalanche-data
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       MixedInstancesPolicy:
         InstancesDistribution:

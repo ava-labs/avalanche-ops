@@ -1177,6 +1177,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         println!();
         let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
         if require_db_download {
+            spec.aws_resources = Some(aws_resources);
+            spec.sync(spec_file_path)?;
             warn!(
                 "non-beacon nodes are downloading db backups, can take awhile, check back later..."
             );

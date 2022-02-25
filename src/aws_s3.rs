@@ -345,6 +345,7 @@ impl Manager {
     }
 
     /// Downloads an object from a S3 bucket.
+    /// TODO: make this stream, prevent OOM
     pub async fn get_object(&self, bucket_name: &str, s3_key: &str, file_path: &str) -> Result<()> {
         if Path::new(file_path).exists() {
             return Err(Other {
@@ -372,14 +373,13 @@ impl Manager {
         };
 
         info!(
-            "downloading '{}/{}' (content type '{}', size {}) to '{}'",
+            "get_object '{}/{}' (content type '{}', size {}) to '{}'",
             bucket_name,
             s3_key,
             output.content_type().unwrap(),
             humanize::bytes(output.content_length() as f64),
             file_path,
         );
-
         let ret = self
             .cli
             .get_object()
@@ -398,6 +398,7 @@ impl Manager {
             }
         };
 
+        info!("collect aggregated bytes");
         let ret = output.body.collect().await;
         let mut bytes = match ret {
             Ok(v) => v,
@@ -410,6 +411,7 @@ impl Manager {
             }
         };
 
+        info!("write all bytes buffer to file");
         let mut file = File::create(file_path).await.map_err(|e| Other {
             message: format!("failed create {}", e),
             is_retryable: false,
