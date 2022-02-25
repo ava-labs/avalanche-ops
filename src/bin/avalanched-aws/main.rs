@@ -499,7 +499,13 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 .unwrap();
             let db_backup_s3_manager = aws_s3::Manager::new(&db_backup_s3_config);
 
-            let download_path = random::tmp_path(15, Some(dec.ext())).unwrap();
+            // do not store in "tmp", will run out of space
+            let download_path = format!(
+                "{}/{}{}",
+                spec.avalanchego_config.db_dir,
+                random::string(10),
+                dec.ext()
+            );
             rt.block_on(db_backup_s3_manager.get_object(
                 &db_backup_s3_bucket,
                 &db_backup_s3_key,
@@ -509,6 +515,9 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             compress::unpack_directory(&download_path, &spec.avalanchego_config.db_dir, dec)
                 .unwrap();
+
+            info!("removing downloaded file {} after unpack", download_path);
+            fs::remove_file(download_path).unwrap();
 
             // TODO: override network id to support network fork
         } else {
