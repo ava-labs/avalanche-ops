@@ -381,12 +381,10 @@ impl Manager {
         })?;
 
         info!("writing byte stream to file {}", file_path);
-        while let Some(bytes) = output.body.try_next().await.map_err(|e| API {
-            message: format!("failed ByteStream.try_next {}", e),
-            is_retryable: false,
-        })? {
-            file.write(&bytes).await.map_err(|e| API {
-                message: format!("failed File.write {}", e),
+        while let Some(bytes) = output.body.next().await {
+            let d = bytes.unwrap();
+            file.write_all(&d).await.map_err(|e| API {
+                message: format!("failed File.write_all {}", e),
                 is_retryable: false,
             })?;
         }
