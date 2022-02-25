@@ -477,7 +477,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             let download_path = random::tmp_path(15, Some(dec.ext())).unwrap();
             rt.block_on(s3_manager.get_object(
-                &s3_key_db_backup,
+                &s3_bucket_db_backup,
                 &s3_key_db_backup,
                 &download_path,
             ))
