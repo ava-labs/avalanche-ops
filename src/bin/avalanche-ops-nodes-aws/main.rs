@@ -371,9 +371,15 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     );
 
     let mut aws_resources = spec.aws_resources.unwrap();
-    aws_resources.db_backup_s3_region = Some(opt.db_backup_s3_region);
-    aws_resources.db_backup_s3_bucket = Some(opt.db_backup_s3_bucket);
-    aws_resources.db_backup_s3_key = Some(opt.db_backup_s3_key);
+    if !opt.db_backup_s3_region.is_empty() {
+        aws_resources.db_backup_s3_region = Some(opt.db_backup_s3_region);
+    }
+    if !opt.db_backup_s3_bucket.is_empty() {
+        aws_resources.db_backup_s3_bucket = Some(opt.db_backup_s3_bucket);
+    }
+    if !opt.db_backup_s3_key.is_empty() {
+        aws_resources.db_backup_s3_key = Some(opt.db_backup_s3_key);
+    }
     spec.aws_resources = Some(aws_resources);
 
     spec.validate()?;
