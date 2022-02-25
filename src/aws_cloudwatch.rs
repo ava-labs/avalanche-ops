@@ -233,11 +233,11 @@ pub struct Metrics {
 impl Default for Metrics {
     fn default() -> Self {
         let mut m = HashMap::new();
-        m.insert("InstanceId".to_string(), "${aws:InstanceId}".to_string());
-        m.insert(
-            "InstanceType".to_string(),
-            "${aws:InstanceType}".to_string(),
-        );
+        // m.insert("InstanceId".to_string(), "${aws:InstanceId}".to_string());
+        // m.insert(
+        //     "InstanceType".to_string(),
+        //     "${aws:InstanceType}".to_string(),
+        // );
         m.insert(
             "AutoScalingGroupName".to_string(),
             "${aws:AutoScalingGroupName}".to_string(),
