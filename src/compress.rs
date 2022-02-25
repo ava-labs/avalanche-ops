@@ -206,6 +206,20 @@ pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
 /// Compresses the contents in "src_path" using compression algorithms
 /// and saves it to "dst_path". Note that even if "dst_path" already exists,
 /// it truncates (overwrites).
+///
+/// Make sure to use stream -- reading the entire file at once may cause OOM!
+///
+///  let d = fs::read(src_path)?;
+///  let compressed = zstd::stream::encode_all(Cursor::new(&d[..]), lvl)?;
+///
+///  let d = fs::read(src_path)?;
+///  let decoded = zstd::stream::decode_all(Cursor::new(&d[..]))?;
+///
+///  let mut dec = zstd::Decoder::new(BufReader::new(f1))?;
+///  let mut decoded = Vec::new();
+///  dec.read_to_end(&mut decoded)?;
+///  f2.write_all(&decoded[..])?;
+///
 pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()> {
     let meta = fs::metadata(src_path)?;
     let size_before = meta.len() as f64;
@@ -228,10 +242,6 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
             io::copy(&mut enc, &mut f2)?;
         }
         Encoder::Zstd(lvl) => {
-            // reading the entire file at once may cause OOM...
-            // let d = fs::read(src_path)?;
-            // let compressed = zstd::stream::encode_all(Cursor::new(&d[..]), lvl)?;
-
             let mut f1 = File::open(src_path)?;
             let f2 = File::create(dst_path)?;
 
@@ -266,6 +276,20 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
 /// Decompresses the contents in "src_path" using compression algorithms
 /// and saves it to "dst_path". Note that even if "dst_path" already exists,
 /// it truncates (overwrites).
+///
+/// Make sure to use stream -- reading the entire file at once may cause OOM!
+///
+///  let d = fs::read(src_path)?;
+///  let compressed = zstd::stream::encode_all(Cursor::new(&d[..]), lvl)?;
+///
+///  let d = fs::read(src_path)?;
+///  let decoded = zstd::stream::decode_all(Cursor::new(&d[..]))?;
+///
+///  let mut dec = zstd::Decoder::new(BufReader::new(f1))?;
+///  let mut decoded = Vec::new();
+///  dec.read_to_end(&mut decoded)?;
+///  f2.write_all(&decoded[..])?;
+///
 pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<()> {
     let meta = fs::metadata(src_path)?;
     let size_before = meta.len() as f64;
@@ -288,16 +312,6 @@ pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<(
             io::copy(&mut dec, &mut f2)?;
         }
         Decoder::Zstd => {
-            // reading the entire file at once may cause OOM...
-            //
-            // let d = fs::read(src_path)?;
-            // let decoded = zstd::stream::decode_all(Cursor::new(&d[..]))?;
-            //
-            // let mut dec = zstd::Decoder::new(BufReader::new(f1))?;
-            // let mut decoded = Vec::new();
-            // dec.read_to_end(&mut decoded)?;
-            // f2.write_all(&decoded[..])?;
-
             let f1 = File::open(src_path)?;
             let mut f2 = File::create(dst_path)?;
 
