@@ -738,12 +738,13 @@ pub fn unpack_directory(
     fs::create_dir_all(dst_dir_path)?;
     let _dst_dir_path = Path::new(dst_dir_path);
 
-    let unpacked_path = random::tmp_path(10, None)?;
+    let unpacked_path = _dst_dir_path.join(random::string(10));
+    let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
     match dec {
         DirDecoder::ZipZstd => {
-            unpack_file(src_archive_path, &unpacked_path, Decoder::Zstd)?;
+            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
 
-            let zip_file = File::open(&unpacked_path)?;
+            let zip_file = File::open(unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
                 Err(e) => {
@@ -788,9 +789,9 @@ pub fn unpack_directory(
             }
         }
         DirDecoder::TarZstd => {
-            unpack_file(src_archive_path, &unpacked_path, Decoder::Zstd)?;
+            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
 
-            let tar_file = File::open(&unpacked_path)?;
+            let tar_file = File::open(unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
             for file in entries {
@@ -809,9 +810,9 @@ pub fn unpack_directory(
             }
         }
         DirDecoder::ZipGzip => {
-            unpack_file(src_archive_path, &unpacked_path, Decoder::Gzip)?;
+            unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
 
-            let zip_file = File::open(&unpacked_path)?;
+            let zip_file = File::open(unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
                 Err(e) => {
@@ -856,9 +857,9 @@ pub fn unpack_directory(
             }
         }
         DirDecoder::TarGzip => {
-            unpack_file(src_archive_path, &unpacked_path, Decoder::Gzip)?;
+            unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
 
-            let tar_file = File::open(&unpacked_path)?;
+            let tar_file = File::open(unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
             for file in entries {
