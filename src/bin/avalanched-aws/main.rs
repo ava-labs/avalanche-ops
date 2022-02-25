@@ -463,22 +463,25 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     if spec.aws_resources.is_some() {
         let aws_resources = spec.aws_resources.unwrap();
-        if aws_resources.db_backup_s3_bucket.is_some() {
+        if aws_resources.db_backup_s3_region.is_some()
+            && aws_resources.db_backup_s3_bucket.is_some()
+            && aws_resources.db_backup_s3_key.is_some()
+        {
             thread::sleep(Duration::from_secs(1));
+            let db_backup_s3_region = aws_resources.db_backup_s3_region.clone().unwrap();
             let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
             let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
             let dec = compress::DirDecoder::new_from_file_name(&db_backup_s3_key).unwrap();
             info!(
-                "STEP: downloading database backup file 's3://{}/{}' [{}]",
+                "STEP: downloading database backup file 's3://{}/{}' [{}] in region {}",
                 db_backup_s3_bucket,
                 db_backup_s3_key,
-                dec.id()
+                dec.id(),
+                db_backup_s3_region,
             );
 
             let db_backup_s3_config = rt
-                .block_on(aws::load_config(Some(
-                    aws_resources.db_backup_s3_region.unwrap(),
-                )))
+                .block_on(aws::load_config(Some(db_backup_s3_region)))
                 .unwrap();
             let db_backup_s3_manager = aws_s3::Manager::new(&db_backup_s3_config);
 
