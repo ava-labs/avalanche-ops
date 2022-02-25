@@ -1696,7 +1696,7 @@ fn execute_delete(
             ResetColor
         )?;
         thread::sleep(Duration::from_secs(5));
-        rt.block_on(s3_manager.delete_objects(&aws_resources.s3_bucket, None))
+        rt.block_on(s3_manager.delete_objects(&aws_resources.s3_bucket, Some(spec.id)))
             .unwrap();
     }
 
