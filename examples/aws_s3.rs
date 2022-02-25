@@ -47,9 +47,9 @@ fn main() {
     println!();
     println!();
     thread::sleep(time::Duration::from_secs(3));
-    let text = vec![7; 50 * 1024 * 1024];
+    let contents = vec![7; 50 * 1024 * 1024];
     let mut upload_file = tempfile::NamedTempFile::new().unwrap();
-    upload_file.write_all(&text.to_vec()).unwrap();
+    upload_file.write_all(&contents.to_vec()).unwrap();
     let upload_path = upload_file.path().to_str().unwrap();
     let s3_path = "sub-dir/aaa.txt";
     rt.block_on(s3_manager.put_object(upload_path, &bucket, s3_path))
@@ -63,8 +63,8 @@ fn main() {
     rt.block_on(s3_manager.get_object(&bucket, s3_path, &download_path))
         .unwrap();
     let download_contents = fs::read(download_path).unwrap();
-    assert_eq!(text.to_vec().len(), download_contents.len());
-    assert_eq!(text.to_vec(), download_contents);
+    assert_eq!(contents.to_vec().len(), download_contents.len());
+    assert_eq!(contents.to_vec(), download_contents);
 
     println!();
     println!();

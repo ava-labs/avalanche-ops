@@ -74,14 +74,14 @@ fn create_upload_backup_command() -> Command<'static> {
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .possible_value(compress::DirEncoder::ZipZstd(1).id())
-                .possible_value(compress::DirEncoder::ZipZstd(2).id())
-                .possible_value(compress::DirEncoder::ZipZstd(3).id())
+                .possible_value(compress::DirEncoder::TarGzip.id())
+                .possible_value(compress::DirEncoder::ZipGzip.id())
                 .possible_value(compress::DirEncoder::TarZstd(1).id())
                 .possible_value(compress::DirEncoder::TarZstd(2).id())
                 .possible_value(compress::DirEncoder::TarZstd(3).id())
-                .possible_value(compress::DirEncoder::ZipGzip.id())
-                .possible_value(compress::DirEncoder::TarGzip.id())
+                .possible_value(compress::DirEncoder::ZipZstd(1).id())
+                .possible_value(compress::DirEncoder::ZipZstd(2).id())
+                .possible_value(compress::DirEncoder::ZipZstd(3).id())
                 .default_value(compress::DirEncoder::TarGzip.id()),
         )
         .arg(
@@ -145,10 +145,10 @@ fn create_download_backup_command() -> Command<'static> {
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .possible_value(compress::DirDecoder::ZipZstd.id())
-                .possible_value(compress::DirDecoder::TarZstd.id())
-                .possible_value(compress::DirDecoder::ZipGzip.id())
                 .possible_value(compress::DirDecoder::TarGzip.id())
+                .possible_value(compress::DirDecoder::ZipGzip.id())
+                .possible_value(compress::DirDecoder::TarZstd.id())
+                .possible_value(compress::DirDecoder::ZipZstd.id())
                 .default_value(compress::DirDecoder::TarGzip.id()),
         )
         .arg(

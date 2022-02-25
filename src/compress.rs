@@ -23,23 +23,23 @@ use crate::{humanize, random};
 #[derive(Eq, PartialEq, Clone)]
 /// Represents the compression encoding algorithm.
 pub enum Encoder {
+    /// Encodes with "Gzip" compression.
+    Gzip,
     /// Encodes with "Zstandard" compression.
     Zstd(i32),
     /// Encodes with "Zstandard" compression and apply base58.
     ZstdBase58(i32),
-    /// Encodes with "Gzip" compression.
-    Gzip,
 }
 
 impl fmt::Display for Encoder {
     /// The last integer is the zstd compression level.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Encoder::Gzip => write!(f, "gzip"),
             Encoder::Zstd(level) => write!(f, "zstd{}", level),
             Encoder::ZstdBase58(level) => {
                 write!(f, "zstd-base58{}", level)
             }
-            Encoder::Gzip => write!(f, "gzip"),
         }
     }
 }
@@ -47,25 +47,25 @@ impl fmt::Display for Encoder {
 impl Encoder {
     pub fn id(&self) -> &str {
         match self {
+            Encoder::Gzip => "gzip",
             Encoder::Zstd(1) => "zstd1",
             Encoder::Zstd(2) => "zstd2",
             Encoder::Zstd(3) => "zstd3",
             Encoder::ZstdBase58(1) => "zstd1-base58",
             Encoder::ZstdBase58(2) => "zstd2-base58",
             Encoder::ZstdBase58(3) => "zstd3-base58",
-            Encoder::Gzip => "gzip",
             _ => "unknown",
         }
     }
     pub fn new(id: &str) -> io::Result<Self> {
         match id {
+            "gzip" => Ok(Encoder::Gzip),
             "zstd1" => Ok(Encoder::Zstd(1)),
             "zstd2" => Ok(Encoder::Zstd(2)),
             "zstd3" => Ok(Encoder::Zstd(3)),
             "zstd1-base58" => Ok(Encoder::ZstdBase58(1)),
             "zstd2-base58" => Ok(Encoder::ZstdBase58(2)),
             "zstd3-base58" => Ok(Encoder::ZstdBase58(3)),
-            "gzip" => Ok(Encoder::Gzip),
             _ => {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -76,16 +76,16 @@ impl Encoder {
     }
     pub fn suffix(&self) -> &str {
         match self {
+            Encoder::Gzip => "gz",
             Encoder::Zstd(_) => "zstd",
             Encoder::ZstdBase58(_) => "zstd.base58",
-            Encoder::Gzip => "gz",
         }
     }
     pub fn ext(&self) -> &str {
         match self {
+            Encoder::Gzip => ".gz",
             Encoder::Zstd(_) => ".zstd",
             Encoder::ZstdBase58(_) => ".zstd.base58",
-            Encoder::Gzip => ".gz",
         }
     }
 }
@@ -93,17 +93,17 @@ impl Encoder {
 #[derive(Clone)]
 /// Represents the compression decoding algorithm.
 pub enum Decoder {
+    Gzip,
     Zstd,
     ZstdBase58,
-    Gzip,
 }
 
 impl fmt::Display for Decoder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Decoder::Gzip => write!(f, "gzip"),
             Decoder::Zstd => write!(f, "zstd"),
             Decoder::ZstdBase58 => write!(f, "zstd-base58"),
-            Decoder::Gzip => write!(f, "gzip"),
         }
     }
 }
@@ -111,16 +111,16 @@ impl fmt::Display for Decoder {
 impl Decoder {
     pub fn id(&self) -> &str {
         match self {
+            Decoder::Gzip => "gzip",
             Decoder::Zstd => "zstd",
             Decoder::ZstdBase58 => "zstd-base58",
-            Decoder::Gzip => "gzip",
         }
     }
     pub fn new(id: &str) -> io::Result<Self> {
         match id {
+            "gzip" => Ok(Decoder::Gzip),
             "zstd" => Ok(Decoder::Zstd),
             "zstd-base58" => Ok(Decoder::ZstdBase58),
-            "gzip" => Ok(Decoder::Gzip),
             _ => {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -140,16 +140,16 @@ pub fn pack(d: &[u8], enc: Encoder) -> io::Result<Vec<u8>> {
     );
 
     let packed = match enc {
-        Encoder::Zstd(lvl) => zstd::stream::encode_all(Cursor::new(d), lvl)?,
-        Encoder::ZstdBase58(lvl) => {
-            let encoded = zstd::stream::encode_all(Cursor::new(d), lvl)?;
-            bs58::encode(encoded).into_vec()
-        }
         Encoder::Gzip => {
             let mut gz = GzEncoder::new(Cursor::new(d), Compression::default());
             let mut encoded = Vec::new();
             gz.read_to_end(&mut encoded)?;
             encoded
+        }
+        Encoder::Zstd(lvl) => zstd::stream::encode_all(Cursor::new(d), lvl)?,
+        Encoder::ZstdBase58(lvl) => {
+            let encoded = zstd::stream::encode_all(Cursor::new(d), lvl)?;
+            bs58::encode(encoded).into_vec()
         }
     };
 
@@ -172,6 +172,12 @@ pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
     );
 
     let unpacked = match dec {
+        Decoder::Gzip => {
+            let mut gz = GzDecoder::new(Cursor::new(d));
+            let mut decoded = Vec::new();
+            gz.read_to_end(&mut decoded)?;
+            decoded
+        }
         Decoder::Zstd => zstd::stream::decode_all(Cursor::new(d))?,
         Decoder::ZstdBase58 => {
             let d_decoded = match bs58::decode(d).into_vec() {
@@ -184,12 +190,6 @@ pub fn unpack(d: &[u8], dec: Decoder) -> io::Result<Vec<u8>> {
                 }
             };
             zstd::stream::decode_all(Cursor::new(d_decoded))?
-        }
-        Decoder::Gzip => {
-            let mut gz = GzDecoder::new(Cursor::new(d));
-            let mut decoded = Vec::new();
-            gz.read_to_end(&mut decoded)?;
-            decoded
         }
     };
 
@@ -218,6 +218,15 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
     );
 
     match enc {
+        Encoder::Gzip => {
+            let f1 = File::open(src_path)?;
+            let mut f2 = File::create(dst_path)?;
+
+            let mut enc = GzEncoder::new(BufReader::new(f1), Compression::default());
+
+            // reads from reader (enc) and writes to writer "f2"
+            io::copy(&mut enc, &mut f2)?;
+        }
         Encoder::Zstd(lvl) => {
             // reading the entire file at once may cause OOM...
             // let d = fs::read(src_path)?;
@@ -238,17 +247,6 @@ pub fn pack_file(src_path: &str, dst_path: &str, enc: Encoder) -> io::Result<()>
             let encoded = pack(&d, Encoder::ZstdBase58(lvl))?;
             let mut f = File::create(dst_path)?;
             f.write_all(&encoded[..])?;
-        }
-        Encoder::Gzip => {
-            let f = File::open(src_path)?;
-            let d = BufReader::new(f);
-
-            let mut gz = GzEncoder::new(d, Compression::default());
-            let mut compressed = Vec::new();
-            gz.read_to_end(&mut compressed)?;
-
-            let mut f = File::create(dst_path)?;
-            f.write_all(&compressed[..])?;
         }
     };
 
@@ -280,36 +278,38 @@ pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<(
     );
 
     match dec {
+        Decoder::Gzip => {
+            let f1 = File::open(src_path)?;
+            let mut f2 = File::create(dst_path)?;
+
+            let mut dec = GzDecoder::new(BufReader::new(f1));
+
+            // reads from reader (dec) and writes to writer "f2"
+            io::copy(&mut dec, &mut f2)?;
+        }
         Decoder::Zstd => {
             // reading the entire file at once may cause OOM...
+            //
             // let d = fs::read(src_path)?;
             // let decoded = zstd::stream::decode_all(Cursor::new(&d[..]))?;
+            //
+            // let mut dec = zstd::Decoder::new(BufReader::new(f1))?;
+            // let mut decoded = Vec::new();
+            // dec.read_to_end(&mut decoded)?;
+            // f2.write_all(&decoded[..])?;
 
-            let f = File::open(src_path)?;
-            let d = BufReader::new(f);
+            let f1 = File::open(src_path)?;
+            let mut f2 = File::create(dst_path)?;
 
-            let mut dec = zstd::Decoder::new(d)?;
-            let mut decoded = Vec::new();
-            dec.read_to_end(&mut decoded)?;
+            let mut dec = zstd::Decoder::new(BufReader::new(f1))?;
 
-            let mut f = File::create(dst_path)?;
-            f.write_all(&decoded[..])?;
+            // reads from reader (dec) and writes to writer "f2"
+            io::copy(&mut dec, &mut f2)?;
         }
         Decoder::ZstdBase58 => {
             // reading the entire file at once may cause OOM...
             let d = fs::read(src_path)?;
             let decoded = unpack(&d, Decoder::ZstdBase58)?;
-            let mut f = File::create(dst_path)?;
-            f.write_all(&decoded[..])?;
-        }
-        Decoder::Gzip => {
-            let f = File::open(src_path)?;
-            let d = BufReader::new(f);
-
-            let mut gz = GzDecoder::new(d);
-            let mut decoded = Vec::new();
-            gz.read_to_end(&mut decoded)?;
-
             let mut f = File::create(dst_path)?;
             f.write_all(&decoded[..])?;
         }
@@ -331,28 +331,28 @@ pub fn unpack_file(src_path: &str, dst_path: &str, dec: Decoder) -> io::Result<(
 #[derive(Clone)]
 /// Represents the compression encoding algorithm for directory.
 pub enum DirEncoder {
-    /// Archives the directory with "zip" and
-    /// encodes with "Zstandard" compression.
-    ZipZstd(i32),
     /// Archives the directory with "tar" and
-    /// encodes with "Zstandard" compression.
-    TarZstd(i32),
+    /// and encodes with "Gzip" compression.
+    TarGzip,
     /// Archives the directory with "zip" and
     /// and encodes with "Gzip" compression.
     ZipGzip,
     /// Archives the directory with "tar" and
-    /// and encodes with "Gzip" compression.
-    TarGzip,
+    /// encodes with "Zstandard" compression.
+    TarZstd(i32),
+    /// Archives the directory with "zip" and
+    /// encodes with "Zstandard" compression.
+    ZipZstd(i32),
 }
 
 impl fmt::Display for DirEncoder {
     /// The last integer is the zstd compression level.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DirEncoder::ZipZstd(level) => write!(f, "zip-zstd{}", level),
-            DirEncoder::TarZstd(level) => write!(f, "tar-zstd{}", level),
-            DirEncoder::ZipGzip => write!(f, "zip-gzip"),
             DirEncoder::TarGzip => write!(f, "tar-gzip"),
+            DirEncoder::ZipGzip => write!(f, "zip-gzip"),
+            DirEncoder::TarZstd(level) => write!(f, "tar-zstd{}", level),
+            DirEncoder::ZipZstd(level) => write!(f, "zip-zstd{}", level),
         }
     }
 }
@@ -360,27 +360,27 @@ impl fmt::Display for DirEncoder {
 impl DirEncoder {
     pub fn id(&self) -> &str {
         match self {
-            DirEncoder::ZipZstd(1) => "zip-zstd1",
-            DirEncoder::ZipZstd(2) => "zip-zstd2",
-            DirEncoder::ZipZstd(3) => "zip-zstd3",
+            DirEncoder::TarGzip => "tar-gzip",
+            DirEncoder::ZipGzip => "zip-gzip",
             DirEncoder::TarZstd(1) => "tar-zstd1",
             DirEncoder::TarZstd(2) => "tar-zstd2",
             DirEncoder::TarZstd(3) => "tar-zstd3",
-            DirEncoder::ZipGzip => "zip-gzip",
-            DirEncoder::TarGzip => "tar-gzip",
+            DirEncoder::ZipZstd(1) => "zip-zstd1",
+            DirEncoder::ZipZstd(2) => "zip-zstd2",
+            DirEncoder::ZipZstd(3) => "zip-zstd3",
             _ => "unknown",
         }
     }
     pub fn new(id: &str) -> io::Result<Self> {
         match id {
-            "zip-zstd1" => Ok(DirEncoder::ZipZstd(1)),
-            "zip-zstd2" => Ok(DirEncoder::ZipZstd(2)),
-            "zip-zstd3" => Ok(DirEncoder::ZipZstd(3)),
+            "tar-gzip" => Ok(DirEncoder::TarGzip),
+            "zip-gzip" => Ok(DirEncoder::ZipGzip),
             "tar-zstd1" => Ok(DirEncoder::TarZstd(1)),
             "tar-zstd2" => Ok(DirEncoder::TarZstd(2)),
             "tar-zstd3" => Ok(DirEncoder::TarZstd(3)),
-            "zip-gzip" => Ok(DirEncoder::ZipGzip),
-            "tar-gzip" => Ok(DirEncoder::TarGzip),
+            "zip-zstd1" => Ok(DirEncoder::ZipZstd(1)),
+            "zip-zstd2" => Ok(DirEncoder::ZipZstd(2)),
+            "zip-zstd3" => Ok(DirEncoder::ZipZstd(3)),
             _ => {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -391,18 +391,18 @@ impl DirEncoder {
     }
     pub fn suffix(&self) -> &str {
         match self {
-            DirEncoder::ZipZstd(_) => "zip.zstd",
-            DirEncoder::TarZstd(_) => "tar.zstd",
-            DirEncoder::ZipGzip => "zip.gz",
             DirEncoder::TarGzip => "tar.gz",
+            DirEncoder::ZipGzip => "zip.gz",
+            DirEncoder::TarZstd(_) => "tar.zstd",
+            DirEncoder::ZipZstd(_) => "zip.zstd",
         }
     }
     pub fn ext(&self) -> &str {
         match self {
-            DirEncoder::ZipZstd(_) => ".zip.zstd",
-            DirEncoder::TarZstd(_) => ".tar.zstd",
-            DirEncoder::ZipGzip => ".zip.gz",
             DirEncoder::TarGzip => ".tar.gz",
+            DirEncoder::ZipGzip => ".zip.gz",
+            DirEncoder::TarZstd(_) => ".tar.zstd",
+            DirEncoder::ZipZstd(_) => ".zip.zstd",
         }
     }
 }
@@ -410,19 +410,19 @@ impl DirEncoder {
 #[derive(Clone)]
 /// Represents the compression decoding algorithm for directory.
 pub enum DirDecoder {
-    ZipZstd,
-    TarZstd,
-    ZipGzip,
     TarGzip,
+    ZipGzip,
+    TarZstd,
+    ZipZstd,
 }
 
 impl fmt::Display for DirDecoder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DirDecoder::ZipZstd => write!(f, "zip-zstd"),
-            DirDecoder::TarZstd => write!(f, "tar-zstd"),
-            DirDecoder::ZipGzip => write!(f, "zip-gzip"),
             DirDecoder::TarGzip => write!(f, "tar-gzip"),
+            DirDecoder::ZipGzip => write!(f, "zip-gzip"),
+            DirDecoder::TarZstd => write!(f, "tar-zstd"),
+            DirDecoder::ZipZstd => write!(f, "zip-zstd"),
         }
     }
 }
@@ -430,18 +430,18 @@ impl fmt::Display for DirDecoder {
 impl DirDecoder {
     pub fn id(&self) -> &str {
         match self {
-            DirDecoder::ZipZstd => "zip-zstd",
-            DirDecoder::TarZstd => "tar-zstd",
-            DirDecoder::ZipGzip => "zip-gzip",
             DirDecoder::TarGzip => "tar-gzip",
+            DirDecoder::ZipGzip => "zip-gzip",
+            DirDecoder::TarZstd => "tar-zstd",
+            DirDecoder::ZipZstd => "zip-zstd",
         }
     }
     pub fn new(id: &str) -> io::Result<Self> {
         match id {
-            "zip-zstd" => Ok(DirDecoder::ZipZstd),
-            "tar-zstd" => Ok(DirDecoder::TarZstd),
-            "zip-gzip" => Ok(DirDecoder::ZipGzip),
             "tar-gzip" => Ok(DirDecoder::TarGzip),
+            "zip-gzip" => Ok(DirDecoder::ZipGzip),
+            "tar-zstd" => Ok(DirDecoder::TarZstd),
+            "zip-zstd" => Ok(DirDecoder::ZipZstd),
             _ => {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -451,14 +451,14 @@ impl DirDecoder {
         }
     }
     pub fn new_from_file_name(name: &str) -> io::Result<Self> {
-        if name.ends_with(DirDecoder::ZipZstd.suffix()) {
-            Ok(DirDecoder::ZipZstd)
-        } else if name.ends_with(DirDecoder::TarZstd.suffix()) {
-            Ok(DirDecoder::TarZstd)
+        if name.ends_with(DirDecoder::TarGzip.suffix()) {
+            Ok(DirDecoder::TarGzip)
         } else if name.ends_with(DirDecoder::ZipGzip.suffix()) {
             Ok(DirDecoder::ZipGzip)
-        } else if name.ends_with(DirDecoder::TarGzip.suffix()) {
-            Ok(DirDecoder::TarGzip)
+        } else if name.ends_with(DirDecoder::TarZstd.suffix()) {
+            Ok(DirDecoder::TarZstd)
+        } else if name.ends_with(DirDecoder::ZipZstd.suffix()) {
+            Ok(DirDecoder::ZipZstd)
         } else {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -468,18 +468,18 @@ impl DirDecoder {
     }
     pub fn suffix(&self) -> &str {
         match self {
-            DirDecoder::ZipZstd => "zip.zstd",
-            DirDecoder::TarZstd => "tar.zstd",
-            DirDecoder::ZipGzip => "zip.gz",
             DirDecoder::TarGzip => "tar.gz",
+            DirDecoder::ZipGzip => "zip.gz",
+            DirDecoder::TarZstd => "tar.zstd",
+            DirDecoder::ZipZstd => "zip.zstd",
         }
     }
     pub fn ext(&self) -> &str {
         match self {
-            DirDecoder::ZipZstd => ".zip.zstd",
-            DirDecoder::TarZstd => ".tar.zstd",
-            DirDecoder::ZipGzip => ".zip.gz",
             DirDecoder::TarGzip => ".tar.gz",
+            DirDecoder::ZipGzip => ".zip.gz",
+            DirDecoder::TarZstd => ".tar.zstd",
+            DirDecoder::ZipZstd => ".zip.zstd",
         }
     }
 }
@@ -508,63 +508,13 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
     let archive_path = random::tmp_path(10, None)?;
     let archive_file = File::create(&archive_path)?;
     match enc {
-        DirEncoder::ZipZstd(lvl) => {
-            let mut zip = ZipWriter::new(archive_file);
-
-            let mut buffer = Vec::new();
-            let src_dir = Path::new(src_dir_path);
-            let src_dir_full_path = absolute_path(src_dir)?;
-
-            let options = FileOptions::default()
-                .compression_method(zip::CompressionMethod::Stored)
-                .unix_permissions(0o755);
-            for entry in WalkDir::new(src_dir_path).into_iter() {
-                let entry = match entry {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            format!("failed walk dir {} ({})", src_dir_path, e),
-                        ));
-                    }
-                };
-
-                let full_path = absolute_path(entry.path())?;
-                // relative path from source directory
-                // e.g., "text/a/b/c.txt" for absolute path "/tmp/text/a/b/c.txt"
-                let rel_path = match full_path.strip_prefix(&src_dir_full_path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            format!("failed strip_prefix on {:?} ({})", full_path, e),
-                        ));
-                    }
-                };
-
-                if is_dir(&entry) {
-                    // only if not root
-                    // ref. https://github.com/zip-rs/zip/blob/master/examples/write_dir.rs
-                    if !rel_path.as_os_str().is_empty() {
-                        let dir_name = rel_path.as_os_str().to_str().unwrap();
-                        info!("adding directory {}", dir_name);
-                        zip.add_directory(dir_name, options)?;
-                    }
-                    continue;
-                }
-
-                let file_name = rel_path.as_os_str().to_str().unwrap();
-                info!("adding file {}", file_name);
-                zip.start_file(file_name, options)?;
-                let mut f = File::open(full_path)?;
-                f.read_to_end(&mut buffer)?;
-                zip.write_all(&*buffer)?;
-                buffer.clear();
-            }
-            zip.finish()?;
-            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
-        }
-        DirEncoder::TarZstd(lvl) => {
+        DirEncoder::TarGzip => {
+            // e.g.,
+            // tar -czvf db.tar.gz mainnet/
+            // -c to create a new archive
+            // -z to enable "--gzip" mode
+            // -v to enable verbose mode
+            // -f to specify the file
             let mut tar = Builder::new(archive_file);
             let src_dir = Path::new(src_dir_path);
             let src_dir_full_path = absolute_path(src_dir)?;
@@ -601,8 +551,9 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
             }
-            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
+            pack_file(&archive_path, dst_path, Encoder::Gzip)?;
         }
+
         DirEncoder::ZipGzip => {
             let mut zip = ZipWriter::new(archive_file);
 
@@ -659,13 +610,8 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
             zip.finish()?;
             pack_file(&archive_path, dst_path, Encoder::Gzip)?;
         }
-        DirEncoder::TarGzip => {
-            // e.g.,
-            // tar -czvf db.tar.gz mainnet/
-            // -c to create a new archive
-            // -z to enable "--gzip" mode
-            // -v to enable verbose mode
-            // -f to specify the file
+
+        DirEncoder::TarZstd(lvl) => {
             let mut tar = Builder::new(archive_file);
             let src_dir = Path::new(src_dir_path);
             let src_dir_full_path = absolute_path(src_dir)?;
@@ -702,7 +648,64 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
             }
-            pack_file(&archive_path, dst_path, Encoder::Gzip)?;
+            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
+        }
+
+        DirEncoder::ZipZstd(lvl) => {
+            let mut zip = ZipWriter::new(archive_file);
+
+            let mut buffer = Vec::new();
+            let src_dir = Path::new(src_dir_path);
+            let src_dir_full_path = absolute_path(src_dir)?;
+
+            let options = FileOptions::default()
+                .compression_method(zip::CompressionMethod::Stored)
+                .unix_permissions(0o755);
+            for entry in WalkDir::new(src_dir_path).into_iter() {
+                let entry = match entry {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(Error::new(
+                            ErrorKind::Other,
+                            format!("failed walk dir {} ({})", src_dir_path, e),
+                        ));
+                    }
+                };
+
+                let full_path = absolute_path(entry.path())?;
+                // relative path from source directory
+                // e.g., "text/a/b/c.txt" for absolute path "/tmp/text/a/b/c.txt"
+                let rel_path = match full_path.strip_prefix(&src_dir_full_path) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(Error::new(
+                            ErrorKind::Other,
+                            format!("failed strip_prefix on {:?} ({})", full_path, e),
+                        ));
+                    }
+                };
+
+                if is_dir(&entry) {
+                    // only if not root
+                    // ref. https://github.com/zip-rs/zip/blob/master/examples/write_dir.rs
+                    if !rel_path.as_os_str().is_empty() {
+                        let dir_name = rel_path.as_os_str().to_str().unwrap();
+                        info!("adding directory {}", dir_name);
+                        zip.add_directory(dir_name, options)?;
+                    }
+                    continue;
+                }
+
+                let file_name = rel_path.as_os_str().to_str().unwrap();
+                info!("adding file {}", file_name);
+                zip.start_file(file_name, options)?;
+                let mut f = File::open(full_path)?;
+                f.read_to_end(&mut buffer)?;
+                zip.write_all(&*buffer)?;
+                buffer.clear();
+            }
+            zip.finish()?;
+            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
         }
     }
 
@@ -736,60 +739,13 @@ pub fn unpack_directory(
         humanize::bytes(size_before),
     );
     fs::create_dir_all(dst_dir_path)?;
-    let target_dir = Path::new(dst_dir_path);
+    let _dst_dir_path = Path::new(dst_dir_path);
 
-    let unpacked_path = target_dir.join(random::string(10));
+    let unpacked_path = _dst_dir_path.join(random::string(10));
     let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
     match dec {
-        DirDecoder::ZipZstd => {
-            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
-
-            let zip_file = File::open(unpacked_path)?;
-            let mut zip = match ZipArchive::new(zip_file) {
-                Ok(v) => v,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed ZipArchive::new on {} ({})", unpacked_path, e),
-                    ));
-                }
-            };
-            for i in 0..zip.len() {
-                let mut f = match zip.by_index(i) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            format!("failed zip.by_index ({})", e),
-                        ));
-                    }
-                };
-                let output_path = match f.enclosed_name() {
-                    Some(p) => p.to_owned(),
-                    None => continue,
-                };
-                let output_path = target_dir.join(output_path);
-
-                let is_dir = (*f.name()).ends_with('/');
-                if is_dir {
-                    info!("extracting directory {}", output_path.display());
-                    fs::create_dir_all(&output_path)?;
-                } else {
-                    info!("extracting file {}", output_path.display());
-                    if let Some(p) = output_path.parent() {
-                        if !p.exists() {
-                            fs::create_dir_all(&p)?;
-                        }
-                    }
-                    let mut f2 = File::create(&output_path)?;
-                    io::copy(&mut f, &mut f2)?;
-                }
-
-                fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
-            }
-        }
-        DirDecoder::TarZstd => {
-            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
+        DirDecoder::TarGzip => {
+            unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
 
             let tar_file = File::open(unpacked_path)?;
             let mut tar = Archive::new(tar_file);
@@ -797,7 +753,7 @@ pub fn unpack_directory(
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = target_dir.join(output_path);
+                let output_path = _dst_dir_path.join(output_path);
                 info!("extracting file {}", output_path.display());
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
@@ -809,6 +765,7 @@ pub fn unpack_directory(
                 fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
             }
         }
+
         DirDecoder::ZipGzip => {
             unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
 
@@ -836,7 +793,7 @@ pub fn unpack_directory(
                     Some(p) => p.to_owned(),
                     None => continue,
                 };
-                let output_path = target_dir.join(output_path);
+                let output_path = _dst_dir_path.join(output_path);
 
                 let is_dir = (*f.name()).ends_with('/');
                 if is_dir {
@@ -856,8 +813,9 @@ pub fn unpack_directory(
                 fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
             }
         }
-        DirDecoder::TarGzip => {
-            unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
+
+        DirDecoder::TarZstd => {
+            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
 
             let tar_file = File::open(unpacked_path)?;
             let mut tar = Archive::new(tar_file);
@@ -865,7 +823,7 @@ pub fn unpack_directory(
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = target_dir.join(output_path);
+                let output_path = _dst_dir_path.join(output_path);
                 info!("extracting file {}", output_path.display());
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
@@ -877,12 +835,60 @@ pub fn unpack_directory(
                 fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
             }
         }
+
+        DirDecoder::ZipZstd => {
+            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
+
+            let zip_file = File::open(unpacked_path)?;
+            let mut zip = match ZipArchive::new(zip_file) {
+                Ok(v) => v,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed ZipArchive::new on {} ({})", unpacked_path, e),
+                    ));
+                }
+            };
+            for i in 0..zip.len() {
+                let mut f = match zip.by_index(i) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(Error::new(
+                            ErrorKind::Other,
+                            format!("failed zip.by_index ({})", e),
+                        ));
+                    }
+                };
+                let output_path = match f.enclosed_name() {
+                    Some(p) => p.to_owned(),
+                    None => continue,
+                };
+                let output_path = _dst_dir_path.join(output_path);
+
+                let is_dir = (*f.name()).ends_with('/');
+                if is_dir {
+                    info!("extracting directory {}", output_path.display());
+                    fs::create_dir_all(&output_path)?;
+                } else {
+                    info!("extracting file {}", output_path.display());
+                    if let Some(p) = output_path.parent() {
+                        if !p.exists() {
+                            fs::create_dir_all(&p)?;
+                        }
+                    }
+                    let mut f2 = File::create(&output_path)?;
+                    io::copy(&mut f, &mut f2)?;
+                }
+
+                fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
+            }
+        }
     }
 
     info!("removing unpacked file {} after unarchive", unpacked_path);
     fs::remove_file(unpacked_path)?;
 
-    let size = match fs_extra::dir::get_size(target_dir) {
+    let size = match fs_extra::dir::get_size(_dst_dir_path) {
         Ok(v) => v,
         Err(e) => {
             return Err(Error::new(
@@ -890,7 +896,7 @@ pub fn unpack_directory(
                 format!(
                     "failed get_size {} for directory {}",
                     e,
-                    target_dir.display()
+                    _dst_dir_path.display()
                 ),
             ));
         }
@@ -928,28 +934,28 @@ fn absolute_path(path: impl AsRef<Path>) -> io::Result<PathBuf> {
 fn test_pack_unpack() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let contents = random::string(1024 * 10);
+    let contents = vec![7; 1 * 1024 * 1024];
 
     let encs = vec![
+        "gzip",
         "zstd1",
         "zstd2",
         "zstd3",
         "zstd1-base58",
         "zstd2-base58",
         "zstd3-base58",
-        "gzip",
     ];
     let decs = vec![
-        "zstd",
-        "zstd",
-        "zstd",
-        "zstd-base58",
-        "zstd-base58",
-        "zstd-base58",
         "gzip",
+        "zstd",
+        "zstd",
+        "zstd",
+        "zstd-base58",
+        "zstd-base58",
+        "zstd-base58",
     ];
     for (i, _) in encs.iter().enumerate() {
-        let packed = pack(&contents.as_bytes(), Encoder::new(encs[i]).unwrap()).unwrap();
+        let packed = pack(&contents, Encoder::new(encs[i]).unwrap()).unwrap();
 
         // compressed should be smaller
         if !encs[i].contains("base58") {
@@ -959,11 +965,11 @@ fn test_pack_unpack() {
         let unpacked = unpack(&packed, Decoder::new(decs[i]).unwrap()).unwrap();
 
         // decompressed should be same as original
-        assert_eq!(contents.as_bytes(), unpacked);
+        assert_eq!(contents, unpacked);
     }
 
     let mut orig_file = tempfile::NamedTempFile::new().unwrap();
-    orig_file.write_all(contents.as_bytes()).unwrap();
+    orig_file.write_all(&contents).unwrap();
     let orig_path = orig_file.path().to_str().unwrap();
     let orig_meta = fs::metadata(orig_path).unwrap();
     for (i, _) in encs.iter().enumerate() {
@@ -983,7 +989,7 @@ fn test_pack_unpack() {
 
         // decompressed file should be same as original
         let contents_unpacked = fs::read(unpacked_path).unwrap();
-        assert_eq!(contents.as_bytes(), contents_unpacked);
+        assert_eq!(contents, contents_unpacked);
     }
 
     let src_dir_path = env::temp_dir().join(random::string(10));
@@ -992,30 +998,30 @@ fn test_pack_unpack() {
     for _i in 0..20 {
         let p = src_dir_path.join(random::string(10));
         let mut f = File::create(&p).unwrap();
-        f.write_all(contents.as_bytes()).unwrap();
+        f.write_all(&contents).unwrap();
     }
     info!("created {}", src_dir_path.display());
     let src_dir_size = fs_extra::dir::get_size(src_dir_path.clone()).unwrap();
 
     let encs = vec![
-        "zip-zstd1",
-        "zip-zstd2",
-        "zip-zstd3",
+        "tar-gzip",
+        "zip-gzip",
         "tar-zstd1",
         "tar-zstd2",
         "tar-zstd3",
-        "zip-gzip",
-        "tar-gzip",
+        "zip-zstd1",
+        "zip-zstd2",
+        "zip-zstd3",
     ];
     let decs = vec![
-        "zip-zstd", // decoder has no zstd level
-        "zip-zstd", // decoder has no zstd level
-        "zip-zstd", // decoder has no zstd level
-        "tar-zstd", // decoder has no zstd level
-        "tar-zstd", // decoder has no zstd level
-        "tar-zstd", // decoder has no zstd level
-        "zip-gzip", // gzip has no level
         "tar-gzip", // gzip has no level
+        "zip-gzip", // gzip has no level
+        "tar-zstd", // decoder has no zstd level
+        "tar-zstd", // decoder has no zstd level
+        "tar-zstd", // decoder has no zstd level
+        "zip-zstd", // decoder has no zstd level
+        "zip-zstd", // decoder has no zstd level
+        "zip-zstd", // decoder has no zstd level
     ];
     for (i, _) in encs.iter().enumerate() {
         let packed = tempfile::NamedTempFile::new().unwrap();
