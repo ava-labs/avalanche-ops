@@ -514,13 +514,19 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
         ResetColor
     )?;
+
+    // don't compress since we need to download this in user data
+    // while instance bootstrapping
     rt.block_on(s3_manager.put_object(
         &spec.install_artifacts.avalanched_bin,
         &aws_resources.s3_bucket,
         &aws_s3::KeyPath::AvalanchedBin(spec.id.clone()).encode(),
     ))
     .unwrap();
-    let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+
+    // compress as these will be decompressed by "avalanched"
+    let tmp_avalanche_bin_compressed_path =
+        random::tmp_path(15, Some(compress::Encoder::Zstd(3).ext())).unwrap();
     compress::pack_file(
         &spec.install_artifacts.avalanchego_bin,
         &tmp_avalanche_bin_compressed_path,
@@ -533,12 +539,6 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         &aws_s3::KeyPath::AvalancheBinCompressed(spec.id.clone()).encode(),
     ))
     .unwrap();
-    // rt.block_on(s3_manager.put_object(
-    //     &spec.install_artifacts.avalanchego_bin,
-    //     &aws_resources.bucket,
-    //     &aws_s3::KeyPath::AvalancheBin(spec.id.clone()).encode(),
-    // ))
-    // .unwrap();
     if spec.install_artifacts.plugins_dir.is_some() {
         let plugins_dir = spec.install_artifacts.plugins_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
@@ -549,7 +549,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             let file_name = entry.file_name();
             let file_name = file_name.as_os_str().to_str().unwrap();
 
-            let tmp_plugin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+            let tmp_plugin_compressed_path =
+                random::tmp_path(15, Some(compress::Encoder::Zstd(3).ext())).unwrap();
             compress::pack_file(
                 file_path,
                 &tmp_plugin_compressed_path,
@@ -566,9 +567,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                     &tmp_plugin_compressed_path,
                     &aws_resources.s3_bucket,
                     format!(
-                        "{}/{}.zstd",
+                        "{}/{}{}",
                         &aws_s3::KeyPath::PluginsDir(spec.id.clone()).encode(),
-                        file_name
+                        file_name,
+                        compress::Encoder::Zstd(3).ext()
                     )
                     .as_str(),
                 ),
@@ -641,7 +643,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         ))
         .unwrap();
 
-        let tmp_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+        let tmp_compressed_path =
+            random::tmp_path(15, Some(compress::Encoder::Zstd(3).ext())).unwrap();
         compress::pack_file(
             ec2_key_path.as_str(),
             &tmp_compressed_path,
@@ -1464,7 +1467,8 @@ fn execute_delete(
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
-        let ec2_key_path_compressed = format!("{}.zstd", ec2_key_path);
+        let ec2_key_path_compressed =
+            format!("{}{}", ec2_key_path, compress::Encoder::Zstd(3).ext());
         if Path::new(ec2_key_path_compressed.as_str()).exists() {
             fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
         }

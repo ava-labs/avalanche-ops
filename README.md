@@ -53,7 +53,7 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 # or visit https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
 https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
--o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 ```
 
 It requires Avalanche node software in order to bootstrap the remote machines:
@@ -81,12 +81,32 @@ A single command to create a new Avalanche node from scratch and join any networ
 ```bash
 avalanche-ops-nodes-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin /tmp/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
 --install-artifacts-avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
 --install-artifacts-plugins-dir /tmp/avalanchego-v1.7.5/plugins \
 --network-name custom \
 --keys-to-generate 5 \
 --spec-file-path /tmp/test.yaml \
+```
+
+Or you can launch non-beacon nodes for mainnet from backups (S3 bucket name may differ):
+
+```bash
+# list and sort by timestamp
+aws s3 ls --recursive --human-readable s3://avalanche-db-daily/ | sort
+
+avalanche-ops-nodes-aws default-spec \
+--region us-west-2 \
+--db-backup-s3-region us-east-1 \
+--db-backup-s3-bucket avalanche-db-daily \
+--db-backup-s3-key mainnet-db-daily-02-25-2022-050003-tar.gz \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
+--install-artifacts-plugins-dir /tmp/avalanchego-v1.7.5/plugins \
+--network-name mainnet \
+--keys-to-generate 5 \
+--avalanchego-log-level INFO \
+--spec-file-path $HOME/test-mainnet-db.yaml
 ```
 
 ```bash
