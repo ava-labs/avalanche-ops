@@ -252,15 +252,18 @@ impl Default for Metrics {
     }
 }
 
+/// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct MetricsCollected {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu: Option<Cpu>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mem: Option<Mem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disk: Option<Disk>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diskio: Option<DiskIo>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mem: Option<Mem>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub netstat: Option<Netstat>,
 }
@@ -268,14 +271,59 @@ pub struct MetricsCollected {
 impl Default for MetricsCollected {
     fn default() -> Self {
         Self {
+            cpu: Some(Cpu::default()),
+            mem: Some(Mem::default()),
             disk: Some(Disk::default()),
             diskio: Some(DiskIo::default()),
-            mem: Some(Mem::default()),
             netstat: Some(Netstat::default()),
         }
     }
 }
 
+/// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Cpu {
+    pub resources: Vec<String>,
+    pub measurement: Vec<String>,
+    pub metrics_collection_interval: u32,
+}
+
+impl Default for Cpu {
+    fn default() -> Self {
+        Self {
+            resources: vec!["*".to_string()],
+            measurement: vec![
+                "usage_active".to_string(), // cpu_usage_* metrics is Percent
+                "usage_system".to_string(), // cpu_usage_* metrics is Percent
+            ],
+            metrics_collection_interval: 60,
+        }
+    }
+}
+
+/// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Mem {
+    pub measurement: Vec<String>,
+    pub metrics_collection_interval: u32,
+}
+
+impl Default for Mem {
+    fn default() -> Self {
+        Self {
+            measurement: vec![
+                "mem_used".to_string(),
+                "mem_total".to_string(),
+                // "used_percent".to_string(),
+            ],
+            metrics_collection_interval: 60,
+        }
+    }
+}
+
+/// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Disk {
@@ -290,7 +338,11 @@ impl Default for Disk {
     fn default() -> Self {
         Self {
             resources: vec!["/".to_string()],
-            measurement: vec!["free".to_string(), "total".to_string(), "used".to_string()],
+            measurement: vec![
+                "used".to_string(),
+                // "free".to_string(),
+                "total".to_string(),
+            ],
             ignore_file_system_types: Some(vec!["sysfs".to_string(), "devtmpfs".to_string()]),
             metrics_collection_interval: 60,
         }
@@ -306,6 +358,7 @@ impl Disk {
     }
 }
 
+/// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct DiskIo {
@@ -317,35 +370,24 @@ pub struct DiskIo {
 impl Default for DiskIo {
     fn default() -> Self {
         Self {
-            resources: vec!["*".to_string()],
+            // "nvme0n1" for boot volume (AWS)
+            // "nvme0n1p1" for boot volume (AWS)
+            // "nvme1n1" for mounted EBS (AWS)
+            // (run "lsblk" to find out which devices)
+            resources: vec!["nvme1n1".to_string()],
             measurement: vec![
                 "reads".to_string(),
                 "writes".to_string(),
                 "read_time".to_string(),
                 "write_time".to_string(),
-                "io_time".to_string(),
+                // "io_time".to_string(),
             ],
             metrics_collection_interval: 60,
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Mem {
-    pub measurement: Vec<String>,
-    pub metrics_collection_interval: u32,
-}
-
-impl Default for Mem {
-    fn default() -> Self {
-        Self {
-            measurement: vec!["mem_used".to_string(), "mem_total".to_string()],
-            metrics_collection_interval: 60,
-        }
-    }
-}
-
+/// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Netstat {
@@ -358,8 +400,8 @@ impl Default for Netstat {
         Self {
             measurement: vec![
                 "tcp_established".to_string(),
-                "tcp_syn_sent".to_string(),
-                "tcp_close".to_string(),
+                // "tcp_syn_sent".to_string(),
+                // "tcp_close".to_string(),
             ],
             metrics_collection_interval: 60,
         }
