@@ -316,14 +316,25 @@ impl Spec {
         }
         if self.aws_resources.is_some() {
             let aws_resources = self.aws_resources.clone().unwrap();
-            if aws_resources.s3_bucket_db_backup.is_some()
-                && aws_resources.s3_key_db_backup.is_none()
+            if aws_resources.db_backup_s3_bucket.is_some()
+                && aws_resources.db_backup_s3_key.is_none()
             {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
                         "{} missing corresponding key",
-                        aws_resources.s3_bucket_db_backup.unwrap()
+                        aws_resources.db_backup_s3_bucket.unwrap()
+                    ),
+                ));
+            }
+            if aws_resources.db_backup_s3_bucket.is_some()
+                && aws_resources.db_backup_s3_region.is_none()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "{} missing corresponding region",
+                        aws_resources.db_backup_s3_bucket.unwrap()
                     ),
                 ));
             }

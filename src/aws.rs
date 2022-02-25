@@ -38,10 +38,13 @@ pub struct Resources {
     /// Bucket to download backups from.
     /// Non-empty to download the database for bootstrapping.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub s3_bucket_db_backup: Option<String>,
+    pub db_backup_s3_bucket: Option<String>,
     /// Non-empty to download the database for bootstrapping.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub s3_key_db_backup: Option<String>,
+    pub db_backup_s3_key: Option<String>,
+    /// Region for s3 where database backup resides.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub db_backup_s3_region: Option<String>,
 
     /// AWS STS caller loaded from its local environment.
     /// Read-only.
@@ -144,8 +147,9 @@ impl Resources {
             region: String::from("us-west-2"),
             s3_bucket: String::from(""),
 
-            s3_bucket_db_backup: None,
-            s3_key_db_backup: None,
+            db_backup_s3_bucket: None,
+            db_backup_s3_key: None,
+            db_backup_s3_region: None,
 
             identity: None,
 

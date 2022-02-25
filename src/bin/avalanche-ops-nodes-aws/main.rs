@@ -443,8 +443,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     )?;
     rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket))
         .unwrap();
-    if aws_resources.s3_bucket_db_backup.is_some() {
-        rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket_db_backup.clone().unwrap()))
+    if aws_resources.db_backup_s3_bucket.is_some() {
+        rt.block_on(s3_manager.create_bucket(&aws_resources.db_backup_s3_bucket.clone().unwrap()))
             .unwrap();
     }
 
@@ -639,10 +639,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
             build_param("S3BucketName", &aws_resources.s3_bucket),
         ]);
-        if aws_resources.s3_bucket_db_backup.is_some() {
+        if aws_resources.db_backup_s3_bucket.is_some() {
             let param = build_param(
                 "S3BucketDbBackupName",
-                &aws_resources.s3_bucket_db_backup.clone().unwrap(),
+                &aws_resources.db_backup_s3_bucket.clone().unwrap(),
             );
             role_params.push(param);
         }
@@ -1175,7 +1175,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         // TODO: if downloading mainnet db, it will take a while
         // TODO: better handle this
         println!();
-        let require_db_download = aws_resources.s3_bucket_db_backup.is_some();
+        let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
         if require_db_download {
             warn!(
                 "non-beacon nodes are downloading db backups, can take awhile, check back later..."
@@ -1279,7 +1279,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                 "health/liveness check failed for {} ({:?}, {:?})",
                 node.machine_id, res, err
             );
-            if aws_resources.s3_bucket_db_backup.is_some() {
+            if aws_resources.db_backup_s3_bucket.is_some() {
                 // TODO: fix this
                 warn!("node may be still downloading database backup... skipping for now...");
                 success = true;
@@ -1636,10 +1636,10 @@ fn execute_delete(
         rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
             .unwrap();
         // NOTE: do not delete db backups...
-        if aws_resources.s3_bucket_db_backup.is_some() {
+        if aws_resources.db_backup_s3_bucket.is_some() {
             info!(
                 "skipping deleting {}",
-                aws_resources.s3_bucket_db_backup.clone().unwrap()
+                aws_resources.db_backup_s3_bucket.clone().unwrap()
             );
             // rt.block_on(
             //     s3_manager

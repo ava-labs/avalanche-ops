@@ -463,22 +463,29 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     if spec.aws_resources.is_some() {
         let aws_resources = spec.aws_resources.unwrap();
-        if aws_resources.s3_bucket_db_backup.is_some() {
+        if aws_resources.db_backup_s3_bucket.is_some() {
             thread::sleep(Duration::from_secs(1));
-            let s3_bucket_db_backup = aws_resources.s3_bucket_db_backup.clone().unwrap();
-            let s3_key_db_backup = aws_resources.s3_key_db_backup.unwrap();
-            let dec = compress::DirDecoder::new_from_file_name(&s3_key_db_backup).unwrap();
+            let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
+            let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
+            let dec = compress::DirDecoder::new_from_file_name(&db_backup_s3_key).unwrap();
             info!(
-                "STEP: downloading db backup 's3://{}/{}' [{}]",
-                s3_bucket_db_backup,
-                s3_key_db_backup,
+                "STEP: downloading database backup file 's3://{}/{}' [{}]",
+                db_backup_s3_bucket,
+                db_backup_s3_key,
                 dec.id()
             );
 
+            let db_backup_s3_config = rt
+                .block_on(aws::load_config(Some(
+                    aws_resources.db_backup_s3_region.unwrap(),
+                )))
+                .unwrap();
+            let db_backup_s3_manager = aws_s3::Manager::new(&db_backup_s3_config);
+
             let download_path = random::tmp_path(15, Some(dec.ext())).unwrap();
-            rt.block_on(s3_manager.get_object(
-                &s3_bucket_db_backup,
-                &s3_key_db_backup,
+            rt.block_on(db_backup_s3_manager.get_object(
+                &db_backup_s3_bucket,
+                &db_backup_s3_key,
                 &download_path,
             ))
             .unwrap();
@@ -492,7 +499,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             // TODO: override network id
         } else {
-            info!("STEP: s3_bucket_db_backup is empty, skipping database backup download from S3")
+            info!("STEP: db_backup_s3_bucket is empty, skipping database backup download from S3")
         }
     }
 
