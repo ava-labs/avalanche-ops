@@ -879,9 +879,9 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             &aws_resources.cloudformation_vpc_id.clone().unwrap(),
         ),
     ]);
-    if spec.avalanchego_config.is_mainnet() {
+    if !spec.avalanchego_config.is_custom_network() {
         // mainnet requires higher volume size
-        let param = build_param("VolumeSize", "600");
+        let param = build_param("VolumeSize", "800");
         asg_parameters.push(param);
     }
     if spec.avalanchego_config.http_port.is_some() {
