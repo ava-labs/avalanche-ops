@@ -157,7 +157,7 @@ impl Spec {
         keys: usize,
     ) -> Self {
         // [year][month][date]-[system host-based id]
-        let s3_bucket = format!("avalanche-ops-{}-{}", time::get(6), id::sid(7));
+        let s3_bucket = format!("avalanche-ops-{}-{}", time::get(6), id::sid(10));
 
         let network_id = avalanchego_config.network_id;
         let (id, beacon_nodes, non_beacon_nodes) =

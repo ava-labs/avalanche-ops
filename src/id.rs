@@ -24,17 +24,19 @@ fn test_generate() {
 /// Creates an ID based on host information.
 pub fn sid(n: usize) -> String {
     let id = format!(
-        "{}-{}-{}",
+        "{}-{}-{}-{}-{}",
         whoami::username(),
+        whoami::realname(),
         whoami::hostname(),
-        whoami::platform()
+        whoami::platform(),
+        whoami::devicename(),
     );
 
     let mut hasher = Ripemd160::new();
     hasher.update(id.as_bytes());
     let result = hasher.finalize();
 
-    let mut id = hex::encode(&result[..]);
+    let mut id = bs58::encode(&result[..]).into_string();
     if n > 0 && id.len() > n {
         id.truncate(n);
     }

@@ -24,7 +24,11 @@ fn main() {
     println!();
     println!();
     println!();
-    let bucket = format!("avalanche-ops-examples-s3-{}-{}", atime::get(6), id::sid(7));
+    let bucket = format!(
+        "avalanche-ops-examples-s3-{}-{}",
+        atime::get(6),
+        id::sid(10)
+    );
     rt.block_on(s3_manager.delete_bucket(&bucket)).unwrap(); // error should be ignored if it does not exist
 
     println!();
