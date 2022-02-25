@@ -232,6 +232,7 @@ pub struct Metrics {
 
 impl Default for Metrics {
     fn default() -> Self {
+        // ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
         let mut m = HashMap::new();
         // m.insert("InstanceId".to_string(), "${aws:InstanceId}".to_string());
         // m.insert(

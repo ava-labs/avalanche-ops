@@ -592,7 +592,7 @@ avalanchego_config:
     avalanchego_config.snow_quorum_size = Some(avalanchego::DEFAULT_SNOW_QUORUM_SIZE);
     avalanchego_config.http_port = Some(avalanchego::DEFAULT_HTTP_PORT);
     avalanchego_config.staking_port = Some(avalanchego::DEFAULT_STAKING_PORT);
-    avalanchego_config.db_dir = Some(String::from(avalanchego::DEFAULT_DB_DIR));
+    avalanchego_config.db_dir = String::from(avalanchego::DEFAULT_DB_DIR);
 
     let orig = Spec {
         id: id.clone(),
@@ -693,10 +693,7 @@ avalanchego_config:
         avalanchego::DEFAULT_STAKING_PORT,
     );
     assert_eq!(
-        cfg.avalanchego_config
-            .clone()
-            .db_dir
-            .unwrap_or("".to_string()),
+        cfg.avalanchego_config.clone().db_dir,
         avalanchego::DEFAULT_DB_DIR,
     );
 }

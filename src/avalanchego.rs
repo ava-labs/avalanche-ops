@@ -112,8 +112,7 @@ pub struct Config {
     pub staking_port: Option<u32>,
 
     /// Database directory, must be a valid path in remote host machine.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub db_dir: Option<String>,
+    pub db_dir: String,
 
     /// Logging directory, must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -194,7 +193,7 @@ impl Config {
             http_port: None,
             staking_port: None,
 
-            db_dir: None,
+            db_dir: String::from(DEFAULT_DB_DIR),
 
             log_dir: None,
             log_level: None,
@@ -243,7 +242,7 @@ impl Config {
         config.http_port = Some(DEFAULT_HTTP_PORT);
         config.staking_port = Some(DEFAULT_STAKING_PORT);
 
-        config.db_dir = Some(String::from(DEFAULT_DB_DIR));
+        config.db_dir = String::from(DEFAULT_DB_DIR);
         config.log_dir = Some(String::from(DEFAULT_LOG_DIR));
         config.log_level = Some(String::from(DEFAULT_LOG_LEVEL));
 

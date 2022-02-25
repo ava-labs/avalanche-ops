@@ -507,14 +507,10 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             ))
             .unwrap();
 
-            compress::unpack_directory(
-                &download_path,
-                &spec.avalanchego_config.db_dir.clone().unwrap(),
-                dec,
-            )
-            .unwrap();
+            compress::unpack_directory(&download_path, &spec.avalanchego_config.db_dir, dec)
+                .unwrap();
 
-            // TODO: override network id
+            // TODO: override network id to support network fork
         } else {
             info!("STEP: db_backup_s3_bucket is empty, skipping database backup download from S3")
         }
@@ -831,17 +827,18 @@ WantedBy=multi-user.target",
         println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {} --s3-bucket {} --s3-key {}/backup{}", 
             reg.clone(),
             compress::DirEncoder::TarGzip.id(),
-            spec.avalanchego_config.db_dir.clone().unwrap(),
+            spec.avalanchego_config.db_dir.clone(),
             &s3_bucket_name,
             aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
             compress::DirEncoder::TarGzip.ext(),
         );
-        println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir /tmp/avalanche-data",
+        println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
             reg,
             compress::DirDecoder::TarGzip.id(),
             &s3_bucket_name,
             aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
             compress::DirDecoder::TarGzip.ext(),
+            spec.avalanchego_config.db_dir.clone(),
         );
         thread::sleep(Duration::from_secs(60));
     }
