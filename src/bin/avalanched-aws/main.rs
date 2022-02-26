@@ -475,6 +475,9 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let node_id = node::load_id(&tls_cert_path).unwrap();
     info!("loaded node ID from cert: {}", node_id);
 
+    // "63.65 GB" .tar.gz download  takes about 45-min
+    // "63.65 GB" .tar.gz unpack    takes about 7-min
+    // "75.47 GB" .tar    unarchive takes about 5-min
     if spec.aws_resources.is_some() {
         let aws_resources = spec.aws_resources.unwrap();
         if aws_resources.db_backup_s3_region.is_some()

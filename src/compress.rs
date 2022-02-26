@@ -509,6 +509,12 @@ impl DirDecoder {
 /// Archives the source directory "src_dir_path" with archival method and compression
 /// and saves to "dst_path". If "dst_path" exists, it overwrites.
 pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io::Result<()> {
+    if Path::new(src_dir_path).parent().is_none() {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!("cannot archive root directory {}", src_dir_path),
+        ));
+    };
     let size = fs_extra::dir::get_size(src_dir_path).map_err(|e| {
         return Error::new(
             ErrorKind::Other,
@@ -524,7 +530,9 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
         humanize::bytes(size_before),
     );
 
-    let archive_path = random::tmp_path(10, None)?;
+    let parent_dir = Path::new(src_dir_path).parent().unwrap();
+    let archive_path = parent_dir.join(random::tmp_path(10, None).unwrap());
+    let archive_path = archive_path.as_path().to_str().unwrap();
     let archive_file = File::create(&archive_path)?;
     match enc {
         DirEncoder::TarGzip => {
@@ -570,7 +578,7 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
             }
-            pack_file(&archive_path, dst_path, Encoder::Gzip)?;
+            pack_file(archive_path, dst_path, Encoder::Gzip)?;
         }
 
         DirEncoder::ZipGzip => {
@@ -627,7 +635,7 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 buffer.clear();
             }
             zip.finish()?;
-            pack_file(&archive_path, dst_path, Encoder::Gzip)?;
+            pack_file(archive_path, dst_path, Encoder::Gzip)?;
         }
 
         DirEncoder::TarZstd(lvl) => {
@@ -667,7 +675,7 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
             }
-            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
+            pack_file(archive_path, dst_path, Encoder::Zstd(lvl))?;
         }
 
         DirEncoder::ZipZstd(lvl) => {
@@ -724,7 +732,7 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                 buffer.clear();
             }
             zip.finish()?;
-            pack_file(&archive_path, dst_path, Encoder::Zstd(lvl))?;
+            pack_file(archive_path, dst_path, Encoder::Zstd(lvl))?;
         }
     }
 
