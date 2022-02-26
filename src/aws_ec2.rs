@@ -11,9 +11,12 @@ use hyper::{Body, Method, Request};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::errors::{
-    Error::{Other, API},
-    Result,
+use crate::{
+    errors::{
+        Error::{Other, API},
+        Result,
+    },
+    http,
 };
 
 /// Implements AWS EC2 manager.
@@ -376,7 +379,7 @@ async fn fetch_metadata(path: &str) -> Result<String> {
         }
     };
 
-    let ret = crate::http::read_bytes(req, Duration::from_secs(5), true).await;
+    let ret = http::read_bytes(req, Duration::from_secs(5), false, true).await;
     let rs = match ret {
         Ok(bytes) => {
             let s = match String::from_utf8(bytes.to_vec()) {
@@ -427,7 +430,7 @@ async fn fetch_token() -> Result<String> {
         }
     };
 
-    let ret = crate::http::read_bytes(req, Duration::from_secs(5), true).await;
+    let ret = http::read_bytes(req, Duration::from_secs(5), false, true).await;
     let token = match ret {
         Ok(bytes) => {
             let s = match String::from_utf8(bytes.to_vec()) {

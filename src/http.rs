@@ -5,6 +5,7 @@ use std::{
 };
 
 use hyper::{body::Bytes, client::HttpConnector, Body, Client, Method, Request, Response};
+use hyper_tls::HttpsConnector;
 use log::warn;
 use tokio::time::timeout;
 use url::Url;
@@ -37,13 +38,10 @@ pub fn create_get(url: &str, path: &str) -> io::Result<Request<Body>> {
 pub async fn read_bytes(
     req: Request<Body>,
     timeout_dur: Duration,
+    enable_https: bool,
     check_status_code: bool,
 ) -> io::Result<Bytes> {
-    let ret = send_req(req, timeout_dur).await;
-    let resp = match ret {
-        Ok(r) => r,
-        Err(e) => return Err(e),
-    };
+    let resp = send_req(req, timeout_dur, enable_https).await?;
     if !resp.status().is_success() {
         warn!(
             "unexpected HTTP response code {} (server error {})",
@@ -89,38 +87,46 @@ pub async fn read_bytes(
     Ok(bytes)
 }
 
-/// Sends a HTTP request and wait for its response.
-async fn send_req(req: Request<Body>, timeout_dur: Duration) -> io::Result<Response<Body>> {
-    // ref. https://github.com/tokio-rs/tokio-tls/blob/master/examples/hyper-client.rs
-    // ref. https://docs.rs/hyper/latest/hyper/client/struct.HttpConnector.html
-    let mut connector = HttpConnector::new();
-    connector.set_connect_timeout(Some(Duration::from_secs(5)));
-    let cli = Client::builder().build(connector);
+/// Sends a HTTP(s) request and wait for its response.
+async fn send_req(
+    req: Request<Body>,
+    timeout_dur: Duration,
+    enable_https: bool,
+) -> io::Result<Response<Body>> {
+    let task = {
+        if !enable_https {
+            // ref. https://github.com/tokio-rs/tokio-tls/blob/master/examples/hyper-client.rs
+            // ref. https://docs.rs/hyper/latest/hyper/client/struct.HttpConnector.html
+            let mut connector = HttpConnector::new();
 
-    // set timeouts for reads
-    // https://github.com/hyperium/hyper/issues/1097
-    let future_task = cli.request(req);
-    let ret = timeout(timeout_dur, future_task).await;
+            // set timeouts for reads https://github.com/hyperium/hyper/issues/1097
+            connector.set_connect_timeout(Some(Duration::from_secs(5)));
 
-    let resp = match ret {
-        Ok(result) => match result {
-            Ok(r) => r,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to send request {}", e),
-                ))
-            }
-        },
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to send request {}", e),
-            ))
+            let cli = Client::builder().build(connector);
+            cli.request(req)
+        } else {
+            // ref. https://github.com/hyperium/hyper-tls/blob/master/examples/client.rs
+            let mut connector = HttpConnector::new();
+
+            // set timeouts for reads https://github.com/hyperium/hyper/issues/1097
+            connector.set_connect_timeout(Some(Duration::from_secs(5)));
+
+            let https_connector = HttpsConnector::new_with_connector(connector);
+            let cli = Client::builder().build(https_connector);
+            cli.request(req)
         }
     };
 
-    Ok(resp)
+    let res = timeout(timeout_dur, task).await?;
+    match res {
+        Ok(resp) => Ok(resp),
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to fetch response {}", e),
+            ))
+        }
+    }
 }
 
 #[test]
@@ -144,7 +150,7 @@ fn test_read_bytes_timeout() {
         .body(Body::empty());
     assert!(ret.is_ok());
     let req = ret.unwrap();
-    let ret = ab!(read_bytes(req, Duration::from_secs(1), true));
+    let ret = ab!(read_bytes(req, Duration::from_secs(1), false, true));
     assert!(!ret.is_ok());
 }
 

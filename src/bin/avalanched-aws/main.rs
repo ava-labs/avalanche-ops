@@ -764,9 +764,9 @@ WantedBy=multi-user.target",
     bash::run("sudo systemctl enable avalanche.service").unwrap();
     bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
 
+    // this can take awhile if loaded from backups or syncing from peers
     info!("'avalanched run' all success -- now waiting for local node liveness check");
     loop {
-        thread::sleep(Duration::from_secs(10));
         let ret = rt.block_on(avalanchego::check_health_liveness(
             format!(
                 "http://{}:{}",
@@ -793,6 +793,7 @@ WantedBy=multi-user.target",
             "health/liveness check failed for {} ({:?}, {:?})",
             instance_id, res, err
         );
+        thread::sleep(Duration::from_secs(30));
     }
 
     // TODO: check upgrade artifacts by polling s3 /events directory

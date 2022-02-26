@@ -135,6 +135,14 @@ fn create_default_spec_command() -> Command<'static> {
                 .default_value(avalanchego::DEFAULT_LOG_LEVEL),
         )
         .arg(
+            Arg::new("AVALANCHEGO_HTTP_TLS_ENABLED") 
+                .long("avalanchego-http-tls-enabled")
+                .help("Sets to enable HTTP TLS")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
@@ -294,6 +302,8 @@ fn main() {
                     .value_of("AVALANCHEGO_LOG_LEVEL")
                     .unwrap()
                     .to_string(),
+                avalanchego_http_tls_enabled: sub_matches
+                    .is_present("AVALANCHEGO_HTTP_TLS_ENABLED"),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
             execute_default_spec(opt).unwrap();
@@ -336,6 +346,7 @@ struct DefaultSpecOption {
     network_name: String,
     keys_to_generate: usize,
     avalanchego_log_level: String,
+    avalanchego_http_tls_enabled: bool,
     spec_file_path: String,
 }
 
@@ -359,6 +370,17 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     avalanchego_config.log_level = Some(opt.avalanchego_log_level);
     if !avalanchego_config.is_custom_network() {
         avalanchego_config.genesis = None;
+    }
+    if opt.avalanchego_http_tls_enabled {
+        // TODO: use different certs?
+        avalanchego_config.http_tls_enabled = Some(true);
+        avalanchego_config.http_tls_key_file = avalanchego_config.staking_tls_key_file.clone();
+        avalanchego_config.http_tls_cert_file = avalanchego_config.staking_tls_cert_file.clone();
+    } else {
+        // set empty value to make manual testing easier
+        avalanchego_config.http_tls_enabled = Some(false);
+        avalanchego_config.http_tls_key_file = Some(String::new());
+        avalanchego_config.http_tls_cert_file = Some(String::new());
     }
 
     let mut spec = avalanche_ops::Spec::default_aws(
@@ -1325,15 +1347,27 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         .http_port
         .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
 
-    println!("http://{}:{}/ext/metrics", dns_name, http_port);
-    println!("http://{}:{}/ext/health", dns_name, http_port);
-    println!("http://{}:{}/ext/health/liveness", dns_name, http_port);
+    let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
+        && spec.avalanchego_config.http_tls_enabled.unwrap();
+    let scheme = {
+        if https_enabled {
+            "https"
+        } else {
+            "http"
+        }
+    };
+    println!("{}://{}:{}/ext/metrics", scheme, dns_name, http_port);
+    println!("{}://{}:{}/ext/health", scheme, dns_name, http_port);
+    println!(
+        "{}://{}:{}/ext/health/liveness",
+        scheme, dns_name, http_port
+    );
     let mut uris: Vec<String> = vec![];
     for node in all_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
             let ret = rt.block_on(avalanchego::check_health_liveness(
-                format!("http://{}:{}", node.ip, http_port).as_str(),
+                format!("{}://{}:{}", scheme, node.ip, http_port).as_str(),
             ));
             let (res, err) = match ret {
                 Ok(res) => (res, None),
@@ -1370,10 +1404,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
         }
 
-        println!("http://{}:{}/ext/metrics", node.ip, http_port);
-        println!("http://{}:{}/ext/health", node.ip, http_port);
-        println!("http://{}:{}/ext/health/liveness", node.ip, http_port);
-        uris.push(format!("http://{}:{}", node.ip, http_port))
+        println!("{}://{}:{}/ext/metrics", scheme, node.ip, http_port);
+        println!("{}://{}:{}/ext/health", scheme, node.ip, http_port);
+        println!("{}://{}:{}/ext/health/liveness", scheme, node.ip, http_port);
+        uris.push(format!("{}://{}:{}", scheme, node.ip, http_port))
     }
     println!("\nURIs: {}", uris.join(","));
 
