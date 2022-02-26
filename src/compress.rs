@@ -753,36 +753,43 @@ pub fn unpack_directory(
         humanize::bytes(size_before),
     );
     fs::create_dir_all(dst_dir_path)?;
-    let _dst_dir_path = Path::new(dst_dir_path);
+    let target_dir = Path::new(dst_dir_path);
 
-    let unpacked_path = _dst_dir_path.join(random::string(10));
+    let unpacked_path = target_dir.join(random::string(10));
     let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
     match dec {
         DirDecoder::TarGzip => {
             unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
 
+            info!("unarchiving unpacked file {}", unpacked_path);
             let tar_file = File::open(unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = _dst_dir_path.join(output_path);
-                info!("extracting file {}", output_path.display());
+                let output_path = target_dir.join(output_path);
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
                         fs::create_dir_all(&p)?;
                     }
                 }
-                let mut f2 = File::create(&output_path)?;
-                io::copy(&mut f, &mut f2)?;
-                fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
+                if output_path.is_dir() || output_path.to_str().unwrap().ends_with('/') {
+                    info!("extracting directory {}", output_path.display());
+                    fs::create_dir_all(output_path)?;
+                } else {
+                    info!("extracting file {}", output_path.display());
+                    let mut f2 = File::create(&output_path)?;
+                    io::copy(&mut f, &mut f2)?;
+                    fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
+                }
             }
         }
 
         DirDecoder::ZipGzip => {
             unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
 
+            info!("unarchiving unpacked file {}", unpacked_path);
             let zip_file = File::open(unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
@@ -807,7 +814,7 @@ pub fn unpack_directory(
                     Some(p) => p.to_owned(),
                     None => continue,
                 };
-                let output_path = _dst_dir_path.join(output_path);
+                let output_path = target_dir.join(output_path);
 
                 let is_dir = (*f.name()).ends_with('/');
                 if is_dir {
@@ -831,28 +838,35 @@ pub fn unpack_directory(
         DirDecoder::TarZstd => {
             unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
 
+            info!("unarchiving unpacked file {}", unpacked_path);
             let tar_file = File::open(unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
             for file in entries {
                 let mut f = file?;
                 let output_path = f.path()?;
-                let output_path = _dst_dir_path.join(output_path);
-                info!("extracting file {}", output_path.display());
+                let output_path = target_dir.join(output_path);
                 if let Some(p) = output_path.parent() {
                     if !p.exists() {
                         fs::create_dir_all(&p)?;
                     }
                 }
-                let mut f2 = File::create(&output_path)?;
-                io::copy(&mut f, &mut f2)?;
-                fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
+                if output_path.is_dir() || output_path.to_str().unwrap().ends_with('/') {
+                    info!("extracting directory {}", output_path.display());
+                    fs::create_dir_all(output_path)?;
+                } else {
+                    info!("extracting file {}", output_path.display());
+                    let mut f2 = File::create(&output_path)?;
+                    io::copy(&mut f, &mut f2)?;
+                    fs::set_permissions(&output_path, PermissionsExt::from_mode(0o444))?;
+                }
             }
         }
 
         DirDecoder::ZipZstd => {
             unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
 
+            info!("unarchiving unpacked file {}", unpacked_path);
             let zip_file = File::open(unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
@@ -877,7 +891,7 @@ pub fn unpack_directory(
                     Some(p) => p.to_owned(),
                     None => continue,
                 };
-                let output_path = _dst_dir_path.join(output_path);
+                let output_path = target_dir.join(output_path);
 
                 let is_dir = (*f.name()).ends_with('/');
                 if is_dir {
@@ -902,7 +916,7 @@ pub fn unpack_directory(
     info!("removing unpacked file {} after unarchive", unpacked_path);
     fs::remove_file(unpacked_path)?;
 
-    let size = match fs_extra::dir::get_size(_dst_dir_path) {
+    let size = match fs_extra::dir::get_size(target_dir) {
         Ok(v) => v,
         Err(e) => {
             return Err(Error::new(
@@ -910,7 +924,7 @@ pub fn unpack_directory(
                 format!(
                     "failed get_size {} for directory {}",
                     e,
-                    _dst_dir_path.display()
+                    target_dir.display()
                 ),
             ));
         }
