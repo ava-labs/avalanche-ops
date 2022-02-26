@@ -15,7 +15,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress,
-    envelope, node, random,
+    constants, envelope, node, random,
 };
 
 const APP_NAME: &str = "avalanched-aws";
@@ -849,10 +849,16 @@ WantedBy=multi-user.target",
         }
 
         // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"
-        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {} --s3-bucket {} --s3-key {}/backup{}", 
+        let db_dir_network =
+            match constants::NETWORK_ID_TO_NETWORK_NAME.get(&spec.avalanchego_config.network_id) {
+                Some(v) => String::from(*v),
+                None => format!("network-{}", spec.avalanchego_config.network_id),
+            };
+        println!("/usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
             reg.clone(),
             compress::DirEncoder::TarGzip.id(),
             spec.avalanchego_config.db_dir.clone(),
+            db_dir_network,
             &s3_bucket_name,
             aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
             compress::DirEncoder::TarGzip.ext(),
