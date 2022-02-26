@@ -496,20 +496,25 @@ impl DirDecoder {
             DirDecoder::ZipZstd => ".zip.zstd",
         }
     }
+    pub fn compression_ext(&self) -> &str {
+        match self {
+            DirDecoder::TarGzip => ".gz",
+            DirDecoder::ZipGzip => ".gz",
+            DirDecoder::TarZstd => ".zstd",
+            DirDecoder::ZipZstd => ".zstd",
+        }
+    }
 }
 
 /// Archives the source directory "src_dir_path" with archival method and compression
 /// and saves to "dst_path". If "dst_path" exists, it overwrites.
 pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io::Result<()> {
-    let size = match fs_extra::dir::get_size(src_dir_path) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed get_size {} for directory {}", e, src_dir_path),
-            ));
-        }
-    };
+    let size = fs_extra::dir::get_size(src_dir_path).map_err(|e| {
+        return Error::new(
+            ErrorKind::Other,
+            format!("failed get_size {} for directory {}", e, src_dir_path),
+        );
+    })?;
     let size_before = size as f64;
     info!(
         "packing directory from '{}' to '{}' (algorithm {}, current size {})",
@@ -755,14 +760,15 @@ pub fn unpack_directory(
     fs::create_dir_all(dst_dir_path)?;
     let target_dir = Path::new(dst_dir_path);
 
-    let unpacked_path = target_dir.join(random::string(10));
-    let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
+    let unpacked_path = src_archive_path.replace(dec.compression_ext(), "");
+    fs::remove_file(&unpacked_path)?;
+
     match dec {
         DirDecoder::TarGzip => {
-            unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Gzip)?;
 
             info!("unarchiving unpacked file {}", unpacked_path);
-            let tar_file = File::open(unpacked_path)?;
+            let tar_file = File::open(&unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
             for file in entries {
@@ -787,10 +793,10 @@ pub fn unpack_directory(
         }
 
         DirDecoder::ZipGzip => {
-            unpack_file(src_archive_path, unpacked_path, Decoder::Gzip)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Gzip)?;
 
             info!("unarchiving unpacked file {}", unpacked_path);
-            let zip_file = File::open(unpacked_path)?;
+            let zip_file = File::open(&unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
                 Err(e) => {
@@ -836,10 +842,10 @@ pub fn unpack_directory(
         }
 
         DirDecoder::TarZstd => {
-            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Zstd)?;
 
             info!("unarchiving unpacked file {}", unpacked_path);
-            let tar_file = File::open(unpacked_path)?;
+            let tar_file = File::open(&unpacked_path)?;
             let mut tar = Archive::new(tar_file);
             let entries = tar.entries()?;
             for file in entries {
@@ -864,10 +870,10 @@ pub fn unpack_directory(
         }
 
         DirDecoder::ZipZstd => {
-            unpack_file(src_archive_path, unpacked_path, Decoder::Zstd)?;
+            unpack_file(src_archive_path, &unpacked_path, Decoder::Zstd)?;
 
             info!("unarchiving unpacked file {}", unpacked_path);
-            let zip_file = File::open(unpacked_path)?;
+            let zip_file = File::open(&unpacked_path)?;
             let mut zip = match ZipArchive::new(zip_file) {
                 Ok(v) => v,
                 Err(e) => {
@@ -916,19 +922,16 @@ pub fn unpack_directory(
     info!("removing unpacked file {} after unarchive", unpacked_path);
     fs::remove_file(unpacked_path)?;
 
-    let size = match fs_extra::dir::get_size(target_dir) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!(
-                    "failed get_size {} for directory {}",
-                    e,
-                    target_dir.display()
-                ),
-            ));
-        }
-    };
+    let size = fs_extra::dir::get_size(target_dir).map_err(|e| {
+        return Error::new(
+            ErrorKind::Other,
+            format!(
+                "failed get_size {} for directory {}",
+                e,
+                target_dir.display()
+            ),
+        );
+    })?;
     let size_after = size as f64;
     info!(
         "unpacked directory from '{}' to '{}' (algorithm {}, before {}, new size {})",
