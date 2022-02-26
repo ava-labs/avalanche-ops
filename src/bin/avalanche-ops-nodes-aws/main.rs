@@ -1366,8 +1366,9 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     for node in all_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(avalanchego::check_health_liveness(
+            let ret = rt.block_on(avalanchego::check_health(
                 format!("{}://{}:{}", scheme, node.ip, http_port).as_str(),
+                true,
             ));
             let (res, err) = match ret {
                 Ok(res) => (res, None),

@@ -3,6 +3,7 @@ use std::{
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
+    process::Command,
     string::String,
     time::Duration,
     time::SystemTime,
@@ -892,48 +893,53 @@ fn test_api_health() {
     assert!(parsed.healthy.unwrap());
 }
 
-pub async fn check_health(u: &str) -> io::Result<APIHealthReply> {
-    info!("checking /ext/health for {}", u);
-    let req = http::create_get(u, "ext/health")?;
-
-    let buf =
-        match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false).await {
-            Ok(u) => u,
-            Err(e) => return Err(e),
-        };
-
-    let resp = match serde_json::from_slice(&buf) {
-        Ok(p) => p,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to decode {}", e),
-            ));
+pub async fn check_health(u: &str, liveness: bool) -> io::Result<APIHealthReply> {
+    let url_path = {
+        if liveness {
+            "ext/health/liveness"
+        } else {
+            "ext/health"
         }
     };
+    info!("checking {} {}", u, url_path);
 
-    Ok(resp)
-}
-
-pub async fn check_health_liveness(u: &str) -> io::Result<APIHealthReply> {
-    info!("checking /ext/health/liveness for {}", u);
-    let req = http::create_get(u, "ext/health/liveness")?;
-
-    let buf =
-        match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false).await {
-            Ok(u) => u,
-            Err(e) => return Err(e),
-        };
-
-    let resp = match serde_json::from_slice(&buf) {
-        Ok(p) => p,
-        Err(e) => {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to decode {}", e),
-            ));
+    let resp = {
+        if u.starts_with("https") {
+            // TODO: implement this with native Rust
+            info!("checking with 'curl --insecure'");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            let joined = http::join_uri(u, url_path)?;
+            cmd.arg(joined.as_str());
+            let output = cmd.output()?;
+            match serde_json::from_slice(&output.stdout) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        } else {
+            let req = http::create_get(u, url_path)?;
+            let buf =
+                match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false)
+                    .await
+                {
+                    Ok(u) => u,
+                    Err(e) => return Err(e),
+                };
+            match serde_json::from_slice(&buf) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
         }
     };
-
     Ok(resp)
 }

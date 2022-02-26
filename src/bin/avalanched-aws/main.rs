@@ -764,16 +764,28 @@ WantedBy=multi-user.target",
     bash::run("sudo systemctl enable avalanche.service").unwrap();
     bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
 
+    let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
+        && spec.avalanchego_config.http_tls_enabled.unwrap();
+    let scheme = {
+        if https_enabled {
+            "https"
+        } else {
+            "http"
+        }
+    };
+
     // this can take awhile if loaded from backups or syncing from peers
     info!("'avalanched run' all success -- now waiting for local node liveness check");
     loop {
-        let ret = rt.block_on(avalanchego::check_health_liveness(
+        let ret = rt.block_on(avalanchego::check_health(
             format!(
-                "http://{}:{}",
+                "{}://{}:{}",
+                scheme,
                 public_ipv4,
                 spec.avalanchego_config.http_port.unwrap()
             )
             .as_str(),
+            true,
         ));
         let (res, err) = match ret {
             Ok(res) => (res, None),

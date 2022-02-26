@@ -93,24 +93,19 @@ async fn send_req(
     timeout_dur: Duration,
     enable_https: bool,
 ) -> io::Result<Response<Body>> {
+    // ref. https://github.com/tokio-rs/tokio-tls/blob/master/examples/hyper-client.rs
+    // ref. https://docs.rs/hyper/latest/hyper/client/struct.HttpConnector.html
+    // ref. https://github.com/hyperium/hyper-tls/blob/master/examples/client.rs
+    let mut connector = HttpConnector::new();
+    // ref. https://github.com/hyperium/hyper/issues/1097
+    connector.set_connect_timeout(Some(Duration::from_secs(5)));
+
     let task = {
         if !enable_https {
-            // ref. https://github.com/tokio-rs/tokio-tls/blob/master/examples/hyper-client.rs
-            // ref. https://docs.rs/hyper/latest/hyper/client/struct.HttpConnector.html
-            let mut connector = HttpConnector::new();
-
-            // set timeouts for reads https://github.com/hyperium/hyper/issues/1097
-            connector.set_connect_timeout(Some(Duration::from_secs(5)));
-
             let cli = Client::builder().build(connector);
             cli.request(req)
         } else {
-            // ref. https://github.com/hyperium/hyper-tls/blob/master/examples/client.rs
-            let mut connector = HttpConnector::new();
-
-            // set timeouts for reads https://github.com/hyperium/hyper/issues/1097
-            connector.set_connect_timeout(Some(Duration::from_secs(5)));
-
+            // TODO: implement "curl --insecure"
             let https_connector = HttpsConnector::new_with_connector(connector);
             let cli = Client::builder().build(https_connector);
             cli.request(req)
