@@ -760,9 +760,18 @@ pub fn unpack_directory(
     fs::create_dir_all(dst_dir_path)?;
     let target_dir = Path::new(dst_dir_path);
 
-    let unpacked_path = src_archive_path.replace(dec.compression_ext(), "");
-    fs::remove_file(&unpacked_path)?;
-
+    let unpacked_path = {
+        if src_archive_path.ends_with(dec.compression_ext()) {
+            let p = src_archive_path.replace(dec.compression_ext(), "");
+            if Path::new(&p).exists() {
+                info!("unpacked path already exists, removing {}", p);
+                fs::remove_file(&p)?;
+            }
+            p
+        } else {
+            format!("{}.unpacked", src_archive_path)
+        }
+    };
     match dec {
         DirDecoder::TarGzip => {
             unpack_file(src_archive_path, &unpacked_path, Decoder::Gzip)?;
@@ -1055,28 +1064,28 @@ fn test_pack_unpack() {
         "zip-zstd", // decoder has no zstd level
     ];
     for (i, _) in encs.iter().enumerate() {
-        let packed = tempfile::NamedTempFile::new().unwrap();
-        let packed_path = packed.path().to_str().unwrap();
+        let packed_path = random::tmp_path(10, None).unwrap();
         pack_directory(
             _src_dir_path,
-            packed_path,
+            &packed_path,
             DirEncoder::new(encs[i]).unwrap(),
         )
         .unwrap();
 
         // archived/compressed file should be smaller
-        let meta_packed = fs::metadata(packed_path).unwrap();
+        let meta_packed = fs::metadata(&packed_path).unwrap();
         assert!(src_dir_size > meta_packed.len());
 
-        let unpacked_path = env::temp_dir().join(random::string(10));
-        let unpacked_path = unpacked_path.as_os_str().to_str().unwrap();
+        let dst_dir_path = random::tmp_path(10, None).unwrap();
         unpack_directory(
-            packed_path,
-            unpacked_path,
+            &packed_path,
+            &dst_dir_path,
             DirDecoder::new(decs[i]).unwrap(),
         )
         .unwrap();
-        fs::remove_dir_all(unpacked_path).unwrap();
+
+        fs::remove_file(packed_path).unwrap();
+        fs::remove_dir_all(dst_dir_path).unwrap();
     }
     fs::remove_dir_all(_src_dir_path).unwrap();
 }
