@@ -446,18 +446,29 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         cert::generate(&tls_key_path, &tls_cert_path).unwrap();
 
         info!("uploading generated TLS certs to S3");
+        rt.block_on(
+            s3_manager.put_object(
+                &tls_cert_path,
+                &s3_bucket_name,
+                format!(
+                    "{}/{}.crt",
+                    aws_s3::KeyPath::PkiKeyDir(id.clone()).encode(),
+                    instance_id
+                )
+                .as_str(),
+            ),
+        )
+        .unwrap();
         let tmp_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+        let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         compress::pack_file(
             &tls_key_path,
             &tmp_compressed_path,
             compress::Encoder::Zstd(3),
         )
         .unwrap();
-
-        let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
             .unwrap();
-
         rt.block_on(
             s3_manager.put_object(
                 &tmp_encrypted_path,
@@ -471,6 +482,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             ),
         )
         .unwrap();
+        fs::remove_file(tmp_compressed_path)?;
+        fs::remove_file(tmp_encrypted_path)?;
     }
     let node_id = node::load_id(&tls_cert_path).unwrap();
     info!("loaded node ID from cert: {}", node_id);
