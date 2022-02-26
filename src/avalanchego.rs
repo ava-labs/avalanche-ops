@@ -901,7 +901,7 @@ pub async fn check_health(u: &str, liveness: bool) -> io::Result<APIHealthReply>
             "ext/health"
         }
     };
-    info!("checking {} {}", u, url_path);
+    info!("checking {}/{}", u, url_path);
 
     let resp = {
         if u.starts_with("https") {
