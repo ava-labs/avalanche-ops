@@ -21,26 +21,6 @@ pub const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/avalanche.config.json";
 /// Must be a valid path in remote host machine.
 pub const DEFAULT_GENESIS_PATH: &str = "/etc/avalanche.genesis.json";
 
-/// Default snow sample size.
-/// NOTE: keep this in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_SNOW_SAMPLE_SIZE: u32 = 20;
-/// Default snow quorum size.
-/// NOTE: keep this in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_SNOW_QUORUM_SIZE: u32 = 15;
-
-/// Default HTTP host.
-/// Open listener to "0.0.0.0" to allow all incoming traffic.
-/// e.g., If set to default "127.0.0.1", the external client
-/// cannot access "/ext/metrics". Set different values to
-/// make this more restrictive.
-pub const DEFAULT_HTTP_HOST: &str = "0.0.0.0";
-/// Default HTTP port.
-/// NOTE: keep this in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_HTTP_PORT: u32 = 9650;
-/// Default staking port.
-/// NOTE: keep this in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_STAKING_PORT: u32 = 9651;
-
 /// Default "db-dir" directory path for remote linux machines.
 /// Must be matched with the attached physical storage volume path.
 /// Must be a valid path in remote host machine.
@@ -53,12 +33,35 @@ pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
 pub const DEFAULT_LOG_LEVEL: &str = "INFO";
 
 pub const DEFAULT_STAKING_ENABLED: bool = true;
+/// Default staking port.
+/// NOTE: keep default value in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_STAKING_PORT: u32 = 9651;
 /// Must be a valid path in remote host machine.
 pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.key";
 /// Must be a valid path in remote host machine.
 pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.crt";
 
-pub const DEFAULT_INDEX_ENABLED: bool = true;
+/// Default HTTP port.
+/// NOTE: keep default value in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_HTTP_PORT: u32 = 9650;
+/// Default HTTP host.
+/// Open listener to "0.0.0.0" to allow all incoming traffic.
+/// e.g., If set to default "127.0.0.1", the external client
+/// cannot access "/ext/metrics". Set different values to
+/// make this more restrictive.
+pub const DEFAULT_HTTP_HOST: &str = "0.0.0.0";
+pub const DEFAULT_HTTP_TLS_ENABLED: bool = false;
+
+/// Default snow sample size.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_SNOW_SAMPLE_SIZE: u32 = 20;
+/// Default snow quorum size.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_SNOW_QUORUM_SIZE: u32 = 15;
+
+pub const DEFAULT_INDEX_ENABLED: bool = false;
+pub const DEFAULT_INDEX_ALLOW_INCOMPLETE: bool = false;
+
 pub const DEFAULT_API_ADMIN_ENABLED: bool = true;
 pub const DEFAULT_API_INFO_ENABLED: bool = true;
 pub const DEFAULT_API_KEYSTORE_ENABLED: bool = true;
@@ -93,27 +96,8 @@ pub struct Config {
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#NetworkName
     pub network_id: u32,
 
-    /// Public IP of this node for P2P communication.
-    /// If empty, try to discover with NAT.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub public_ip: Option<String>,
-
-    /// HTTP host, which avalanchego defaults to 127.0.0.1.
-    /// Set it to 0.0.0.0 to expose the HTTP API to all incoming traffic.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_host: Option<String>,
-    /// HTTP port.
-    /// If none, default to the value set via avalanche node code.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_port: Option<u32>,
-    /// Staking port.
-    /// If none, default to the value set via avalanche node code.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub staking_port: Option<u32>,
-
     /// Database directory, must be a valid path in remote host machine.
     pub db_dir: String,
-
     /// Logging directory, must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_dir: Option<String>,
@@ -125,18 +109,44 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_display_level: Option<String>,
 
-    /// A list of whitelisted subnet IDs (comma-separated).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub whitelisted_subnets: Option<String>,
-
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_enabled: Option<bool>,
+    /// Staking port.
+    /// If none, default to the value set via avalanche node code.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staking_port: Option<u32>,
     /// Must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_tls_key_file: Option<String>,
     /// Must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_tls_cert_file: Option<String>,
+
+    /// HTTP port.
+    /// If none, default to the value set via avalanche node code.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_port: Option<u32>,
+    /// HTTP host, which avalanchego defaults to 127.0.0.1.
+    /// Set it to 0.0.0.0 to expose the HTTP API to all incoming traffic.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_host: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_tls_enabled: Option<bool>,
+    /// Must be a valid path in remote host machine.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_tls_key_file: Option<String>,
+    /// Must be a valid path in remote host machine.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_tls_cert_file: Option<String>,
+    /// Public IP of this node for P2P communication.
+    /// If empty, try to discover with NAT.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_ip: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bootstrap_ips: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bootstrap_ids: Option<String>,
 
     /// The sample size k, snowball.Parameters.K.
     /// If zero, use the default value set via avalanche node code.
@@ -148,17 +158,15 @@ pub struct Config {
     pub snow_quorum_size: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bootstrap_ips: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bootstrap_ids: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub network_peer_list_gossip_frequency: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network_max_reconnect_delay: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub index_allow_incomplete: Option<bool>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_admin_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,6 +179,10 @@ pub struct Config {
     pub api_health_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_ipcs_enabled: Option<bool>,
+
+    /// A list of whitelisted subnet IDs (comma-separated).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub whitelisted_subnets: Option<String>,
 }
 
 impl Default for Config {
@@ -187,40 +199,43 @@ impl Config {
 
             network_id: DEFAULT_CUSTOM_NETWORK_ID,
 
-            public_ip: None,
-
-            http_host: None,
-            http_port: None,
-            staking_port: None,
-
             db_dir: String::from(DEFAULT_DB_DIR),
-
             log_dir: None,
             log_level: None,
             log_display_level: None,
 
-            whitelisted_subnets: None,
-
             staking_enabled: None,
+            staking_port: None,
             staking_tls_key_file: None,
             staking_tls_cert_file: None,
 
-            snow_sample_size: None,
-            snow_quorum_size: None,
+            http_port: None,
+            http_host: None,
+            http_tls_enabled: None,
+            http_tls_key_file: None,
+            http_tls_cert_file: None,
+            public_ip: None,
 
             bootstrap_ips: None,
             bootstrap_ids: None,
+
+            snow_sample_size: None,
+            snow_quorum_size: None,
 
             network_peer_list_gossip_frequency: None,
             network_max_reconnect_delay: None,
 
             index_enabled: None,
+            index_allow_incomplete: None,
+
             api_admin_enabled: None,
             api_info_enabled: None,
             api_keystore_enabled: None,
             api_metrics_enabled: None,
             api_health_enabled: None,
             api_ipcs_enabled: None,
+
+            whitelisted_subnets: None,
         }
     }
 
@@ -231,22 +246,25 @@ impl Config {
         config.config_file = Some(String::from(DEFAULT_CONFIG_FILE_PATH));
         config.genesis = Some(String::from(DEFAULT_GENESIS_PATH));
 
-        config.staking_enabled = Some(DEFAULT_STAKING_ENABLED);
-        config.staking_tls_key_file = Some(String::from(DEFAULT_STAKING_TLS_KEY_FILE));
-        config.staking_tls_cert_file = Some(String::from(DEFAULT_STAKING_TLS_CERT_FILE));
-
-        config.snow_sample_size = Some(DEFAULT_SNOW_SAMPLE_SIZE);
-        config.snow_quorum_size = Some(DEFAULT_SNOW_QUORUM_SIZE);
-
-        config.http_host = Some(String::from(DEFAULT_HTTP_HOST));
-        config.http_port = Some(DEFAULT_HTTP_PORT);
-        config.staking_port = Some(DEFAULT_STAKING_PORT);
-
         config.db_dir = String::from(DEFAULT_DB_DIR);
         config.log_dir = Some(String::from(DEFAULT_LOG_DIR));
         config.log_level = Some(String::from(DEFAULT_LOG_LEVEL));
 
+        config.staking_enabled = Some(DEFAULT_STAKING_ENABLED);
+        config.staking_port = Some(DEFAULT_STAKING_PORT);
+        config.staking_tls_key_file = Some(String::from(DEFAULT_STAKING_TLS_KEY_FILE));
+        config.staking_tls_cert_file = Some(String::from(DEFAULT_STAKING_TLS_CERT_FILE));
+
+        config.http_port = Some(DEFAULT_HTTP_PORT);
+        config.http_host = Some(String::from(DEFAULT_HTTP_HOST));
+        config.http_tls_enabled = Some(DEFAULT_HTTP_TLS_ENABLED);
+
+        config.snow_sample_size = Some(DEFAULT_SNOW_SAMPLE_SIZE);
+        config.snow_quorum_size = Some(DEFAULT_SNOW_QUORUM_SIZE);
+
         config.index_enabled = Some(DEFAULT_INDEX_ENABLED);
+        config.index_allow_incomplete = Some(DEFAULT_INDEX_ALLOW_INCOMPLETE);
+
         config.api_admin_enabled = Some(DEFAULT_API_ADMIN_ENABLED);
         config.api_info_enabled = Some(DEFAULT_API_INFO_ENABLED);
         config.api_keystore_enabled = Some(DEFAULT_API_KEYSTORE_ENABLED);
@@ -878,10 +896,11 @@ pub async fn check_health(u: &str) -> io::Result<APIHealthReply> {
     info!("checking /ext/health for {}", u);
     let req = http::create_get(u, "ext/health")?;
 
-    let buf = match http::read_bytes(req, Duration::from_secs(5), false).await {
-        Ok(u) => u,
-        Err(e) => return Err(e),
-    };
+    let buf =
+        match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false).await {
+            Ok(u) => u,
+            Err(e) => return Err(e),
+        };
 
     let resp = match serde_json::from_slice(&buf) {
         Ok(p) => p,
@@ -900,10 +919,11 @@ pub async fn check_health_liveness(u: &str) -> io::Result<APIHealthReply> {
     info!("checking /ext/health/liveness for {}", u);
     let req = http::create_get(u, "ext/health/liveness")?;
 
-    let buf = match http::read_bytes(req, Duration::from_secs(5), false).await {
-        Ok(u) => u,
-        Err(e) => return Err(e),
-    };
+    let buf =
+        match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false).await {
+            Ok(u) => u,
+            Err(e) => return Err(e),
+        };
 
     let resp = match serde_json::from_slice(&buf) {
         Ok(p) => p,
