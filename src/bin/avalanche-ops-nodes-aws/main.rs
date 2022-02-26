@@ -371,16 +371,13 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     if !avalanchego_config.is_custom_network() {
         avalanchego_config.genesis = None;
     }
+    // only set values if non empty
+    // otherwise, avalanchego will fail with "couldn't load node config: read .: is a directory"
     if opt.avalanchego_http_tls_enabled {
-        // TODO: use different certs?
+        // TODO: use different certs than staking?
         avalanchego_config.http_tls_enabled = Some(true);
         avalanchego_config.http_tls_key_file = avalanchego_config.staking_tls_key_file.clone();
         avalanchego_config.http_tls_cert_file = avalanchego_config.staking_tls_cert_file.clone();
-    } else {
-        // set empty value to make manual testing easier
-        avalanchego_config.http_tls_enabled = Some(false);
-        avalanchego_config.http_tls_key_file = Some(String::new());
-        avalanchego_config.http_tls_cert_file = Some(String::new());
     }
 
     let mut spec = avalanche_ops::Spec::default_aws(
