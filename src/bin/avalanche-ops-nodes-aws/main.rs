@@ -1353,6 +1353,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             "http"
         }
     };
+    // TODO: not working if https... associate ACM certs to NLB
     println!("{}://{}:{}/ext/metrics", scheme, dns_name, http_port);
     println!("{}://{}:{}/ext/health", scheme, dns_name, http_port);
     println!(
