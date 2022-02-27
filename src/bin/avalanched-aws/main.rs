@@ -848,8 +848,6 @@ WantedBy=multi-user.target",
         thread::sleep(Duration::from_secs(30));
     }
 
-    // TODO: check upgrade artifacts by polling s3 /events directory
-    // e.g., we can update avalanche node software
     info!("avalanched now periodically publishing node information...");
     loop {
         // to be downloaded in bootstrapping non-beacon nodes
@@ -908,7 +906,11 @@ WantedBy=multi-user.target",
             compress::DirDecoder::TarGzip.ext(),
             spec.avalanchego_config.db_dir.clone(),
         );
-        thread::sleep(Duration::from_secs(60));
+
+        // TODO: check upgrade artifacts by polling s3 /events directory
+        // e.g., we can update avalanche node software
+        info!("sleeping 10-min...");
+        thread::sleep(Duration::from_secs(600));
     }
 }
 

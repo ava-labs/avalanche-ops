@@ -446,12 +446,12 @@ pub enum KeyPath {
     // valid genesis file with fully specified initial stakers
     // after beacon nodes become active.
     GenesisFile(String),
-    CorethEvmConfigFile(String),
 
     AvalanchedBin(String),
     AvalancheBin(String),
     AvalancheBinCompressed(String),
     PluginsDir(String),
+    CorethEvmConfigFile(String),
 
     PkiKeyDir(String),
 
@@ -477,12 +477,12 @@ impl KeyPath {
 
             KeyPath::GenesisDraftFile(id) => format!("{}/install/genesis.draft.json", id),
             KeyPath::GenesisFile(id) => format!("{}/genesis.json", id),
-            KeyPath::CorethEvmConfigFile(id) => format!("{}/coreth.evm.config.json", id),
 
             KeyPath::AvalanchedBin(id) => format!("{}/install/avalanched", id),
             KeyPath::AvalancheBin(id) => format!("{}/install/avalanche", id),
             KeyPath::AvalancheBinCompressed(id) => format!("{}/install/avalanche.zstd", id),
             KeyPath::PluginsDir(id) => format!("{}/install/plugins", id),
+            KeyPath::CorethEvmConfigFile(id) => format!("{}/install/coreth.evm.config.json", id),
 
             KeyPath::PkiKeyDir(id) => {
                 format!("{}/pki", id)
