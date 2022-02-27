@@ -734,6 +734,12 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         spec.avalanchego_config.bootstrap_ids = Some(bootstrap_ids.join(","));
     }
 
+    // create dir regardless of whether we have custom coreth config or not
+    if spec.avalanchego_config.chain_config_dir.is_some() {
+        let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir.unwrap();
+        fs::create_dir_all(Path::new(&chain_config_dir).join("C"))
+            .expect("failed to create dir for chain config");
+    };
     if spec.install_artifacts.coreth_evm_config_file_path.is_some() {
         thread::sleep(Duration::from_secs(1));
         info!(
@@ -748,8 +754,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         ))
         .unwrap();
         let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir.unwrap();
-        fs::create_dir_all(Path::new(&chain_config_dir).join("C"))
-            .expect("failed to create dir for chain config");
         let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
         info!(
             "saving evm config file to {:?}",
