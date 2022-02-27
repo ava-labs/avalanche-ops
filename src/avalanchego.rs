@@ -943,3 +943,5 @@ pub async fn check_health(u: &str, liveness: bool) -> io::Result<APIHealthReply>
     };
     Ok(resp)
 }
+
+// TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
