@@ -969,12 +969,17 @@ fn execute_upload_backup(
 
     let enc = compress::DirEncoder::new(archive_compression_method)?;
     info!("STEP: backup {} with {}", pack_dir, enc.to_string());
-    let output_path = random::tmp_path(10, Some(enc.ext())).unwrap();
-    compress::pack_directory(pack_dir, &output_path, enc)?;
+    let parent_dir = Path::new(&pack_dir)
+        .parent()
+        .expect("unexpected None parent dir");
+    let tmp_file_path = parent_dir.join(random::string(10));
+    let tmp_file_path = tmp_file_path.as_path().as_os_str().to_str().unwrap();
+    compress::pack_directory(pack_dir, tmp_file_path, enc)?;
 
-    info!("STEP: upload output {} to S3", output_path);
-    rt.block_on(s3_manager.put_object(&output_path, s3_bucket, s3_key))
+    info!("STEP: upload output {} to S3", tmp_file_path);
+    rt.block_on(s3_manager.put_object(tmp_file_path, s3_bucket, s3_key))
         .unwrap();
+    fs::remove_file(tmp_file_path)?;
 
     info!("'avalanched upload-backup' all success!");
     Ok(())
@@ -1011,22 +1016,23 @@ fn execute_download_backup(
     let parent_dir = Path::new(&unpack_dir)
         .parent()
         .expect("unexpected None parent dir");
-    let output_path = parent_dir.join(random::tmp_path(10, Some(dec.ext())).unwrap());
-    let output_path = output_path.as_path().as_os_str().to_str().unwrap();
+    let tmp_file_path = parent_dir.join(random::string(10));
+    let tmp_file_path = tmp_file_path.as_path().as_os_str().to_str().unwrap();
     info!(
         "STEP: downloading from S3 {} {} to {}",
-        s3_bucket, s3_key, output_path
+        s3_bucket, s3_key, tmp_file_path
     );
-    rt.block_on(s3_manager.get_object(s3_bucket, s3_key, output_path))
+    rt.block_on(s3_manager.get_object(s3_bucket, s3_key, tmp_file_path))
         .unwrap();
 
     info!(
         "STEP: unpack backup {} to {} with {}",
-        output_path,
+        tmp_file_path,
         unpack_dir,
         dec.to_string()
     );
-    compress::unpack_directory(output_path, unpack_dir, dec)?;
+    compress::unpack_directory(tmp_file_path, unpack_dir, dec)?;
+    fs::remove_file(tmp_file_path)?;
 
     info!("'avalanched download-backup' all success!");
     Ok(())
