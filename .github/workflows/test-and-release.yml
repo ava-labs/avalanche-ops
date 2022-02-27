@@ -1,5 +1,6 @@
 name: Test and release
 
+# ref. https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 on:
   push:
     branches:
