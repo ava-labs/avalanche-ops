@@ -734,6 +734,30 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         spec.avalanchego_config.bootstrap_ids = Some(bootstrap_ids.join(","));
     }
 
+    if spec.install_artifacts.coreth_evm_config_file_path.is_some() {
+        thread::sleep(Duration::from_secs(1));
+        info!(
+            "STEP: downloading coreth evm config file from S3 (uploaded from client's {})",
+            spec.install_artifacts.coreth_evm_config_file_path.unwrap()
+        );
+        let tmp_evm_config_path = random::tmp_path(15, Some(".json")).unwrap();
+        rt.block_on(s3_manager.get_object(
+            &s3_bucket_name,
+            &aws_s3::KeyPath::CorethEvmConfigFile(spec.id.clone()).encode(),
+            &tmp_evm_config_path,
+        ))
+        .unwrap();
+        let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir.unwrap();
+        fs::create_dir_all(Path::new(&chain_config_dir).join("C"))
+            .expect("failed to create dir for chain config");
+        let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
+        info!(
+            "saving evm config file to {:?}",
+            chain_config_c_path.as_os_str()
+        );
+        fs::copy(&tmp_evm_config_path, chain_config_c_path).unwrap();
+    }
+
     // persist before starting the service
     spec.avalanchego_config.sync(None).unwrap();
 

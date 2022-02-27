@@ -70,6 +70,8 @@ pub const DEFAULT_API_METRICS_ENABLED: bool = true;
 pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
 pub const DEFAULT_API_IPCS_ENABLED: bool = true;
 
+pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/etc/avalanchego/configs/chains";
+
 /// Represents AvalancheGo configuration.
 /// All file paths must be valid on the remote machines.
 /// For example, you may configure cert paths on your local laptop
@@ -184,6 +186,10 @@ pub struct Config {
     /// A list of whitelisted subnet IDs (comma-separated).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub whitelisted_subnets: Option<String>,
+
+    // TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chain_config_dir: Option<String>,
 }
 
 impl Default for Config {
@@ -237,6 +243,8 @@ impl Config {
             api_ipcs_enabled: None,
 
             whitelisted_subnets: None,
+
+            chain_config_dir: None,
         }
     }
 
@@ -272,6 +280,8 @@ impl Config {
         config.api_metrics_enabled = Some(DEFAULT_API_METRICS_ENABLED);
         config.api_health_enabled = Some(DEFAULT_API_HEALTH_ENABLED);
         config.api_ipcs_enabled = Some(DEFAULT_API_IPCS_ENABLED);
+
+        config.chain_config_dir = Some(String::from(DEFAULT_CHAIN_CONFIG_DIR));
         config
     }
 
@@ -943,5 +953,3 @@ pub async fn check_health(u: &str, liveness: bool) -> io::Result<APIHealthReply>
     };
     Ok(resp)
 }
-
-// TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config

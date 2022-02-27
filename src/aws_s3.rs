@@ -444,8 +444,9 @@ pub enum KeyPath {
     // e.g., initial stakers are empty since there's no beacon node yet
     GenesisDraftFile(String),
     // valid genesis file with fully specified initial stakers
-    // after beacon nodes become active
+    // after beacon nodes become active.
     GenesisFile(String),
+    CorethEvmConfigFile(String),
 
     AvalanchedBin(String),
     AvalancheBin(String),
@@ -476,6 +477,7 @@ impl KeyPath {
 
             KeyPath::GenesisDraftFile(id) => format!("{}/install/genesis.draft.json", id),
             KeyPath::GenesisFile(id) => format!("{}/genesis.json", id),
+            KeyPath::CorethEvmConfigFile(id) => format!("{}/coreth.evm.config.json", id),
 
             KeyPath::AvalanchedBin(id) => format!("{}/install/avalanched", id),
             KeyPath::AvalancheBin(id) => format!("{}/install/avalanche", id),

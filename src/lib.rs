@@ -123,6 +123,9 @@ pub struct InstallArtifacts {
     /// MUST BE NON-EMPTY for custom network.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genesis_draft_file_path: Option<String>,
+    // TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coreth_evm_config_file_path: Option<String>,
 }
 
 /// Represents the CloudFormation stack name.
@@ -154,6 +157,7 @@ impl Spec {
         avalanched_bin: &str,
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
+        coreth_evm_config_file_path: Option<String>,
         avalanchego_config: avalanchego::Config,
         keys: usize,
     ) -> Self {
@@ -175,26 +179,27 @@ impl Spec {
                 ),
             };
 
-        let mut generated_seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
-        let mut genesis_draft_file_path = Some(random::tmp_path(15, Some(".json")).unwrap());
-        if avalanchego_config.is_custom_network() {
-            let (genesis, _generated_seed_keys) =
-                avalanchego::Genesis::new(network_id, keys).unwrap();
-            genesis
-                .sync(&genesis_draft_file_path.clone().unwrap())
-                .unwrap();
-            generated_seed_keys = _generated_seed_keys;
-        } else {
-            let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY).unwrap();
-            generated_seed_keys.push(ewoq_key.to_info(network_id).unwrap());
-            for _ in 1..keys {
-                let k = key::Key::generate().unwrap();
-                let info = k.to_info(network_id).unwrap();
-                generated_seed_keys.push(info);
+        let (generated_seed_keys, genesis_draft_file_path) = {
+            if avalanchego_config.is_custom_network() {
+                let (genesis, _generated_seed_keys) =
+                    avalanchego::Genesis::new(network_id, keys).unwrap();
+                let genesis_draft_file_path = Some(random::tmp_path(15, Some(".json")).unwrap());
+                genesis
+                    .sync(&genesis_draft_file_path.clone().unwrap())
+                    .unwrap();
+                (_generated_seed_keys, genesis_draft_file_path)
+            } else {
+                let mut _generated_seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
+                let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY).unwrap();
+                _generated_seed_keys.push(ewoq_key.to_info(network_id).unwrap());
+                for _ in 1..keys {
+                    let k = key::Key::generate().unwrap();
+                    let info = k.to_info(network_id).unwrap();
+                    _generated_seed_keys.push(info);
+                }
+                (_generated_seed_keys, None)
             }
-            genesis_draft_file_path = None;
-        }
-
+        };
         Self {
             id,
 
@@ -220,6 +225,7 @@ impl Spec {
                 avalanchego_bin: avalanchego_bin.to_string(),
                 plugins_dir,
                 genesis_draft_file_path,
+                coreth_evm_config_file_path,
             },
 
             avalanchego_config,
@@ -473,6 +479,27 @@ impl Spec {
                 ));
             }
         }
+        if self.install_artifacts.coreth_evm_config_file_path.is_some()
+            && !Path::new(
+                &self
+                    .install_artifacts
+                    .coreth_evm_config_file_path
+                    .clone()
+                    .unwrap(),
+            )
+            .exists()
+        {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "install_artifacts.coreth_evm_config_file_path {} does not exist",
+                    self.install_artifacts
+                        .coreth_evm_config_file_path
+                        .clone()
+                        .unwrap()
+                ),
+            ));
+        };
 
         Ok(())
     }
@@ -619,6 +646,7 @@ avalanchego_config:
             avalanchego_bin: avalanchego_bin.to_string(),
             plugins_dir: Some(plugins_dir.to_string()),
             genesis_draft_file_path: Some(String::from(genesis_draft_file_path)),
+            coreth_evm_config_file_path: None,
         },
 
         avalanchego_config,

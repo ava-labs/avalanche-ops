@@ -81,7 +81,6 @@ fn create_default_spec_command() -> Command<'static> {
         .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
                 .long("install-artifacts-avalanched-bin")
-                .short('d')
                 .help("Sets the Avalanched binary path in the local machine to be shared with remote machines")
                 .required(true)
                 .takes_value(true)
@@ -90,7 +89,6 @@ fn create_default_spec_command() -> Command<'static> {
         .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHE_BIN") 
                 .long("install-artifacts-avalanche-bin")
-                .short('b')
                 .help("Sets the Avalanche node binary path in the local machine to be shared with remote machines")
                 .required(true)
                 .takes_value(true)
@@ -99,8 +97,15 @@ fn create_default_spec_command() -> Command<'static> {
         .arg(
             Arg::new("INSTALL_ARTIFACTS_PLUGINS_DIR") 
                 .long("install-artifacts-plugins-dir")
-                .short('p')
                 .help("Sets 'plugins' directory in the local machine to be shared with remote machines")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("CORETH_EVM_CONFIG_FILE_PATH") 
+                .long("coreth-evm-config-file-path")
+                .help("Sets coreth EVM config file path (ref. https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config)")
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -108,7 +113,6 @@ fn create_default_spec_command() -> Command<'static> {
         .arg(
             Arg::new("NETWORK_NAME") 
                 .long("network-name")
-                .short('n')
                 .help("Sets the type of network by name (e.g., mainnet, fuji, custom)")
                 .required(false)
                 .takes_value(true)
@@ -118,7 +122,6 @@ fn create_default_spec_command() -> Command<'static> {
         .arg(
             Arg::new("KEYS_TO_GENERATE") 
                 .long("keys-to-generate")
-                .short('k')
                 .help("Sets the number of keys to generate")
                 .required(false)
                 .takes_value(true)
@@ -293,6 +296,10 @@ fn main() {
                     .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
                     .unwrap_or("")
                     .to_string(),
+                coreth_evm_config_file_path: sub_matches
+                    .value_of("CORETH_EVM_CONFIG_FILE_PATH")
+                    .unwrap_or("")
+                    .to_string(),
                 network_name: sub_matches
                     .value_of("NETWORK_NAME")
                     .unwrap_or("")
@@ -343,6 +350,7 @@ struct DefaultSpecOption {
     install_artifacts_avalanched_bin: String,
     install_artifacts_avalanche_bin: String,
     install_artifacts_plugins_dir: String,
+    coreth_evm_config_file_path: String,
     network_name: String,
     keys_to_generate: usize,
     avalanchego_log_level: String,
@@ -356,10 +364,20 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
 
-    let mut _install_artifacts_plugins_dir = Some(opt.install_artifacts_plugins_dir.clone());
-    if opt.install_artifacts_plugins_dir.is_empty() {
-        _install_artifacts_plugins_dir = None;
-    }
+    let _install_artifacts_plugins_dir = {
+        if opt.install_artifacts_plugins_dir.is_empty() {
+            None
+        } else {
+            Some(opt.install_artifacts_plugins_dir.clone())
+        }
+    };
+    let _coreth_evm_config_file_path = {
+        if opt.coreth_evm_config_file_path.is_empty() {
+            None
+        } else {
+            Some(opt.coreth_evm_config_file_path.clone())
+        }
+    };
 
     let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opt.network_name.as_str()) {
         Some(v) => *v,
@@ -385,6 +403,7 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         opt.install_artifacts_avalanched_bin.as_str(),
         opt.install_artifacts_avalanche_bin.as_str(),
         _install_artifacts_plugins_dir,
+        _coreth_evm_config_file_path,
         avalanchego_config,
         opt.keys_to_generate,
     );
@@ -614,6 +633,21 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                 &genesis_draft_file_path,
                 &aws_resources.s3_bucket,
                 &aws_s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
+            ))
+            .unwrap();
+        }
+    }
+    if spec.install_artifacts.coreth_evm_config_file_path.is_some() {
+        let coreth_evm_config_file_path = spec
+            .install_artifacts
+            .coreth_evm_config_file_path
+            .clone()
+            .unwrap();
+        if Path::new(&coreth_evm_config_file_path).exists() {
+            rt.block_on(s3_manager.put_object(
+                &coreth_evm_config_file_path,
+                &aws_resources.s3_bucket,
+                &aws_s3::KeyPath::CorethEvmConfigFile(spec.id.clone()).encode(),
             ))
             .unwrap();
         }
