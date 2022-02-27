@@ -1007,12 +1007,17 @@ fn execute_download_backup(
     let s3_manager = aws_s3::Manager::new(&shared_config);
 
     let dec = compress::DirDecoder::new(decompression_unarchive_method)?;
-    let output_path = random::tmp_path(10, Some(dec.ext())).unwrap();
+
+    let parent_dir = Path::new(&unpack_dir)
+        .parent()
+        .expect("unexpected None parent dir");
+    let output_path = parent_dir.join(random::tmp_path(10, Some(dec.ext())).unwrap());
+    let output_path = output_path.as_path().as_os_str().to_str().unwrap();
     info!(
         "STEP: downloading from S3 {} {} to {}",
         s3_bucket, s3_key, output_path
     );
-    rt.block_on(s3_manager.get_object(s3_bucket, s3_key, &output_path))
+    rt.block_on(s3_manager.get_object(s3_bucket, s3_key, output_path))
         .unwrap();
 
     info!(
@@ -1021,7 +1026,7 @@ fn execute_download_backup(
         unpack_dir,
         dec.to_string()
     );
-    compress::unpack_directory(&output_path, unpack_dir, dec)?;
+    compress::unpack_directory(output_path, unpack_dir, dec)?;
 
     info!("'avalanched download-backup' all success!");
     Ok(())
