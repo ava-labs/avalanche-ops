@@ -103,8 +103,8 @@ fn create_default_spec_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("CORETH_EVM_CONFIG_FILE_PATH") 
-                .long("coreth-evm-config-file-path")
+            Arg::new("INSTALL_ARTIFACTS_CORETH_EVM_CONFIG_FILE_PATH") 
+                .long("install-artifacts-coreth-evm-config-file-path")
                 .help("Sets coreth EVM config file path (ref. https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config)")
                 .required(false)
                 .takes_value(true)
@@ -296,8 +296,8 @@ fn main() {
                     .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
                     .unwrap_or("")
                     .to_string(),
-                coreth_evm_config_file_path: sub_matches
-                    .value_of("CORETH_EVM_CONFIG_FILE_PATH")
+                install_artifacts_coreth_evm_config_file_path: sub_matches
+                    .value_of("INSTALL_ARTIFACTS_CORETH_EVM_CONFIG_FILE_PATH")
                     .unwrap_or("")
                     .to_string(),
                 network_name: sub_matches
@@ -350,7 +350,7 @@ struct DefaultSpecOption {
     install_artifacts_avalanched_bin: String,
     install_artifacts_avalanche_bin: String,
     install_artifacts_plugins_dir: String,
-    coreth_evm_config_file_path: String,
+    install_artifacts_coreth_evm_config_file_path: String,
     network_name: String,
     keys_to_generate: usize,
     avalanchego_log_level: String,
@@ -371,11 +371,11 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
             Some(opt.install_artifacts_plugins_dir.clone())
         }
     };
-    let _coreth_evm_config_file_path = {
-        if opt.coreth_evm_config_file_path.is_empty() {
+    let _install_artifacts_coreth_evm_config_file_path = {
+        if opt.install_artifacts_coreth_evm_config_file_path.is_empty() {
             None
         } else {
-            Some(opt.coreth_evm_config_file_path.clone())
+            Some(opt.install_artifacts_coreth_evm_config_file_path.clone())
         }
     };
 
@@ -403,7 +403,7 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         opt.install_artifacts_avalanched_bin.as_str(),
         opt.install_artifacts_avalanche_bin.as_str(),
         _install_artifacts_plugins_dir,
-        _coreth_evm_config_file_path,
+        _install_artifacts_coreth_evm_config_file_path,
         avalanchego_config,
         opt.keys_to_generate,
     );
