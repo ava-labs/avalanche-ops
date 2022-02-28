@@ -344,8 +344,10 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let plugins_dir = get_plugins_dir(&avalanche_bin);
     if !Path::new(&plugins_dir).exists() {
         thread::sleep(Duration::from_secs(1));
-        info!("STEP: downloading plugins from S3");
+        info!("STEP: creating '{}' for plugins", plugins_dir);
         fs::create_dir_all(plugins_dir.clone()).unwrap();
+
+        info!("STEP: downloading plugins from S3 (if any)");
         let objects = rt
             .block_on(s3_manager.list_objects(
                 &s3_bucket_name,
@@ -354,6 +356,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 )),
             ))
             .unwrap();
+        info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let file_name = extract_filename(s3_key);
