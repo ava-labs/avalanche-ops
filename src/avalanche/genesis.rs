@@ -69,7 +69,7 @@ impl AvalancheGo {
         let now = SystemTime::now();
         let now_unix = now
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .expect("unexpected None duration_since")
             .as_secs();
         Self {
             network_id: DEFAULT_CUSTOM_NETWORK_ID, // mainnet
@@ -132,7 +132,7 @@ impl AvalancheGo {
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing genesis Config to '{}'", file_path);
         let path = Path::new(file_path);
-        let parent_dir = path.parent().unwrap();
+        let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
         let ret = serde_json::to_vec(self);
@@ -242,7 +242,7 @@ impl LockedAmount {
         let now = SystemTime::now();
         let now_unix = now
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .expect("unexpected None duration_since")
             .as_secs();
         Self {
             amount: Some(DEFAULT_LOCKED_AMOUNT),

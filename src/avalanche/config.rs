@@ -313,11 +313,15 @@ impl AvalancheGo {
                 "empty config-file path",
             ));
         }
-        let p = file_path.unwrap_or_else(|| self.config_file.clone().unwrap());
+        let p = file_path.unwrap_or_else(|| {
+            self.config_file
+                .clone()
+                .expect("unexpected None config_file")
+        });
 
         info!("syncing avalanchego Config to '{}'", p);
         let path = Path::new(&p);
-        let parent_dir = path.parent().unwrap();
+        let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
         let ret = serde_json::to_vec(self);
@@ -370,7 +374,7 @@ impl AvalancheGo {
                 ErrorKind::InvalidInput,
                 format!(
                     "non-empty '--genesis={}' for network_id {}",
-                    self.genesis.clone().unwrap(),
+                    self.genesis.clone().expect("unexpected None genesis"),
                     self.network_id,
                 ),
             ));
@@ -388,20 +392,23 @@ impl AvalancheGo {
         }
 
         // custom network requires genesis file
-        if self.genesis.is_some() && !Path::new(&self.genesis.clone().unwrap()).exists() {
+        if self.genesis.is_some()
+            && !Path::new(&self.genesis.clone().expect("unexpected None genesis")).exists()
+        {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "non-empty '--genesis={}' but genesis file does not exist",
-                    self.genesis.clone().unwrap()
+                    self.genesis.clone().expect("unexpected None genesis")
                 ),
             ));
         }
 
         // network ID must match with the one in genesis file
         if self.genesis.is_some() {
-            let genesis_file_path = self.genesis.clone().unwrap();
-            let genesis_config = genesis::AvalancheGo::load(&genesis_file_path).unwrap();
+            let genesis_file_path = self.genesis.clone().expect("unexpected None genesis");
+            let genesis_config = genesis::AvalancheGo::load(&genesis_file_path)
+                .expect("unexpected None genesis config");
             if genesis_config.network_id.ne(&self.network_id) {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,

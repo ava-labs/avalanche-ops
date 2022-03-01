@@ -530,9 +530,14 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
         humanize::bytes(size_before),
     );
 
-    let parent_dir = Path::new(src_dir_path).parent().unwrap();
-    let archive_path = parent_dir.join(random::tmp_path(10, None).unwrap());
-    let archive_path = archive_path.as_path().to_str().unwrap();
+    let parent_dir = Path::new(src_dir_path)
+        .parent()
+        .expect("unexpected no parent dir");
+    let archive_path = parent_dir.join(random::tmp_path(10, None).expect("expected some tmp_path"));
+    let archive_path = archive_path
+        .as_path()
+        .to_str()
+        .expect("unexpected None path");
     let archive_file = File::create(&archive_path)?;
     match enc {
         DirEncoder::TarGzip => {
@@ -573,7 +578,10 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                     continue;
                 }
 
-                let file_name = rel_path.as_os_str().to_str().unwrap();
+                let file_name = rel_path
+                    .as_os_str()
+                    .to_str()
+                    .expect("unexpected None os_str");
                 info!("adding file {}", file_name);
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
@@ -619,14 +627,20 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                     // only if not root
                     // ref. https://github.com/zip-rs/zip/blob/master/examples/write_dir.rs
                     if !rel_path.as_os_str().is_empty() {
-                        let dir_name = rel_path.as_os_str().to_str().unwrap();
+                        let dir_name = rel_path
+                            .as_os_str()
+                            .to_str()
+                            .expect("unexpected None os_str");
                         info!("adding directory {}", dir_name);
                         zip.add_directory(dir_name, options)?;
                     }
                     continue;
                 }
 
-                let file_name = rel_path.as_os_str().to_str().unwrap();
+                let file_name = rel_path
+                    .as_os_str()
+                    .to_str()
+                    .expect("unexpected None os_str");
                 info!("adding file {}", file_name);
                 zip.start_file(file_name, options)?;
                 let mut f = File::open(full_path)?;
@@ -670,7 +684,10 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                     continue;
                 }
 
-                let file_name = rel_path.as_os_str().to_str().unwrap();
+                let file_name = rel_path
+                    .as_os_str()
+                    .to_str()
+                    .expect("unexpected None os_str");
                 info!("adding file {}", file_name);
                 let mut f = File::open(&full_path)?;
                 tar.append_file(&file_name, &mut f)?;
@@ -716,14 +733,20 @@ pub fn pack_directory(src_dir_path: &str, dst_path: &str, enc: DirEncoder) -> io
                     // only if not root
                     // ref. https://github.com/zip-rs/zip/blob/master/examples/write_dir.rs
                     if !rel_path.as_os_str().is_empty() {
-                        let dir_name = rel_path.as_os_str().to_str().unwrap();
+                        let dir_name = rel_path
+                            .as_os_str()
+                            .to_str()
+                            .expect("unexpected None os_str");
                         info!("adding directory {}", dir_name);
                         zip.add_directory(dir_name, options)?;
                     }
                     continue;
                 }
 
-                let file_name = rel_path.as_os_str().to_str().unwrap();
+                let file_name = rel_path
+                    .as_os_str()
+                    .to_str()
+                    .expect("unexpected None os_str");
                 info!("adding file {}", file_name);
                 zip.start_file(file_name, options)?;
                 let mut f = File::open(full_path)?;
@@ -797,7 +820,12 @@ pub fn unpack_directory(
                         fs::create_dir_all(&p)?;
                     }
                 }
-                if output_path.is_dir() || output_path.to_str().unwrap().ends_with('/') {
+                if output_path.is_dir()
+                    || output_path
+                        .to_str()
+                        .expect("unexpected None str")
+                        .ends_with('/')
+                {
                     info!("extracting directory {}", output_path.display());
                     fs::create_dir_all(output_path)?;
                 } else {
@@ -874,7 +902,12 @@ pub fn unpack_directory(
                         fs::create_dir_all(&p)?;
                     }
                 }
-                if output_path.is_dir() || output_path.to_str().unwrap().ends_with('/') {
+                if output_path.is_dir()
+                    || output_path
+                        .to_str()
+                        .expect("unexpected None str")
+                        .ends_with('/')
+                {
                     info!("extracting directory {}", output_path.display());
                     fs::create_dir_all(output_path)?;
                 } else {

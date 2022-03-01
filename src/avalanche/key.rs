@@ -114,7 +114,9 @@ impl Key {
             None => constants::FALLBACK_HRP,
         };
         // ref. "pk.PublicKey().Address().Bytes()"
-        let short_address_bytes = public_key_to_short_address_bytes(&self.public_key.unwrap())?;
+        let short_address_bytes = public_key_to_short_address_bytes(
+            &self.public_key.expect("unexpected empty public_key"),
+        )?;
 
         // ref. "formatting.FormatAddress(chainIDAlias, hrp, pubBytes)"
         formatting::address(chain_id_alias, hrp, &short_address_bytes)

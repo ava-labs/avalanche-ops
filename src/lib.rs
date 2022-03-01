@@ -174,19 +174,29 @@ impl Spec {
         let (generated_seed_keys, genesis_draft_file_path) = {
             if avalanchego_config.is_custom_network() {
                 let (genesis, _generated_seed_keys) =
-                    genesis::AvalancheGo::new(network_id, keys).unwrap();
-                let genesis_draft_file_path = Some(random::tmp_path(15, Some(".json")).unwrap());
+                    genesis::AvalancheGo::new(network_id, keys).expect("unexpected None genesis");
+                let genesis_draft_file_path =
+                    Some(random::tmp_path(15, Some(".json")).expect("unexpected None tmp_path"));
                 genesis
-                    .sync(&genesis_draft_file_path.clone().unwrap())
-                    .unwrap();
+                    .sync(
+                        &genesis_draft_file_path
+                            .clone()
+                            .expect("unexpected None genesis draft file path"),
+                    )
+                    .expect("unexpected sync failure");
                 (_generated_seed_keys, genesis_draft_file_path)
             } else {
                 let mut _generated_seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
-                let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY).unwrap();
-                _generated_seed_keys.push(ewoq_key.to_info(network_id).unwrap());
+                let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY)
+                    .expect("unexpected key creation failure");
+                _generated_seed_keys.push(
+                    ewoq_key
+                        .to_info(network_id)
+                        .expect("unexpected to_info failure"),
+                );
                 for _ in 1..keys {
-                    let k = key::Key::generate().unwrap();
-                    let info = k.to_info(network_id).unwrap();
+                    let k = key::Key::generate().expect("unexpected key generate failure");
+                    let info = k.to_info(network_id).expect("unexpected to_info failure");
                     _generated_seed_keys.push(info);
                 }
                 (_generated_seed_keys, None)
@@ -243,7 +253,7 @@ impl Spec {
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing Spec to '{}'", file_path);
         let path = Path::new(file_path);
-        let parent_dir = path.parent().unwrap();
+        let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
         let ret = serde_yaml::to_vec(self);
@@ -314,7 +324,10 @@ impl Spec {
             None => {}
         }
         if self.aws_resources.is_some() {
-            let aws_resources = self.aws_resources.clone().unwrap();
+            let aws_resources = self
+                .aws_resources
+                .clone()
+                .expect("unexpected None aws_resources");
             if aws_resources.db_backup_s3_region.is_some()
                 && aws_resources.db_backup_s3_bucket.is_none()
             {
@@ -322,7 +335,9 @@ impl Spec {
                     ErrorKind::InvalidInput,
                     format!(
                         "{} missing corresponding bucket",
-                        aws_resources.db_backup_s3_bucket.unwrap()
+                        aws_resources
+                            .db_backup_s3_bucket
+                            .expect("unexpected aws_resources.db_backup_s3_bucket")
                     ),
                 ));
             }
@@ -333,7 +348,9 @@ impl Spec {
                     ErrorKind::InvalidInput,
                     format!(
                         "{} missing corresponding key",
-                        aws_resources.db_backup_s3_bucket.unwrap()
+                        aws_resources
+                            .db_backup_s3_bucket
+                            .expect("unexpected aws_resources.db_backup_s3_bucket")
                     ),
                 ));
             }
@@ -344,7 +361,9 @@ impl Spec {
                     ErrorKind::InvalidInput,
                     format!(
                         "{} missing corresponding region",
-                        aws_resources.db_backup_s3_bucket.unwrap()
+                        aws_resources
+                            .db_backup_s3_bucket
+                            .expect("unexpected aws_resources.db_backup_s3_bucket")
                     ),
                 ));
             }
@@ -388,13 +407,23 @@ impl Spec {
             ));
         }
         if self.install_artifacts.plugins_dir.is_some()
-            && !Path::new(&self.install_artifacts.plugins_dir.clone().unwrap()).exists()
+            && !Path::new(
+                &self
+                    .install_artifacts
+                    .plugins_dir
+                    .clone()
+                    .expect("unexpected None install_artifacts.plugins_dir"),
+            )
+            .exists()
         {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "plugins_dir {} does not exist",
-                    self.install_artifacts.plugins_dir.clone().unwrap()
+                    self.install_artifacts
+                        .plugins_dir
+                        .clone()
+                        .expect("unexpected None install_artifacts.plugins_dir")
                 ),
             ));
         }
@@ -455,7 +484,7 @@ impl Spec {
                     .install_artifacts
                     .genesis_draft_file_path
                     .clone()
-                    .unwrap(),
+                    .expect("unexpected None install_artifacts.genesis_draft_file_path"),
             )
             .exists()
             {
@@ -466,7 +495,7 @@ impl Spec {
                         self.install_artifacts
                             .genesis_draft_file_path
                             .clone()
-                            .unwrap()
+                            .expect("unexpected None install_artifacts.genesis_draft_file_path")
                     ),
                 ));
             }
@@ -477,7 +506,7 @@ impl Spec {
                     .install_artifacts
                     .coreth_evm_config_file_path
                     .clone()
-                    .unwrap(),
+                    .expect("unexpected None install_artifacts.coreth_evm_config_file_path"),
             )
             .exists()
         {
@@ -488,7 +517,7 @@ impl Spec {
                     self.install_artifacts
                         .coreth_evm_config_file_path
                         .clone()
-                        .unwrap()
+                        .expect("unexpected None install_artifacts.coreth_evm_config_file_path")
                 ),
             ));
         };

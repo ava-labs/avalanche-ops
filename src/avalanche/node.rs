@@ -76,7 +76,7 @@ impl Node {
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing Node to '{}'", file_path);
         let path = Path::new(file_path);
-        let parent_dir = path.parent().unwrap();
+        let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
         let ret = serde_yaml::to_vec(self);
@@ -132,7 +132,7 @@ impl Node {
             }
         };
         let compressed = compress::pack(&d, compress::Encoder::ZstdBase58(3))?;
-        Ok(String::from_utf8(compressed).unwrap())
+        Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
     }
 
     /// Reverse of "compress_base64".
