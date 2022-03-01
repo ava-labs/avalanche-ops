@@ -8,7 +8,10 @@ use log::info;
 use rust_embed::RustEmbed;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_cloudformation, utils::random};
+use avalanche_ops::{
+    aws::{self, cloudformation},
+    utils::random,
+};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -37,7 +40,7 @@ fn main() {
 
     let ret = ab!(aws::load_config(None));
     let shared_config = ret.unwrap();
-    let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
+    let cloudformation_manager = cloudformation::Manager::new(&shared_config);
 
     let stack_name = random::generate_id("test");
 

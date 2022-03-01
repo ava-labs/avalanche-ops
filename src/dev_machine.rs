@@ -9,7 +9,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    aws_sts,
+    aws::sts,
     utils::{random, time},
 };
 
@@ -49,7 +49,7 @@ pub struct AWSResources {
     pub bucket: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub identity: Option<aws_sts::Identity>,
+    pub identity: Option<sts::Identity>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kms_cmk_id: Option<String>,

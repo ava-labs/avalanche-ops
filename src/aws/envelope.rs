@@ -12,7 +12,7 @@ use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM, NONCE_LEN};
 use ring::rand::{SecureRandom, SystemRandom};
 
 use crate::{
-    aws_kms,
+    aws::kms,
     errors::{Error::Other, Result},
     utils::humanize,
 };
@@ -23,12 +23,12 @@ const AAD_TAG: &str = "avalanche-ops-envelope-encryption";
 
 /// Implements envelope encryption manager.
 pub struct Envelope {
-    aws_kms_manager: Option<aws_kms::Manager>,
+    aws_kms_manager: Option<kms::Manager>,
     aws_kms_key_id: Option<String>,
 }
 
 impl Envelope {
-    pub fn new(aws_kms_manager: Option<aws_kms::Manager>, aws_kms_key_id: Option<String>) -> Self {
+    pub fn new(aws_kms_manager: Option<kms::Manager>, aws_kms_key_id: Option<String>) -> Self {
         Self {
             aws_kms_manager,
             aws_kms_key_id,

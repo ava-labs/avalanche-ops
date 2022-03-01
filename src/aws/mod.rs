@@ -1,11 +1,17 @@
 use std::io;
 
-use aws_config::meta::region::RegionProviderChain;
+pub use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::Region;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::aws_sts;
+pub mod cloudformation;
+pub mod cloudwatch;
+pub mod ec2;
+pub mod envelope;
+pub mod kms;
+pub mod s3;
+pub mod sts;
 
 /// Loads an AWS config from default environments.
 pub async fn load_config(reg: Option<String>) -> io::Result<aws_config::Config> {
@@ -48,7 +54,7 @@ pub struct Resources {
     /// AWS STS caller loaded from its local environment.
     /// Read-only.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub identity: Option<aws_sts::Identity>,
+    pub identity: Option<sts::Identity>,
 
     /// KMS CMK ID to encrypt resources.
     /// None if not created yet.

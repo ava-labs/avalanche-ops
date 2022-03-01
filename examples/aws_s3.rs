@@ -5,7 +5,7 @@ use tokio::runtime::Runtime;
 
 extern crate avalanche_ops;
 use avalanche_ops::{
-    aws, aws_s3,
+    aws::{self, s3},
     utils::{random, time as atime},
 };
 
@@ -22,7 +22,7 @@ fn main() {
     println!();
     info!("creating AWS S3 resources!");
     let shared_config = rt.block_on(aws::load_config(None)).unwrap();
-    let s3_manager = aws_s3::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
 
     println!();
     println!();

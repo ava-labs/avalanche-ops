@@ -14,8 +14,9 @@ use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, cert, compress, constants,
-    envelope, node,
+    self, avalanchego,
+    aws::{self, cloudwatch, ec2, envelope, kms, s3},
+    cert, compress, constants, node,
     utils::{bash, random},
 };
 
@@ -239,25 +240,25 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     thread::sleep(Duration::from_secs(1));
     info!("STEP: fetching intance metadata using IMDSv2");
 
-    let az = rt.block_on(aws_ec2::fetch_availability_zone()).unwrap();
+    let az = rt.block_on(ec2::fetch_availability_zone()).unwrap();
     info!("fetched availability zone {}", az);
 
-    let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
+    let reg = rt.block_on(ec2::fetch_region()).unwrap();
     info!("fetched region {}", reg);
 
-    let instance_id = rt.block_on(aws_ec2::fetch_instance_id()).unwrap();
+    let instance_id = rt.block_on(ec2::fetch_instance_id()).unwrap();
     info!("fetched instance ID {}", instance_id);
 
-    let public_ipv4 = rt.block_on(aws_ec2::fetch_public_ipv4()).unwrap();
+    let public_ipv4 = rt.block_on(ec2::fetch_public_ipv4()).unwrap();
     info!("fetched public ipv4 {}", public_ipv4);
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: loading AWS config");
     let shared_config = rt.block_on(aws::load_config(Some(reg.clone()))).unwrap();
 
-    let ec2_manager = aws_ec2::Manager::new(&shared_config);
-    let kms_manager = aws_kms::Manager::new(&shared_config);
-    let s3_manager = aws_s3::Manager::new(&shared_config);
+    let ec2_manager = ec2::Manager::new(&shared_config);
+    let kms_manager = kms::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
 
     thread::sleep(Duration::from_secs(1));
     info!("STEP: fetching tags from the local instance");
@@ -328,7 +329,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &aws_s3::KeyPath::AvalancheBinCompressed(id.clone()).encode(),
+            &s3::KeyPath::AvalancheBinCompressed(id.clone()).encode(),
             &tmp_avalanche_bin_compressed_path,
         ))
         .unwrap();
@@ -352,8 +353,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let objects = rt
             .block_on(s3_manager.list_objects(
                 &s3_bucket_name,
-                Some(aws_s3::append_slash(
-                    &aws_s3::KeyPath::PluginsDir(id.clone()).encode(),
+                Some(s3::append_slash(
+                    &s3::KeyPath::PluginsDir(id.clone()).encode(),
                 )),
             ))
             .unwrap();
@@ -376,13 +377,13 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     // TODO: add more logs for plugins
     thread::sleep(Duration::from_secs(1));
     info!("STEP: writing CloudWatch configuration JSON file");
-    let mut cloudwatch_config = aws_cloudwatch::Config::default();
-    cloudwatch_config.logs = Some(aws_cloudwatch::Logs {
+    let mut cloudwatch_config = cloudwatch::Config::default();
+    cloudwatch_config.logs = Some(cloudwatch::Logs {
         force_flush_interval: Some(60),
-        logs_collected: Some(aws_cloudwatch::LogsCollected {
-            files: Some(aws_cloudwatch::Files {
+        logs_collected: Some(cloudwatch::LogsCollected {
+            files: Some(cloudwatch::Files {
                 collect_list: Some(vec![
-                    aws_cloudwatch::Collect {
+                    cloudwatch::Collect {
                         log_group_name: id.clone(),
                         log_stream_name: format!("avalanched-{}-{}", node_kind, instance_id),
                         file_path: String::from("/var/log/avalanched/avalanched.log"),
@@ -390,7 +391,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                         timezone: None,
                         auto_removal: None,
                     },
-                    aws_cloudwatch::Collect {
+                    cloudwatch::Collect {
                         log_group_name: id.clone(),
                         log_stream_name: format!("avalanche-{}-{}", node_kind, instance_id),
                         file_path: String::from("/var/log/avalanche/avalanche.log"),
@@ -402,12 +403,12 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             }),
         }),
     });
-    let mut cw_metrics = aws_cloudwatch::Metrics {
+    let mut cw_metrics = cloudwatch::Metrics {
         namespace: id.clone(),
         ..Default::default()
     };
     cw_metrics.metrics_collected.disk =
-        Some(aws_cloudwatch::Disk::new(vec![avalanche_data_volume_path]));
+        Some(cloudwatch::Disk::new(vec![avalanche_data_volume_path]));
     cloudwatch_config.metrics = Some(cw_metrics);
     cloudwatch_config
         .sync(&cloudwatch_config_file_path)
@@ -418,7 +419,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let tmp_spec_file_path = random::tmp_path(15, Some(".yaml")).unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
-        &aws_s3::KeyPath::ConfigFile(id.clone()).encode(),
+        &s3::KeyPath::ConfigFile(id.clone()).encode(),
         &tmp_spec_file_path,
     ))
     .unwrap();
@@ -456,7 +457,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 &s3_bucket_name,
                 format!(
                     "{}/{}.crt",
-                    aws_s3::KeyPath::PkiKeyDir(id.clone()).encode(),
+                    s3::KeyPath::PkiKeyDir(id.clone()).encode(),
                     instance_id
                 )
                 .as_str(),
@@ -479,7 +480,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 &s3_bucket_name,
                 format!(
                     "{}/{}.key.zstd.seal_aes_256.encrypted",
-                    aws_s3::KeyPath::PkiKeyDir(id.clone()).encode(),
+                    s3::KeyPath::PkiKeyDir(id.clone()).encode(),
                     instance_id
                 )
                 .as_str(),
@@ -517,7 +518,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             let db_backup_s3_config = rt
                 .block_on(aws::load_config(Some(db_backup_s3_region)))
                 .unwrap();
-            let db_backup_s3_manager = aws_s3::Manager::new(&db_backup_s3_config);
+            let db_backup_s3_manager = s3::Manager::new(&db_backup_s3_config);
 
             // do not store in "tmp", will run out of space
             let download_path = format!(
@@ -553,7 +554,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         thread::sleep(Duration::from_secs(1));
         info!("STEP: publishing seed/bootstrapping beacon node information for discovery");
         let node = node::Node::new(node::Kind::Beacon, &instance_id, &node_id, &public_ipv4);
-        let s3_key = aws_s3::KeyPath::DiscoverBootstrappingBeaconNode(id.clone(), node.clone());
+        let s3_key = s3::KeyPath::DiscoverBootstrappingBeaconNode(id.clone(), node.clone());
         let s3_key = s3_key.encode();
         let node_info = NodeInformation {
             node,
@@ -573,8 +574,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &s3_bucket_name,
-                    Some(aws_s3::append_slash(
-                        &aws_s3::KeyPath::DiscoverBootstrappingBeaconNodesDir(id.clone()).encode(),
+                    Some(s3::append_slash(
+                        &s3::KeyPath::DiscoverBootstrappingBeaconNodesDir(id.clone()).encode(),
                     )),
                 ))
                 .unwrap();
@@ -597,7 +598,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             // just parse the s3 key name
             // to reduce "s3_manager.get_object" call volume
-            let seed_beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
+            let seed_beacon_node = s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
 
             let mut staker = avalanchego::Staker::default();
             staker.node_id = Some(seed_beacon_node.id);
@@ -615,7 +616,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &aws_s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
+            &s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
             &tmp_genesis_path,
         ))
         .unwrap();
@@ -636,7 +637,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         rt.block_on(s3_manager.put_object(
             &genesis_path,
             &s3_bucket_name,
-            &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
+            &s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -651,7 +652,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &aws_s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
+            &s3::KeyPath::GenesisFile(spec.id.clone()).encode(),
             &tmp_genesis_path,
         ))
         .unwrap();
@@ -696,8 +697,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             objects = rt
                 .block_on(s3_manager.list_objects(
                     &s3_bucket_name,
-                    Some(aws_s3::append_slash(
-                        &aws_s3::KeyPath::DiscoverReadyBeaconNodesDir(id.clone()).encode(),
+                    Some(s3::append_slash(
+                        &s3::KeyPath::DiscoverReadyBeaconNodesDir(id.clone()).encode(),
                     )),
                 ))
                 .unwrap();
@@ -720,7 +721,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             // just parse the s3 key name
             // to reduce "s3_manager.get_object" call volume
-            let beacon_node = aws_s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
+            let beacon_node = s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
 
             // assume all nodes in the network use the same ports
             // ref. "avalanchego/config.StakingPortKey" default value is "9651"
@@ -753,7 +754,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let tmp_evm_config_path = random::tmp_path(15, Some(".json")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &aws_s3::KeyPath::CorethEvmConfigFile(spec.id.clone()).encode(),
+            &s3::KeyPath::CorethEvmConfigFile(spec.id.clone()).encode(),
             &tmp_evm_config_path,
         ))
         .unwrap();
@@ -863,7 +864,7 @@ WantedBy=multi-user.target",
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing beacon node information");
             let node = node::Node::new(node::Kind::Beacon, &instance_id, &node_id, &public_ipv4);
-            let s3_key = aws_s3::KeyPath::DiscoverReadyBeaconNode(id.clone(), node.clone());
+            let s3_key = s3::KeyPath::DiscoverReadyBeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
             let node_info = NodeInformation {
                 node,
@@ -879,7 +880,7 @@ WantedBy=multi-user.target",
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing non-beacon node information");
             let node = node::Node::new(node::Kind::NonBeacon, &instance_id, &node_id, &public_ipv4);
-            let s3_key = aws_s3::KeyPath::DiscoverReadyNonBeaconNode(id.clone(), node.clone());
+            let s3_key = s3::KeyPath::DiscoverReadyNonBeaconNode(id.clone(), node.clone());
             let s3_key = s3_key.encode();
             let node_info = NodeInformation {
                 node,
@@ -903,14 +904,14 @@ WantedBy=multi-user.target",
             spec.avalanchego_config.db_dir.clone(),
             db_dir_network,
             &s3_bucket_name,
-            aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
+            s3::KeyPath::BackupsDir(id.clone()).encode(),
             compress::DirEncoder::TarGzip.ext(),
         );
         println!("/usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
             reg,
             compress::DirDecoder::TarGzip.id(),
             &s3_bucket_name,
-            aws_s3::KeyPath::BackupsDir(id.clone()).encode(),
+            s3::KeyPath::BackupsDir(id.clone()).encode(),
             compress::DirDecoder::TarGzip.ext(),
             spec.avalanchego_config.db_dir.clone(),
         );
@@ -990,16 +991,16 @@ fn execute_upload_backup(
 
     let rt = Runtime::new().unwrap();
 
-    // let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
+    // let reg = rt.block_on(ec2::fetch_region()).unwrap();
     // info!("fetched region {}", reg);
-    // let instance_id = rt.block_on(aws_ec2::fetch_instance_id()).unwrap();
+    // let instance_id = rt.block_on(ec2::fetch_instance_id()).unwrap();
     // info!("fetched instance ID {}", instance_id);
 
     info!("STEP: loading AWS config");
     let shared_config = rt
         .block_on(aws::load_config(Some(reg.to_string())))
         .unwrap();
-    let s3_manager = aws_s3::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
 
     let enc = compress::DirEncoder::new(archive_compression_method)?;
     info!("STEP: backup {} with {}", pack_dir, enc.to_string());
@@ -1034,16 +1035,16 @@ fn execute_download_backup(
 
     let rt = Runtime::new().unwrap();
 
-    // let reg = rt.block_on(aws_ec2::fetch_region()).unwrap();
+    // let reg = rt.block_on(ec2::fetch_region()).unwrap();
     // info!("fetched region {}", reg);
-    // let instance_id = rt.block_on(aws_ec2::fetch_instance_id()).unwrap();
+    // let instance_id = rt.block_on(ec2::fetch_instance_id()).unwrap();
     // info!("fetched instance ID {}", instance_id);
 
     info!("STEP: loading AWS config");
     let shared_config = rt
         .block_on(aws::load_config(Some(reg.to_string())))
         .unwrap();
-    let s3_manager = aws_s3::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
 
     let dec = compress::DirDecoder::new(decompression_unarchive_method)?;
 

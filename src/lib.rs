@@ -9,23 +9,18 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 pub mod avalanchego;
-pub mod aws;
-pub mod aws_cloudformation;
-pub mod aws_cloudwatch;
-pub mod aws_ec2;
-pub mod aws_kms;
-pub mod aws_s3;
-pub mod aws_sts;
 pub mod cert;
 pub mod compress;
 pub mod constants;
 pub mod dev_machine;
-pub mod envelope;
 pub mod errors;
 pub mod formatting;
 pub mod key;
 pub mod node;
 pub mod vm;
+
+/// ref. https://doc.rust-lang.org/reference/items/modules.html
+pub mod aws;
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod utils;

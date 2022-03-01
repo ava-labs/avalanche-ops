@@ -7,7 +7,10 @@ use std::{
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_kms, envelope, utils::random};
+use avalanche_ops::{
+    aws::{self, envelope, kms},
+    utils::random,
+};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -24,7 +27,7 @@ fn main() {
     info!("creating AWS KMS resources!");
 
     let shared_config = ab!(aws::load_config(None)).unwrap();
-    let kms_manager = aws_kms::Manager::new(&shared_config);
+    let kms_manager = kms::Manager::new(&shared_config);
 
     let mut key_desc = random::generate_id("test");
     key_desc.push_str("-cmk");

@@ -19,8 +19,10 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress, dev_machine,
-    envelope, utils::random,
+    self,
+    aws::{self, cloudformation, ec2, envelope, kms, s3, sts},
+    compress, dev_machine,
+    utils::random,
 };
 
 const APP_NAME: &str = "dev-machine";
@@ -244,7 +246,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         .block_on(aws::load_config(Some(aws_resources.region.clone())))
         .unwrap();
 
-    let sts_manager = aws_sts::Manager::new(&shared_config);
+    let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
 
     // validate identity
@@ -311,10 +313,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     }
 
     info!("creating resources (with spec path {})", spec_file_path);
-    let s3_manager = aws_s3::Manager::new(&shared_config);
-    let kms_manager = aws_kms::Manager::new(&shared_config);
-    let ec2_manager = aws_ec2::Manager::new(&shared_config);
-    let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
+    let kms_manager = kms::Manager::new(&shared_config);
+    let ec2_manager = ec2::Manager::new(&shared_config);
+    let cloudformation_manager = cloudformation::Manager::new(&shared_config);
 
     thread::sleep(Duration::from_secs(2));
     execute!(
@@ -329,7 +331,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         spec_file_path,
         &aws_resources.bucket,
-        &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+        &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
     ))
     .unwrap();
 
@@ -354,7 +356,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -390,7 +392,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &tmp_encrypted_path,
             &aws_resources.bucket,
-            &aws_s3::KeyPath::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
+            &s3::KeyPath::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
         ))
         .unwrap();
 
@@ -402,7 +404,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -472,7 +474,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -555,7 +557,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &aws_s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -708,7 +710,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &aws_s3::KeyPath::DevMachineConfigFile(spec.id).encode(),
+            &s3::KeyPath::DevMachineConfigFile(spec.id).encode(),
         ))
         .unwrap();
 
@@ -740,7 +742,7 @@ fn execute_delete(
         .block_on(aws::load_config(Some(aws_resources.region.clone())))
         .unwrap();
 
-    let sts_manager = aws_sts::Manager::new(&shared_config);
+    let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
 
     // validate identity
@@ -788,10 +790,10 @@ fn execute_delete(
     }
 
     info!("deleting resources...");
-    let s3_manager = aws_s3::Manager::new(&shared_config);
-    let kms_manager = aws_kms::Manager::new(&shared_config);
-    let ec2_manager = aws_ec2::Manager::new(&shared_config);
-    let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
+    let kms_manager = kms::Manager::new(&shared_config);
+    let ec2_manager = ec2::Manager::new(&shared_config);
+    let cloudformation_manager = cloudformation::Manager::new(&shared_config);
 
     // delete this first since EC2 key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)

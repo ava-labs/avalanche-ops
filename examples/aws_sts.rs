@@ -1,7 +1,7 @@
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_sts};
+use avalanche_ops::aws::{self, sts};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -19,7 +19,7 @@ fn main() {
 
     let ret = ab!(aws::load_config(None));
     let shared_config = ret.unwrap();
-    let sts_manager = aws_sts::Manager::new(&shared_config);
+    let sts_manager = sts::Manager::new(&shared_config);
 
     let ret = ab!(sts_manager.get_identity());
     let identity1 = ret.unwrap();
@@ -27,7 +27,7 @@ fn main() {
 
     let ret = ab!(aws::load_config(None));
     let shared_config = ret.unwrap();
-    let manager = aws_sts::Manager::new(&shared_config);
+    let manager = sts::Manager::new(&shared_config);
     let ret = ab!(manager.get_identity());
     let identity2 = ret.unwrap();
     info!("identity2: {:?}", identity2);
