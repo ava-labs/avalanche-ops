@@ -165,6 +165,11 @@ Parameters:
     Default: 9650
     Description: HTTP port (only required for NLB)
 
+  NlbAcmCertificateArn:
+    Type: String
+    Default: ""
+    Description: (Optional) Certificates for NLB HTTPs traffic.
+
 Conditions:
   HasImageId:
     Fn::Not:
@@ -205,6 +210,19 @@ Conditions:
       - Ref: NlbTargetGroupArn
       - ""
 
+  # only create 1 HTTPs listener once
+  # for both beacon- and non-beacon nodes
+  HasNlbAcmCertificateArn:
+    Fn::And:
+      - Fn::Not:
+          - Fn::Equals:
+              - Ref: NlbTargetGroupArn
+              - ""
+      - Fn::Not:
+          - Fn::Equals:
+              - Ref: NlbAcmCertificateArn
+              - ""
+
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
   # takes 3-minute
@@ -240,19 +258,33 @@ Resources:
           Value: 60
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
-  # TODO: support "HTTPS"
-  # https://aws.amazon.com/premiumsupport/knowledge-center/associate-acm-certificate-alb-nlb/
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html#cfn-elasticloadbalancingv2-listener-certificates
-  NLBListener:
+  NLBListenerTCP:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Condition: EmptyNlbTargetGroupArn
     Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref NLBTargetGroup
       LoadBalancerArn: !Ref NLB
       Port: !Ref NlbHttpPort
       Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NLBTargetGroup
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
+  NLBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasNlbAcmCertificateArn
+    Properties:
+      LoadBalancerArn: !Ref NLB
+      Port: 443
+      Protocol: HTTPS
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticloadbalancingv2-listener-action.html#cfn-elasticloadbalancingv2-listener-action-type
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NLBTargetGroup
+      # supports "HTTPS" https://aws.amazon.com/premiumsupport/knowledge-center/associate-acm-certificate-alb-nlb/
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticloadbalancingv2-listener-certificate.html
+      Certificates:
+        - { CertificateArn: !Ref NlbAcmCertificateArn }
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
   ASGLaunchTemplate:

@@ -81,6 +81,14 @@ fn create_default_spec_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("NLB_ACM_CERTIFICATE_ARN") 
+                .long("nlb-acm-certificate-arn")
+                .help("Sets ACM ARN to enable NLB HTTPS")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
                 .long("install-artifacts-avalanched-bin")
                 .help("Sets the Avalanched binary path in the local machine to be shared with remote machines")
@@ -286,6 +294,10 @@ fn main() {
                     .value_of("DB_BACKUP_S3_KEY")
                     .unwrap_or("")
                     .to_string(),
+                nlb_acm_certificate_arn: sub_matches
+                    .value_of("NLB_ACM_CERTIFICATE_ARN")
+                    .unwrap_or("")
+                    .to_string(),
                 install_artifacts_avalanched_bin: sub_matches
                     .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
                     .unwrap()
@@ -349,6 +361,7 @@ struct DefaultSpecOption {
     db_backup_s3_region: String,
     db_backup_s3_bucket: String,
     db_backup_s3_key: String,
+    nlb_acm_certificate_arn: String,
     install_artifacts_avalanched_bin: String,
     install_artifacts_avalanche_bin: String,
     install_artifacts_plugins_dir: String,
@@ -419,6 +432,9 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     }
     if !opt.db_backup_s3_key.is_empty() {
         aws_resources.db_backup_s3_key = Some(opt.db_backup_s3_key);
+    }
+    if !opt.nlb_acm_certificate_arn.is_empty() {
+        aws_resources.nlb_acm_certificate_arn = Some(opt.nlb_acm_certificate_arn);
     }
     spec.aws_resources = Some(aws_resources);
 
@@ -990,12 +1006,18 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         let desired_capacity = spec.machine.beacon_nodes.unwrap();
 
         // must deep-copy as shared with other node kind
-        let mut parameters = asg_parameters.clone();
-        parameters.push(build_param("NodeKind", "beacon"));
-        parameters.push(build_param(
+        let mut asg_beacon_params = asg_parameters.clone();
+        asg_beacon_params.push(build_param("NodeKind", "beacon"));
+        asg_beacon_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
+        if aws_resources.nlb_acm_certificate_arn.is_some() {
+            asg_beacon_params.push(build_param(
+                "NlbAcmCertificateArn",
+                &aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
+            ));
+        };
 
         rt.block_on(cloudformation_manager.create_stack(
             cloudformation_asg_beacon_nodes_stack_name.as_str(),
@@ -1005,7 +1027,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             Some(Vec::from([
                 Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
-            Some(parameters),
+            Some(asg_beacon_params),
         ))
         .unwrap();
 
@@ -1169,7 +1191,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         let desired_capacity = spec.machine.non_beacon_nodes;
 
-        // we don't create beacon nodes for mainnet nodes
+        // we did not create beacon nodes for mainnet/* nodes
         // so no nlb creation before
         // we create here for non-beacon nodes
         let need_to_create_nlb = aws_resources
@@ -1177,15 +1199,22 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             .is_none();
 
         // must deep-copy as shared with other node kind
-        let mut parameters = asg_parameters.clone();
-        parameters.push(build_param("NodeKind", "non-beacon"));
-        parameters.push(build_param(
+        let mut asg_non_beacon_params = asg_parameters.clone();
+        asg_non_beacon_params.push(build_param("NodeKind", "non-beacon"));
+        asg_non_beacon_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
-        if !need_to_create_nlb {
+        if need_to_create_nlb {
+            if aws_resources.nlb_acm_certificate_arn.is_some() {
+                asg_non_beacon_params.push(build_param(
+                    "NlbAcmCertificateArn",
+                    &aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
+                ));
+            };
+        } else {
             // already created for beacon nodes
-            parameters.push(build_param(
+            asg_non_beacon_params.push(build_param(
                 "NlbTargetGroupArn",
                 &aws_resources
                     .cloudformation_asg_nlb_target_group_arn
@@ -1202,7 +1231,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             Some(Vec::from([
                 Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
-            Some(parameters),
+            Some(asg_non_beacon_params),
         ))
         .unwrap();
 
@@ -1384,28 +1413,40 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         .http_port
         .unwrap_or(avalanche_config::DEFAULT_HTTP_PORT);
 
+    let nlb_https_enabled = aws_resources.nlb_acm_certificate_arn.is_some();
     let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
         && spec.avalanchego_config.http_tls_enabled.unwrap();
-    let scheme = {
+
+    let scheme_for_dns = {
+        if nlb_https_enabled || https_enabled {
+            "https"
+        } else {
+            "http"
+        }
+    };
+    println!(
+        "{}://{}:{}/ext/metrics",
+        scheme_for_dns, dns_name, http_port
+    );
+    println!("{}://{}:{}/ext/health", scheme_for_dns, dns_name, http_port);
+    println!(
+        "{}://{}:{}/ext/health/liveness",
+        scheme_for_dns, dns_name, http_port
+    );
+
+    let scheme_for_ips = {
         if https_enabled {
             "https"
         } else {
             "http"
         }
     };
-    // TODO: not working if https... associate ACM certs to NLB
-    println!("{}://{}:{}/ext/metrics", scheme, dns_name, http_port);
-    println!("{}://{}:{}/ext/health", scheme, dns_name, http_port);
-    println!(
-        "{}://{}:{}/ext/health/liveness",
-        scheme, dns_name, http_port
-    );
     let mut uris: Vec<String> = vec![];
     for node in all_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
             let ret = rt.block_on(avalanche::check_health(
-                format!("{}://{}:{}", scheme, node.ip, http_port).as_str(),
+                format!("{}://{}:{}", scheme_for_ips, node.ip, http_port).as_str(),
                 true,
             ));
             let (res, err) = match ret {
@@ -1443,10 +1484,13 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
         }
 
-        println!("{}://{}:{}/ext/metrics", scheme, node.ip, http_port);
-        println!("{}://{}:{}/ext/health", scheme, node.ip, http_port);
-        println!("{}://{}:{}/ext/health/liveness", scheme, node.ip, http_port);
-        uris.push(format!("{}://{}:{}", scheme, node.ip, http_port))
+        println!("{}://{}:{}/ext/metrics", scheme_for_ips, node.ip, http_port);
+        println!("{}://{}:{}/ext/health", scheme_for_ips, node.ip, http_port);
+        println!(
+            "{}://{}:{}/ext/health/liveness",
+            scheme_for_ips, node.ip, http_port
+        );
+        uris.push(format!("{}://{}:{}", scheme_for_ips, node.ip, http_port))
     }
     println!("\nURIs: {}", uris.join(","));
 
