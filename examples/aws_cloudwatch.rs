@@ -3,7 +3,7 @@ use std::{thread, time};
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_cloudwatch, random};
+use avalanche_ops::{aws, aws_cloudwatch, utils::random};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47

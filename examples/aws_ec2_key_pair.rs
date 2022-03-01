@@ -3,7 +3,7 @@ use std::{fs, thread, time};
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_ec2, id};
+use avalanche_ops::{aws, aws_ec2, utils::random};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -23,7 +23,7 @@ fn main() {
     let shared_config = ret.unwrap();
     let ec2_manager = aws_ec2::Manager::new(&shared_config);
 
-    let mut key_name = id::generate("test");
+    let mut key_name = random::generate_id("test");
     key_name.push_str("-key");
 
     // error should be ignored if it does not exist

@@ -20,7 +20,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, aws, aws_cloudformation, aws_ec2, aws_kms, aws_s3, aws_sts, compress, dev_machine,
-    envelope, random,
+    envelope, utils::random,
 };
 
 const APP_NAME: &str = "dev-machine";

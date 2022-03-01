@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self, avalanchego, aws, aws_cloudformation, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, aws_sts,
-    compress, constants, envelope, node, random,
+    compress, constants, envelope, node, utils::random,
 };
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";

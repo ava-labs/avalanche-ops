@@ -2,6 +2,9 @@ use std::{env, io};
 
 use lazy_static::lazy_static;
 use ring::rand::{SecureRandom, SystemRandom};
+use ripemd::{Digest, Ripemd160};
+
+use crate::time;
 
 /// Generates a random string of length "n".
 pub fn string(n: usize) -> String {
@@ -44,6 +47,25 @@ fn test_string() {
     info!("word2: {:?}", word2);
 }
 
+/// Generates a random ID with the prefix followed by a
+/// timestamp and random characters.
+pub fn generate_id(pfx: &str) -> String {
+    format!("{}-{}-{}", pfx, time::get(6), string(6))
+}
+
+#[test]
+fn test_generate_id() {
+    use log::info;
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let id1 = generate_id("avax");
+    let id2 = generate_id("avax");
+    assert_ne!(id1, id2);
+
+    info!("id1: {:?}", id1);
+    info!("id2: {:?}", id2);
+}
+
 /// Returns a file path randomly generated in tmp directory.
 /// The file does not exist yet.
 pub fn tmp_path(n: usize, sfx: Option<&str>) -> io::Result<String> {
@@ -64,4 +86,39 @@ fn test_temp_path() {
 
     info!("p1: {:?}", p1);
     info!("p2: {:?}", p2);
+}
+
+/// Creates an ID based on host information.
+pub fn sid(n: usize) -> String {
+    let id = format!(
+        "{}-{}-{}-{}-{}",
+        whoami::username(),
+        whoami::realname(),
+        whoami::hostname(),
+        whoami::platform(),
+        whoami::devicename(),
+    );
+
+    let mut hasher = Ripemd160::new();
+    hasher.update(id.as_bytes());
+    let result = hasher.finalize();
+
+    let mut id = bs58::encode(&result[..]).into_string();
+    if n > 0 && id.len() > n {
+        id.truncate(n);
+    }
+    id.to_lowercase()
+}
+
+#[test]
+fn test_sid() {
+    let _ = env_logger::builder().is_test(true).try_init();
+    use log::info;
+
+    let sid1 = sid(10);
+    let sid2 = sid(10);
+    assert_eq!(sid1, sid2);
+
+    info!("sid1: {:?}", sid1);
+    info!("sid2: {:?}", sid2);
 }

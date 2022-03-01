@@ -13,7 +13,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use log::info;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{http, key};
+use crate::{key, utils::http};
 
 /// Default "config-file" path on the remote linux machines.
 /// Must be a valid path in remote host machine.
@@ -511,6 +511,9 @@ pub struct Genesis {
 pub const DEFAULT_CUSTOM_NETWORK_ID: u32 = 9999;
 pub const DEFAULT_INITIAL_STAKE_DURATION: u64 = 31536000; // 1 year
 pub const DEFAULT_INITIAL_STAKE_DURATION_OFFSET: u64 = 5400; // 1.5 hour
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/coreth/params#ChainConfig
+/// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/params#ChainConfig
 pub const DEFAULT_C_CHAIN_GENESIS: &str = r#"
 {
     "config": {

@@ -14,8 +14,9 @@ use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, bash, cert, compress,
-    constants, envelope, node, random,
+    self, avalanchego, aws, aws_cloudwatch, aws_ec2, aws_kms, aws_s3, cert, compress, constants,
+    envelope, node,
+    utils::{bash, random},
 };
 
 const APP_NAME: &str = "avalanched-aws";

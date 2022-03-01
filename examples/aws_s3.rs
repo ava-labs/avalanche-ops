@@ -4,7 +4,10 @@ use log::info;
 use tokio::runtime::Runtime;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_s3, id, random, time as atime};
+use avalanche_ops::{
+    aws, aws_s3,
+    utils::{random, time as atime},
+};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -27,7 +30,7 @@ fn main() {
     let bucket = format!(
         "avalanche-ops-examples-tests-s3-{}-{}",
         atime::get(6),
-        id::sid(10)
+        random::sid(10)
     );
     rt.block_on(s3_manager.delete_bucket(&bucket)).unwrap(); // error should be ignored if it does not exist
 

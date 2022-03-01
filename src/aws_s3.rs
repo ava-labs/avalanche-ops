@@ -19,7 +19,8 @@ use crate::{
         Error::{Other, API},
         Result,
     },
-    humanize, node,
+    node,
+    utils::humanize,
 };
 
 /// Implements AWS S3 manager.

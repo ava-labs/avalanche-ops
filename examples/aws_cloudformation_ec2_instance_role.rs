@@ -8,7 +8,7 @@ use log::info;
 use rust_embed::RustEmbed;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_cloudformation, id};
+use avalanche_ops::{aws, aws_cloudformation, utils::random};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -39,7 +39,7 @@ fn main() {
     let shared_config = ret.unwrap();
     let cloudformation_manager = aws_cloudformation::Manager::new(&shared_config);
 
-    let stack_name = id::generate("test");
+    let stack_name = random::generate_id("test");
 
     // error should be ignored if it does not exist
     let ret = ab!(cloudformation_manager.delete_stack(&stack_name));
@@ -57,7 +57,7 @@ fn main() {
         Some(Vec::from([
             Parameter::builder()
                 .parameter_key("Id")
-                .parameter_value(id::generate("id"))
+                .parameter_value(random::generate_id("id"))
                 .build(),
             Parameter::builder()
                 .parameter_key("KmsCmkArn")
@@ -65,11 +65,11 @@ fn main() {
                 .build(),
             Parameter::builder()
                 .parameter_key("S3BucketName")
-                .parameter_value(id::generate("id"))
+                .parameter_value(random::generate_id("id"))
                 .build(),
             Parameter::builder()
                 .parameter_key("S3BucketDbBackupName")
-                .parameter_value(id::generate("id"))
+                .parameter_value(random::generate_id("id"))
                 .build(),
         ])),
     ));

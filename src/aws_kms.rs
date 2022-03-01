@@ -21,7 +21,7 @@ use crate::{
         Error::{Other, API},
         Result,
     },
-    humanize,
+    utils::humanize,
 };
 
 /// Represents the data encryption key.

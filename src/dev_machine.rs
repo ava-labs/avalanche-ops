@@ -8,7 +8,10 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::{aws_sts, id, time};
+use crate::{
+    aws_sts,
+    utils::{random, time},
+};
 
 pub const MIN_MACHINES: u32 = 1;
 pub const MAX_MACHINES: u32 = 2;
@@ -142,11 +145,11 @@ impl Spec {
         }
 
         Ok(Self {
-            id: id::generate("dev-machine"),
+            id: random::generate_id("dev-machine"),
 
             aws_resources: Some(AWSResources {
                 region: String::from("us-west-2"),
-                bucket: format!("dev-machine-{}-{}", time::get(6), id::sid(7)), // [year][month][date]-[system host-based id]
+                bucket: format!("dev-machine-{}-{}", time::get(6), random::sid(7)), // [year][month][date]-[system host-based id]
                 ..AWSResources::default()
             }),
 

@@ -18,7 +18,7 @@ use walkdir::{DirEntry, WalkDir};
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
 use zstd;
 
-use crate::{humanize, random};
+use crate::utils::{humanize, random};
 
 #[derive(Eq, PartialEq, Clone)]
 /// Represents the compression encoding algorithm.

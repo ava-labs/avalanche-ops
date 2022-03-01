@@ -14,7 +14,7 @@ use ring::rand::{SecureRandom, SystemRandom};
 use crate::{
     aws_kms,
     errors::{Error::Other, Result},
-    humanize,
+    utils::humanize,
 };
 
 const DEK_AES_256_LENGTH: usize = 32;

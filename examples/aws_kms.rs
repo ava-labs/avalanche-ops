@@ -7,7 +7,7 @@ use std::{
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::{aws, aws_kms, envelope, id};
+use avalanche_ops::{aws, aws_kms, envelope, utils::random};
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -26,7 +26,7 @@ fn main() {
     let shared_config = ab!(aws::load_config(None)).unwrap();
     let kms_manager = aws_kms::Manager::new(&shared_config);
 
-    let mut key_desc = id::generate("test");
+    let mut key_desc = random::generate_id("test");
     key_desc.push_str("-cmk");
 
     // error should be ignored if it does not exist
@@ -52,8 +52,8 @@ fn main() {
     assert!(ret.is_ok());
     let plaintext_file_path = plaintext_file.path().to_str().unwrap();
 
-    let encrypted_file_path = avalanche_ops::random::tmp_path(10, Some(".encrypted")).unwrap();
-    let decrypted_file_path = avalanche_ops::random::tmp_path(10, Some(".encrypted")).unwrap();
+    let encrypted_file_path = random::tmp_path(10, Some(".encrypted")).unwrap();
+    let decrypted_file_path = random::tmp_path(10, Some(".encrypted")).unwrap();
     ab!(kms_manager.encrypt_file(&cmk.id, None, plaintext_file_path, &encrypted_file_path))
         .unwrap();
     ab!(kms_manager.decrypt_file(&cmk.id, None, &encrypted_file_path, &decrypted_file_path))
@@ -75,8 +75,8 @@ fn main() {
     assert!(eq_vectors(&decrypted_file_contents, plaintext.as_bytes()));
 
     let envelope = envelope::Envelope::new(Some(kms_manager.clone()), Some(cmk.id.clone()));
-    let sealed_aes_256_file_path = avalanche_ops::random::tmp_path(10, Some(".encrypted")).unwrap();
-    let unsealed_aes_256_file_path = avalanche_ops::random::tmp_path(10, None).unwrap();
+    let sealed_aes_256_file_path = random::tmp_path(10, Some(".encrypted")).unwrap();
+    let unsealed_aes_256_file_path = random::tmp_path(10, None).unwrap();
     ab!(envelope.seal_aes_256_file(plaintext_file_path, &sealed_aes_256_file_path)).unwrap();
     ab!(envelope.unseal_aes_256_file(&sealed_aes_256_file_path, &unsealed_aes_256_file_path))
         .unwrap();

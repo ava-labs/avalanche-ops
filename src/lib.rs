@@ -16,7 +16,6 @@ pub mod aws_ec2;
 pub mod aws_kms;
 pub mod aws_s3;
 pub mod aws_sts;
-pub mod bash;
 pub mod cert;
 pub mod compress;
 pub mod constants;
@@ -24,14 +23,13 @@ pub mod dev_machine;
 pub mod envelope;
 pub mod errors;
 pub mod formatting;
-pub mod http;
-pub mod humanize;
-pub mod id;
 pub mod key;
 pub mod node;
-pub mod random;
-pub mod time;
 pub mod vm;
+
+/// ref. https://doc.rust-lang.org/reference/items/modules.html
+pub mod utils;
+use crate::utils::{random, time};
 
 pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
 
@@ -163,18 +161,18 @@ impl Spec {
         keys: usize,
     ) -> Self {
         // [year][month][date]-[system host-based id]
-        let s3_bucket = format!("avalanche-ops-{}-{}", time::get(6), id::sid(10));
+        let s3_bucket = format!("avalanche-ops-{}-{}", time::get(6), random::sid(10));
 
         let network_id = avalanchego_config.network_id;
         let (id, beacon_nodes, non_beacon_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 Some(v) => (
-                    id::generate(format!("aops-{}", *v).as_str()),
+                    random::generate_id(format!("aops-{}", *v).as_str()),
                     0,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),
                 None => (
-                    id::generate("aops-custom"),
+                    random::generate_id("aops-custom"),
                     DEFAULT_MACHINE_BEACON_NODES,
                     DEFAULT_MACHINE_NON_BEACON_NODES,
                 ),

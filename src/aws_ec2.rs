@@ -16,7 +16,7 @@ use crate::{
         Error::{Other, API},
         Result,
     },
-    http,
+    utils::http,
 };
 
 /// Implements AWS EC2 manager.
