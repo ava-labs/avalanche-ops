@@ -27,7 +27,12 @@ pub struct Key {
     #[serde(skip_serializing, skip_deserializing)]
     pub public_key: Option<PublicKey>,
 
-    pub encoded_private_key: String,
+    pub private_key: String,
+
+    /// ref. https://github.com/ava-labs/subnet-cli/blob/5b69345a3fba534fb6969002f41c8d3e69026fed/internal/key/key.go#L238-L258
+    pub private_key_hex: String,
+
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
     pub short_address: String,
 
     /// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/common#Address
@@ -48,13 +53,15 @@ impl Key {
 
         let priv_bytes = secret_key.serialize_secret();
         let enc = formatting::encode_cb58_with_checksum(&priv_bytes);
-        let mut encoded_private_key = String::from(PRIVATE_KEY_ENCODE_PREFIX);
-        encoded_private_key.push_str(&enc);
+        let mut private_key = String::from(PRIVATE_KEY_ENCODE_PREFIX);
+        private_key.push_str(&enc);
+        let private_key_hex = hex::encode(&priv_bytes);
 
         Ok(Self {
             secret_key: Some(secret_key),
             public_key: Some(public_key),
-            encoded_private_key,
+            private_key,
+            private_key_hex,
             short_address,
             eth_address,
         })
@@ -94,12 +101,15 @@ impl Key {
 
         let priv_bytes = secret_key.serialize_secret();
         let enc = formatting::encode_cb58_with_checksum(&priv_bytes);
-        let mut encoded_private_key = String::from(PRIVATE_KEY_ENCODE_PREFIX);
-        encoded_private_key.push_str(&enc);
+        let mut private_key = String::from(PRIVATE_KEY_ENCODE_PREFIX);
+        private_key.push_str(&enc);
+        let private_key_hex = hex::encode(&priv_bytes);
+
         Ok(Self {
             secret_key: Some(secret_key),
             public_key: Some(public_key),
-            encoded_private_key,
+            private_key,
+            private_key_hex,
             short_address,
             eth_address,
         })
@@ -127,7 +137,8 @@ impl Key {
         let p = self.address("P", network_id)?;
         let c = self.address("C", network_id)?;
         Ok(PrivateKeyInfo {
-            private_key: self.encoded_private_key.clone(),
+            private_key: self.private_key.clone(),
+            private_key_hex: self.private_key_hex.clone(),
             x_address: x,
             p_address: p,
             c_address: c,
@@ -272,16 +283,16 @@ fn test_key() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let key1 = Key::generate().unwrap();
-    info!("{}", key1.encoded_private_key);
+    info!("{}", key1.private_key);
     info!("{}", key1.short_address.clone());
     info!("{}", key1.address("X", 9999).unwrap());
 
-    let key2 = Key::from_private_key(&key1.encoded_private_key).unwrap();
-    info!("{}", key2.encoded_private_key);
+    let key2 = Key::from_private_key(&key1.private_key).unwrap();
+    info!("{}", key2.private_key);
     info!("{}", key2.short_address.clone());
     info!("{}", key2.address("X", 9999).unwrap());
 
-    assert_eq!(key1.encoded_private_key, key2.encoded_private_key);
+    assert_eq!(key1.private_key, key2.private_key);
     assert_eq!(key1.short_address.clone(), key2.short_address.clone());
     assert_eq!(
         key1.address("X", 9999).unwrap(),
@@ -289,7 +300,10 @@ fn test_key() {
     );
 
     let ewoq_key = Key::from_private_key(&EWOQ_KEY).unwrap();
-    info!("{}", ewoq_key.encoded_private_key);
+    assert_eq!(
+        ewoq_key.private_key_hex.clone(),
+        "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+    );
     assert_eq!(
         ewoq_key.short_address.clone(),
         "6Y3kysjF9jnHnYkdS9yGAuoHyae2eNmeV"
@@ -330,7 +344,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-2kqWNDaqUKQyE4ZsV5GLCGeizE6sHAJVyjnfjXoXrtcZpK9M67")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "e73b5812225f2e1c62de93fb6ec35a9338882991577f9a6d5651dce61cecd852"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "AFmizAhcFuJm3u3Jih8TQ7ACCJnUY3yTK"
@@ -367,7 +384,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-SoNEe44ACVQttLGrhrPPn7hi2h8ok43R7zgQALiZZ2im2S6yj")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "3a94aab8123f3be575ea9679f893da5182e8b707e26f06159c264399113aef2a"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "LeKrndtsMxcLMzHz3w4uo1XtLDpfi66c"
@@ -404,7 +424,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-qDaD5aAZs7EBq5TWEBa9LLBusBhXZY5PM831JExRhoM6nfAc5")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "6d7b68fca444069f3e65644848b215f1ecd4a90de8403734866dbb6af1c8957d"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "McqzEWWmhaqfHjieL2Pxiy95hzXDMb848"
@@ -441,7 +464,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-2VfFU6KsGt4mcppQ5kvdKws6Jgxn32cwfEL9B1FEv72BqvxdtW")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "c4c55bfa3b5fd618fbd63e8cd62a8e0277f6e008cf76472e0a00941c6d326b46"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "JsrcoBpKWod6gkAQAcgyJCh7u7nmNuDfi"
@@ -478,7 +504,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-TZykRxv83FSZsf6QkENwYApnEhBLPpgJ88r1MD1iBvEXqj2gJ")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "3c53c620aeb35bc15146b84688a5f478aaa1528e41c8ef11014b50ef4b110870"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "Q6j6SupDqiWLsMY3nRr4wEBxC3Six2W9a"
@@ -515,7 +544,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-D4cxxtZYXPJEPsJDhibRJYNGu8G9oNqHRegZDqaCLrxLAPYJF")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "1b63a1eb7537baac2eef64d111caa99af41e7ce9b0ce9d067276af3fa9e8a777"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "H5GUwiytWzwGDay3mhtdDqdt4RqFkYhko"
@@ -552,7 +584,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-2TAuVGfEZkGahWD19CbTzWoynkTHZGM3Bn1AD3Vensno6Uphor")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "bf1ebb0dcbc9f92c34a1beea6950c291d5eef8cc724477b43e3c4bca69af50aa"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "Q9RUX7iHDwGiss4xRcPswgCWJUJ4oenfG"
@@ -589,7 +624,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-F1gtp8JRhuEnJWnnpQg6pMY5MXAny968z6GsZMZWpyb8Ae1dr")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "1fd0cdc3f62d6854af1397a14521efd4c073f35e003901312d7fa6bcd5c68c79"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "E65fLiZ7dyBPFfNmXhYsEhPnMUVZsodce"
@@ -626,7 +664,10 @@ fn test_key() {
     let random_key =
         Key::from_private_key("PrivateKey-BfJbL9SsyXBW9LbWrLSMDjWufPz6diNpu9vw5TQwpDBdWwohk")
             .unwrap();
-    info!("{}", random_key.encoded_private_key);
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "1834abcea6a56a4d7f1e2c3ad13a8b762a7c79ad5819fa30f31488943e82626a"
+    );
     assert_eq!(
         random_key.short_address.clone(),
         "Cka83XSSmLBYQYPRSLqYj13UzQDFTSUW4"
@@ -666,6 +707,7 @@ fn test_key() {
 pub struct PrivateKeyInfo {
     /// CB58-encoded private key with the prefix "PrivateKey-".
     pub private_key: String,
+    pub private_key_hex: String,
     pub x_address: String,
     pub p_address: String,
     pub c_address: String,

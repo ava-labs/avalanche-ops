@@ -17,7 +17,7 @@ fn main() {
     println!("{}", info.to_string().unwrap());
 
     let k = key::Key::from_private_key(&info.private_key).unwrap();
-    assert_eq!(info.private_key, k.encoded_private_key);
+    assert_eq!(info.private_key, k.private_key);
     assert_eq!(info.x_address, k.address("X", 9999).unwrap());
     assert_eq!(info.p_address, k.address("P", 9999).unwrap());
     assert_eq!(info.c_address, k.address("C", 9999).unwrap());
