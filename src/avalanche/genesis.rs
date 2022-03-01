@@ -96,11 +96,15 @@ impl AvalancheGo {
 
             // use the default allocation
             let mut alloc = Allocation::default();
-            alloc.avax_addr = Some(info.x_address.clone());
             alloc.eth_addr = Some(info.eth_address.clone());
 
-            initial_staked_funds.push(info.x_address.clone());
+            alloc.avax_addr = Some(info.x_address.clone());
+            allocations.push(alloc.clone());
+
+            alloc.avax_addr = Some(info.p_address.clone());
             allocations.push(alloc);
+
+            initial_staked_funds.push(info.x_address.clone());
             seed_priv_keys.push(info);
         }
         Ok((
