@@ -1,6 +1,9 @@
+/// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/params#ChainConfig
 /// ref. https://github.com/ava-labs/subnet-evm/blob/master/scripts/run.sh
-pub const DEFAULT_CHAIN_CONFIG: &str = r#"
+/// ref. https://github.com/ava-labs/avalanchego/tree/dev/genesis
+/// ref. https://github.com/ava-labs/avalanche-network-runner/blob/main/local/default/genesis.json
+pub const DEFAULT_GENESIS: &str = r#"
 {
     "config": {
         "chainId": 99999,

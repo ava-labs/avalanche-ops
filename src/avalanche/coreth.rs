@@ -1,5 +1,8 @@
+/// ref. https://pkg.go.dev/github.com/ava-labs/coreth/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/params#ChainConfig
-pub const DEFAULT_CHAIN_CONFIG: &str = r#"
+/// ref. https://github.com/ava-labs/avalanchego/tree/dev/genesis
+/// ref. https://github.com/ava-labs/avalanche-network-runner/blob/main/local/default/genesis.json
+pub const DEFAULT_GENESIS: &str = r#"
 {
     "config": {
         "chainId": 43112,

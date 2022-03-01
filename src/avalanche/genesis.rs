@@ -79,7 +79,7 @@ impl AvalancheGo {
             initial_stake_duration_offset: Some(DEFAULT_INITIAL_STAKE_DURATION_OFFSET),
             initial_staked_funds: Some(Vec::new()),
             initial_stakers: Some(vec![Staker::default()]),
-            c_chain_genesis: Some(String::from(coreth::DEFAULT_CHAIN_CONFIG)),
+            c_chain_genesis: Some(String::from(coreth::DEFAULT_GENESIS)),
             message: Some(String::new()),
         }
     }
