@@ -258,7 +258,7 @@ Resources:
           Value: 60
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
-  NLBListenerTCP:
+  NLBListenerTcp:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Condition: EmptyNlbTargetGroupArn
     Properties:
@@ -270,7 +270,7 @@ Resources:
           TargetGroupArn: !Ref NLBTargetGroup
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
-  NLBListenerHTTPS:
+  NLBListenerHttps:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Condition: HasNlbAcmCertificateArn
     Properties:
