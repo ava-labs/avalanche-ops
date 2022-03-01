@@ -185,7 +185,7 @@ fn create_default_spec_command() -> Command<'static> {
 
 fn create_read_spec_command() -> Command<'static> {
     Command::new(SUBCOMMAND_READ_SPEC)
-        .about("Applies/creates resources based on configuration")
+        .about("Reads the spec file and outputs the selected fields based on 'current_nodes' field")
         .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
