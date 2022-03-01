@@ -264,9 +264,7 @@ Resources:
     Properties:
       LoadBalancerArn: !Ref NLB
       Port: !Ref NlbHttpPort
-      # NLB can't use HTTPS (only ALB can use HTTPS)!
-      # supports "HTTPS" https://aws.amazon.com/premiumsupport/knowledge-center/associate-acm-certificate-alb-nlb/
-      Protocol: TLS
+      Protocol: TCP
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref NLBTargetGroup
@@ -278,7 +276,9 @@ Resources:
     Properties:
       LoadBalancerArn: !Ref NLB
       Port: 443
-      Protocol: HTTPS
+      # NLB can't use HTTPS (only ALB can use HTTPS)!
+      # supports "HTTPS" https://aws.amazon.com/premiumsupport/knowledge-center/associate-acm-certificate-alb-nlb/
+      Protocol: TLS
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticloadbalancingv2-listener-action.html#cfn-elasticloadbalancingv2-listener-action-type
       DefaultActions:
         - Type: forward

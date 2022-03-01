@@ -214,6 +214,15 @@ fn create_read_spec_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("NLB_ENDPOINT")
+                .long("nlb-endpoint")
+                .short('n')
+                .help("Set to get NLB endpoint")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("HTTP_ENDPOINTS")
                 .long("http-endpoints")
                 .short('h')
@@ -402,6 +411,7 @@ fn main() {
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
                 sub_matches.is_present("INSTANCE_IDS"),
                 sub_matches.is_present("PUBLIC_IPS"),
+                sub_matches.is_present("NLB_ENDPOINT"),
                 sub_matches.is_present("HTTP_ENDPOINTS"),
             )
             .expect("failed to execute 'apply'");
@@ -545,6 +555,7 @@ fn execute_read_spec(
     spec_file_path: &str,
     instance_ids: bool,
     public_ips: bool,
+    nlb_endpoint: bool,
     http_endpoints: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -571,6 +582,20 @@ fn execute_read_spec(
             rs.push(node.public_ip.clone());
         }
         println!("{}", rs.join(","));
+    };
+
+    if nlb_endpoint {
+        let aws_resources = spec.aws_resources.expect("unexpected None aws_resources");
+        let nlb_https_enabled = aws_resources.nlb_acm_certificate_arn.is_some();
+        let dns_name = aws_resources.cloudformation_asg_nlb_dns_name.unwrap();
+        let scheme_for_dns = {
+            if nlb_https_enabled {
+                "https"
+            } else {
+                "http"
+            }
+        };
+        println!("{}://{}:443/ext/metrics", scheme_for_dns, dns_name);
     };
 
     if http_endpoints {
@@ -1554,22 +1579,55 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
         && spec.avalanchego_config.http_tls_enabled.unwrap();
 
-    let scheme_for_dns = {
+    let (scheme_for_dns, port_for_dns) = {
         if nlb_https_enabled || https_enabled {
-            "https"
+            ("https", 443)
         } else {
-            "http"
+            ("http", http_port)
         }
     };
-    println!(
-        "{}://{}:{}/ext/metrics",
-        scheme_for_dns, dns_name, http_port
-    );
-    println!("{}://{}:{}/ext/health", scheme_for_dns, dns_name, http_port);
-    println!(
-        "{}://{}:{}/ext/health/liveness",
-        scheme_for_dns, dns_name, http_port
-    );
+    let dns_endpoint = format!("{}://{}:{}", scheme_for_dns, dns_name, port_for_dns);
+    println!("{}/ext/metrics", dns_endpoint);
+    println!("{}/ext/health", dns_endpoint);
+    println!("{}/ext/health/liveness", dns_endpoint);
+    let mut success = false;
+    for _ in 0..10_u8 {
+        let ret = rt.block_on(avalanche::api::health::check(&dns_endpoint, true));
+        let (res, err) = match ret {
+            Ok(res) => (res, None),
+            Err(e) => (
+                avalanche::api::health::Response {
+                    checks: None,
+                    healthy: Some(false),
+                },
+                Some(e),
+            ),
+        };
+        success = res.healthy.is_some() && res.healthy.unwrap();
+        if success {
+            info!("health/liveness check success for {}", dns_endpoint);
+            break;
+        }
+        warn!(
+            "health/liveness check failed for {} ({:?}, {:?})",
+            dns_endpoint, res, err
+        );
+        if aws_resources.db_backup_s3_bucket.is_some() {
+            // TODO: fix this
+            warn!("node may be still downloading database backup... skipping for now...");
+            success = true;
+            break;
+        }
+        thread::sleep(Duration::from_secs(10));
+    }
+    if !success {
+        warn!(
+            "health/liveness check failed for network id {}",
+            &spec.avalanchego_config.network_id
+        );
+        return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
+    }
+
     let mut uris: Vec<String> = vec![];
     for node in current_nodes.iter() {
         let mut success = false;
