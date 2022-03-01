@@ -234,7 +234,7 @@ pub struct LockedAmount {
     pub locktime: Option<u64>,
 }
 
-pub const DEFAULT_LOCKED_AMOUNT: u64 = 100000000000000000;
+pub const DEFAULT_LOCKED_AMOUNT: u64 = 200000000000000000;
 
 impl Default for LockedAmount {
     fn default() -> Self {
@@ -244,14 +244,9 @@ impl Default for LockedAmount {
 
 impl LockedAmount {
     pub fn default() -> Self {
-        let now = SystemTime::now();
-        let now_unix = now
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("unexpected None duration_since")
-            .as_secs();
         Self {
             amount: Some(DEFAULT_LOCKED_AMOUNT),
-            locktime: Some(now_unix + 300),
+            locktime: None, // empty to unlock immediately
         }
     }
 }
