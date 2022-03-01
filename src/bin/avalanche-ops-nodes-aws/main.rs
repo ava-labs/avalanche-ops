@@ -386,11 +386,11 @@ fn main() {
                     .is_present("AVALANCHEGO_HTTP_TLS_ENABLED"),
                 avalanchego_state_sync_ids: sub_matches
                     .value_of("AVALANCHEGO_STATE_SYNC_IDS")
-                    .unwrap()
+                    .unwrap_or("")
                     .to_string(),
                 avalanchego_state_sync_ips: sub_matches
                     .value_of("AVALANCHEGO_STATE_SYNC_IPS")
-                    .unwrap()
+                    .unwrap_or("")
                     .to_string(),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
