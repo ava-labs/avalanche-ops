@@ -214,7 +214,10 @@ Conditions:
   # for both beacon- and non-beacon nodes
   HasNlbAcmCertificateArn:
     Fn::And:
-      - EmptyNlbTargetGroupArn
+      # EmptyNlbTargetGroupArn
+      - Fn::Equals:
+          - Ref: NlbTargetGroupArn
+          - ""
       - Fn::Not:
           - Fn::Equals:
               - Ref: NlbAcmCertificateArn
