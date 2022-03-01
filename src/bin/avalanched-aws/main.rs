@@ -16,8 +16,8 @@ use tokio::runtime::Runtime;
 use avalanche_ops::{
     self, avalanchego,
     aws::{self, cloudwatch, ec2, envelope, kms, s3},
-    cert, compress, constants, node,
-    utils::{bash, random},
+    cert, constants, node,
+    utils::{bash, compress, random},
 };
 
 const APP_NAME: &str = "avalanched-aws";

@@ -1,5 +1,5 @@
 extern crate avalanche_ops;
-use avalanche_ops::compress;
+use avalanche_ops::utils::compress;
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
