@@ -28,7 +28,7 @@ use avalanche_ops::{
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
 const SUBCOMMAND_DEFAULT_SPEC: &str = "default-spec";
-// const SUBCOMMAND_PARSE_SPEC: &str = "parse-spec";
+const SUBCOMMAND_READ_SPEC: &str = "read-spec";
 const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
 
@@ -167,6 +167,47 @@ fn create_default_spec_command() -> Command<'static> {
         )
 }
 
+fn create_read_spec_command() -> Command<'static> {
+    Command::new(SUBCOMMAND_READ_SPEC)
+        .about("Applies/creates resources based on configuration")
+        .arg(
+            Arg::new("SPEC_FILE_PATH")
+                .long("spec-file-path")
+                .short('s')
+                .help("The spec file to load and update")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("INSTANCE_IDS")
+                .long("instance-ids")
+                .short('i')
+                .help("Set to get instance IDs (comma-separated)")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("PUBLIC_IPS")
+                .long("public-ips")
+                .short('p')
+                .help("Set to get public IPs (comma-separated)")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("HTTP_ENDPOINTS")
+                .long("http-endpoints")
+                .short('h')
+                .help("Set to get HTTP endpoints (comma-separated)")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+}
+
 fn create_apply_command() -> Command<'static> {
     Command::new(SUBCOMMAND_APPLY)
         .about("Applies/creates resources based on configuration")
@@ -268,6 +309,7 @@ fn main() {
         .about("Avalanche node operations on AWS")
         .subcommands(vec![
             create_default_spec_command(),
+            create_read_spec_command(),
             create_apply_command(),
             create_delete_command(),
         ])
@@ -329,6 +371,16 @@ fn main() {
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
             execute_default_spec(opt).expect("failed to execute 'default-spec'");
+        }
+
+        Some((SUBCOMMAND_READ_SPEC, sub_matches)) => {
+            execute_read_spec(
+                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
+                sub_matches.is_present("INSTANCE_IDS"),
+                sub_matches.is_present("PUBLIC_IPS"),
+                sub_matches.is_present("HTTP_ENDPOINTS"),
+            )
+            .expect("failed to execute 'apply'");
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
@@ -454,6 +506,49 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     Ok(())
 }
 
+fn execute_read_spec(
+    spec_file_path: &str,
+    instance_ids: bool,
+    public_ips: bool,
+    http_endpoints: bool,
+) -> io::Result<()> {
+    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
+    );
+
+    let spec = avalanche_ops::Spec::load(spec_file_path).expect("failed to load spec");
+    let current_nodes = spec
+        .current_nodes
+        .expect("unexpected None current_nodes in spec file");
+
+    if instance_ids {
+        let mut rs = Vec::new();
+        for node in current_nodes.iter() {
+            rs.push(node.machine_id.clone());
+        }
+        println!("{}", rs.join(","));
+    };
+
+    if public_ips {
+        let mut rs = Vec::new();
+        for node in current_nodes.iter() {
+            rs.push(node.public_ip.clone());
+        }
+        println!("{}", rs.join(","));
+    };
+
+    if http_endpoints {
+        let mut rs = Vec::new();
+        for node in current_nodes.iter() {
+            rs.push(node.http_endpoint.clone());
+        }
+        println!("{}", rs.join(","));
+    };
+
+    Ok(())
+}
+
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
@@ -468,7 +563,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut spec = avalanche_ops::Spec::load(spec_file_path).unwrap();
+    let mut spec = avalanche_ops::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
     let rt = Runtime::new().unwrap();
@@ -1510,7 +1605,7 @@ fn execute_delete(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalanche_ops::Spec::load(spec_file_path).unwrap();
+    let spec = avalanche_ops::Spec::load(spec_file_path).expect("failed to load spec");
     let aws_resources = spec.aws_resources.clone().unwrap();
 
     let rt = Runtime::new().unwrap();
