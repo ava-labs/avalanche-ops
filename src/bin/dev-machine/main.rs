@@ -148,7 +148,7 @@ fn create_delete_command() -> Command<'static> {
 /// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
 fn main() {
     let matches = Command::new(APP_NAME)
-        .about("Avalanche node operations on AWS")
+        .about("Development machine provisioner")
         .subcommands(vec![
             create_default_spec_command(),
             create_apply_command(),

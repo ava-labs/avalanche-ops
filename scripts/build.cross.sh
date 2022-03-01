@@ -34,6 +34,7 @@ for arch in ${ARCHS}; do
       docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/avalanche-ops-nodes-aws ./target/${arch}.${os}/
       docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/avalanched-aws ./target/${arch}.${os}/
       docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/dev-machine ./target/${arch}.${os}/
+      docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/subnetctl ./target/${arch}.${os}/
       find ./target/${arch}.${os}
     fi
   done

@@ -67,3 +67,7 @@ path = "src/bin/avalanched-aws/main.rs"
 [[bin]]
 name = "dev-machine"
 path = "src/bin/dev-machine/main.rs"
+
+[[bin]]
+name = "subnetctl"
+path = "src/bin/subnetctl/main.rs"

@@ -31,6 +31,7 @@ pub mod key;
 pub mod node;
 pub mod random;
 pub mod time;
+pub mod vm;
 
 pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
 
