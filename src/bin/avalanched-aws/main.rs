@@ -863,11 +863,14 @@ WantedBy=multi-user.target",
     // this can take awhile if loaded from backups or syncing from peers
     info!("'avalanched run' all success -- now waiting for local node liveness check");
     loop {
-        let ret = rt.block_on(avalanche::check_health(&local_node.http_endpoint, true));
+        let ret = rt.block_on(avalanche::api::health::check(
+            &local_node.http_endpoint,
+            true,
+        ));
         let (res, err) = match ret {
             Ok(res) => (res, None),
             Err(e) => (
-                avalanche::APIHealthReply {
+                avalanche::api::health::Response {
                     checks: None,
                     healthy: Some(false),
                 },

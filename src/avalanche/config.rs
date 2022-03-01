@@ -178,9 +178,15 @@ pub struct AvalancheGo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub whitelisted_subnets: Option<String>,
 
-    // TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
+    /// TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chain_config_dir: Option<String>,
+
+    /// TODO: for fastsync, document this
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_sync_ids: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_sync_ips: Option<String>,
 }
 
 impl Default for AvalancheGo {
@@ -236,6 +242,9 @@ impl AvalancheGo {
             whitelisted_subnets: None,
 
             chain_config_dir: None,
+
+            state_sync_ids: None,
+            state_sync_ips: None,
         }
     }
 
@@ -432,6 +441,19 @@ impl AvalancheGo {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "'staking-tls-key-file' not defined",
+            ));
+        }
+
+        if self.state_sync_ids.is_some() && self.state_sync_ips.is_none() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "non-empty 'state-sync-ids' but empty 'state-sync-ips'",
+            ));
+        }
+        if self.state_sync_ids.is_none() && self.state_sync_ips.is_some() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "non-empty 'state-sync-ips' but empty 'state-sync-ids'",
             ));
         }
 

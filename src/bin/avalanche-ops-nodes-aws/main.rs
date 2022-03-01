@@ -157,6 +157,22 @@ fn create_default_spec_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("AVALANCHEGO_STATE_SYNC_IDS") 
+                .long("avalanchego-state-sync-ids")
+                .help("Sets state-sync-ids for fast-sync")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_STATE_SYNC_IPS") 
+                .long("avalanchego-state-sync-ips")
+                .help("Sets state-sync-ips for fast-sync")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
@@ -368,6 +384,14 @@ fn main() {
                     .to_string(),
                 avalanchego_http_tls_enabled: sub_matches
                     .is_present("AVALANCHEGO_HTTP_TLS_ENABLED"),
+                avalanchego_state_sync_ids: sub_matches
+                    .value_of("AVALANCHEGO_STATE_SYNC_IDS")
+                    .unwrap()
+                    .to_string(),
+                avalanchego_state_sync_ips: sub_matches
+                    .value_of("AVALANCHEGO_STATE_SYNC_IPS")
+                    .unwrap()
+                    .to_string(),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
             execute_default_spec(opt).expect("failed to execute 'default-spec'");
@@ -423,6 +447,8 @@ struct DefaultSpecOption {
     keys_to_generate: usize,
     avalanchego_log_level: String,
     avalanchego_http_tls_enabled: bool,
+    avalanchego_state_sync_ids: String,
+    avalanchego_state_sync_ips: String,
     spec_file_path: String,
 }
 
@@ -451,12 +477,14 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         Some(v) => *v,
         None => genesis::DEFAULT_CUSTOM_NETWORK_ID,
     };
+
     let mut avalanchego_config = avalanche_config::AvalancheGo::default();
     avalanchego_config.network_id = network_id;
     avalanchego_config.log_level = Some(opt.avalanchego_log_level);
     if !avalanchego_config.is_custom_network() {
         avalanchego_config.genesis = None;
     }
+
     // only set values if non empty
     // otherwise, avalanchego will fail with "couldn't load node config: read .: is a directory"
     if opt.avalanchego_http_tls_enabled {
@@ -465,6 +493,13 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         avalanchego_config.http_tls_key_file = avalanchego_config.staking_tls_key_file.clone();
         avalanchego_config.http_tls_cert_file = avalanchego_config.staking_tls_cert_file.clone();
     }
+
+    if !opt.avalanchego_state_sync_ids.is_empty() {
+        avalanchego_config.state_sync_ids = Some(opt.avalanchego_state_sync_ids.clone());
+    };
+    if !opt.avalanchego_state_sync_ips.is_empty() {
+        avalanchego_config.state_sync_ips = Some(opt.avalanchego_state_sync_ips.clone());
+    };
 
     let mut spec = avalanche_ops::Spec::default_aws(
         opt.region.as_str(),
@@ -1539,11 +1574,11 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     for node in current_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(avalanche::check_health(&node.http_endpoint, true));
+            let ret = rt.block_on(avalanche::api::health::check(&node.http_endpoint, true));
             let (res, err) = match ret {
                 Ok(res) => (res, None),
                 Err(e) => (
-                    avalanche::APIHealthReply {
+                    avalanche::api::health::Response {
                         checks: None,
                         healthy: Some(false),
                     },
