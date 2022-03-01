@@ -8,7 +8,6 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-pub mod dev_machine;
 pub mod errors;
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
@@ -21,6 +20,9 @@ use crate::utils::{random, time};
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod avalanche;
 use crate::avalanche::{config as avalanche_config, constants, genesis, key};
+
+/// ref. https://doc.rust-lang.org/reference/items/modules.html
+pub mod dev;
 
 pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
 

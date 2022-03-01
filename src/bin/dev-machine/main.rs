@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 use avalanche_ops::{
     self,
     aws::{self, cloudformation, ec2, envelope, kms, s3, sts},
-    dev_machine,
+    dev,
     utils::{compress, random},
 };
 
@@ -54,7 +54,7 @@ fn create_default_spec_command() -> Command<'static> {
                 .takes_value(true)
                 .possible_value("arm64")
                 .allow_invalid_utf8(false)
-                .default_value(dev_machine::DEFAULT_ARCH),
+                .default_value(dev::DEFAULT_ARCH),
         )
         .arg(
             Arg::new("SPEC_FILE_PATH")
@@ -206,7 +206,7 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
 
-    let spec = dev_machine::Spec::default(&opt.arch).unwrap();
+    let spec = dev::Spec::default(&opt.arch).unwrap();
     spec.validate()?;
     spec.sync(&opt.spec_file_path)?;
 
@@ -236,7 +236,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut spec = dev_machine::Spec::load(spec_file_path).unwrap();
+    let mut spec = dev::Spec::load(spec_file_path).unwrap();
     spec.validate()?;
 
     let rt = Runtime::new().unwrap();
@@ -274,15 +274,13 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     }
     if aws_resources.cloudformation_ec2_instance_role.is_none() {
         aws_resources.cloudformation_ec2_instance_role =
-            Some(dev_machine::StackName::Ec2InstanceRole(spec.id.clone()).encode());
+            Some(dev::StackName::Ec2InstanceRole(spec.id.clone()).encode());
     }
     if aws_resources.cloudformation_vpc.is_none() {
-        aws_resources.cloudformation_vpc =
-            Some(dev_machine::StackName::Vpc(spec.id.clone()).encode());
+        aws_resources.cloudformation_vpc = Some(dev::StackName::Vpc(spec.id.clone()).encode());
     }
     if aws_resources.cloudformation_asg.is_none() {
-        aws_resources.cloudformation_asg =
-            Some(dev_machine::StackName::Asg(spec.id.clone()).encode());
+        aws_resources.cloudformation_asg = Some(dev::StackName::Asg(spec.id.clone()).encode());
     }
     spec.aws_resources = Some(aws_resources.clone());
     spec.sync(spec_file_path)?;
@@ -734,7 +732,7 @@ fn execute_delete(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = dev_machine::Spec::load(spec_file_path).unwrap();
+    let spec = dev::Spec::load(spec_file_path).unwrap();
     let aws_resources = spec.aws_resources.clone().unwrap();
 
     let rt = Runtime::new().unwrap();
