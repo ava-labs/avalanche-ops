@@ -29,6 +29,8 @@ pub struct Key {
 
     pub encoded_private_key: String,
     pub short_address: String,
+
+    /// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/common#Address
     pub eth_address: String,
 }
 
@@ -189,8 +191,8 @@ fn public_key_to_short_address_bytes(public_key: &PublicKey) -> io::Result<Vec<u
 }
 
 /// Encodes the public key in ETH address format.
-/// ref. "github.com/ethereum/go-ethereum/crypto"
-/// ref. "eth_crypto.PubkeyToAddress(pk.ToECDSA().PublicKey).Hex()"
+/// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/crypto#PubkeyToAddress
+/// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/common#Address.Hex
 pub fn public_key_to_eth_address(public_key: &PublicKey) -> io::Result<String> {
     let public_key_bytes_uncompressed = public_key.serialize_uncompressed();
 
