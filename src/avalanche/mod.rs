@@ -8,10 +8,12 @@ use std::{
 
 pub mod config;
 pub mod constants;
+pub mod coreth;
 pub mod formatting;
 pub mod genesis;
 pub mod key;
 pub mod node;
+pub mod subnet_evm;
 pub mod vm;
 
 use chrono::{DateTime, TimeZone, Utc};

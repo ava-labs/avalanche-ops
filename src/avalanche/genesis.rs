@@ -9,7 +9,7 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::avalanche::key;
+use crate::avalanche::{coreth, key};
 
 /// Represents Avalanche network genesis configuration.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/genesis#Config
@@ -58,45 +58,6 @@ pub const DEFAULT_CUSTOM_NETWORK_ID: u32 = 9999;
 pub const DEFAULT_INITIAL_STAKE_DURATION: u64 = 31536000; // 1 year
 pub const DEFAULT_INITIAL_STAKE_DURATION_OFFSET: u64 = 5400; // 1.5 hour
 
-/// ref. https://pkg.go.dev/github.com/ava-labs/coreth/params#ChainConfig
-/// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/params#ChainConfig
-pub const DEFAULT_C_CHAIN_GENESIS: &str = r#"
-{
-    "config": {
-        "chainId": 43112,
-        "homesteadBlock": 0,
-        "daoForkBlock": 0,
-        "daoForkSupport": true,
-        "eip150Block": 0,
-        "eip150Hash": "0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0",
-        "eip155Block": 0,
-        "eip158Block": 0,
-        "byzantiumBlock": 0,
-        "constantinopleBlock": 0,
-        "petersburgBlock": 0,
-        "istanbulBlock": 0,
-        "muirGlacierBlock": 0,
-        "apricotPhase1BlockTimestamp": 0,
-        "apricotPhase2BlockTimestamp": 0
-    },
-    "nonce": "0x0",
-    "timestamp": "0x0",
-    "extraData": "0x00",
-    "gasLimit": "0x5f5e100",
-    "difficulty": "0x0",
-    "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-    "coinbase": "0x0000000000000000000000000000000000000000",
-    "alloc": {
-        "8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC": {
-            "balance": "0x295BE96E64066972000000"
-        }
-    },
-    "number": "0x0",
-    "gasUsed": "0x0",
-    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
-}
-"#;
-
 impl Default for AvalancheGo {
     fn default() -> Self {
         Self::default()
@@ -118,7 +79,7 @@ impl AvalancheGo {
             initial_stake_duration_offset: Some(DEFAULT_INITIAL_STAKE_DURATION_OFFSET),
             initial_staked_funds: Some(Vec::new()),
             initial_stakers: Some(vec![Staker::default()]),
-            c_chain_genesis: Some(String::from(DEFAULT_C_CHAIN_GENESIS)),
+            c_chain_genesis: Some(String::from(coreth::DEFAULT_CHAIN_CONFIG)),
             message: Some(String::new()),
         }
     }
