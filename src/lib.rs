@@ -24,7 +24,7 @@ use crate::avalanche::{config as avalanche_config, constants, genesis, key};
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod dev;
 
-pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
+pub const DEFAULT_KEYS_TO_GENERATE: usize = 2;
 
 /// Default machine beacon nodes size.
 /// only required for custom networks

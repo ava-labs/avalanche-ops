@@ -136,7 +136,7 @@ fn create_default_spec_command() -> Command<'static> {
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .default_value("5"), // ref. "avalanche_ops::DEFAULT_KEYS_TO_GENERATE"
+                .default_value("2"), // ref. "avalanche_ops::DEFAULT_KEYS_TO_GENERATE"
         )
         .arg(
             Arg::new("AVALANCHEGO_LOG_LEVEL") 
@@ -327,7 +327,7 @@ fn main() {
                     .is_present("AVALANCHEGO_HTTP_TLS_ENABLED"),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
-            execute_default_spec(opt).unwrap();
+            execute_default_spec(opt).expect("failed to execute 'default-spec'");
         }
 
         Some((SUBCOMMAND_APPLY, sub_matches)) => {
@@ -336,7 +336,7 @@ fn main() {
                 sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
                 sub_matches.is_present("SKIP_PROMPT"),
             )
-            .unwrap();
+            .expect("failed to execute 'apply'");
         }
 
         Some((SUBCOMMAND_DELETE, sub_matches)) => {
@@ -348,7 +348,7 @@ fn main() {
                 sub_matches.is_present("DELETE_S3_BUCKET"),
                 sub_matches.is_present("SKIP_PROMPT"),
             )
-            .unwrap();
+            .expect("failed to execute 'delete'");
         }
 
         _ => unreachable!("unknown subcommand"),

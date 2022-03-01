@@ -85,7 +85,6 @@ avalanche-ops-nodes-aws default-spec \
 --install-artifacts-avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
 --install-artifacts-plugins-dir /tmp/avalanchego-v1.7.5/plugins \
 --network-name custom \
---keys-to-generate 5 \
 --spec-file-path /tmp/test.yaml \
 ```
 
@@ -104,7 +103,6 @@ avalanche-ops-nodes-aws default-spec \
 --install-artifacts-avalanche-bin /tmp/avalanchego-v1.7.5/avalanchego \
 --install-artifacts-plugins-dir /tmp/avalanchego-v1.7.5/plugins \
 --network-name mainnet \
---keys-to-generate 5 \
 --avalanchego-log-level INFO \
 --spec-file-path $HOME/test-mainnet-db.yaml
 ```
