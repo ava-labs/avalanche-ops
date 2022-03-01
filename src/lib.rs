@@ -9,7 +9,6 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 pub mod avalanchego;
-pub mod cert;
 pub mod constants;
 pub mod dev_machine;
 pub mod errors;

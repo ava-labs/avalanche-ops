@@ -14,11 +14,11 @@ cargo run --example aws_ec2_key_pair
 cargo run --example aws_kms
 cargo run --example aws_s3
 cargo run --example aws_sts
-cargo run --example compress
-cargo run --example random
+cargo run --example utils_compress
+cargo run --example utils_random
 
 rm -f /tmp/test.insecure.key /tmp/test.insecure.cert
-cargo run --example cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
+cargo run --example utils_cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
 pushd ./avalanchego-compatibility
 go run ./load-node-id/main.go /tmp/test.insecure.key /tmp/test.insecure.cert
 popd
