@@ -329,7 +329,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         spec_file_path,
         &aws_resources.bucket,
-        &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+        &avalanche_ops::StorageKey::DevMachineConfigFile(spec.id.clone()).encode(),
     ))
     .unwrap();
 
@@ -354,7 +354,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -390,7 +390,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &tmp_encrypted_path,
             &aws_resources.bucket,
-            &s3::KeyPath::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
         ))
         .unwrap();
 
@@ -402,7 +402,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -472,7 +472,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -555,7 +555,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &s3::KeyPath::DevMachineConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::DevMachineConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -708,7 +708,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.bucket,
-            &s3::KeyPath::DevMachineConfigFile(spec.id).encode(),
+            &avalanche_ops::StorageKey::DevMachineConfigFile(spec.id).encode(),
         ))
         .unwrap();
 

@@ -110,9 +110,7 @@ pub struct AvalancheGo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_enabled: Option<bool>,
     /// Staking port.
-    /// If none, default to the value set via avalanche node code.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub staking_port: Option<u32>,
+    pub staking_port: u32,
     /// Must be a valid path in remote host machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staking_tls_key_file: Option<String>,
@@ -121,9 +119,7 @@ pub struct AvalancheGo {
     pub staking_tls_cert_file: Option<String>,
 
     /// HTTP port.
-    /// If none, default to the value set via avalanche node code.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_port: Option<u32>,
+    pub http_port: u32,
     /// HTTP host, which avalanchego defaults to 127.0.0.1.
     /// Set it to 0.0.0.0 to expose the HTTP API to all incoming traffic.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -207,11 +203,11 @@ impl AvalancheGo {
             log_display_level: None,
 
             staking_enabled: None,
-            staking_port: None,
+            staking_port: DEFAULT_STAKING_PORT,
             staking_tls_key_file: None,
             staking_tls_cert_file: None,
 
-            http_port: None,
+            http_port: DEFAULT_HTTP_PORT,
             http_host: None,
             http_tls_enabled: None,
             http_tls_key_file: None,
@@ -255,11 +251,11 @@ impl AvalancheGo {
         config.log_level = Some(String::from(DEFAULT_LOG_LEVEL));
 
         config.staking_enabled = Some(DEFAULT_STAKING_ENABLED);
-        config.staking_port = Some(DEFAULT_STAKING_PORT);
+        config.staking_port = DEFAULT_STAKING_PORT;
         config.staking_tls_key_file = Some(String::from(DEFAULT_STAKING_TLS_KEY_FILE));
         config.staking_tls_cert_file = Some(String::from(DEFAULT_STAKING_TLS_CERT_FILE));
 
-        config.http_port = Some(DEFAULT_HTTP_PORT);
+        config.http_port = DEFAULT_HTTP_PORT;
         config.http_host = Some(String::from(DEFAULT_HTTP_HOST));
         config.http_tls_enabled = Some(DEFAULT_HTTP_TLS_ENABLED);
 

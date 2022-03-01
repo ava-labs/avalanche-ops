@@ -19,7 +19,7 @@ use crate::utils::{random, time};
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod avalanche;
-use crate::avalanche::{config as avalanche_config, constants, genesis, key};
+use crate::avalanche::{config as avalanche_config, constants, genesis, key, node};
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod dev;
@@ -70,6 +70,10 @@ pub struct Spec {
     /// Only pre-funded for custom networks with a custom genesis file.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub generated_seed_private_keys: Option<Vec<key::PrivateKeyInfo>>,
+
+    /// Current all nodes. May be stale.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_nodes: Option<Vec<node::Node>>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -232,6 +236,8 @@ impl Spec {
 
             avalanchego_config,
             generated_seed_private_keys: Some(generated_seed_keys),
+
+            current_nodes: None,
         }
     }
 
@@ -638,8 +644,8 @@ avalanchego_config:
     avalanchego_config.network_id = 1337;
     avalanchego_config.snow_sample_size = Some(avalanche_config::DEFAULT_SNOW_SAMPLE_SIZE);
     avalanchego_config.snow_quorum_size = Some(avalanche_config::DEFAULT_SNOW_QUORUM_SIZE);
-    avalanchego_config.http_port = Some(avalanche_config::DEFAULT_HTTP_PORT);
-    avalanchego_config.staking_port = Some(avalanche_config::DEFAULT_STAKING_PORT);
+    avalanchego_config.http_port = avalanche_config::DEFAULT_HTTP_PORT;
+    avalanchego_config.staking_port = avalanche_config::DEFAULT_STAKING_PORT;
     avalanchego_config.db_dir = String::from(avalanche_config::DEFAULT_DB_DIR);
 
     let orig = Spec {
@@ -672,6 +678,7 @@ avalanchego_config:
 
         avalanchego_config,
         generated_seed_private_keys: None,
+        current_nodes: None,
     };
 
     assert_eq!(cfg, orig);
@@ -734,15 +741,201 @@ avalanchego_config:
         15
     );
     assert_eq!(
-        cfg.avalanchego_config.clone().http_port.unwrap_or(0),
+        cfg.avalanchego_config.clone().http_port,
         avalanche_config::DEFAULT_HTTP_PORT,
     );
     assert_eq!(
-        cfg.avalanchego_config.clone().staking_port.unwrap_or(0),
+        cfg.avalanchego_config.clone().staking_port,
         avalanche_config::DEFAULT_STAKING_PORT,
     );
     assert_eq!(
         cfg.avalanchego_config.clone().db_dir,
         avalanche_config::DEFAULT_DB_DIR,
     );
+}
+
+/// Represents the S3/storage key path.
+/// MUST be kept in sync with "cloudformation/avalanche-node/ec2_instance_role.yaml".
+pub enum StorageKey {
+    ConfigFile(String),
+    DevMachineConfigFile(String),
+    Ec2AccessKeyCompressedEncrypted(String),
+
+    // basic, common, top-level genesis, not ready for full use
+    // e.g., initial stakers are empty since there's no beacon node yet
+    GenesisDraftFile(String),
+    // valid genesis file with fully specified initial stakers
+    // after beacon nodes become active.
+    GenesisFile(String),
+
+    AvalanchedBin(String),
+    AvalancheBin(String),
+    AvalancheBinCompressed(String),
+    PluginsDir(String),
+    CorethEvmConfigFile(String),
+
+    PkiKeyDir(String),
+
+    DiscoverBootstrappingBeaconNodesDir(String),
+    DiscoverBootstrappingBeaconNode(String, node::Node),
+    DiscoverReadyBeaconNodesDir(String),
+    DiscoverReadyBeaconNode(String, node::Node),
+    DiscoverReadyNonBeaconNodesDir(String),
+    DiscoverReadyNonBeaconNode(String, node::Node),
+
+    BackupsDir(String),
+    EventsDir(String),
+}
+
+impl StorageKey {
+    pub fn encode(&self) -> String {
+        match self {
+            StorageKey::ConfigFile(id) => format!("{}/avalanche-ops.config.yaml", id),
+            StorageKey::DevMachineConfigFile(id) => format!("{}/dev-machine.config.yaml", id),
+            StorageKey::Ec2AccessKeyCompressedEncrypted(id) => {
+                format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
+            }
+
+            StorageKey::GenesisDraftFile(id) => format!("{}/install/genesis.draft.json", id),
+            StorageKey::GenesisFile(id) => format!("{}/genesis.json", id),
+
+            StorageKey::AvalanchedBin(id) => format!("{}/install/avalanched", id),
+            StorageKey::AvalancheBin(id) => format!("{}/install/avalanche", id),
+            StorageKey::AvalancheBinCompressed(id) => format!("{}/install/avalanche.zstd", id),
+            StorageKey::PluginsDir(id) => format!("{}/install/plugins", id),
+            StorageKey::CorethEvmConfigFile(id) => format!("{}/install/coreth.evm.config.json", id),
+
+            StorageKey::PkiKeyDir(id) => {
+                format!("{}/pki", id)
+            }
+
+            StorageKey::DiscoverBootstrappingBeaconNodesDir(id) => {
+                format!("{}/discover/bootstrapping-beacon-nodes", id)
+            }
+            StorageKey::DiscoverBootstrappingBeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/discover/bootstrapping-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+            StorageKey::DiscoverReadyBeaconNodesDir(id) => {
+                format!("{}/discover/ready-beacon-nodes", id)
+            }
+            StorageKey::DiscoverReadyBeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/discover/ready-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+            StorageKey::DiscoverReadyNonBeaconNodesDir(id) => {
+                format!("{}/discover/ready-non-beacon-nodes", id)
+            }
+            StorageKey::DiscoverReadyNonBeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/discover/ready-non-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+
+            StorageKey::BackupsDir(id) => {
+                format!("{}/backups", id)
+            }
+            StorageKey::EventsDir(id) => {
+                format!("{}/events", id)
+            }
+        }
+    }
+
+    pub fn parse_node_from_path(storage_path: &str) -> io::Result<node::Node> {
+        let p = Path::new(storage_path);
+        let file_name = match p.file_name() {
+            Some(v) => v,
+            None => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    String::from("failed Path.file_name (None)"),
+                ));
+            }
+        };
+        let file_name = file_name.to_str().unwrap();
+        let splits: Vec<&str> = file_name.split('_').collect();
+        if splits.len() != 2 {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "file name {} of storage_path {} expected two splits for '_' (got {})",
+                    file_name,
+                    storage_path,
+                    splits.len(),
+                ),
+            ));
+        }
+
+        let compressed_id = splits[1];
+        match node::Node::decompress_base58(compressed_id.replace(".yaml", "")) {
+            Ok(node) => Ok(node),
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed node::Node::decompress_base64 {}", e),
+                ));
+            }
+        }
+    }
+}
+
+#[test]
+fn test_storage_path() {
+    use crate::random;
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let id = random::string(10);
+    let instance_id = random::string(5);
+    let node_id = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg";
+    let node_ip = "1.2.3.4";
+
+    let node = node::Node::new(
+        node::Kind::NonBeacon,
+        &instance_id,
+        node_id,
+        node_ip,
+        "http",
+        9650,
+    );
+    let p = StorageKey::DiscoverReadyNonBeaconNode(
+        id,
+        node::Node {
+            kind: String::from("non-beacon"),
+            machine_id: instance_id.clone(),
+            node_id: node_id.to_string(),
+            public_ip: node_ip.to_string(),
+            http_endpoint: format!("http://{}:9650", node_ip),
+        },
+    );
+    let storage_path = p.encode();
+    info!("KeyPath: {}", storage_path);
+
+    let node_parsed = StorageKey::parse_node_from_path(&storage_path).unwrap();
+    assert_eq!(node, node_parsed);
+}
+
+#[test]
+fn test_append_slash() {
+    let s = "hello";
+    assert_eq!(append_slash(s), "hello/");
+
+    let s = "hello/";
+    assert_eq!(append_slash(s), "hello/");
+}
+
+pub fn append_slash(k: &str) -> String {
+    let n = k.len();
+    if &k[n - 1..] == "/" {
+        String::from(k)
+    } else {
+        format!("{}/", k)
+    }
 }

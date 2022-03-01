@@ -28,6 +28,7 @@ use avalanche_ops::{
 
 const APP_NAME: &str = "avalanche-ops-nodes-aws";
 const SUBCOMMAND_DEFAULT_SPEC: &str = "default-spec";
+// const SUBCOMMAND_PARSE_SPEC: &str = "parse-spec";
 const SUBCOMMAND_APPLY: &str = "apply";
 const SUBCOMMAND_DELETE: &str = "delete";
 
@@ -582,7 +583,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         &spec.install_artifacts.avalanched_bin,
         &aws_resources.s3_bucket,
-        &s3::KeyPath::AvalanchedBin(spec.id.clone()).encode(),
+        &avalanche_ops::StorageKey::AvalanchedBin(spec.id.clone()).encode(),
     ))
     .unwrap();
 
@@ -598,7 +599,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         &tmp_avalanche_bin_compressed_path,
         &aws_resources.s3_bucket,
-        &s3::KeyPath::AvalancheBinCompressed(spec.id.clone()).encode(),
+        &avalanche_ops::StorageKey::AvalancheBinCompressed(spec.id.clone()).encode(),
     ))
     .unwrap();
     if spec.install_artifacts.plugins_dir.is_some() {
@@ -630,7 +631,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                     &aws_resources.s3_bucket,
                     format!(
                         "{}/{}{}",
-                        &s3::KeyPath::PluginsDir(spec.id.clone()).encode(),
+                        &avalanche_ops::StorageKey::PluginsDir(spec.id.clone()).encode(),
                         file_name,
                         compress::Encoder::Zstd(3).ext()
                     )
@@ -650,7 +651,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             rt.block_on(s3_manager.put_object(
                 &genesis_draft_file_path,
                 &aws_resources.s3_bucket,
-                &s3::KeyPath::GenesisDraftFile(spec.id.clone()).encode(),
+                &avalanche_ops::StorageKey::GenesisDraftFile(spec.id.clone()).encode(),
             ))
             .unwrap();
         }
@@ -665,7 +666,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             rt.block_on(s3_manager.put_object(
                 &coreth_evm_config_file_path,
                 &aws_resources.s3_bucket,
-                &s3::KeyPath::CorethEvmConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::StorageKey::CorethEvmConfigFile(spec.id.clone()).encode(),
             ))
             .unwrap();
         }
@@ -673,7 +674,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         spec_file_path,
         &aws_resources.s3_bucket,
-        &s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+        &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
     ))
     .unwrap();
 
@@ -698,7 +699,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -735,7 +736,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             &tmp_encrypted_path,
             &aws_resources.s3_bucket,
-            &s3::KeyPath::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
         ))
         .unwrap();
 
@@ -747,7 +748,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -822,7 +823,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -842,25 +843,22 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         let vpc_yaml = Asset::get("cloudformation/avalanche-node/vpc.yaml").unwrap();
         let vpc_tmpl = std::str::from_utf8(vpc_yaml.data.as_ref()).unwrap();
         let vpc_stack_name = aws_resources.cloudformation_vpc.clone().unwrap();
-
-        let mut parameters = Vec::from([
+        let vpc_params = Vec::from([
             build_param("Id", &spec.id),
             build_param("VpcCidr", "10.0.0.0/16"),
             build_param("PublicSubnetCidr1", "10.0.64.0/19"),
             build_param("PublicSubnetCidr2", "10.0.128.0/19"),
             build_param("PublicSubnetCidr3", "10.0.192.0/19"),
             build_param("IngressIpv4Range", "0.0.0.0/0"),
+            build_param(
+                "StakingPort",
+                format!("{}", spec.avalanchego_config.staking_port).as_str(),
+            ),
+            build_param(
+                "HttpPort",
+                format!("{}", spec.avalanchego_config.http_port).as_str(),
+            ),
         ]);
-        if spec.avalanchego_config.http_port.is_some() {
-            let http_port = spec.avalanchego_config.http_port.unwrap();
-            let param = build_param("HttpPort", format!("{}", http_port).as_str());
-            parameters.push(param);
-        }
-        if spec.avalanchego_config.staking_port.is_some() {
-            let staking_port = spec.avalanchego_config.staking_port.unwrap();
-            let param = build_param("StakingPort", format!("{}", staking_port).as_str());
-            parameters.push(param);
-        }
         rt.block_on(cloudformation_manager.create_stack(
             vpc_stack_name.as_str(),
             None,
@@ -869,9 +867,9 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             Some(Vec::from([
                 Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
-            Some(parameters),
+            Some(vpc_params),
         ))
-        .unwrap();
+        .expect("failed create_stack for VPC");
 
         thread::sleep(Duration::from_secs(10));
         let stack = rt
@@ -881,7 +879,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                 Duration::from_secs(300),
                 Duration::from_secs(30),
             ))
-            .unwrap();
+            .expect("failed poll_stack for VPC");
 
         for o in stack.outputs.unwrap() {
             let k = o.output_key.unwrap();
@@ -912,7 +910,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -955,7 +953,12 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             "NlbVpcId",
             &aws_resources.cloudformation_vpc_id.clone().unwrap(),
         ),
+        build_param(
+            "NlbHttpPort",
+            format!("{}", spec.avalanchego_config.http_port).as_str(),
+        ),
     ]);
+
     // mainnet/* requires higher volume size
     // TODO: make this configurable
     if spec.avalanchego_config.is_mainnet() {
@@ -963,11 +966,6 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         asg_parameters.push(param);
     } else if !spec.avalanchego_config.is_custom_network() {
         let param = build_param("VolumeSize", "400");
-        asg_parameters.push(param);
-    }
-    if spec.avalanchego_config.http_port.is_some() {
-        let http_port = spec.avalanchego_config.http_port.unwrap();
-        let param = build_param("NlbHttpPort", format!("{}", http_port).as_str());
         asg_parameters.push(param);
     }
     if spec.machine.instance_types.is_some() {
@@ -979,7 +977,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         ));
     }
 
-    let mut all_nodes: Vec<node::Node> = Vec::new();
+    let mut current_nodes: Vec<node::Node> = Vec::new();
     if spec.machine.beacon_nodes.unwrap_or(0) > 0
         && aws_resources
             .cloudformation_asg_beacon_nodes_logical_id
@@ -1130,12 +1128,17 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         loop {
             thread::sleep(Duration::from_secs(30));
             objects = rt
-                .block_on(s3_manager.list_objects(
-                    &aws_resources.s3_bucket,
-                    Some(s3::append_slash(
-                        &s3::KeyPath::DiscoverReadyBeaconNodesDir(spec.id.clone()).encode(),
-                    )),
-                ))
+                .block_on(
+                    s3_manager.list_objects(
+                        &aws_resources.s3_bucket,
+                        Some(s3::append_slash(
+                            &avalanche_ops::StorageKey::DiscoverReadyBeaconNodesDir(
+                                spec.id.clone(),
+                            )
+                            .encode(),
+                        )),
+                    ),
+                )
                 .unwrap();
             info!(
                 "{} beacon nodes are bootstrapped and ready (expecting {} nodes)",
@@ -1149,8 +1152,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let beacon_node = s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
-            all_nodes.push(beacon_node.clone());
+            let beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
+            current_nodes.push(beacon_node.clone());
         }
 
         spec.aws_resources = Some(aws_resources.clone());
@@ -1160,7 +1163,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &s3::KeyPath::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
 
@@ -1353,12 +1356,17 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         loop {
             thread::sleep(Duration::from_secs(30));
             objects = rt
-                .block_on(s3_manager.list_objects(
-                    &aws_resources.s3_bucket,
-                    Some(s3::append_slash(
-                        &s3::KeyPath::DiscoverReadyNonBeaconNodesDir(spec.id.clone()).encode(),
-                    )),
-                ))
+                .block_on(
+                    s3_manager.list_objects(
+                        &aws_resources.s3_bucket,
+                        Some(s3::append_slash(
+                            &avalanche_ops::StorageKey::DiscoverReadyNonBeaconNodesDir(
+                                spec.id.clone(),
+                            )
+                            .encode(),
+                        )),
+                    ),
+                )
                 .unwrap();
             info!(
                 "{} non-beacon nodes are ready (expecting {} nodes)",
@@ -1372,8 +1380,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let non_beacon_node = s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
-            all_nodes.push(non_beacon_node.clone());
+            let non_beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
+            current_nodes.push(non_beacon_node.clone());
         }
 
         spec.aws_resources = Some(aws_resources.clone());
@@ -1383,13 +1391,15 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &s3::KeyPath::ConfigFile(spec.id).encode(),
+            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
 
         info!("waiting for non-beacon nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));
     }
+    spec.current_nodes = Some(current_nodes.clone());
+    spec.sync(spec_file_path)?;
 
     execute!(
         stdout(),
@@ -1397,7 +1407,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         Print("\n\n\nSTEP: listing all nodes based on S3 keys...\n"),
         ResetColor
     )?;
-    for node in all_nodes.iter() {
+    for node in current_nodes.iter() {
         println!("{}", node.encode_yaml().unwrap());
     }
 
@@ -1408,10 +1418,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         ResetColor
     )?;
     let dns_name = aws_resources.cloudformation_asg_nlb_dns_name.unwrap();
-    let http_port = spec
-        .avalanchego_config
-        .http_port
-        .unwrap_or(avalanche_config::DEFAULT_HTTP_PORT);
+    let http_port = spec.avalanchego_config.http_port;
 
     let nlb_https_enabled = aws_resources.nlb_acm_certificate_arn.is_some();
     let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
@@ -1433,22 +1440,11 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         "{}://{}:{}/ext/health/liveness",
         scheme_for_dns, dns_name, http_port
     );
-
-    let scheme_for_ips = {
-        if https_enabled {
-            "https"
-        } else {
-            "http"
-        }
-    };
     let mut uris: Vec<String> = vec![];
-    for node in all_nodes.iter() {
+    for node in current_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(avalanche::check_health(
-                format!("{}://{}:{}", scheme_for_ips, node.ip, http_port).as_str(),
-                true,
-            ));
+            let ret = rt.block_on(avalanche::check_health(&node.http_endpoint, true));
             let (res, err) = match ret {
                 Ok(res) => (res, None),
                 Err(e) => (
@@ -1483,14 +1479,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             );
             return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
         }
-
-        println!("{}://{}:{}/ext/metrics", scheme_for_ips, node.ip, http_port);
-        println!("{}://{}:{}/ext/health", scheme_for_ips, node.ip, http_port);
-        println!(
-            "{}://{}:{}/ext/health/liveness",
-            scheme_for_ips, node.ip, http_port
-        );
-        uris.push(format!("{}://{}:{}", scheme_for_ips, node.ip, http_port))
+        println!("{}/ext/metrics", node.http_endpoint);
+        println!("{}/ext/health", node.http_endpoint);
+        println!("{}/ext/health/liveness", node.http_endpoint);
+        uris.push(node.http_endpoint.clone());
     }
     println!("\nURIs: {}", uris.join(","));
 

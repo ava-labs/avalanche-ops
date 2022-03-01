@@ -9,10 +9,14 @@ use log::info;
 use openssl::x509::X509;
 use serde::{Deserialize, Serialize};
 
-use crate::{avalanche::key, utils::compress};
+use crate::{
+    avalanche::{config as avalanche_config, key},
+    utils::compress,
+};
 
 /// Defines the node type.
 /// Must be either "beacon" or "non-beacon"
+#[derive(Eq, PartialEq, Clone)]
 pub enum Kind {
     Beacon,
     NonBeacon,
@@ -44,17 +48,26 @@ impl Kind {
 pub struct Node {
     pub kind: String,
     pub machine_id: String,
-    pub id: String,
-    pub ip: String,
+    pub node_id: String,
+    pub public_ip: String,
+    pub http_endpoint: String,
 }
 
 impl Node {
-    pub fn new(kind: Kind, machine_id: &str, id: &str, ip: &str) -> Self {
+    pub fn new(
+        kind: Kind,
+        machine_id: &str,
+        node_id: &str,
+        public_ip: &str,
+        http_scheme: &str,
+        http_port: u32,
+    ) -> Self {
         Self {
             kind: String::from(kind.as_str()),
             machine_id: String::from(machine_id),
-            id: String::from(id),
-            ip: String::from(ip),
+            node_id: String::from(node_id),
+            public_ip: String::from(public_ip),
+            http_endpoint: format!("{}://{}:{}", http_scheme, public_ip, http_port),
         }
     }
 
@@ -149,8 +162,9 @@ fn test_node() {
     let d = r#"
 kind: beacon
 machine_id: i-123123
-id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
-ip: 1.2.3.4
+node_id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
+public_ip: 1.2.3.4
+http_endpoint: http://1.2.3.4:9650
 
 "#;
     let mut f = tempfile::NamedTempFile::new().unwrap();
@@ -170,6 +184,8 @@ ip: 1.2.3.4
         "i-123123",
         "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
         "1.2.3.4",
+        "http",
+        9650,
     );
     assert_eq!(node, orig);
 
@@ -177,10 +193,11 @@ ip: 1.2.3.4
     assert_eq!(node.kind, String::from("beacon"));
     assert_eq!(node.machine_id, String::from("i-123123"));
     assert_eq!(
-        node.id,
+        node.node_id,
         String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg")
     );
-    assert_eq!(node.ip, String::from("1.2.3.4"));
+    assert_eq!(node.public_ip, String::from("1.2.3.4"));
+    assert_eq!(node.http_endpoint, String::from("http://1.2.3.4:9650"));
 
     let encoded_yaml = node.encode_yaml().unwrap();
     info!("node.encode_yaml: {}", encoded_yaml);
@@ -265,4 +282,41 @@ fn test_id() {
     let expected = "NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG";
     let node_id = load_id("./artifacts/test.insecure.crt").unwrap();
     assert_eq!(node_id, expected);
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct Info {
+    pub local_node: Node,
+    pub avalanchego_config: avalanche_config::AvalancheGo,
+}
+
+impl Info {
+    pub fn new(local_node: Node, avalanchego_config: avalanche_config::AvalancheGo) -> Self {
+        Self {
+            local_node,
+            avalanchego_config,
+        }
+    }
+
+    pub fn sync(&self, file_path: String) -> io::Result<()> {
+        info!("syncing Info to '{}'", file_path);
+        let path = Path::new(&file_path);
+        let parent_dir = path.parent().unwrap();
+        fs::create_dir_all(parent_dir)?;
+
+        let ret = serde_json::to_vec(self);
+        let d = match ret {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize Info to YAML {}", e),
+                ));
+            }
+        };
+        let mut f = File::create(&file_path)?;
+        f.write_all(&d)?;
+
+        Ok(())
+    }
 }
