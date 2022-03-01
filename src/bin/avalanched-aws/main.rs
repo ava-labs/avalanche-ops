@@ -14,9 +14,9 @@ use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego,
+    self,
+    avalanche::{self, config as avalanche_config, constants, genesis, node},
     aws::{self, cloudwatch, ec2, envelope, kms, s3},
-    constants, node,
     utils::{bash, cert, compress, random},
 };
 
@@ -591,7 +591,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
         thread::sleep(Duration::from_secs(1));
         info!("STEP: collect all seed/bootstrapping beacon nodes information from S3 key for initial stakers");
-        let mut stakers: Vec<avalanchego::Staker> = vec![];
+        let mut stakers: Vec<genesis::Staker> = vec![];
         let seed_priv_keys = spec.generated_seed_private_keys.unwrap();
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
@@ -600,7 +600,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             // to reduce "s3_manager.get_object" call volume
             let seed_beacon_node = s3::KeyPath::parse_node_from_s3_path(s3_key).unwrap();
 
-            let mut staker = avalanchego::Staker::default();
+            let mut staker = genesis::Staker::default();
             staker.node_id = Some(seed_beacon_node.id);
             staker.reward_address = Some(seed_priv_keys[0].x_address.clone());
 
@@ -627,7 +627,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             "STEP: updating genesis draft file and writing to a new genesis file to '{}'",
             genesis_path
         );
-        let mut genesis_draft = avalanchego::Genesis::load(&tmp_genesis_path).unwrap();
+        let mut genesis_draft = genesis::AvalancheGo::load(&tmp_genesis_path).unwrap();
         genesis_draft.initial_stakers = Some(stakers);
         genesis_draft.sync(&genesis_path).unwrap();
 
@@ -728,7 +728,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             let staking_port = spec
                 .avalanchego_config
                 .staking_port
-                .unwrap_or(avalanchego::DEFAULT_STAKING_PORT);
+                .unwrap_or(avalanche_config::DEFAULT_STAKING_PORT);
 
             bootstrap_ips.push(format!("{}:{}", beacon_node.ip, staking_port));
             bootstrap_ids.push(beacon_node.id);
@@ -826,7 +826,7 @@ WantedBy=multi-user.target",
     // this can take awhile if loaded from backups or syncing from peers
     info!("'avalanched run' all success -- now waiting for local node liveness check");
     loop {
-        let ret = rt.block_on(avalanchego::check_health(
+        let ret = rt.block_on(avalanche::check_health(
             format!(
                 "{}://{}:{}",
                 scheme,
@@ -839,7 +839,7 @@ WantedBy=multi-user.target",
         let (res, err) = match ret {
             Ok(res) => (res, None),
             Err(e) => (
-                avalanchego::APIHealthReply {
+                avalanche::APIHealthReply {
                     checks: None,
                     healthy: Some(false),
                 },
@@ -926,7 +926,7 @@ WantedBy=multi-user.target",
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct NodeInformation {
     pub node: node::Node,
-    pub avalanchego_config: avalanchego::Config,
+    pub avalanchego_config: avalanche_config::AvalancheGo,
 }
 
 impl NodeInformation {

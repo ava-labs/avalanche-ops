@@ -9,7 +9,7 @@ use log::info;
 use openssl::x509::X509;
 use serde::{Deserialize, Serialize};
 
-use crate::{key, utils::compress};
+use crate::{avalanche::key, utils::compress};
 
 /// Defines the node type.
 /// Must be either "beacon" or "non-beacon"

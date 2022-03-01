@@ -14,7 +14,7 @@ use secp256k1::{self, rand::rngs::OsRng, PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use sha3::Keccak256;
 
-use crate::{constants, formatting};
+use crate::avalanche::{constants, formatting};
 
 pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
 pub const EWOQ_KEY: &str = "PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN";

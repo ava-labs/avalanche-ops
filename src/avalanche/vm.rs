@@ -1,6 +1,6 @@
 use std::io::{self, Error, ErrorKind};
 
-use crate::formatting;
+use crate::avalanche::formatting;
 
 /// Generates VM ID based on the name.
 pub fn id_from_str(name: &str) -> io::Result<String> {

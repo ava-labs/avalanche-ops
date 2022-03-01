@@ -20,9 +20,9 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_ops::{
-    self, avalanchego,
+    self,
+    avalanche::{self, config as avalanche_config, constants, genesis, node},
     aws::{self, cloudformation, cloudwatch, ec2, envelope, kms, s3, sts},
-    constants, node,
     utils::{compress, random},
 };
 
@@ -137,7 +137,7 @@ fn create_default_spec_command() -> Command<'static> {
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .default_value(avalanchego::DEFAULT_LOG_LEVEL),
+                .default_value(avalanche_config::DEFAULT_LOG_LEVEL),
         )
         .arg(
             Arg::new("AVALANCHEGO_HTTP_TLS_ENABLED") 
@@ -383,9 +383,9 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
 
     let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opt.network_name.as_str()) {
         Some(v) => *v,
-        None => avalanchego::DEFAULT_CUSTOM_NETWORK_ID,
+        None => genesis::DEFAULT_CUSTOM_NETWORK_ID,
     };
-    let mut avalanchego_config = avalanchego::Config::default();
+    let mut avalanchego_config = avalanche_config::AvalancheGo::default();
     avalanchego_config.network_id = network_id;
     avalanchego_config.log_level = Some(opt.avalanchego_log_level);
     if !avalanchego_config.is_custom_network() {
@@ -1382,7 +1382,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     let http_port = spec
         .avalanchego_config
         .http_port
-        .unwrap_or(avalanchego::DEFAULT_HTTP_PORT);
+        .unwrap_or(avalanche_config::DEFAULT_HTTP_PORT);
 
     let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
         && spec.avalanchego_config.http_tls_enabled.unwrap();
@@ -1404,14 +1404,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     for node in all_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(avalanchego::check_health(
+            let ret = rt.block_on(avalanche::check_health(
                 format!("{}://{}:{}", scheme, node.ip, http_port).as_str(),
                 true,
             ));
             let (res, err) = match ret {
                 Ok(res) => (res, None),
                 Err(e) => (
-                    avalanchego::APIHealthReply {
+                    avalanche::APIHealthReply {
                         checks: None,
                         healthy: Some(false),
                     },

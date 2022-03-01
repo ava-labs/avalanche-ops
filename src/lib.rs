@@ -8,14 +8,8 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-pub mod avalanchego;
-pub mod constants;
 pub mod dev_machine;
 pub mod errors;
-pub mod formatting;
-pub mod key;
-pub mod node;
-pub mod vm;
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod aws;
@@ -23,6 +17,10 @@ pub mod aws;
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod utils;
 use crate::utils::{random, time};
+
+/// ref. https://doc.rust-lang.org/reference/items/modules.html
+pub mod avalanche;
+use crate::avalanche::{config as avalanche_config, constants, genesis, key};
 
 pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
 
@@ -65,7 +63,7 @@ pub struct Spec {
     /// For instance, "config-file" must be the path valid
     /// in the remote machines.
     /// Must be "kebab-case" to be compatible with "avalanchego".
-    pub avalanchego_config: avalanchego::Config,
+    pub avalanchego_config: avalanche_config::AvalancheGo,
     /// Generated key infos.
     /// Only pre-funded for custom networks with a custom genesis file.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -150,7 +148,7 @@ impl Spec {
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
         coreth_evm_config_file_path: Option<String>,
-        avalanchego_config: avalanchego::Config,
+        avalanchego_config: avalanche_config::AvalancheGo,
         keys: usize,
     ) -> Self {
         // [year][month][date]-[system host-based id]
@@ -174,7 +172,7 @@ impl Spec {
         let (generated_seed_keys, genesis_draft_file_path) = {
             if avalanchego_config.is_custom_network() {
                 let (genesis, _generated_seed_keys) =
-                    avalanchego::Genesis::new(network_id, keys).unwrap();
+                    genesis::AvalancheGo::new(network_id, keys).unwrap();
                 let genesis_draft_file_path = Some(random::tmp_path(15, Some(".json")).unwrap());
                 genesis
                     .sync(&genesis_draft_file_path.clone().unwrap())
@@ -583,13 +581,13 @@ avalanchego_config:
         avalanchego_bin,
         plugins_dir,
         genesis_draft_file_path,
-        avalanchego::DEFAULT_CONFIG_FILE_PATH,
-        avalanchego::DEFAULT_GENESIS_PATH,
-        avalanchego::DEFAULT_SNOW_SAMPLE_SIZE,
-        avalanchego::DEFAULT_SNOW_QUORUM_SIZE,
-        avalanchego::DEFAULT_HTTP_PORT,
-        avalanchego::DEFAULT_STAKING_PORT,
-        avalanchego::DEFAULT_DB_DIR,
+        avalanche_config::DEFAULT_CONFIG_FILE_PATH,
+        avalanche_config::DEFAULT_GENESIS_PATH,
+        avalanche_config::DEFAULT_SNOW_SAMPLE_SIZE,
+        avalanche_config::DEFAULT_SNOW_QUORUM_SIZE,
+        avalanche_config::DEFAULT_HTTP_PORT,
+        avalanche_config::DEFAULT_STAKING_PORT,
+        avalanche_config::DEFAULT_DB_DIR,
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
@@ -603,15 +601,15 @@ avalanchego_config:
     let ret = cfg.sync(config_path);
     assert!(ret.is_ok());
 
-    let mut avalanchego_config = avalanchego::Config::new();
-    avalanchego_config.config_file = Some(String::from(avalanchego::DEFAULT_CONFIG_FILE_PATH));
-    avalanchego_config.genesis = Some(String::from(avalanchego::DEFAULT_GENESIS_PATH));
+    let mut avalanchego_config = avalanche_config::AvalancheGo::new();
+    avalanchego_config.config_file = Some(String::from(avalanche_config::DEFAULT_CONFIG_FILE_PATH));
+    avalanchego_config.genesis = Some(String::from(avalanche_config::DEFAULT_GENESIS_PATH));
     avalanchego_config.network_id = 1337;
-    avalanchego_config.snow_sample_size = Some(avalanchego::DEFAULT_SNOW_SAMPLE_SIZE);
-    avalanchego_config.snow_quorum_size = Some(avalanchego::DEFAULT_SNOW_QUORUM_SIZE);
-    avalanchego_config.http_port = Some(avalanchego::DEFAULT_HTTP_PORT);
-    avalanchego_config.staking_port = Some(avalanchego::DEFAULT_STAKING_PORT);
-    avalanchego_config.db_dir = String::from(avalanchego::DEFAULT_DB_DIR);
+    avalanchego_config.snow_sample_size = Some(avalanche_config::DEFAULT_SNOW_SAMPLE_SIZE);
+    avalanchego_config.snow_quorum_size = Some(avalanche_config::DEFAULT_SNOW_QUORUM_SIZE);
+    avalanchego_config.http_port = Some(avalanche_config::DEFAULT_HTTP_PORT);
+    avalanchego_config.staking_port = Some(avalanche_config::DEFAULT_STAKING_PORT);
+    avalanchego_config.db_dir = String::from(avalanche_config::DEFAULT_DB_DIR);
 
     let orig = Spec {
         id: id.clone(),
@@ -687,14 +685,14 @@ avalanchego_config:
             .clone()
             .config_file
             .unwrap_or("".to_string()),
-        avalanchego::DEFAULT_CONFIG_FILE_PATH,
+        avalanche_config::DEFAULT_CONFIG_FILE_PATH,
     );
     assert_eq!(
         cfg.avalanchego_config
             .clone()
             .genesis
             .unwrap_or("".to_string()),
-        avalanchego::DEFAULT_GENESIS_PATH,
+        avalanche_config::DEFAULT_GENESIS_PATH,
     );
     assert_eq!(
         cfg.avalanchego_config.clone().snow_sample_size.unwrap_or(0),
@@ -706,14 +704,14 @@ avalanchego_config:
     );
     assert_eq!(
         cfg.avalanchego_config.clone().http_port.unwrap_or(0),
-        avalanchego::DEFAULT_HTTP_PORT,
+        avalanche_config::DEFAULT_HTTP_PORT,
     );
     assert_eq!(
         cfg.avalanchego_config.clone().staking_port.unwrap_or(0),
-        avalanchego::DEFAULT_STAKING_PORT,
+        avalanche_config::DEFAULT_STAKING_PORT,
     );
     assert_eq!(
         cfg.avalanchego_config.clone().db_dir,
-        avalanchego::DEFAULT_DB_DIR,
+        avalanche_config::DEFAULT_DB_DIR,
     );
 }

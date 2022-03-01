@@ -15,11 +15,11 @@ use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
 
 use crate::{
+    avalanche::node,
     errors::{
         Error::{Other, API},
         Result,
     },
-    node,
     utils::humanize,
 };
 

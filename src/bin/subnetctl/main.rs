@@ -6,7 +6,7 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 
-use avalanche_ops::vm;
+use avalanche_ops::avalanche::vm;
 
 const APP_NAME: &str = "subnetctl";
 const SUBCOMMAND_VM_ID: &str = "vm-id";

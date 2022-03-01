@@ -3,7 +3,7 @@ use std::env::args;
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::key;
+use avalanche_ops::avalanche::key;
 
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
