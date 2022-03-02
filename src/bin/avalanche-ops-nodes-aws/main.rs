@@ -1594,10 +1594,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
     let dns_endpoint = format!("{}://{}:{}", scheme_for_dns, dns_name, port_for_dns);
-    println!("[METRICS]  {}/ext/metrics", dns_endpoint);
-    println!("[health]   {}/ext/health", dns_endpoint);
-    println!("[liveness] {}/ext/health/liveness", dns_endpoint);
-    println!("[MetaMask] {}/ext/bc/C/rpc", dns_endpoint);
+    println!("[METRICS]   {}/ext/metrics", dns_endpoint);
+    println!("[health]    {}/ext/health", dns_endpoint);
+    println!("[liveness]  {}/ext/health/liveness", dns_endpoint);
+    println!("[MetaMask]  {}/ext/bc/C/rpc", dns_endpoint);
+    println!(
+        "[Websocket] ws://{}:{}/ext/bc/C/rpc",
+        dns_name, port_for_dns
+    );
     println!();
 
     let mut success = false;
