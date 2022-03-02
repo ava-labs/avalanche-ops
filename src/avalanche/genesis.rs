@@ -55,8 +55,9 @@ pub struct AvalancheGo {
 }
 
 pub const DEFAULT_CUSTOM_NETWORK_ID: u32 = 9999;
-pub const DEFAULT_INITIAL_STAKE_DURATION: u64 = 31536000; // 1 year
-pub const DEFAULT_INITIAL_STAKE_DURATION_OFFSET: u64 = 5400; // 1.5 hour
+
+pub const DEFAULT_INITIAL_STAKE_DURATION: u64 = 600; // 10-min
+pub const DEFAULT_INITIAL_STAKE_DURATION_OFFSET: u64 = 1;
 
 impl Default for AvalancheGo {
     fn default() -> Self {
@@ -71,10 +72,14 @@ impl AvalancheGo {
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("unexpected None duration_since")
             .as_secs();
+        // 5-hr in the past
+        // time in the past to unlock "Staking" immediately
+        let start_time = now_unix - 5 * 60 * 60;
+
         Self {
             network_id: DEFAULT_CUSTOM_NETWORK_ID, // mainnet
             allocations: Some(Vec::new()),
-            start_time: Some(now_unix),
+            start_time: Some(start_time),
             initial_stake_duration: Some(DEFAULT_INITIAL_STAKE_DURATION),
             initial_stake_duration_offset: Some(DEFAULT_INITIAL_STAKE_DURATION_OFFSET),
             initial_staked_funds: Some(Vec::new()),
