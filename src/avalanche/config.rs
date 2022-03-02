@@ -65,7 +65,9 @@ pub const DEFAULT_API_METRICS_ENABLED: bool = true;
 pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
 pub const DEFAULT_API_IPCS_ENABLED: bool = true;
 
-pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/etc/avalanchego/configs/chains";
+/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.6/config/flags.go#L25-L44
+pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/etc/avalanche/configs/chains";
+pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/etc/avalanche/configs/subnets";
 
 /// Represents AvalancheGo configuration.
 /// All file paths must be valid on the remote machines.
@@ -178,9 +180,10 @@ pub struct AvalancheGo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub whitelisted_subnets: Option<String>,
 
-    /// TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chain_config_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subnet_config_dir: Option<String>,
 
     /// TODO: for fastsync, document this
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -242,6 +245,7 @@ impl AvalancheGo {
             whitelisted_subnets: None,
 
             chain_config_dir: None,
+            subnet_config_dir: None,
 
             state_sync_ids: None,
             state_sync_ips: None,
@@ -282,6 +286,7 @@ impl AvalancheGo {
         config.api_ipcs_enabled = Some(DEFAULT_API_IPCS_ENABLED);
 
         config.chain_config_dir = Some(String::from(DEFAULT_CHAIN_CONFIG_DIR));
+        config.subnet_config_dir = Some(String::from(DEFAULT_SUBNET_CONFIG_DIR));
         config
     }
 

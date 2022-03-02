@@ -106,10 +106,6 @@ impl AvalancheGo {
             alloc.avax_addr = Some(info.x_address.clone());
             allocations.push(alloc);
 
-            // TODO: can we allocate for P-chain as well???
-            // alloc.avax_addr = Some(info.p_address.clone());
-            // allocations.push(alloc);
-
             initial_staked_funds.push(info.x_address.clone());
             seed_priv_keys.push(info);
         }
@@ -195,7 +191,7 @@ pub struct Allocation {
     /// This field is only used for memos.
     #[serde(rename = "ethAddr", skip_serializing_if = "Option::is_none")]
     pub eth_addr: Option<String>,
-    /// Initially allocated amount.
+    /// Initially allocated amount for X-chain.
     /// On the X-Chain, one AVAX is 10^9  units.
     /// On the P-Chain, one AVAX is 10^9  units.
     /// On the C-Chain, one AVAX is 10^18 units.
@@ -205,30 +201,26 @@ pub struct Allocation {
     pub unlock_schedule: Option<Vec<LockedAmount>>,
 }
 
-pub const DEFAULT_INITIAL_AMOUNT: u64 = 300000000000000000;
-
 impl Default for Allocation {
     fn default() -> Self {
         Self::default()
     }
 }
 
+/// On the X-Chain, one AVAX is 10^9  units.
+/// On the P-Chain, one AVAX is 10^9  units.
+/// On the C-Chain, one AVAX is 10^18 units.
+pub const DEFAULT_INITIAL_AMOUNT_X_CHAIN: u64 = 100000000000000000;
+pub const DEFAULT_LOCKED_AMOUNT_P_CHAIN: u64 = 500000000000000000;
+
 impl Allocation {
     pub fn default() -> Self {
         let unlock_empty = LockedAmount::default();
-
-        let mut unlock_now = unlock_empty.clone();
-        let now_unix = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("unexpected None duration_since")
-            .as_secs();
-        unlock_now.locktime = Some(now_unix);
-
         Self {
             avax_addr: None,
             eth_addr: None,
-            initial_amount: Some(DEFAULT_INITIAL_AMOUNT),
-            unlock_schedule: Some(vec![unlock_empty, unlock_now]),
+            initial_amount: Some(DEFAULT_INITIAL_AMOUNT_X_CHAIN),
+            unlock_schedule: Some(vec![unlock_empty]),
         }
     }
 }
@@ -236,7 +228,7 @@ impl Allocation {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/genesis#LockedAmount
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct LockedAmount {
-    /// Amount to lock for the duration of "locktime"
+    /// P-chain amount to lock for the duration of "locktime"
     /// in addition to the initial amount.
     /// On the X-Chain, one AVAX is 10^9  units.
     /// On the P-Chain, one AVAX is 10^9  units.
@@ -248,8 +240,6 @@ pub struct LockedAmount {
     pub locktime: Option<u64>,
 }
 
-pub const DEFAULT_LOCKED_AMOUNT: u64 = 200000000000000000;
-
 impl Default for LockedAmount {
     fn default() -> Self {
         Self::default()
@@ -258,8 +248,15 @@ impl Default for LockedAmount {
 
 impl LockedAmount {
     pub fn default() -> Self {
+        // NOTE: to place lock-time, use this:
+        // let now_unix = SystemTime::now()
+        //     .duration_since(SystemTime::UNIX_EPOCH)
+        //     .expect("unexpected None duration_since")
+        //     .as_secs();
+        // unlock_now.locktime = Some(now_unix);
+
         Self {
-            amount: Some(DEFAULT_LOCKED_AMOUNT),
+            amount: Some(DEFAULT_LOCKED_AMOUNT_P_CHAIN),
             locktime: None, // empty to unlock immediately
         }
     }

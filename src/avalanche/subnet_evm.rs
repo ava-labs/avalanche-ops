@@ -1,3 +1,5 @@
+/// TODO: support https://pkg.go.dev/github.com/ava-labs/subnet-evm/plugin/evm#Config in "chain_config_dir"
+///
 /// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/params#ChainConfig
 /// ref. https://github.com/ava-labs/subnet-evm/blob/master/scripts/run.sh

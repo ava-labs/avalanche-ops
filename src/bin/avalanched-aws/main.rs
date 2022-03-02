@@ -338,15 +338,17 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             &avalanche_ops::StorageKey::AvalancheBinCompressed(id.clone()).encode(),
             &tmp_avalanche_bin_compressed_path,
         ))
-        .unwrap();
+        .expect("failed get_object avalanche_bin_compressed_path");
         compress::unpack_file(
             &tmp_avalanche_bin_compressed_path,
             &avalanche_bin,
             compress::Decoder::Zstd,
         )
-        .unwrap();
-        let f = File::open(&avalanche_bin).unwrap();
-        f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
+        .expect("failed unpack_file avalanche_bin_compressed_path");
+        let f = File::open(&avalanche_bin).expect("failed to open avalanche_bin");
+        f.set_permissions(PermissionsExt::from_mode(0o777))
+            .expect("failed to set file permission for avalanche_bin");
+        fs::remove_file(&tmp_avalanche_bin_compressed_path)?;
     }
 
     let plugins_dir = get_plugins_dir(&avalanche_bin);
@@ -372,10 +374,12 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             let tmp_path = random::tmp_path(15, None).unwrap();
             rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
-                .unwrap();
+                .expect("failed get_object plugin file");
             compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
-            let f = File::open(file_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
+            let f = File::open(file_path).expect("failed to open plugin file");
+            f.set_permissions(PermissionsExt::from_mode(0o777))
+                .expect("failed to set file permission");
+            fs::remove_file(&tmp_path)?;
         }
     }
 
@@ -436,7 +440,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         &avalanche_ops::StorageKey::ConfigFile(id.clone()).encode(),
         &tmp_spec_file_path,
     ))
-    .unwrap();
+    .expect("failed get_object spec file");
 
     let mut spec = avalanche_ops::Spec::load(&tmp_spec_file_path).unwrap();
     spec.avalanchego_config.public_ip = Some(public_ipv4.clone());
@@ -485,9 +489,9 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             &tmp_compressed_path,
             compress::Encoder::Zstd(3),
         )
-        .unwrap();
+        .expect("failed pack_file tls_key_path");
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
-            .unwrap();
+            .expect("failed seal_aes_256_file compressed tls_key_path");
         rt.block_on(
             s3_manager.put_object(
                 &tmp_encrypted_path,
@@ -500,11 +504,11 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 .as_str(),
             ),
         )
-        .unwrap();
+        .expect("failed put_object encrypted key file");
         fs::remove_file(tmp_compressed_path)?;
         fs::remove_file(tmp_encrypted_path)?;
     }
-    let node_id = node::load_id(&tls_cert_path).unwrap();
+    let node_id = node::load_id(&tls_cert_path).expect("failed to load node ID");
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -595,13 +599,13 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 &db_backup_s3_key,
                 &download_path,
             ))
-            .unwrap();
+            .expect("failed get_object db backup file");
 
             compress::unpack_directory(&download_path, &spec.avalanchego_config.db_dir, dec)
                 .unwrap();
 
             info!("removing downloaded file {} after unpack", download_path);
-            fs::remove_file(download_path).unwrap();
+            fs::remove_file(download_path)?;
 
             // TODO: override network id to support network fork
         } else {
@@ -811,10 +815,24 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     // create dir regardless of whether we have custom coreth config or not
     if spec.avalanchego_config.chain_config_dir.is_some() {
-        let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir.unwrap();
+        let chain_config_dir = spec
+            .avalanchego_config
+            .clone()
+            .chain_config_dir
+            .expect("unexpected None chain_config_dir");
         fs::create_dir_all(Path::new(&chain_config_dir).join("C"))
             .expect("failed to create dir for chain config");
     };
+    if spec.avalanchego_config.subnet_config_dir.is_some() {
+        let subnet_config_dir = spec
+            .avalanchego_config
+            .clone()
+            .subnet_config_dir
+            .expect("unexpected None subnet_config_dir");
+        fs::create_dir_all(Path::new(&subnet_config_dir).join("C"))
+            .expect("failed to create dir for chain config");
+    };
+
     if spec.install_artifacts.coreth_evm_config_file_path.is_some() {
         thread::sleep(Duration::from_secs(1));
         info!(
@@ -835,6 +853,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             chain_config_c_path.as_os_str()
         );
         fs::copy(&tmp_evm_config_path, chain_config_c_path).unwrap();
+        fs::remove_file(&tmp_evm_config_path)?;
     }
 
     // persist before starting the service
@@ -928,6 +947,7 @@ WantedBy=multi-user.target",
             node_info.sync(tmp_path.clone()).unwrap();
             rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
                 .expect("failed put_object node::Info");
+            fs::remove_file(&tmp_path)?;
         }
 
         // for all network types
@@ -945,6 +965,7 @@ WantedBy=multi-user.target",
             node_info.sync(tmp_path.clone()).unwrap();
             rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
                 .expect("failed put_object node::Info");
+            fs::remove_file(&tmp_path)?;
         }
 
         // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"

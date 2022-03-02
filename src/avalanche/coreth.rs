@@ -1,3 +1,5 @@
+/// TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config in "chain_config_dir"
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/params#ChainConfig
 /// ref. https://github.com/ava-labs/avalanchego/tree/dev/genesis
