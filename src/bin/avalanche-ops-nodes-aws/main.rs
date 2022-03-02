@@ -1523,6 +1523,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             let non_beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
             current_nodes.push(non_beacon_node.clone());
         }
+        spec.current_nodes = Some(current_nodes.clone());
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
@@ -1537,6 +1538,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         // TODO: if downloading mainnet db, it will take a while
         // TODO: better handle this
         if require_db_download {
+            spec.current_nodes = Some(current_nodes.clone());
             spec.aws_resources = Some(aws_resources);
             spec.sync(spec_file_path)?;
             println!();
