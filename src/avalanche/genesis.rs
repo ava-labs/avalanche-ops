@@ -210,11 +210,20 @@ impl Default for Allocation {
 
 impl Allocation {
     pub fn default() -> Self {
+        let default_locked_amount = LockedAmount::default();
+
+        let mut default_locked_amount_2 = default_locked_amount.clone();
+        let now_unix = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("unexpected None duration_since")
+            .as_secs();
+        default_locked_amount_2.locktime = Some(now_unix);
+
         Self {
             avax_addr: None,
             eth_addr: None,
             initial_amount: Some(DEFAULT_INITIAL_AMOUNT),
-            unlock_schedule: Some(vec![LockedAmount::default()]),
+            unlock_schedule: Some(vec![default_locked_amount, default_locked_amount_2]),
         }
     }
 }
