@@ -1,4 +1,5 @@
 /// TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config in "chain_config_dir"
+/// TODO: pre-allocate funds for generated keys
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/params#ChainConfig

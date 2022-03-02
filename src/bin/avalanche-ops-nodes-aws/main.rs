@@ -1587,10 +1587,19 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
     // TODO: check "/ext/info"
     // TODO: check "/ext/bc/C/rpc"
+    // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+    // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+    //
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+    // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
     let dns_endpoint = format!("{}://{}:{}", scheme_for_dns, dns_name, port_for_dns);
-    println!("{}/ext/metrics", dns_endpoint);
-    println!("{}/ext/health", dns_endpoint);
-    println!("{}/ext/health/liveness", dns_endpoint);
+    println!("[METRICS]  {}/ext/metrics", dns_endpoint);
+    println!("[health]   {}/ext/health", dns_endpoint);
+    println!("[liveness] {}/ext/health/liveness", dns_endpoint);
+    println!("[MetaMask] {}/ext/bc/C/rpc", dns_endpoint);
+    println!();
+
     let mut success = false;
     for _ in 0..10_u8 {
         let ret = rt.block_on(avalanche::api::health::check(&dns_endpoint, true));
