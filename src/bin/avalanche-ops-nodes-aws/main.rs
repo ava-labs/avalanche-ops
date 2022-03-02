@@ -1584,6 +1584,9 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             ("http", http_port)
         }
     };
+
+    // TODO: check "/ext/info"
+    // TODO: check "/ext/bc/C/rpc"
     let dns_endpoint = format!("{}://{}:{}", scheme_for_dns, dns_name, port_for_dns);
     println!("{}/ext/metrics", dns_endpoint);
     println!("{}/ext/health", dns_endpoint);
