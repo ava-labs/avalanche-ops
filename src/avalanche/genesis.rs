@@ -56,7 +56,7 @@ pub struct AvalancheGo {
 
 pub const DEFAULT_CUSTOM_NETWORK_ID: u32 = 9999;
 
-pub const DEFAULT_INITIAL_STAKE_DURATION: u64 = 1800; // 30-min
+pub const DEFAULT_INITIAL_STAKE_DURATION: u64 = 300; // 5-min
 pub const DEFAULT_INITIAL_STAKE_DURATION_OFFSET: u64 = 1;
 
 impl Default for AvalancheGo {
