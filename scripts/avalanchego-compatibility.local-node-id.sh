@@ -32,7 +32,7 @@ popd
 
 ###
 rm -f /tmp/test.insecure.key /tmp/test.insecure.cert
-cargo run --example cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
+cargo run --example utils_cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
 pushd ./avalanchego-compatibility
 go run ./load-node-id/main.go /tmp/test.insecure.key /tmp/test.insecure.cert
 popd

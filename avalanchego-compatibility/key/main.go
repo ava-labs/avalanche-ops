@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -74,12 +75,13 @@ func main() {
 	}
 
 	b, err := json.Marshal(key{
-		PrivateKey:   pkEncoded,
-		XAddress:     xMainAddr,
-		PAddress:     pMainAddr,
-		CAddress:     cMainAddr,
-		ShortAddress: shortAddr,
-		EthAddress:   encodeEthAddr(pk),
+		PrivateKey:    pkEncoded,
+		PrivateKeyHex: hex.EncodeToString([]byte(pkEncoded)),
+		XAddress:      xMainAddr,
+		PAddress:      pMainAddr,
+		CAddress:      cMainAddr,
+		ShortAddress:  shortAddr,
+		EthAddress:    encodeEthAddr(pk),
 	})
 	if err != nil {
 		panic(err)
@@ -88,12 +90,14 @@ func main() {
 }
 
 type key struct {
-	PrivateKey   string `json:"private_key"`
-	XAddress     string `json:"x_address"`
-	PAddress     string `json:"p_address"`
-	CAddress     string `json:"c_address"`
-	ShortAddress string `json:"short_address"`
-	EthAddress   string `json:"eth_address"`
+	PrivateKey string `json:"private_key"`
+	// ref. https://github.com/ava-labs/subnet-cli/blob/5b69345a3fba534fb6969002f41c8d3e69026fed/internal/key/key.go#L238-L258
+	PrivateKeyHex string `json:"private_key_hex"`
+	XAddress      string `json:"x_address"`
+	PAddress      string `json:"p_address"`
+	CAddress      string `json:"c_address"`
+	ShortAddress  string `json:"short_address"`
+	EthAddress    string `json:"eth_address"`
 }
 
 const privKeyEncPfx = "PrivateKey-"

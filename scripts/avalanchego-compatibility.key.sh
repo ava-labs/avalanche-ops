@@ -7,14 +7,14 @@ if ! [[ "$0" =~ scripts/avalanchego-compatibility.key.sh ]]; then
 fi
 
 ###
-cargo run --example key -- ./artifacts/ewoq.key.json
+cargo run --example avalanche_key -- ./artifacts/ewoq.key.json
 
 ###
 pushd ./avalanchego-compatibility
 go run \
 ./key/main.go > /tmp/test.key.json
 popd
-cargo run --example key -- /tmp/test.key.json
+cargo run --example avalanche_key -- /tmp/test.key.json
 
 ###
 echo "ALL SUCCESS!"
