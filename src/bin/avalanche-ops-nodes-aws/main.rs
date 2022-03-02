@@ -225,7 +225,6 @@ fn create_read_spec_command() -> Command<'static> {
         .arg(
             Arg::new("HTTP_ENDPOINTS")
                 .long("http-endpoints")
-                .short('h')
                 .help("Set to get HTTP endpoints (comma-separated)")
                 .required(false)
                 .takes_value(false)
@@ -558,11 +557,6 @@ fn execute_read_spec(
     nlb_endpoint: bool,
     http_endpoints: bool,
 ) -> io::Result<()> {
-    // ref. https://github.com/env-logger-rs/env_logger/issues/47
-    env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
-    );
-
     let spec = avalanche_ops::Spec::load(spec_file_path).expect("failed to load spec");
     let current_nodes = spec
         .current_nodes
@@ -588,14 +582,17 @@ fn execute_read_spec(
         let aws_resources = spec.aws_resources.expect("unexpected None aws_resources");
         let nlb_https_enabled = aws_resources.nlb_acm_certificate_arn.is_some();
         let dns_name = aws_resources.cloudformation_asg_nlb_dns_name.unwrap();
-        let scheme_for_dns = {
+        let (scheme_for_dns, port_for_dns) = {
             if nlb_https_enabled {
-                "https"
+                ("https", 443)
             } else {
-                "http"
+                ("http", spec.avalanchego_config.http_port)
             }
         };
-        println!("{}://{}:443/ext/metrics", scheme_for_dns, dns_name);
+        println!(
+            "{}://{}:{}/ext/metrics",
+            scheme_for_dns, dns_name, port_for_dns
+        );
     };
 
     if http_endpoints {
