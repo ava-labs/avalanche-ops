@@ -761,11 +761,11 @@ pub enum StorageKey {
     DevMachineConfigFile(String),
     Ec2AccessKeyCompressedEncrypted(String),
 
-    // basic, common, top-level genesis, not ready for full use
-    // e.g., initial stakers are empty since there's no beacon node yet
+    /// basic, common, top-level genesis, not ready for full use
+    /// e.g., initial stakers are empty since there's no beacon node yet
     GenesisDraftFile(String),
-    // valid genesis file with fully specified initial stakers
-    // after beacon nodes become active.
+    /// valid genesis file with fully specified initial stakers
+    /// after beacon nodes become active.
     GenesisFile(String),
 
     AvalanchedBin(String),
@@ -776,8 +776,15 @@ pub enum StorageKey {
 
     PkiKeyDir(String),
 
+    /// before db downloads
+    DiscoverProvisioningBeaconNodesDir(String),
+    DiscoverProvisioningBeaconNode(String, node::Node),
+    DiscoverProvisioningNonBeaconNodesDir(String),
+    DiscoverProvisioningNonBeaconNode(String, node::Node),
+
     DiscoverBootstrappingBeaconNodesDir(String),
     DiscoverBootstrappingBeaconNode(String, node::Node),
+
     DiscoverReadyBeaconNodesDir(String),
     DiscoverReadyBeaconNode(String, node::Node),
     DiscoverReadyNonBeaconNodesDir(String),
@@ -809,6 +816,27 @@ impl StorageKey {
                 format!("{}/pki", id)
             }
 
+            StorageKey::DiscoverProvisioningBeaconNodesDir(id) => {
+                format!("{}/discover/provisioning-non-beacon-nodes", id)
+            }
+            StorageKey::DiscoverProvisioningBeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+            StorageKey::DiscoverProvisioningNonBeaconNodesDir(id) => {
+                format!("{}/discover/provisioning-non-beacon-nodes", id)
+            }
+            StorageKey::DiscoverProvisioningNonBeaconNode(id, node) => {
+                let compressed_id = node.compress_base58().unwrap();
+                format!(
+                    "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
+                    id, node.machine_id, compressed_id
+                )
+            }
+
             StorageKey::DiscoverBootstrappingBeaconNodesDir(id) => {
                 format!("{}/discover/bootstrapping-beacon-nodes", id)
             }
@@ -819,6 +847,7 @@ impl StorageKey {
                     id, node.machine_id, compressed_id
                 )
             }
+
             StorageKey::DiscoverReadyBeaconNodesDir(id) => {
                 format!("{}/discover/ready-beacon-nodes", id)
             }

@@ -543,6 +543,29 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             && aws_resources.db_backup_s3_key.is_some()
         {
             thread::sleep(Duration::from_secs(1));
+            info!("STEP: publishing node information before db backup downloads");
+            let s3_key = {
+                if matches!(node_kind, node::Kind::Beacon) {
+                    avalanche_ops::StorageKey::DiscoverProvisioningBeaconNode(
+                        id.clone(),
+                        local_node.clone(),
+                    )
+                } else {
+                    avalanche_ops::StorageKey::DiscoverProvisioningNonBeaconNode(
+                        id.clone(),
+                        local_node.clone(),
+                    )
+                }
+            };
+            let s3_key = s3_key.encode();
+            let node_info = node::Info::new(local_node.clone(), spec.avalanchego_config.clone());
+            let tmp_path =
+                random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+            node_info.sync(tmp_path.clone()).unwrap();
+            rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
+                .expect("failed put_object node::Info");
+
+            thread::sleep(Duration::from_secs(1));
             let db_backup_s3_region = aws_resources.db_backup_s3_region.clone().unwrap();
             let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
             let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
@@ -663,7 +686,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             &avalanche_ops::StorageKey::GenesisDraftFile(spec.id.clone()).encode(),
             &tmp_genesis_path,
         ))
-        .unwrap();
+        .expect("failed get_object GenesisDraftFile");
 
         thread::sleep(Duration::from_secs(1));
         let genesis_path = spec.avalanchego_config.clone().genesis.unwrap();
@@ -683,7 +706,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             &s3_bucket_name,
             &avalanche_ops::StorageKey::GenesisFile(spec.id.clone()).encode(),
         ))
-        .unwrap();
+        .expect("failed put_object GenesisFile");
     }
 
     if spec.avalanchego_config.is_custom_network()
@@ -699,7 +722,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             &avalanche_ops::StorageKey::GenesisFile(spec.id.clone()).encode(),
             &tmp_genesis_path,
         ))
-        .expect("failed get_object for genesis file");
+        .expect("failed get_object GenesisFile");
         fs::copy(
             &tmp_genesis_path,
             spec.avalanchego_config.clone().genesis.unwrap(),

@@ -1129,6 +1129,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         ));
     }
 
+    // TODO: support bootstrap from existing DB for beacon nodes
     let mut current_nodes: Vec<node::Node> = Vec::new();
     if spec.machine.beacon_nodes.unwrap_or(0) > 0
         && aws_resources
@@ -1465,7 +1466,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         let asg_name = aws_resources
             .cloudformation_asg_non_beacon_nodes_logical_id
             .clone()
-            .unwrap();
+            .expect("unexpected None cloudformation_asg_non_beacon_nodes_logical_id");
         let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
 
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
@@ -1488,19 +1489,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         }
         println!();
 
-        // TODO: if downloading mainnet db, it will take a while
-        // TODO: better handle this
-        println!();
         let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
-        if require_db_download {
-            spec.aws_resources = Some(aws_resources);
-            spec.sync(spec_file_path)?;
-            warn!(
-                "non-beacon nodes are downloading db backups, can take awhile, check back later..."
-            );
-            return Ok(());
-        }
-
+        let s3_dir = {
+            if require_db_download {
+                avalanche_ops::StorageKey::DiscoverProvisioningNonBeaconNodesDir(spec.id.clone())
+            } else {
+                avalanche_ops::StorageKey::DiscoverReadyNonBeaconNodesDir(spec.id.clone())
+            }
+        };
         // wait for non-beacon nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
         let target_nodes = spec.machine.non_beacon_nodes;
@@ -1508,17 +1504,10 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         loop {
             thread::sleep(Duration::from_secs(30));
             objects = rt
-                .block_on(
-                    s3_manager.list_objects(
-                        &aws_resources.s3_bucket,
-                        Some(s3::append_slash(
-                            &avalanche_ops::StorageKey::DiscoverReadyNonBeaconNodesDir(
-                                spec.id.clone(),
-                            )
-                            .encode(),
-                        )),
-                    ),
-                )
+                .block_on(s3_manager.list_objects(
+                    &aws_resources.s3_bucket,
+                    Some(s3::append_slash(&s3_dir.encode())),
+                ))
                 .unwrap();
             info!(
                 "{} non-beacon nodes are ready (expecting {} nodes)",
@@ -1529,13 +1518,11 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                 break;
             }
         }
-
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let non_beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
             current_nodes.push(non_beacon_node.clone());
         }
-
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
@@ -1546,6 +1533,18 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
             &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
+
+        // TODO: if downloading mainnet db, it will take a while
+        // TODO: better handle this
+        if require_db_download {
+            spec.aws_resources = Some(aws_resources);
+            spec.sync(spec_file_path)?;
+            println!();
+            warn!(
+                "non-beacon nodes are downloading db backups, can take awhile, check back later..."
+            );
+            return Ok(());
+        }
 
         info!("waiting for non-beacon nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));
