@@ -15,7 +15,6 @@ use crate::utils::http;
 /// Represents AvalancheGo health status.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/api/health#APIHealthReply
 #[derive(Debug, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct Response {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub checks: Option<HashMap<String, CheckResult>>,
