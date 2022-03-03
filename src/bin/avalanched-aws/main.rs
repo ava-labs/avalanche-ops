@@ -833,6 +833,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         fs::create_dir_all(Path::new(&subnet_config_dir).join("C"))
             .expect("failed to create dir for chain config");
     };
+
+    // TODO: upload profile files to s3?
     if spec.avalanchego_config.profile_dir.is_some() {
         let profile_dir = spec
             .avalanchego_config
@@ -841,6 +843,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             .expect("unexpected None profile_dir");
         fs::create_dir_all(&profile_dir).expect("failed to create profile_dir");
     };
+
+    // TODO: upload profile files to s3?
     if spec.coreth_config.continuous_profiler_dir.is_some() {
         let continuous_profiler_dir = spec
             .coreth_config
