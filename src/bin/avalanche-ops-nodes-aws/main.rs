@@ -21,7 +21,10 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::{self, avalanchego::config as avalanchego_config, constants, node},
+    avalanche::{
+        self, avalanchego::config as avalanchego_config, constants,
+        coreth::config as coreth_config, node,
+    },
     aws::{self, cloudformation, cloudwatch, ec2, envelope, kms, s3, sts},
     utils::{compress, random},
 };
@@ -186,6 +189,30 @@ fn create_default_spec_command() -> Command<'static> {
                 .help("Sets profile-continuous-max-files for avalanchego")
                 .required(false)
                 .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("CORETH_METRICS_ENABLED")
+                .long("coreth-metrics-enabled")
+                .help("Sets metrics-enabled for coreth")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("CORETH_CONTINUOUS_PROFILER_ENABLED")
+                .long("coreth-continuous-profiler-enabled")
+                .help("Sets to enable coreth profiler with default values")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("CORETH_OFFLINE_PRUNING_ENABLED")
+                .long("coreth-offline-pruning-enabled")
+                .help("Sets offline-pruning-enabled for coreth")
+                .required(false)
+                .takes_value(false)
                 .allow_invalid_utf8(false),
         )
         .arg(
@@ -422,6 +449,13 @@ fn main() {
                     .value_of("AVALANCHEGO_PROFILE_CONTINUOUS_MAX_FILES")
                     .unwrap_or("")
                     .to_string(),
+
+                coreth_metrics_enabled: sub_matches.is_present("CORETH_METRICS_ENABLED"),
+                coreth_continuous_profiler_enabled: sub_matches
+                    .is_present("CORETH_CONTINUOUS_PROFILER_ENABLED"),
+                coreth_offline_pruning_enabled: sub_matches
+                    .is_present("CORETH_OFFLINE_PRUNING_ENABLED"),
+
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
             execute_default_spec(opt).expect("failed to execute 'default-spec'");
@@ -475,6 +509,7 @@ struct DefaultSpecOption {
     install_artifacts_plugins_dir: String,
     network_name: String,
     keys_to_generate: usize,
+
     avalanchego_log_level: String,
     avalanchego_http_tls_enabled: bool,
     avalanchego_state_sync_ids: String,
@@ -482,6 +517,11 @@ struct DefaultSpecOption {
     avalanchego_profile_continuous_enabled: bool,
     avalanchego_profile_continuous_freq: String,
     avalanchego_profile_continuous_max_files: String,
+
+    coreth_metrics_enabled: bool,
+    coreth_continuous_profiler_enabled: bool,
+    coreth_offline_pruning_enabled: bool,
+
     spec_file_path: String,
 }
 
@@ -562,6 +602,21 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
         aws_resources.nlb_acm_certificate_arn = Some(opt.nlb_acm_certificate_arn);
     }
     spec.aws_resources = Some(aws_resources);
+
+    if opt.coreth_metrics_enabled {
+        spec.coreth_config.metrics_enabled = Some(true);
+    }
+    if opt.coreth_continuous_profiler_enabled {
+        spec.coreth_config.continuous_profiler_dir =
+            Some(String::from(coreth_config::DEFAULT_PROFILE_DIR));
+        spec.coreth_config.continuous_profiler_frequency =
+            Some(coreth_config::DEFAULT_PROFILE_FREQUENCY);
+        spec.coreth_config.continuous_profiler_max_files =
+            Some(coreth_config::DEFAULT_PROFILE_MAX_FILES);
+    }
+    if opt.coreth_offline_pruning_enabled {
+        spec.coreth_config.offline_pruning_enabled = Some(true);
+    }
 
     spec.validate()?;
     spec.sync(&opt.spec_file_path)?;

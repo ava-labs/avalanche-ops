@@ -148,6 +148,8 @@ pub struct Config {
 
     /// Continous profile flags
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_continuous_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_continuous_freq: Option<String>,
@@ -237,6 +239,9 @@ pub const DEFAULT_API_IPCS_ENABLED: bool = true;
 pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/etc/avalanche/configs/chains";
 pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/etc/avalanche/configs/subnets";
 
+/// Must be a valid path in remote host machine.
+pub const DEFAULT_PROFILE_DIR: &str = "/var/log/avalanche-profile/avalanche";
+
 pub const DEFAULT_NETWORK_MINIMUM_TIMEOUT: &str = "3s";
 
 impl Config {
@@ -296,6 +301,7 @@ impl Config {
             state_sync_ids: None,
             state_sync_ips: None,
 
+            profile_dir: Some(String::from(DEFAULT_PROFILE_DIR)),
             profile_continuous_enabled: None,
             profile_continuous_freq: None,
             profile_continuous_max_files: None,

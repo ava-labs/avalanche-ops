@@ -797,26 +797,29 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         spec.avalanchego_config.bootstrap_ids = Some(bootstrap_ids.join(","));
     }
 
-    // create dir regardless of whether we have custom coreth config or not
+    let log_dir = spec.avalanchego_config.clone().log_dir;
+    fs::create_dir_all(&log_dir).expect("failed to create log_dir");
+
     let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir;
     fs::create_dir_all(Path::new(&chain_config_dir).join("C"))
         .expect("failed to create dir for chain config");
-    if spec.coreth_config.is_some() {
-        info!("STEP: saving coreth evm config file to chain config dir");
-        let tmp_coreth_config_path = random::tmp_path(15, Some(".json")).unwrap();
-        let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir;
-        let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
-        info!(
-            "saving coreth config file to {:?}",
-            chain_config_c_path.as_os_str()
-        );
-        let coreth_config = spec.coreth_config.expect("unexpected None coreth_config");
-        coreth_config
-            .sync(&tmp_coreth_config_path)
-            .expect("failed to sync coreth_config");
-        fs::copy(&tmp_coreth_config_path, chain_config_c_path).unwrap();
-        fs::remove_file(&tmp_coreth_config_path)?;
-    }
+
+    info!(
+        "STEP: saving coreth evm config file to chain config dir {}",
+        chain_config_dir
+    );
+    let tmp_coreth_config_path = random::tmp_path(15, Some(".json")).unwrap();
+    let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir;
+    let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
+    info!(
+        "saving coreth config file to {:?}",
+        chain_config_c_path.as_os_str()
+    );
+    spec.coreth_config
+        .sync(&tmp_coreth_config_path)
+        .expect("failed to sync coreth_config");
+    fs::copy(&tmp_coreth_config_path, chain_config_c_path).unwrap();
+    fs::remove_file(&tmp_coreth_config_path)?;
 
     if spec.avalanchego_config.subnet_config_dir.is_some() {
         let subnet_config_dir = spec
@@ -826,6 +829,23 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             .expect("unexpected None subnet_config_dir");
         fs::create_dir_all(Path::new(&subnet_config_dir).join("C"))
             .expect("failed to create dir for chain config");
+    };
+    if spec.avalanchego_config.profile_dir.is_some() {
+        let profile_dir = spec
+            .avalanchego_config
+            .clone()
+            .profile_dir
+            .expect("unexpected None profile_dir");
+        fs::create_dir_all(&profile_dir).expect("failed to create profile_dir");
+    };
+    if spec.coreth_config.continuous_profiler_dir.is_some() {
+        let continuous_profiler_dir = spec
+            .coreth_config
+            .clone()
+            .continuous_profiler_dir
+            .expect("unexpected None continuous_profiler_dir");
+        fs::create_dir_all(&continuous_profiler_dir)
+            .expect("failed to create continuous_profiler_dir");
     };
 
     // persist before starting the service
@@ -863,7 +883,7 @@ WantedBy=multi-user.target",
     let mut avalanche_service_file = tempfile::NamedTempFile::new().unwrap();
     avalanche_service_file
         .write_all(avalanche_service_file_contents.as_bytes())
-        .unwrap();
+        .expect("failed write_all avalanche_service_file");
     let avalanche_service_file_path = avalanche_service_file.path().to_str().unwrap();
     fs::copy(
         avalanche_service_file_path,

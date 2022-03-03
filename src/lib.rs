@@ -74,8 +74,7 @@ pub struct Spec {
     pub avalanchego_config: avalanchego_config::Config,
     /// If non-empty, the JSON-encoded data are saved to a file
     /// in Path::new(&avalanchego_config.chain_config_dir).join("C").
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub coreth_config: Option<coreth_config::Config>,
+    pub coreth_config: coreth_config::Config,
     /// If non-empty, the JSON-encoded data are saved to a file
     /// and used for "--genesis" in Path::new(&avalanchego_config.genesis).
     /// This includes "coreth_genesis::Genesis".
@@ -233,7 +232,7 @@ impl Spec {
             },
 
             avalanchego_config,
-            coreth_config: Some(coreth_config::Config::default()),
+            coreth_config: coreth_config::Config::default(),
             avalanchego_genesis_template,
 
             generated_seed_private_keys: Some(generated_seed_keys),
@@ -577,7 +576,13 @@ avalanchego_config:
   api-ipcs-enabled: true
   chain-config-dir: /etc/avalanche/configs/chains
   subnet-config-dir: /etc/avalanche/configs/subnets
+  profile-dir: /var/log/avalanche-profile/avalanche
   network-minimum-timeout: "3s"
+
+coreth_config:
+  coreth-admin-api-enabled: true
+  metrics-enabled: true
+  log-level: "info"
 
 
 "#,
@@ -626,7 +631,7 @@ avalanchego_config:
         },
 
         avalanchego_config,
-        coreth_config: None,
+        coreth_config: coreth_config::Config::default(),
         avalanchego_genesis_template: None,
 
         generated_seed_private_keys: None,

@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 /// To be persisted in "chain_config_dir".
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
+/// ref. https://github.com/ava-labs/coreth/blob/v0.8.6/plugin/evm/config.go
 /// ref. https://serde.rs/container-attrs.html
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -26,6 +27,7 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub eth_apis: Option<Vec<String>>,
 
+    /// If not empty, it enables the profiler.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continuous_profiler_dir: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -101,11 +103,21 @@ impl Default for Config {
     }
 }
 
+pub const DEFAULT_CORETH_ADMIN_API_ENABLED: bool = true;
+
+/// Must be a valid path in remote host machine.
+pub const DEFAULT_PROFILE_DIR: &str = "/var/log/avalanche-profile/coreth";
+pub const DEFAULT_PROFILE_FREQUENCY: i64 = 15 * 60 * 1000 * 1000 * 1000; // 15-min
+pub const DEFAULT_PROFILE_MAX_FILES: i64 = 5;
+
+pub const DEFAULT_METRICS_ENABLED: bool = true;
+pub const DEFAULT_LOG_LEVEL: &str = "info";
+
 impl Config {
     pub fn default() -> Self {
         Self {
             snowman_api_enabled: None,
-            coreth_admin_api_enabled: None,
+            coreth_admin_api_enabled: Some(DEFAULT_CORETH_ADMIN_API_ENABLED),
             coreth_admin_api_dir: None,
 
             eth_apis: None,
@@ -122,7 +134,7 @@ impl Config {
             snapshot_async: None,
             snapshot_verification_enabled: None,
 
-            metrics_enabled: None,
+            metrics_enabled: Some(DEFAULT_METRICS_ENABLED),
             metrics_expensive_enabled: None,
 
             local_txs_enabled: None,
@@ -141,7 +153,7 @@ impl Config {
             tx_regossip_frequency: None,
             tx_regossip_max_size: None,
 
-            log_level: None,
+            log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
 
             offline_pruning_enabled: None,
             offline_pruning_bloom_filter_size: None,
