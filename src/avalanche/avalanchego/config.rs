@@ -8,66 +8,7 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::avalanche::genesis;
-
-/// Default "config-file" path on the remote linux machines.
-/// Must be a valid path in remote host machine.
-pub const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/avalanche.config.json";
-/// Default "genesis" path on the remote linux machines.
-/// Must be a valid path in remote host machine.
-pub const DEFAULT_GENESIS_PATH: &str = "/etc/avalanche.genesis.json";
-
-/// Default "db-dir" directory path for remote linux machines.
-/// Must be matched with the attached physical storage volume path.
-/// Must be a valid path in remote host machine.
-/// ref. See "cloudformation/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
-pub const DEFAULT_DB_DIR: &str = "/avalanche-data";
-/// Default "log-dir" directory path for remote linux machines.
-/// Must be a valid path in remote host machine.
-/// ref. See "cloudformation/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
-pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
-pub const DEFAULT_LOG_LEVEL: &str = "INFO";
-
-pub const DEFAULT_STAKING_ENABLED: bool = true;
-/// Default staking port.
-/// NOTE: keep default value in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_STAKING_PORT: u32 = 9651;
-/// Must be a valid path in remote host machine.
-pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.key";
-/// Must be a valid path in remote host machine.
-pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.crt";
-
-/// Default HTTP port.
-/// NOTE: keep default value in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_HTTP_PORT: u32 = 9650;
-/// Default HTTP host.
-/// Open listener to "0.0.0.0" to allow all incoming traffic.
-/// e.g., If set to default "127.0.0.1", the external client
-/// cannot access "/ext/metrics". Set different values to
-/// make this more restrictive.
-pub const DEFAULT_HTTP_HOST: &str = "0.0.0.0";
-pub const DEFAULT_HTTP_TLS_ENABLED: bool = false;
-
-/// Default snow sample size.
-/// NOTE: keep this in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_SNOW_SAMPLE_SIZE: u32 = 20;
-/// Default snow quorum size.
-/// NOTE: keep this in sync with "avalanchego/config/flags.go".
-pub const DEFAULT_SNOW_QUORUM_SIZE: u32 = 15;
-
-pub const DEFAULT_INDEX_ENABLED: bool = false;
-pub const DEFAULT_INDEX_ALLOW_INCOMPLETE: bool = false;
-
-pub const DEFAULT_API_ADMIN_ENABLED: bool = true;
-pub const DEFAULT_API_INFO_ENABLED: bool = true;
-pub const DEFAULT_API_KEYSTORE_ENABLED: bool = true;
-pub const DEFAULT_API_METRICS_ENABLED: bool = true;
-pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
-pub const DEFAULT_API_IPCS_ENABLED: bool = true;
-
-/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.6/config/flags.go#L25-L44
-pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/etc/avalanche/configs/chains";
-pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/etc/avalanche/configs/subnets";
+use crate::avalanche::avalanchego::genesis;
 
 /// Represents AvalancheGo configuration.
 /// All file paths must be valid on the remote machines.
@@ -75,10 +16,11 @@ pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/etc/avalanche/configs/subnets";
 /// but the actual Avalanche nodes run on the remote machines
 /// so the paths will be invalid.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/config
+/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.6/config/flags.go
 /// ref. https://serde.rs/container-attrs.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "kebab-case")]
-pub struct AvalancheGo {
+pub struct Config {
     /// File path to persist all fields below.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config_file: Option<String>,
@@ -96,11 +38,11 @@ pub struct AvalancheGo {
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#NetworkName
     pub network_id: u32,
 
+    pub db_type: String,
     /// Database directory, must be a valid path in remote host machine.
     pub db_dir: String,
     /// Logging directory, must be a valid path in remote host machine.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub log_dir: Option<String>,
+    pub log_dir: String,
     /// "avalanchego" logging level.
     /// See "utils/logging/level.go".
     /// e.g., "INFO", "FATAL", "DEBUG", "VERBO", etc..
@@ -108,17 +50,6 @@ pub struct AvalancheGo {
     pub log_level: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_display_level: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub staking_enabled: Option<bool>,
-    /// Staking port.
-    pub staking_port: u32,
-    /// Must be a valid path in remote host machine.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub staking_tls_key_file: Option<String>,
-    /// Must be a valid path in remote host machine.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub staking_tls_cert_file: Option<String>,
 
     /// HTTP port.
     pub http_port: u32,
@@ -140,6 +71,17 @@ pub struct AvalancheGo {
     pub public_ip: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub staking_enabled: Option<bool>,
+    /// Staking port.
+    pub staking_port: u32,
+    /// Must be a valid path in remote host machine.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staking_tls_key_file: Option<String>,
+    /// Must be a valid path in remote host machine.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staking_tls_cert_file: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bootstrap_ips: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bootstrap_ids: Option<String>,
@@ -152,6 +94,14 @@ pub struct AvalancheGo {
     /// If zero, use the default value set via avalanche node code.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub snow_quorum_size: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snow_concurrent_repolls: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snow_max_time_processing: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snow_rogue_commit_threshold: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snow_virtuous_commit_threshold: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network_peer_list_gossip_frequency: Option<String>,
@@ -180,8 +130,9 @@ pub struct AvalancheGo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub whitelisted_subnets: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub chain_config_dir: Option<String>,
+    /// Chain configuration directory for all chains.
+    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.6/config/flags.go#L25-L44
+    pub chain_config_dir: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_config_dir: Option<String>,
 
@@ -202,62 +153,145 @@ pub struct AvalancheGo {
     pub profile_continuous_freq: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_continuous_max_files: Option<u32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub throttler_inbound_at_large_alloc_size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub throttler_inbound_node_max_at_large_bytes: Option<u64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network_minimum_timeout: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network_require_validator_to_connect: Option<bool>,
 }
 
-impl Default for AvalancheGo {
+impl Default for Config {
     fn default() -> Self {
         Self::default()
     }
 }
 
-impl AvalancheGo {
-    pub fn new() -> Self {
+/// Default "config-file" path on the remote linux machines.
+/// Must be a valid path in remote host machine.
+pub const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/avalanche.config.json";
+/// Default "genesis" path on the remote linux machines.
+/// Must be a valid path in remote host machine.
+pub const DEFAULT_GENESIS_PATH: &str = "/etc/avalanche.genesis.json";
+
+pub const DEFAULT_CUSTOM_NETWORK_ID: u32 = 9999;
+
+pub const DEFAULT_DB_TYPE: &str = "leveldb";
+/// Default "db-dir" directory path for remote linux machines.
+/// Must be matched with the attached physical storage volume path.
+/// Must be a valid path in remote host machine.
+/// ref. See "cloudformation/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
+pub const DEFAULT_DB_DIR: &str = "/avalanche-data";
+/// Default "log-dir" directory path for remote linux machines.
+/// Must be a valid path in remote host machine.
+/// ref. See "cloudformation/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
+pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
+pub const DEFAULT_LOG_LEVEL: &str = "INFO";
+
+/// Default HTTP port.
+/// NOTE: keep default value in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_HTTP_PORT: u32 = 9650;
+/// Default HTTP host.
+/// Open listener to "0.0.0.0" to allow all incoming traffic.
+/// e.g., If set to default "127.0.0.1", the external client
+/// cannot access "/ext/metrics". Set different values to
+/// make this more restrictive.
+pub const DEFAULT_HTTP_HOST: &str = "0.0.0.0";
+pub const DEFAULT_HTTP_TLS_ENABLED: bool = false;
+
+pub const DEFAULT_STAKING_ENABLED: bool = true;
+/// Default staking port.
+/// NOTE: keep default value in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_STAKING_PORT: u32 = 9651;
+/// Must be a valid path in remote host machine.
+pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.key";
+/// Must be a valid path in remote host machine.
+pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/etc/pki/tls/certs/avalanched.pki.crt";
+
+/// Default snow sample size.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_SNOW_SAMPLE_SIZE: u32 = 20;
+/// Default snow quorum size.
+/// NOTE: keep this in sync with "avalanchego/config/flags.go".
+pub const DEFAULT_SNOW_QUORUM_SIZE: u32 = 15;
+pub const DEFAULT_SNOW_CONCURRENT_REPOLLS: u32 = 24;
+pub const DEFAULT_SNOW_MAX_TIME_PROCESSING: &str = "5m";
+pub const DEFAULT_SNOW_ROGUE_COMMIT_THRESHOLD: u32 = 40;
+pub const DEFAULT_SNOW_VIRTUOUS_COMMIT_THRESHOLD: u32 = 40;
+
+pub const DEFAULT_INDEX_ENABLED: bool = false;
+pub const DEFAULT_INDEX_ALLOW_INCOMPLETE: bool = false;
+
+pub const DEFAULT_API_ADMIN_ENABLED: bool = true;
+pub const DEFAULT_API_INFO_ENABLED: bool = true;
+pub const DEFAULT_API_KEYSTORE_ENABLED: bool = true;
+pub const DEFAULT_API_METRICS_ENABLED: bool = true;
+pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
+pub const DEFAULT_API_IPCS_ENABLED: bool = true;
+
+/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.6/config/flags.go#L25-L44
+pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/etc/avalanche/configs/chains";
+pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/etc/avalanche/configs/subnets";
+
+pub const DEFAULT_NETWORK_MINIMUM_TIMEOUT: &str = "3s";
+
+impl Config {
+    pub fn default() -> Self {
         Self {
-            config_file: None,
-            genesis: None,
+            config_file: Some(String::from(DEFAULT_CONFIG_FILE_PATH)),
+            genesis: Some(String::from(DEFAULT_GENESIS_PATH)),
 
-            network_id: genesis::DEFAULT_CUSTOM_NETWORK_ID,
+            network_id: DEFAULT_CUSTOM_NETWORK_ID,
 
+            db_type: String::from(DEFAULT_DB_TYPE),
             db_dir: String::from(DEFAULT_DB_DIR),
-            log_dir: None,
-            log_level: None,
+            log_dir: String::from(DEFAULT_LOG_DIR),
+            log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
             log_display_level: None,
 
-            staking_enabled: None,
-            staking_port: DEFAULT_STAKING_PORT,
-            staking_tls_key_file: None,
-            staking_tls_cert_file: None,
-
             http_port: DEFAULT_HTTP_PORT,
-            http_host: None,
-            http_tls_enabled: None,
+            http_host: Some(String::from(DEFAULT_HTTP_HOST)),
+            http_tls_enabled: Some(DEFAULT_HTTP_TLS_ENABLED),
             http_tls_key_file: None,
             http_tls_cert_file: None,
             public_ip: None,
 
+            staking_enabled: Some(DEFAULT_STAKING_ENABLED),
+            staking_port: DEFAULT_STAKING_PORT,
+            staking_tls_key_file: Some(String::from(DEFAULT_STAKING_TLS_KEY_FILE)),
+            staking_tls_cert_file: Some(String::from(DEFAULT_STAKING_TLS_CERT_FILE)),
+
             bootstrap_ips: None,
             bootstrap_ids: None,
 
-            snow_sample_size: None,
-            snow_quorum_size: None,
+            snow_sample_size: Some(DEFAULT_SNOW_SAMPLE_SIZE),
+            snow_quorum_size: Some(DEFAULT_SNOW_QUORUM_SIZE),
+            snow_concurrent_repolls: Some(DEFAULT_SNOW_CONCURRENT_REPOLLS),
+            snow_max_time_processing: Some(String::from(DEFAULT_SNOW_MAX_TIME_PROCESSING)),
+            snow_rogue_commit_threshold: Some(DEFAULT_SNOW_ROGUE_COMMIT_THRESHOLD),
+            snow_virtuous_commit_threshold: Some(DEFAULT_SNOW_VIRTUOUS_COMMIT_THRESHOLD),
 
             network_peer_list_gossip_frequency: None,
             network_max_reconnect_delay: None,
 
-            index_enabled: None,
-            index_allow_incomplete: None,
+            index_enabled: Some(DEFAULT_INDEX_ENABLED),
+            index_allow_incomplete: Some(DEFAULT_INDEX_ALLOW_INCOMPLETE),
 
-            api_admin_enabled: None,
-            api_info_enabled: None,
-            api_keystore_enabled: None,
-            api_metrics_enabled: None,
-            api_health_enabled: None,
-            api_ipcs_enabled: None,
+            api_admin_enabled: Some(DEFAULT_API_ADMIN_ENABLED),
+            api_info_enabled: Some(DEFAULT_API_INFO_ENABLED),
+            api_keystore_enabled: Some(DEFAULT_API_KEYSTORE_ENABLED),
+            api_metrics_enabled: Some(DEFAULT_API_METRICS_ENABLED),
+            api_health_enabled: Some(DEFAULT_API_HEALTH_ENABLED),
+            api_ipcs_enabled: Some(DEFAULT_API_IPCS_ENABLED),
 
             whitelisted_subnets: None,
 
-            chain_config_dir: None,
-            subnet_config_dir: None,
+            chain_config_dir: String::from(DEFAULT_CHAIN_CONFIG_DIR),
+            subnet_config_dir: Some(String::from(DEFAULT_SUBNET_CONFIG_DIR)),
 
             state_sync_ids: None,
             state_sync_ips: None,
@@ -265,45 +299,13 @@ impl AvalancheGo {
             profile_continuous_enabled: None,
             profile_continuous_freq: None,
             profile_continuous_max_files: None,
+
+            throttler_inbound_at_large_alloc_size: None,
+            throttler_inbound_node_max_at_large_bytes: None,
+
+            network_minimum_timeout: Some(String::from(DEFAULT_NETWORK_MINIMUM_TIMEOUT)),
+            network_require_validator_to_connect: None,
         }
-    }
-
-    pub fn default() -> Self {
-        let mut config = Self::new();
-
-        config.network_id = genesis::DEFAULT_CUSTOM_NETWORK_ID;
-        config.config_file = Some(String::from(DEFAULT_CONFIG_FILE_PATH));
-        config.genesis = Some(String::from(DEFAULT_GENESIS_PATH));
-
-        config.db_dir = String::from(DEFAULT_DB_DIR);
-        config.log_dir = Some(String::from(DEFAULT_LOG_DIR));
-        config.log_level = Some(String::from(DEFAULT_LOG_LEVEL));
-
-        config.staking_enabled = Some(DEFAULT_STAKING_ENABLED);
-        config.staking_port = DEFAULT_STAKING_PORT;
-        config.staking_tls_key_file = Some(String::from(DEFAULT_STAKING_TLS_KEY_FILE));
-        config.staking_tls_cert_file = Some(String::from(DEFAULT_STAKING_TLS_CERT_FILE));
-
-        config.http_port = DEFAULT_HTTP_PORT;
-        config.http_host = Some(String::from(DEFAULT_HTTP_HOST));
-        config.http_tls_enabled = Some(DEFAULT_HTTP_TLS_ENABLED);
-
-        config.snow_sample_size = Some(DEFAULT_SNOW_SAMPLE_SIZE);
-        config.snow_quorum_size = Some(DEFAULT_SNOW_QUORUM_SIZE);
-
-        config.index_enabled = Some(DEFAULT_INDEX_ENABLED);
-        config.index_allow_incomplete = Some(DEFAULT_INDEX_ALLOW_INCOMPLETE);
-
-        config.api_admin_enabled = Some(DEFAULT_API_ADMIN_ENABLED);
-        config.api_info_enabled = Some(DEFAULT_API_INFO_ENABLED);
-        config.api_keystore_enabled = Some(DEFAULT_API_KEYSTORE_ENABLED);
-        config.api_metrics_enabled = Some(DEFAULT_API_METRICS_ENABLED);
-        config.api_health_enabled = Some(DEFAULT_API_HEALTH_ENABLED);
-        config.api_ipcs_enabled = Some(DEFAULT_API_IPCS_ENABLED);
-
-        config.chain_config_dir = Some(String::from(DEFAULT_CHAIN_CONFIG_DIR));
-        config.subnet_config_dir = Some(String::from(DEFAULT_SUBNET_CONFIG_DIR));
-        config
     }
 
     /// Returns true if the configuration is mainnet.
@@ -376,15 +378,12 @@ impl AvalancheGo {
             ));
         }
 
-        let f = match File::open(&file_path) {
-            Ok(f) => f,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to open {} ({})", file_path, e),
-                ));
-            }
-        };
+        let f = File::open(&file_path).map_err(|e| {
+            return Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", file_path, e),
+            );
+        })?;
         serde_json::from_reader(f).map_err(|e| {
             return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
         })
@@ -433,8 +432,8 @@ impl AvalancheGo {
         // network ID must match with the one in genesis file
         if self.genesis.is_some() {
             let genesis_file_path = self.genesis.clone().expect("unexpected None genesis");
-            let genesis_config = genesis::AvalancheGo::load(&genesis_file_path)
-                .expect("unexpected None genesis config");
+            let genesis_config =
+                genesis::Genesis::load(&genesis_file_path).expect("unexpected None genesis config");
             if genesis_config.network_id.ne(&self.network_id) {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -511,7 +510,7 @@ fn test_config() {
     use std::fs;
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let mut config = AvalancheGo::new();
+    let mut config = Config::default();
     config.network_id = 1337;
 
     let ret = config.encode_json();
@@ -523,7 +522,7 @@ fn test_config() {
     let ret = config.sync(Some(p.clone()));
     assert!(ret.is_ok());
 
-    let config_loaded = AvalancheGo::load(&p).unwrap();
+    let config_loaded = Config::load(&p).unwrap();
     assert_eq!(config, config_loaded);
 
     fs::remove_file(p).unwrap();

@@ -477,15 +477,12 @@ impl Config {
             ));
         }
 
-        let f = match File::open(&file_path) {
-            Ok(f) => f,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to open {} ({})", file_path, e),
-                ));
-            }
-        };
+        let f = File::open(&file_path).map_err(|e| {
+            return Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", file_path, e),
+            );
+        })?;
         serde_json::from_reader(f).map_err(|e| {
             return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
         })

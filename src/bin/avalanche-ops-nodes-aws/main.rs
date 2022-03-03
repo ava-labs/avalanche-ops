@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::{self, config as avalanche_config, constants, genesis, node},
+    avalanche::{self, avalanchego::config as avalanchego_config, constants, node},
     aws::{self, cloudformation, cloudwatch, ec2, envelope, kms, s3, sts},
     utils::{compress, random},
 };
@@ -114,14 +114,6 @@ fn create_default_spec_command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_CORETH_EVM_CONFIG_FILE_PATH") 
-                .long("install-artifacts-coreth-evm-config-file-path")
-                .help("Sets coreth EVM config file path (ref. https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config)")
-                .required(false)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
             Arg::new("NETWORK_NAME") 
                 .long("network-name")
                 .help("Sets the type of network by name (e.g., mainnet, fuji, custom)")
@@ -146,7 +138,7 @@ fn create_default_spec_command() -> Command<'static> {
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .default_value(avalanche_config::DEFAULT_LOG_LEVEL),
+                .default_value(avalanchego_config::DEFAULT_LOG_LEVEL),
         )
         .arg(
             Arg::new("AVALANCHEGO_HTTP_TLS_ENABLED") 
@@ -401,10 +393,6 @@ fn main() {
                     .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
                     .unwrap_or("")
                     .to_string(),
-                install_artifacts_coreth_evm_config_file_path: sub_matches
-                    .value_of("INSTALL_ARTIFACTS_CORETH_EVM_CONFIG_FILE_PATH")
-                    .unwrap_or("")
-                    .to_string(),
                 network_name: sub_matches
                     .value_of("NETWORK_NAME")
                     .unwrap_or("")
@@ -422,6 +410,16 @@ fn main() {
                     .to_string(),
                 avalanchego_state_sync_ips: sub_matches
                     .value_of("AVALANCHEGO_STATE_SYNC_IPS")
+                    .unwrap_or("")
+                    .to_string(),
+                avalanchego_profile_continuous_enabled: sub_matches
+                    .is_present("AVALANCHEGO_PROFILE_CONTINUOUS_ENABLED"),
+                avalanchego_profile_continuous_freq: sub_matches
+                    .value_of("AVALANCHEGO_PROFILE_CONTINUOUS_FREQ")
+                    .unwrap_or("")
+                    .to_string(),
+                avalanchego_profile_continuous_max_files: sub_matches
+                    .value_of("AVALANCHEGO_PROFILE_CONTINUOUS_MAX_FILES")
                     .unwrap_or("")
                     .to_string(),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
@@ -475,13 +473,15 @@ struct DefaultSpecOption {
     install_artifacts_avalanched_bin: String,
     install_artifacts_avalanche_bin: String,
     install_artifacts_plugins_dir: String,
-    install_artifacts_coreth_evm_config_file_path: String,
     network_name: String,
     keys_to_generate: usize,
     avalanchego_log_level: String,
     avalanchego_http_tls_enabled: bool,
     avalanchego_state_sync_ids: String,
     avalanchego_state_sync_ips: String,
+    avalanchego_profile_continuous_enabled: bool,
+    avalanchego_profile_continuous_freq: String,
+    avalanchego_profile_continuous_max_files: String,
     spec_file_path: String,
 }
 
@@ -498,20 +498,13 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
             Some(opt.install_artifacts_plugins_dir.clone())
         }
     };
-    let _install_artifacts_coreth_evm_config_file_path = {
-        if opt.install_artifacts_coreth_evm_config_file_path.is_empty() {
-            None
-        } else {
-            Some(opt.install_artifacts_coreth_evm_config_file_path.clone())
-        }
-    };
 
     let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opt.network_name.as_str()) {
         Some(v) => *v,
-        None => genesis::DEFAULT_CUSTOM_NETWORK_ID,
+        None => avalanchego_config::DEFAULT_CUSTOM_NETWORK_ID,
     };
 
-    let mut avalanchego_config = avalanche_config::AvalancheGo::default();
+    let mut avalanchego_config = avalanchego_config::Config::default();
     avalanchego_config.network_id = network_id;
     avalanchego_config.log_level = Some(opt.avalanchego_log_level);
     if !avalanchego_config.is_custom_network() {
@@ -520,8 +513,8 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
 
     // only set values if non empty
     // otherwise, avalanchego will fail with "couldn't load node config: read .: is a directory"
+    // TODO: use different certs than staking?
     if opt.avalanchego_http_tls_enabled {
-        // TODO: use different certs than staking?
         avalanchego_config.http_tls_enabled = Some(true);
         avalanchego_config.http_tls_key_file = avalanchego_config.staking_tls_key_file.clone();
         avalanchego_config.http_tls_cert_file = avalanchego_config.staking_tls_cert_file.clone();
@@ -533,13 +526,24 @@ fn execute_default_spec(opt: DefaultSpecOption) -> io::Result<()> {
     if !opt.avalanchego_state_sync_ips.is_empty() {
         avalanchego_config.state_sync_ips = Some(opt.avalanchego_state_sync_ips.clone());
     };
+    if opt.avalanchego_profile_continuous_enabled {
+        avalanchego_config.profile_continuous_enabled = Some(true);
+    }
+    if !opt.avalanchego_profile_continuous_freq.is_empty() {
+        avalanchego_config.profile_continuous_freq =
+            Some(opt.avalanchego_profile_continuous_freq.clone());
+    };
+    if !opt.avalanchego_profile_continuous_max_files.is_empty() {
+        let profile_continuous_max_files = opt.avalanchego_profile_continuous_max_files;
+        let profile_continuous_max_files = profile_continuous_max_files.parse::<u32>().unwrap();
+        avalanchego_config.profile_continuous_max_files = Some(profile_continuous_max_files);
+    };
 
     let mut spec = avalanche_ops::Spec::default_aws(
         opt.region.as_str(),
         opt.install_artifacts_avalanched_bin.as_str(),
         opt.install_artifacts_avalanche_bin.as_str(),
         _install_artifacts_plugins_dir,
-        _install_artifacts_coreth_evm_config_file_path,
         avalanchego_config,
         opt.keys_to_generate,
     );
@@ -652,7 +656,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     let mut aws_resources = spec.aws_resources.clone().unwrap();
     let shared_config = rt
         .block_on(aws::load_config(Some(aws_resources.region.clone())))
-        .unwrap();
+        .expect("failed to aws::load_config");
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
@@ -732,7 +736,6 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     let ec2_manager = ec2::Manager::new(&shared_config);
     let cloudformation_manager = cloudformation::Manager::new(&shared_config);
 
-    thread::sleep(Duration::from_secs(2));
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -761,7 +764,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         &aws_resources.s3_bucket,
         &avalanche_ops::StorageKey::AvalanchedBin(spec.id.clone()).encode(),
     ))
-    .unwrap();
+    .expect("failed put_object install_artifacts.avalanched_bin");
 
     // compress as these will be decompressed by "avalanched"
     let tmp_avalanche_bin_compressed_path =
@@ -771,13 +774,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         &tmp_avalanche_bin_compressed_path,
         compress::Encoder::Zstd(3),
     )
-    .unwrap();
+    .expect("failed pack_file install_artifacts.avalanched_bin");
     rt.block_on(s3_manager.put_object(
         &tmp_avalanche_bin_compressed_path,
         &aws_resources.s3_bucket,
         &avalanche_ops::StorageKey::AvalancheBinCompressed(spec.id.clone()).encode(),
     ))
-    .unwrap();
+    .expect("failed put_object compressed avalanchego_bin");
+    fs::remove_file(tmp_avalanche_bin_compressed_path)?;
     if spec.install_artifacts.plugins_dir.is_some() {
         let plugins_dir = spec.install_artifacts.plugins_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
@@ -814,37 +818,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                     .as_str(),
                 ),
             )
-            .unwrap();
-        }
-    }
-    if spec.install_artifacts.genesis_draft_file_path.is_some() {
-        let genesis_draft_file_path = spec
-            .install_artifacts
-            .genesis_draft_file_path
-            .clone()
-            .unwrap();
-        if Path::new(&genesis_draft_file_path).exists() {
-            rt.block_on(s3_manager.put_object(
-                &genesis_draft_file_path,
-                &aws_resources.s3_bucket,
-                &avalanche_ops::StorageKey::GenesisDraftFile(spec.id.clone()).encode(),
-            ))
-            .unwrap();
-        }
-    }
-    if spec.install_artifacts.coreth_evm_config_file_path.is_some() {
-        let coreth_evm_config_file_path = spec
-            .install_artifacts
-            .coreth_evm_config_file_path
-            .clone()
-            .unwrap();
-        if Path::new(&coreth_evm_config_file_path).exists() {
-            rt.block_on(s3_manager.put_object(
-                &coreth_evm_config_file_path,
-                &aws_resources.s3_bucket,
-                &avalanche_ops::StorageKey::CorethEvmConfigFile(spec.id.clone()).encode(),
-            ))
-            .unwrap();
+            .expect("failed put_object tmp_plugin_compressed_path");
+            fs::remove_file(tmp_plugin_compressed_path)?;
         }
     }
     rt.block_on(s3_manager.put_object(

@@ -14,7 +14,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::{self, constants, genesis, node},
+    avalanche::{self, avalanchego::genesis as avalanchego_genesis, constants, node},
     aws::{self, cloudwatch, ec2, envelope, kms, s3},
     utils::{bash, cert, compress, random},
 };
@@ -236,7 +236,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     let rt = Runtime::new().unwrap();
 
-    thread::sleep(Duration::from_secs(1));
     info!("STEP: fetching intance metadata using IMDSv2");
 
     let az = rt.block_on(ec2::fetch_availability_zone()).unwrap();
@@ -251,7 +250,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let public_ipv4 = rt.block_on(ec2::fetch_public_ipv4()).unwrap();
     info!("fetched public ipv4 {}", public_ipv4);
 
-    thread::sleep(Duration::from_secs(1));
     info!("STEP: loading AWS config");
     let shared_config = rt.block_on(aws::load_config(Some(reg.clone()))).unwrap();
 
@@ -259,7 +257,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
 
-    thread::sleep(Duration::from_secs(1));
     info!("STEP: fetching tags from the local instance");
     let tags = rt.block_on(ec2_manager.fetch_tags(&instance_id)).unwrap();
     let mut id: String = String::new();
@@ -330,7 +327,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let envelope = envelope::Envelope::new(Some(kms_manager), Some(kms_cmk_arn));
 
     if !Path::new(&avalanche_bin).exists() {
-        thread::sleep(Duration::from_secs(1));
         info!("STEP: downloading avalanche binary from S3");
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         rt.block_on(s3_manager.get_object(
@@ -353,7 +349,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     let plugins_dir = get_plugins_dir(&avalanche_bin);
     if !Path::new(&plugins_dir).exists() {
-        thread::sleep(Duration::from_secs(1));
         info!("STEP: creating '{}' for plugins", plugins_dir);
         fs::create_dir_all(plugins_dir.clone()).unwrap();
 
@@ -385,7 +380,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     // ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
     // TODO: add more logs for plugins
-    thread::sleep(Duration::from_secs(1));
     info!("STEP: writing CloudWatch configuration JSON file");
     let mut cloudwatch_config = cloudwatch::Config::default();
     cloudwatch_config.logs = Some(cloudwatch::Logs {
@@ -432,7 +426,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         .sync(&cloudwatch_config_file_path)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(1));
     info!("STEP: downloading avalanche-ops::Spec from S3");
     let tmp_spec_file_path = random::tmp_path(15, Some(".yaml")).unwrap();
     rt.block_on(s3_manager.get_object(
@@ -444,7 +437,12 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     let mut spec = avalanche_ops::Spec::load(&tmp_spec_file_path).unwrap();
     spec.avalanchego_config.public_ip = Some(public_ipv4.clone());
-    spec.avalanchego_config.sync(None).unwrap();
+    spec.avalanchego_config
+        .sync(None)
+        .expect("failed to sync avalanchego config_file");
+
+    // "avalanched" never updates "spec" file, runs in read-only mode
+    fs::remove_file(&tmp_spec_file_path)?;
 
     let tls_key_path = spec
         .avalanchego_config
@@ -461,7 +459,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     // TODO: reuse TLS certs for static node IDs
     let tls_cert_exists = Path::new(&tls_cert_path).exists();
     if !tls_key_exists || !tls_cert_exists {
-        thread::sleep(Duration::from_secs(1));
         info!(
             "STEP: generating TLS certs (key exists {}, cert exists {})",
             tls_key_exists, tls_cert_exists
@@ -508,7 +505,10 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         fs::remove_file(tmp_compressed_path)?;
         fs::remove_file(tmp_encrypted_path)?;
     }
+
+    // loads the node ID from generated/existing certs
     let node_id = node::load_id(&tls_cert_path).expect("failed to load node ID");
+    info!("loaded node ID {}", node_id);
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -546,7 +546,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             && aws_resources.db_backup_s3_bucket.is_some()
             && aws_resources.db_backup_s3_key.is_some()
         {
-            thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing node information before db backup downloads");
             let s3_key = {
                 if matches!(node_kind, node::Kind::Beacon) {
@@ -618,7 +617,6 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         && spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
-        thread::sleep(Duration::from_secs(1));
         info!("STEP: publishing seed/bootstrapping beacon node information for discovery");
         let s3_key = avalanche_ops::StorageKey::DiscoverBootstrappingBeaconNode(
             id.clone(),
@@ -660,9 +658,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             }
         }
 
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: collect all seed/bootstrapping beacon nodes information from S3 key for initial stakers");
-        let mut stakers: Vec<genesis::Staker> = vec![];
+        info!("STEP: update genesis file with seed/bootstrapping beacon nodes");
+        let mut genesis_stakers: Vec<avalanchego_genesis::Staker> = vec![];
         let seed_priv_keys = spec.generated_seed_private_keys.unwrap();
         for obj in objects.iter() {
             let s3_key = obj.key().expect("unexpected None s3 object");
@@ -671,42 +668,31 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             // to reduce "s3_manager.get_object" call volume
             let seed_beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
 
-            let mut staker = genesis::Staker::default();
+            let mut staker = avalanchego_genesis::Staker::default();
             staker.node_id = Some(seed_beacon_node.node_id);
             staker.reward_address = Some(seed_priv_keys[0].x_address.clone());
 
-            stakers.push(staker);
+            genesis_stakers.push(staker);
         }
         info!(
             "found {} seed beacon nodes for initial stakers",
-            stakers.len()
+            genesis_stakers.len()
         );
 
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: downloading genesis draft file from S3");
-        let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
-        rt.block_on(s3_manager.get_object(
-            &s3_bucket_name,
-            &avalanche_ops::StorageKey::GenesisDraftFile(spec.id.clone()).encode(),
-            &tmp_genesis_path,
-        ))
-        .expect("failed get_object GenesisDraftFile");
-
-        thread::sleep(Duration::from_secs(1));
-        let genesis_path = spec.avalanchego_config.clone().genesis.unwrap();
-        info!(
-            "STEP: updating genesis draft file and writing to a new genesis file to '{}'",
-            genesis_path
-        );
-        let mut genesis_draft = genesis::AvalancheGo::load(&tmp_genesis_path).unwrap();
-        genesis_draft.initial_stakers = Some(stakers);
-        genesis_draft.sync(&genesis_path).unwrap();
+        let avalanchego_genesis_path = spec.avalanchego_config.clone().genesis.unwrap();
+        let mut avalanchego_genesis_template = spec
+            .avalanchego_genesis_template
+            .expect("unexpected None avalanchego_genesis_template for custom network");
+        avalanchego_genesis_template.initial_stakers = Some(genesis_stakers);
+        avalanchego_genesis_template
+            .sync(&avalanchego_genesis_path)
+            .expect("failed to sync avalanchego_genesis_path");
 
         // for now, just overwrite from every seed beacon node
         thread::sleep(Duration::from_secs(1));
-        info!("STEP: upload the new genesis file, to be shared with beacon/non-beacon nodes");
+        info!("STEP: upload the new genesis file, to be shared with non-beacon nodes");
         rt.block_on(s3_manager.put_object(
-            &genesis_path,
+            &avalanchego_genesis_path,
             &s3_bucket_name,
             &avalanche_ops::StorageKey::GenesisFile(spec.id.clone()).encode(),
         ))
@@ -718,8 +704,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         && spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: downloading genesis file from S3");
+        info!("STEP: downloading genesis file from S3 (updated from other beacon nodes)");
         let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
@@ -789,8 +774,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             }
         }
 
-        thread::sleep(Duration::from_secs(1));
-        info!("STEP: collect all beacon nodes IDs and IPs from S3 key for bootstrap information");
+        info!("STEP: updating bootstrap IPs/IDs with all beacon nodes");
         let mut bootstrap_ips: Vec<String> = vec![];
         let mut bootstrap_ids: Vec<String> = vec![];
         for obj in objects.iter() {
@@ -814,15 +798,26 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     }
 
     // create dir regardless of whether we have custom coreth config or not
-    if spec.avalanchego_config.chain_config_dir.is_some() {
-        let chain_config_dir = spec
-            .avalanchego_config
-            .clone()
-            .chain_config_dir
-            .expect("unexpected None chain_config_dir");
-        fs::create_dir_all(Path::new(&chain_config_dir).join("C"))
-            .expect("failed to create dir for chain config");
-    };
+    let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir;
+    fs::create_dir_all(Path::new(&chain_config_dir).join("C"))
+        .expect("failed to create dir for chain config");
+    if spec.coreth_config.is_some() {
+        info!("STEP: saving coreth evm config file to chain config dir");
+        let tmp_coreth_config_path = random::tmp_path(15, Some(".json")).unwrap();
+        let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir;
+        let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
+        info!(
+            "saving coreth config file to {:?}",
+            chain_config_c_path.as_os_str()
+        );
+        let coreth_config = spec.coreth_config.expect("unexpected None coreth_config");
+        coreth_config
+            .sync(&tmp_coreth_config_path)
+            .expect("failed to sync coreth_config");
+        fs::copy(&tmp_coreth_config_path, chain_config_c_path).unwrap();
+        fs::remove_file(&tmp_coreth_config_path)?;
+    }
+
     if spec.avalanchego_config.subnet_config_dir.is_some() {
         let subnet_config_dir = spec
             .avalanchego_config
@@ -833,37 +828,15 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             .expect("failed to create dir for chain config");
     };
 
-    if spec.install_artifacts.coreth_evm_config_file_path.is_some() {
-        thread::sleep(Duration::from_secs(1));
-        info!(
-            "STEP: downloading coreth evm config file from S3 (uploaded from client's {})",
-            spec.install_artifacts.coreth_evm_config_file_path.unwrap()
-        );
-        let tmp_evm_config_path = random::tmp_path(15, Some(".json")).unwrap();
-        rt.block_on(s3_manager.get_object(
-            &s3_bucket_name,
-            &avalanche_ops::StorageKey::CorethEvmConfigFile(spec.id.clone()).encode(),
-            &tmp_evm_config_path,
-        ))
-        .unwrap();
-        let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir.unwrap();
-        let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
-        info!(
-            "saving evm config file to {:?}",
-            chain_config_c_path.as_os_str()
-        );
-        fs::copy(&tmp_evm_config_path, chain_config_c_path).unwrap();
-        fs::remove_file(&tmp_evm_config_path)?;
-    }
-
     // persist before starting the service
-    spec.avalanchego_config.sync(None).unwrap();
-
-    thread::sleep(Duration::from_secs(1));
+    spec.avalanchego_config
+        .sync(None)
+        .expect("failed to sync avalanchego config_file");
     info!(
         "STEP: setting up avalanche node systemd service file with --config-file={}",
         spec.avalanchego_config.clone().config_file.unwrap()
     );
+
     // don't use "Type=notify"
     // as "avalanchego" currently does not do anything specific to systemd
     // ref. "expected that the service sends a notification message via sd_notify"

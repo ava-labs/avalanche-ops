@@ -19,7 +19,12 @@ use crate::utils::{random, time};
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod avalanche;
-use crate::avalanche::{config as avalanche_config, constants, genesis, key, node};
+use crate::avalanche::{
+    avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
+    constants,
+    coreth::config as coreth_config,
+    key, node,
+};
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html
 pub mod dev;
@@ -43,7 +48,7 @@ pub const MAX_MACHINE_NON_BEACON_NODES: u32 = 200; // TODO: allow higher number?
 /// in this cluster-level "Config".
 /// At the beginning, the user is expected to provide this configuration.
 /// "Clone" is for deep-copying.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Spec {
     /// User-provided ID of the cluster/test.
@@ -60,12 +65,25 @@ pub struct Spec {
     pub machine: Machine,
     /// Install artifacts to share with remote machines.
     pub install_artifacts: InstallArtifacts,
+
     /// Represents the configuration for "avalanchego".
     /// Set as if run in remote machines.
     /// For instance, "config-file" must be the path valid
     /// in the remote machines.
     /// Must be "kebab-case" to be compatible with "avalanchego".
-    pub avalanchego_config: avalanche_config::AvalancheGo,
+    pub avalanchego_config: avalanchego_config::Config,
+    /// If non-empty, the JSON-encoded data are saved to a file
+    /// in Path::new(&avalanchego_config.chain_config_dir).join("C").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coreth_config: Option<coreth_config::Config>,
+    /// If non-empty, the JSON-encoded data are saved to a file
+    /// and used for "--genesis" in Path::new(&avalanchego_config.genesis).
+    /// This includes "coreth_genesis::Genesis".
+    /// Names after "_template" since it has not included
+    /// initial stakers yet with to-be-created node IDs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
+
     /// Generated key infos.
     /// Only pre-funded for custom networks with a custom genesis file.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -114,14 +132,6 @@ pub struct InstallArtifacts {
     /// with remote machiens.
     #[serde(default)]
     pub plugins_dir: Option<String>,
-    /// Genesis "DRAFT" file path in the local machine.
-    /// Some fields to be overwritten (e.g., initial stakers with beacon nodes).
-    /// MUST BE NON-EMPTY for custom network.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub genesis_draft_file_path: Option<String>,
-    // TODO: support https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub coreth_evm_config_file_path: Option<String>,
 }
 
 /// Represents the CloudFormation stack name.
@@ -153,8 +163,7 @@ impl Spec {
         avalanched_bin: &str,
         avalanchego_bin: &str,
         plugins_dir: Option<String>,
-        coreth_evm_config_file_path: Option<String>,
-        avalanchego_config: avalanche_config::AvalancheGo,
+        avalanchego_config: avalanchego_config::Config,
         keys: usize,
     ) -> Self {
         // [year][month][date]-[system host-based id]
@@ -175,25 +184,16 @@ impl Spec {
                 ),
             };
 
-        let (generated_seed_keys, genesis_draft_file_path) = {
+        let (avalanchego_genesis_template, generated_seed_keys) = {
             if avalanchego_config.is_custom_network() {
-                let (genesis, _generated_seed_keys) =
-                    genesis::AvalancheGo::new(network_id, keys).expect("unexpected None genesis");
-                let genesis_draft_file_path =
-                    Some(random::tmp_path(15, Some(".json")).expect("unexpected None tmp_path"));
-                genesis
-                    .sync(
-                        &genesis_draft_file_path
-                            .clone()
-                            .expect("unexpected None genesis draft file path"),
-                    )
-                    .expect("unexpected sync failure");
-                (_generated_seed_keys, genesis_draft_file_path)
+                let (a, b) = avalanchego_genesis::Genesis::new(network_id, keys)
+                    .expect("unexpected None genesis");
+                (Some(a), b)
             } else {
-                let mut _generated_seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
+                let mut seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
                 let ewoq_key = key::Key::from_private_key(key::EWOQ_KEY)
                     .expect("unexpected key creation failure");
-                _generated_seed_keys.push(
+                seed_keys.push(
                     ewoq_key
                         .to_info(network_id)
                         .expect("unexpected to_info failure"),
@@ -201,9 +201,9 @@ impl Spec {
                 for _ in 1..keys {
                     let k = key::Key::generate().expect("unexpected key generate failure");
                     let info = k.to_info(network_id).expect("unexpected to_info failure");
-                    _generated_seed_keys.push(info);
+                    seed_keys.push(info);
                 }
-                (_generated_seed_keys, None)
+                (None, seed_keys)
             }
         };
         Self {
@@ -230,11 +230,12 @@ impl Spec {
                 avalanched_bin: avalanched_bin.to_string(),
                 avalanchego_bin: avalanchego_bin.to_string(),
                 plugins_dir,
-                genesis_draft_file_path,
-                coreth_evm_config_file_path,
             },
 
             avalanchego_config,
+            coreth_config: Some(coreth_config::Config::default()),
+            avalanchego_genesis_template,
+
             generated_seed_private_keys: Some(generated_seed_keys),
 
             current_nodes: None,
@@ -288,15 +289,12 @@ impl Spec {
             ));
         }
 
-        let f = match File::open(&file_path) {
-            Ok(f) => f,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to open {} ({})", file_path, e),
-                ));
-            }
-        };
+        let f = File::open(&file_path).map_err(|e| {
+            return Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", file_path, e),
+            );
+        })?;
         serde_yaml::from_reader(f).map_err(|e| {
             return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
         })
@@ -435,6 +433,15 @@ impl Spec {
         }
 
         if !self.avalanchego_config.is_custom_network() {
+            if self.avalanchego_genesis_template.is_some() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "cannot specify 'avalanchego_genesis_template' for network_id {:?}",
+                        self.avalanchego_config.network_id
+                    ),
+                ));
+            }
             if self.machine.beacon_nodes.unwrap_or(0) > 0 {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -444,15 +451,16 @@ impl Spec {
                     ),
                 ));
             }
-            if self.install_artifacts.genesis_draft_file_path.is_some() {
+        } else {
+            if self.avalanchego_genesis_template.is_none() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("cannot specify 'install_artifacts.genesis_draft_file_path' for network_id {:?}", self.avalanchego_config.network_id),
+                    format!(
+                        "must specify 'avalanchego_genesis_template' for network_id {:?}",
+                        self.avalanchego_config.network_id
+                    ),
                 ));
             }
-        }
-
-        if self.avalanchego_config.is_custom_network() {
             if self.machine.beacon_nodes.unwrap_or(0) == 0 {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -479,54 +487,7 @@ impl Spec {
                     ),
                 ));
             }
-            if self.install_artifacts.genesis_draft_file_path.is_none() {
-                return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            format!("MUST specify 'install_artifacts.genesis_draft_file_path' for custom network_id {}", self.avalanchego_config.network_id),
-                        ));
-            }
-            if !Path::new(
-                &self
-                    .install_artifacts
-                    .genesis_draft_file_path
-                    .clone()
-                    .expect("unexpected None install_artifacts.genesis_draft_file_path"),
-            )
-            .exists()
-            {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "install_artifacts.genesis_draft_file_path {} does not exist",
-                        self.install_artifacts
-                            .genesis_draft_file_path
-                            .clone()
-                            .expect("unexpected None install_artifacts.genesis_draft_file_path")
-                    ),
-                ));
-            }
         }
-        if self.install_artifacts.coreth_evm_config_file_path.is_some()
-            && !Path::new(
-                &self
-                    .install_artifacts
-                    .coreth_evm_config_file_path
-                    .clone()
-                    .expect("unexpected None install_artifacts.coreth_evm_config_file_path"),
-            )
-            .exists()
-        {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "install_artifacts.coreth_evm_config_file_path {} does not exist",
-                    self.install_artifacts
-                        .coreth_evm_config_file_path
-                        .clone()
-                        .expect("unexpected None install_artifacts.coreth_evm_config_file_path")
-                ),
-            ));
-        };
 
         Ok(())
     }
@@ -536,19 +497,6 @@ impl Spec {
 fn test_spec() {
     use std::fs;
     let _ = env_logger::builder().is_test(true).try_init();
-
-    use rust_embed::RustEmbed;
-    #[derive(RustEmbed)]
-    #[folder = "artifacts/"]
-    #[prefix = "artifacts/"]
-    struct Asset;
-    let genesis_json = Asset::get("artifacts/sample.genesis.json").unwrap();
-    let genesis_json_contents = std::str::from_utf8(genesis_json.data.as_ref()).unwrap();
-
-    let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(genesis_json_contents.as_bytes());
-    assert!(ret.is_ok());
-    let genesis_draft_file_path = f.path().to_str().unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(&vec![0]);
@@ -587,7 +535,6 @@ aws_resources:
   s3_bucket: {}
 
 machine:
-  beacon_nodes: 10
   non_beacon_nodes: 20
   instance_types:
   - m5.large
@@ -599,32 +546,42 @@ install_artifacts:
   avalanched_bin: {}
   avalanchego_bin: {}
   plugins_dir: {}
-  genesis_draft_file_path: {}
 
 avalanchego_config:
-  config-file: {}
-  network-id: 1337
-  genesis: {}
-  snow-sample-size: {}
-  snow-quorum-size: {}
-  http-port: {}
-  staking-port: {}
-  db-dir: {}
+  config-file: /etc/avalanche.config.json
+  network-id: 1
+  db-type: leveldb
+  db-dir: /avalanche-data
+  log-dir: /var/log/avalanche
+  log-level: INFO
+  http-port: 9650
+  http-host: 0.0.0.0
+  http-tls-enabled: false
+  staking-enabled: true
+  staking-port: 9651
+  staking-tls-key-file: "/etc/pki/tls/certs/avalanched.pki.key"
+  staking-tls-cert-file: "/etc/pki/tls/certs/avalanched.pki.crt"
+  snow-sample-size: 20
+  snow-quorum-size: 15
+  snow-concurrent-repolls: 24
+  snow-max-time-processing: "5m"
+  snow-rogue-commit-threshold: 40
+  snow-virtuous-commit-threshold: 40
+  index-enabled: false
+  index-allow-incomplete: false
+  api-admin-enabled: true
+  api-info-enabled: true
+  api-keystore-enabled: true
+  api-metrics-enabled: true
+  api-health-enabled: true
+  api-ipcs-enabled: true
+  chain-config-dir: /etc/avalanche/configs/chains
+  subnet-config-dir: /etc/avalanche/configs/subnets
+  network-minimum-timeout: "3s"
+
 
 "#,
-        id,
-        bucket,
-        avalanched_bin,
-        avalanchego_bin,
-        plugins_dir,
-        genesis_draft_file_path,
-        avalanche_config::DEFAULT_CONFIG_FILE_PATH,
-        avalanche_config::DEFAULT_GENESIS_PATH,
-        avalanche_config::DEFAULT_SNOW_SAMPLE_SIZE,
-        avalanche_config::DEFAULT_SNOW_QUORUM_SIZE,
-        avalanche_config::DEFAULT_HTTP_PORT,
-        avalanche_config::DEFAULT_STAKING_PORT,
-        avalanche_config::DEFAULT_DB_DIR,
+        id, bucket, avalanched_bin, avalanchego_bin, plugins_dir,
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
@@ -638,15 +595,9 @@ avalanchego_config:
     let ret = cfg.sync(config_path);
     assert!(ret.is_ok());
 
-    let mut avalanchego_config = avalanche_config::AvalancheGo::new();
-    avalanchego_config.config_file = Some(String::from(avalanche_config::DEFAULT_CONFIG_FILE_PATH));
-    avalanchego_config.genesis = Some(String::from(avalanche_config::DEFAULT_GENESIS_PATH));
-    avalanchego_config.network_id = 1337;
-    avalanchego_config.snow_sample_size = Some(avalanche_config::DEFAULT_SNOW_SAMPLE_SIZE);
-    avalanchego_config.snow_quorum_size = Some(avalanche_config::DEFAULT_SNOW_QUORUM_SIZE);
-    avalanchego_config.http_port = avalanche_config::DEFAULT_HTTP_PORT;
-    avalanchego_config.staking_port = avalanche_config::DEFAULT_STAKING_PORT;
-    avalanchego_config.db_dir = String::from(avalanche_config::DEFAULT_DB_DIR);
+    let mut avalanchego_config = avalanchego_config::Config::default();
+    avalanchego_config.genesis = None;
+    avalanchego_config.network_id = 1;
 
     let orig = Spec {
         id: id.clone(),
@@ -658,7 +609,7 @@ avalanchego_config:
         }),
 
         machine: Machine {
-            beacon_nodes: Some(10),
+            beacon_nodes: None,
             non_beacon_nodes: 20,
             instance_types: Some(vec![
                 String::from("m5.large"),
@@ -672,18 +623,19 @@ avalanchego_config:
             avalanched_bin: avalanched_bin.to_string(),
             avalanchego_bin: avalanchego_bin.to_string(),
             plugins_dir: Some(plugins_dir.to_string()),
-            genesis_draft_file_path: Some(String::from(genesis_draft_file_path)),
-            coreth_evm_config_file_path: None,
         },
 
         avalanchego_config,
+        coreth_config: None,
+        avalanchego_genesis_template: None,
+
         generated_seed_private_keys: None,
         current_nodes: None,
     };
 
     assert_eq!(cfg, orig);
-    assert!(cfg.validate().is_ok());
-    assert!(orig.validate().is_ok());
+    cfg.validate().expect("unexpected validate failure");
+    orig.validate().expect("unexpected validate failure");
 
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
@@ -701,14 +653,8 @@ avalanchego_config:
             .unwrap_or(String::from("")),
         plugins_dir.to_string()
     );
-    assert_eq!(
-        cfg.install_artifacts
-            .genesis_draft_file_path
-            .unwrap_or(String::from("")),
-        genesis_draft_file_path
-    );
 
-    assert_eq!(cfg.machine.beacon_nodes.unwrap_or(0), 10);
+    assert!(cfg.machine.beacon_nodes.is_none());
     assert_eq!(cfg.machine.non_beacon_nodes, 20);
     assert!(cfg.machine.instance_types.is_some());
     let instance_types = cfg.machine.instance_types.unwrap();
@@ -717,20 +663,13 @@ avalanchego_config:
     assert_eq!(instance_types[2], "r5.large");
     assert_eq!(instance_types[3], "t3.large");
 
-    assert_eq!(cfg.avalanchego_config.clone().network_id, 1337);
+    assert_eq!(cfg.avalanchego_config.clone().network_id, 1);
     assert_eq!(
         cfg.avalanchego_config
             .clone()
             .config_file
             .unwrap_or("".to_string()),
-        avalanche_config::DEFAULT_CONFIG_FILE_PATH,
-    );
-    assert_eq!(
-        cfg.avalanchego_config
-            .clone()
-            .genesis
-            .unwrap_or("".to_string()),
-        avalanche_config::DEFAULT_GENESIS_PATH,
+        avalanchego_config::DEFAULT_CONFIG_FILE_PATH,
     );
     assert_eq!(
         cfg.avalanchego_config.clone().snow_sample_size.unwrap_or(0),
@@ -742,15 +681,15 @@ avalanchego_config:
     );
     assert_eq!(
         cfg.avalanchego_config.clone().http_port,
-        avalanche_config::DEFAULT_HTTP_PORT,
+        avalanchego_config::DEFAULT_HTTP_PORT,
     );
     assert_eq!(
         cfg.avalanchego_config.clone().staking_port,
-        avalanche_config::DEFAULT_STAKING_PORT,
+        avalanchego_config::DEFAULT_STAKING_PORT,
     );
     assert_eq!(
         cfg.avalanchego_config.clone().db_dir,
-        avalanche_config::DEFAULT_DB_DIR,
+        avalanchego_config::DEFAULT_DB_DIR,
     );
 }
 
@@ -761,10 +700,7 @@ pub enum StorageKey {
     DevMachineConfigFile(String),
     Ec2AccessKeyCompressedEncrypted(String),
 
-    /// basic, common, top-level genesis, not ready for full use
-    /// e.g., initial stakers are empty since there's no beacon node yet
-    GenesisDraftFile(String),
-    /// valid genesis file with fully specified initial stakers
+    /// Valid genesis file with fully specified initial stakers
     /// after beacon nodes become active.
     GenesisFile(String),
 
@@ -803,7 +739,6 @@ impl StorageKey {
                 format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
             }
 
-            StorageKey::GenesisDraftFile(id) => format!("{}/install/genesis.draft.json", id),
             StorageKey::GenesisFile(id) => format!("{}/genesis.json", id),
 
             StorageKey::AvalanchedBin(id) => format!("{}/install/avalanched", id),

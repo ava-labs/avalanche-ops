@@ -10,7 +10,7 @@ use openssl::x509::X509;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    avalanche::{config as avalanche_config, key},
+    avalanche::{avalanchego::config as avalanchego_config, key},
     utils::compress,
 };
 
@@ -118,15 +118,12 @@ impl Node {
             ));
         }
 
-        let f = match File::open(&file_path) {
-            Ok(f) => f,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to open {} ({})", file_path, e),
-                ));
-            }
-        };
+        let f = File::open(&file_path).map_err(|e| {
+            return Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", file_path, e),
+            );
+        })?;
         serde_yaml::from_reader(f).map_err(|e| {
             return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
         })
@@ -287,11 +284,11 @@ fn test_id() {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Info {
     pub local_node: Node,
-    pub avalanchego_config: avalanche_config::AvalancheGo,
+    pub avalanchego_config: avalanchego_config::Config,
 }
 
 impl Info {
-    pub fn new(local_node: Node, avalanchego_config: avalanche_config::AvalancheGo) -> Self {
+    pub fn new(local_node: Node, avalanchego_config: avalanchego_config::Config) -> Self {
         Self {
             local_node,
             avalanchego_config,
