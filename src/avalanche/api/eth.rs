@@ -96,8 +96,16 @@ struct _GetBalanceResponse {
 impl _GetBalanceResponse {
     fn convert(&self) -> io::Result<GetBalanceResponse> {
         let result = match &self.result {
-            Some(v) => {
-                let result = v.parse::<u64>().unwrap();
+            Some(s) => {
+                let result = match u64::from_str_radix(s, 16) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(Error::new(
+                            ErrorKind::Other,
+                            format!("failed to parse hexadecimal string '{}' {}", s, e),
+                        ));
+                    }
+                };
                 Some(result)
             }
             None => None,
