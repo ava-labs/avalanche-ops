@@ -493,7 +493,8 @@ impl AvalancheGo {
                 "non-empty 'profile-continuous-freq' but empty 'profile-continuous-enabled'",
             ));
         }
-        if self.profile_continuous_max_files.is_some() && self.profile_continuous_enabled.is_none() {
+        if self.profile_continuous_max_files.is_some() && self.profile_continuous_enabled.is_none()
+        {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "non-empty 'profile-continuous-max-files' but empty 'profile-continuous-enabled'",
