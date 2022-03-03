@@ -331,7 +331,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &avalanche_ops::StorageKey::AvalancheBinCompressed(id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::AvalancheBinCompressed(id.clone()).encode(),
             &tmp_avalanche_bin_compressed_path,
         ))
         .expect("failed get_object avalanche_bin_compressed_path");
@@ -357,7 +357,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             .block_on(s3_manager.list_objects(
                 &s3_bucket_name,
                 Some(s3::append_slash(
-                    &avalanche_ops::StorageKey::PluginsDir(id.clone()).encode(),
+                    &avalanche_ops::StorageNamespace::PluginsDir(id.clone()).encode(),
                 )),
             ))
             .unwrap();
@@ -430,7 +430,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let tmp_spec_file_path = random::tmp_path(15, Some(".yaml")).unwrap();
     rt.block_on(s3_manager.get_object(
         &s3_bucket_name,
-        &avalanche_ops::StorageKey::ConfigFile(id.clone()).encode(),
+        &avalanche_ops::StorageNamespace::ConfigFile(id.clone()).encode(),
         &tmp_spec_file_path,
     ))
     .expect("failed get_object spec file");
@@ -472,7 +472,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 &s3_bucket_name,
                 format!(
                     "{}/{}.crt",
-                    avalanche_ops::StorageKey::PkiKeyDir(id.clone()).encode(),
+                    avalanche_ops::StorageNamespace::PkiKeyDir(id.clone()).encode(),
                     instance_id
                 )
                 .as_str(),
@@ -495,7 +495,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                 &s3_bucket_name,
                 format!(
                     "{}/{}.key.zstd.seal_aes_256.encrypted",
-                    avalanche_ops::StorageKey::PkiKeyDir(id.clone()).encode(),
+                    avalanche_ops::StorageNamespace::PkiKeyDir(id.clone()).encode(),
                     instance_id
                 )
                 .as_str(),
@@ -549,12 +549,12 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             info!("STEP: publishing node information before db backup downloads");
             let s3_key = {
                 if matches!(node_kind, node::Kind::Beacon) {
-                    avalanche_ops::StorageKey::DiscoverProvisioningBeaconNode(
+                    avalanche_ops::StorageNamespace::DiscoverProvisioningBeaconNode(
                         id.clone(),
                         local_node.clone(),
                     )
                 } else {
-                    avalanche_ops::StorageKey::DiscoverProvisioningNonBeaconNode(
+                    avalanche_ops::StorageNamespace::DiscoverProvisioningNonBeaconNode(
                         id.clone(),
                         local_node.clone(),
                     )
@@ -618,7 +618,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
         info!("STEP: publishing seed/bootstrapping beacon node information for discovery");
-        let s3_key = avalanche_ops::StorageKey::DiscoverBootstrappingBeaconNode(
+        let s3_key = avalanche_ops::StorageNamespace::DiscoverBootstrappingBeaconNode(
             id.clone(),
             local_node.clone(),
         );
@@ -640,7 +640,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                     s3_manager.list_objects(
                         &s3_bucket_name,
                         Some(s3::append_slash(
-                            &avalanche_ops::StorageKey::DiscoverBootstrappingBeaconNodesDir(
+                            &avalanche_ops::StorageNamespace::DiscoverBootstrappingBeaconNodesDir(
                                 id.clone(),
                             )
                             .encode(),
@@ -666,7 +666,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             // just parse the s3 key name
             // to reduce "s3_manager.get_object" call volume
-            let seed_beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
+            let seed_beacon_node =
+                avalanche_ops::StorageNamespace::parse_node_from_path(s3_key).unwrap();
 
             let mut staker = avalanchego_genesis::Staker::default();
             staker.node_id = Some(seed_beacon_node.node_id);
@@ -694,7 +695,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         rt.block_on(s3_manager.put_object(
             &avalanchego_genesis_path,
             &s3_bucket_name,
-            &avalanche_ops::StorageKey::GenesisFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
         ))
         .expect("failed put_object GenesisFile");
     }
@@ -708,7 +709,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
         rt.block_on(s3_manager.get_object(
             &s3_bucket_name,
-            &avalanche_ops::StorageKey::GenesisFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
             &tmp_genesis_path,
         ))
         .expect("failed get_object GenesisFile");
@@ -758,8 +759,10 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                     s3_manager.list_objects(
                         &s3_bucket_name,
                         Some(s3::append_slash(
-                            &avalanche_ops::StorageKey::DiscoverReadyBeaconNodesDir(id.clone())
-                                .encode(),
+                            &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNodesDir(
+                                id.clone(),
+                            )
+                            .encode(),
                         )),
                     ),
                 )
@@ -782,7 +785,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
             // just parse the s3 key name
             // to reduce "s3_manager.get_object" call volume
-            let beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key)
+            let beacon_node = avalanche_ops::StorageNamespace::parse_node_from_path(s3_key)
                 .expect("failed to parse node from storage path");
 
             // assume all nodes in the network use the same ports
@@ -931,8 +934,10 @@ WantedBy=multi-user.target",
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing beacon node information");
 
-            let s3_key =
-                avalanche_ops::StorageKey::DiscoverReadyBeaconNode(id.clone(), local_node.clone());
+            let s3_key = avalanche_ops::StorageNamespace::DiscoverReadyBeaconNode(
+                id.clone(),
+                local_node.clone(),
+            );
             let s3_key = s3_key.encode();
             let node_info = node::Info::new(local_node.clone(), spec.avalanchego_config.clone());
             let tmp_path =
@@ -947,7 +952,7 @@ WantedBy=multi-user.target",
         if matches!(node_kind, node::Kind::NonBeacon) {
             thread::sleep(Duration::from_secs(1));
             info!("STEP: publishing non-beacon node information");
-            let s3_key = avalanche_ops::StorageKey::DiscoverReadyNonBeaconNode(
+            let s3_key = avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNode(
                 id.clone(),
                 local_node.clone(),
             );
@@ -973,14 +978,14 @@ WantedBy=multi-user.target",
             spec.avalanchego_config.db_dir.clone(),
             db_dir_network,
             &s3_bucket_name,
-            avalanche_ops::StorageKey::BackupsDir(id.clone()).encode(),
+            avalanche_ops::StorageNamespace::BackupsDir(id.clone()).encode(),
             compress::DirEncoder::TarGzip.ext(),
         );
         println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
             reg,
             compress::DirDecoder::TarGzip.id(),
             &s3_bucket_name,
-            avalanche_ops::StorageKey::BackupsDir(id.clone()).encode(),
+            avalanche_ops::StorageNamespace::BackupsDir(id.clone()).encode(),
             compress::DirDecoder::TarGzip.ext(),
             spec.avalanchego_config.db_dir.clone(),
         );

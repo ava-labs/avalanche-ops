@@ -817,7 +817,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         &spec.install_artifacts.avalanched_bin,
         &aws_resources.s3_bucket,
-        &avalanche_ops::StorageKey::AvalanchedBin(spec.id.clone()).encode(),
+        &avalanche_ops::StorageNamespace::AvalanchedBin(spec.id.clone()).encode(),
     ))
     .expect("failed put_object install_artifacts.avalanched_bin");
 
@@ -833,7 +833,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         &tmp_avalanche_bin_compressed_path,
         &aws_resources.s3_bucket,
-        &avalanche_ops::StorageKey::AvalancheBinCompressed(spec.id.clone()).encode(),
+        &avalanche_ops::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode(),
     ))
     .expect("failed put_object compressed avalanchego_bin");
     fs::remove_file(tmp_avalanche_bin_compressed_path)?;
@@ -866,7 +866,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                     &aws_resources.s3_bucket,
                     format!(
                         "{}/{}{}",
-                        &avalanche_ops::StorageKey::PluginsDir(spec.id.clone()).encode(),
+                        &avalanche_ops::StorageNamespace::PluginsDir(spec.id.clone()).encode(),
                         file_name,
                         compress::Encoder::Zstd(3).ext()
                     )
@@ -880,7 +880,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
     rt.block_on(s3_manager.put_object(
         spec_file_path,
         &aws_resources.s3_bucket,
-        &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
+        &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
     ))
     .unwrap();
 
@@ -905,7 +905,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -939,11 +939,14 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
             .unwrap();
-        rt.block_on(s3_manager.put_object(
-            &tmp_encrypted_path,
-            &aws_resources.s3_bucket,
-            &avalanche_ops::StorageKey::Ec2AccessKeyCompressedEncrypted(spec.id.clone()).encode(),
-        ))
+        rt.block_on(
+            s3_manager.put_object(
+                &tmp_encrypted_path,
+                &aws_resources.s3_bucket,
+                &avalanche_ops::StorageNamespace::Ec2AccessKeyCompressedEncrypted(spec.id.clone())
+                    .encode(),
+            ),
+        )
         .unwrap();
 
         aws_resources.ec2_key_path = Some(ec2_key_path);
@@ -954,7 +957,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -1029,7 +1032,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -1116,7 +1119,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
     }
@@ -1339,7 +1342,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
                     s3_manager.list_objects(
                         &aws_resources.s3_bucket,
                         Some(s3::append_slash(
-                            &avalanche_ops::StorageKey::DiscoverReadyBeaconNodesDir(
+                            &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNodesDir(
                                 spec.id.clone(),
                             )
                             .encode(),
@@ -1359,7 +1362,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
 
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
+            let beacon_node =
+                avalanche_ops::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             current_nodes.push(beacon_node.clone());
         }
 
@@ -1370,7 +1374,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
 
@@ -1546,9 +1550,11 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
         let s3_dir = {
             if require_db_download {
-                avalanche_ops::StorageKey::DiscoverProvisioningNonBeaconNodesDir(spec.id.clone())
+                avalanche_ops::StorageNamespace::DiscoverProvisioningNonBeaconNodesDir(
+                    spec.id.clone(),
+                )
             } else {
-                avalanche_ops::StorageKey::DiscoverReadyNonBeaconNodesDir(spec.id.clone())
+                avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNodesDir(spec.id.clone())
             }
         };
         // wait for non-beacon nodes to generate certs and node ID and post to remote storage
@@ -1574,7 +1580,8 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         }
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let non_beacon_node = avalanche_ops::StorageKey::parse_node_from_path(s3_key).unwrap();
+            let non_beacon_node =
+                avalanche_ops::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             current_nodes.push(non_beacon_node.clone());
         }
         spec.current_nodes = Some(current_nodes.clone());
@@ -1585,7 +1592,7 @@ fn execute_apply(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io
         rt.block_on(s3_manager.put_object(
             spec_file_path,
             &aws_resources.s3_bucket,
-            &avalanche_ops::StorageKey::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         ))
         .unwrap();
 

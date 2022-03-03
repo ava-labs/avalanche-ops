@@ -700,20 +700,19 @@ coreth_config:
 
 /// Represents the S3/storage key path.
 /// MUST be kept in sync with "cloudformation/avalanche-node/ec2_instance_role.yaml".
-pub enum StorageKey {
+pub enum StorageNamespace {
     ConfigFile(String),
     DevMachineConfigFile(String),
     Ec2AccessKeyCompressedEncrypted(String),
 
-    /// Valid genesis file with fully specified initial stakers
-    /// after beacon nodes become active.
+    /// Valid genesis file with initial stakers.
+    /// Only updated after beacon nodes become active.
     GenesisFile(String),
 
     AvalanchedBin(String),
     AvalancheBin(String),
     AvalancheBinCompressed(String),
     PluginsDir(String),
-    CorethEvmConfigFile(String),
 
     PkiKeyDir(String),
 
@@ -735,41 +734,42 @@ pub enum StorageKey {
     EventsDir(String),
 }
 
-impl StorageKey {
+impl StorageNamespace {
     pub fn encode(&self) -> String {
         match self {
-            StorageKey::ConfigFile(id) => format!("{}/avalanche-ops.config.yaml", id),
-            StorageKey::DevMachineConfigFile(id) => format!("{}/dev-machine.config.yaml", id),
-            StorageKey::Ec2AccessKeyCompressedEncrypted(id) => {
+            StorageNamespace::ConfigFile(id) => format!("{}/avalanche-ops.config.yaml", id),
+            StorageNamespace::DevMachineConfigFile(id) => format!("{}/dev-machine.config.yaml", id),
+            StorageNamespace::Ec2AccessKeyCompressedEncrypted(id) => {
                 format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
             }
 
-            StorageKey::GenesisFile(id) => format!("{}/genesis.json", id),
+            StorageNamespace::GenesisFile(id) => format!("{}/genesis.json", id),
 
-            StorageKey::AvalanchedBin(id) => format!("{}/install/avalanched", id),
-            StorageKey::AvalancheBin(id) => format!("{}/install/avalanche", id),
-            StorageKey::AvalancheBinCompressed(id) => format!("{}/install/avalanche.zstd", id),
-            StorageKey::PluginsDir(id) => format!("{}/install/plugins", id),
-            StorageKey::CorethEvmConfigFile(id) => format!("{}/install/coreth.evm.config.json", id),
+            StorageNamespace::AvalanchedBin(id) => format!("{}/install/avalanched", id),
+            StorageNamespace::AvalancheBin(id) => format!("{}/install/avalanche", id),
+            StorageNamespace::AvalancheBinCompressed(id) => {
+                format!("{}/install/avalanche.zstd", id)
+            }
+            StorageNamespace::PluginsDir(id) => format!("{}/install/plugins", id),
 
-            StorageKey::PkiKeyDir(id) => {
+            StorageNamespace::PkiKeyDir(id) => {
                 format!("{}/pki", id)
             }
 
-            StorageKey::DiscoverProvisioningBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverProvisioningBeaconNodesDir(id) => {
                 format!("{}/discover/provisioning-non-beacon-nodes", id)
             }
-            StorageKey::DiscoverProvisioningBeaconNode(id, node) => {
+            StorageNamespace::DiscoverProvisioningBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
-            StorageKey::DiscoverProvisioningNonBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverProvisioningNonBeaconNodesDir(id) => {
                 format!("{}/discover/provisioning-non-beacon-nodes", id)
             }
-            StorageKey::DiscoverProvisioningNonBeaconNode(id, node) => {
+            StorageNamespace::DiscoverProvisioningNonBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
@@ -777,10 +777,10 @@ impl StorageKey {
                 )
             }
 
-            StorageKey::DiscoverBootstrappingBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverBootstrappingBeaconNodesDir(id) => {
                 format!("{}/discover/bootstrapping-beacon-nodes", id)
             }
-            StorageKey::DiscoverBootstrappingBeaconNode(id, node) => {
+            StorageNamespace::DiscoverBootstrappingBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/bootstrapping-beacon-nodes/{}_{}.yaml",
@@ -788,20 +788,20 @@ impl StorageKey {
                 )
             }
 
-            StorageKey::DiscoverReadyBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverReadyBeaconNodesDir(id) => {
                 format!("{}/discover/ready-beacon-nodes", id)
             }
-            StorageKey::DiscoverReadyBeaconNode(id, node) => {
+            StorageNamespace::DiscoverReadyBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/ready-beacon-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
-            StorageKey::DiscoverReadyNonBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverReadyNonBeaconNodesDir(id) => {
                 format!("{}/discover/ready-non-beacon-nodes", id)
             }
-            StorageKey::DiscoverReadyNonBeaconNode(id, node) => {
+            StorageNamespace::DiscoverReadyNonBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/ready-non-beacon-nodes/{}_{}.yaml",
@@ -809,10 +809,10 @@ impl StorageKey {
                 )
             }
 
-            StorageKey::BackupsDir(id) => {
+            StorageNamespace::BackupsDir(id) => {
                 format!("{}/backups", id)
             }
-            StorageKey::EventsDir(id) => {
+            StorageNamespace::EventsDir(id) => {
                 format!("{}/events", id)
             }
         }
@@ -874,7 +874,7 @@ fn test_storage_path() {
         "http",
         9650,
     );
-    let p = StorageKey::DiscoverReadyNonBeaconNode(
+    let p = StorageNamespace::DiscoverReadyNonBeaconNode(
         id,
         node::Node {
             kind: String::from("non-beacon"),
@@ -887,7 +887,7 @@ fn test_storage_path() {
     let storage_path = p.encode();
     info!("KeyPath: {}", storage_path);
 
-    let node_parsed = StorageKey::parse_node_from_path(&storage_path).unwrap();
+    let node_parsed = StorageNamespace::parse_node_from_path(&storage_path).unwrap();
     assert_eq!(node, node_parsed);
 }
 
