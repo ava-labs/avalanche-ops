@@ -111,12 +111,14 @@ pub async fn check(u: &str, liveness: bool) -> io::Result<Response> {
 
     let resp = {
         if u.starts_with("https") {
+            let joined = http::join_uri(u, url_path)?;
+
             // TODO: implement this with native Rust
-            info!("checking with 'curl --insecure'");
+            info!("sending via curl --insecure");
             let mut cmd = Command::new("curl");
             cmd.arg("--insecure");
-            let joined = http::join_uri(u, url_path)?;
             cmd.arg(joined.as_str());
+
             let output = cmd.output()?;
             match serde_json::from_slice(&output.stdout) {
                 Ok(p) => p,

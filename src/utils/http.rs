@@ -34,6 +34,33 @@ pub fn create_get(url: &str, path: &str) -> io::Result<Request<Body>> {
     Ok(req)
 }
 
+const JSON_CONTENT_TYPE: &str = "application/json";
+
+/// Creates a simple HTTP POST request with JSON header and body.
+pub fn create_json_post(url: &str, path: &str, d: &str) -> io::Result<Request<Body>> {
+    let uri = match join_uri(url, path) {
+        Ok(u) => u,
+        Err(e) => return Err(e),
+    };
+
+    let req = match Request::builder()
+        .method(Method::POST)
+        .header("content-type", JSON_CONTENT_TYPE)
+        .uri(uri.as_str())
+        .body(Body::from(String::from(d)))
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to create request {}", e),
+            ));
+        }
+    };
+
+    Ok(req)
+}
+
 /// Sends a HTTP request, reads response in "hyper::body::Bytes".
 pub async fn read_bytes(
     req: Request<Body>,
