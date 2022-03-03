@@ -732,7 +732,12 @@ pub enum StorageNamespace {
 
     BackupsDir(String),
 
-    EventsUpdateArtifactsDir(String),
+    /// TODO
+    /// If this "event" file has been modified for the last x-min,
+    /// avalanched triggers updates events based on the install artifacts
+    /// in "EventsUpdateArtifactsInstallDir"
+    EventsUpdateArtifactsEvent(String),
+    EventsUpdateArtifactsInstallDir(String),
 }
 
 impl StorageNamespace {
@@ -814,10 +819,11 @@ impl StorageNamespace {
                 format!("{}/backups", id)
             }
 
-            // TODO: if non-empty and last modified delta is <5-min, trigger updates
-            // TODO: implement helper to add new artifacts
-            StorageNamespace::EventsUpdateArtifactsDir(id) => {
-                format!("{}/events/update-artifacts", id)
+            StorageNamespace::EventsUpdateArtifactsEvent(id) => {
+                format!("{}/events/update-artifacts/event", id)
+            }
+            StorageNamespace::EventsUpdateArtifactsInstallDir(id) => {
+                format!("{}/events/update-artifacts/install", id)
             }
         }
     }
