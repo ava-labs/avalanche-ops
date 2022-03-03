@@ -5,6 +5,7 @@ use std::{
     path::Path,
     thread,
     time::Duration,
+    time::SystemTime,
 };
 
 use aws_sdk_s3::model::Object;
@@ -931,11 +932,14 @@ WantedBy=multi-user.target",
     }
 
     info!("avalanched now periodically publishing node information...");
+    let mut cnt: i128 = 0;
     loop {
         // to be downloaded in bootstrapping non-beacon nodes
-        // for custom networks
-        if spec.avalanchego_config.is_custom_network() && matches!(node_kind, node::Kind::Beacon) {
-            thread::sleep(Duration::from_secs(1));
+        // for custom networks, runs every 9-min
+        if (cnt < 5 || cnt % 3 == 0)
+            && spec.avalanchego_config.is_custom_network()
+            && matches!(node_kind, node::Kind::Beacon)
+        {
             info!("STEP: publishing beacon node information");
 
             let s3_key = avalanche_ops::StorageNamespace::DiscoverReadyBeaconNode(
@@ -952,9 +956,8 @@ WantedBy=multi-user.target",
             fs::remove_file(&tmp_path)?;
         }
 
-        // for all network types
-        if matches!(node_kind, node::Kind::NonBeacon) {
-            thread::sleep(Duration::from_secs(1));
+        // for all network types, runs every 9-min
+        if (cnt < 5 || cnt % 3 == 0) && matches!(node_kind, node::Kind::NonBeacon) {
             info!("STEP: publishing non-beacon node information");
             let s3_key = avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNode(
                 id.clone(),
@@ -970,13 +973,56 @@ WantedBy=multi-user.target",
             fs::remove_file(&tmp_path)?;
         }
 
-        // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"
-        let db_dir_network =
-            match constants::NETWORK_ID_TO_NETWORK_NAME.get(&spec.avalanchego_config.network_id) {
+        // runs every 3-minute
+        info!("STEP: checking update artifacts event key");
+        let objects = rt
+            .block_on(
+                s3_manager.list_objects(
+                    &s3_bucket_name,
+                    Some(
+                        avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(id.clone())
+                            .encode(),
+                    ),
+                ),
+            )
+            .expect("failed to list events update artifacts event");
+        if objects.len() == 1 {
+            let obj = objects[0].clone();
+            let last_modified = obj.last_modified.unwrap();
+            let last_modified_unix = last_modified.as_secs_f64();
+
+            let now = SystemTime::now();
+            let now_unix = now
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("unexpected None duration_since")
+                .as_secs() as f64;
+
+            // requested for the last 5-min
+            let needs_update = (now_unix - last_modified_unix) > 300 as f64;
+            info!(
+                "last_modified_unix {}, now_unix {} [needs update: {}]",
+                last_modified_unix, now_unix, needs_update
+            );
+
+            // TODO
+            //
+        } else {
+            warn!(
+                "update artifacts event not found (seeing {} objects)",
+                objects.len()
+            );
+        }
+
+        // prints every 30-min
+        if cnt % 10 == 0 {
+            // e.g., "--pack-dir /avalanche-data/network-9999/v1.4.5"
+            let db_dir_network = match constants::NETWORK_ID_TO_NETWORK_NAME
+                .get(&spec.avalanchego_config.network_id)
+            {
                 Some(v) => String::from(*v),
                 None => format!("network-{}", spec.avalanchego_config.network_id),
             };
-        println!("[TO BACK UP DATA] /usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
+            println!("[TO BACK UP DATA] /usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
             reg.clone(),
             compress::DirEncoder::TarGzip.id(),
             spec.avalanchego_config.db_dir.clone(),
@@ -985,7 +1031,7 @@ WantedBy=multi-user.target",
             avalanche_ops::StorageNamespace::BackupsDir(id.clone()).encode(),
             compress::DirEncoder::TarGzip.ext(),
         );
-        println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
+            println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
             reg,
             compress::DirDecoder::TarGzip.id(),
             &s3_bucket_name,
@@ -993,11 +1039,11 @@ WantedBy=multi-user.target",
             compress::DirDecoder::TarGzip.ext(),
             spec.avalanchego_config.db_dir.clone(),
         );
+        }
 
-        // TODO: check upgrade artifacts by polling s3 /events directory
-        // e.g., we can update avalanche node software
-        info!("sleeping 10-min...");
-        thread::sleep(Duration::from_secs(600));
+        info!("sleeping 3-min...");
+        thread::sleep(Duration::from_secs(180));
+        cnt = cnt + 1;
     }
 }
 
