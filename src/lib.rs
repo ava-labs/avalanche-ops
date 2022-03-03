@@ -731,7 +731,8 @@ pub enum StorageNamespace {
     DiscoverReadyNonBeaconNode(String, node::Node),
 
     BackupsDir(String),
-    EventsDir(String),
+
+    EventsUpdateArtifactsDir(String),
 }
 
 impl StorageNamespace {
@@ -812,8 +813,11 @@ impl StorageNamespace {
             StorageNamespace::BackupsDir(id) => {
                 format!("{}/backups", id)
             }
-            StorageNamespace::EventsDir(id) => {
-                format!("{}/events", id)
+
+            // TODO: if non-empty and last modified delta is <5-min, trigger updates
+            // TODO: implement helper to add new artifacts
+            StorageNamespace::EventsUpdateArtifactsDir(id) => {
+                format!("{}/events/update-artifacts", id)
             }
         }
     }
