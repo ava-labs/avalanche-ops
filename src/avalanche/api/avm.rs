@@ -177,3 +177,43 @@ impl _GetBalanceResponse {
         })
     }
 }
+
+#[test]
+fn test_convert() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
+    let resp: _GetBalanceResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"balance\": \"299999999999900\",
+        \"utxoIDs\": [
+            {
+                \"txID\": \"WPQdyLNqHfiEKp4zcCpayRHYDVYuh1hqs9c1RqgZXS4VPgdvo\",
+                \"outputIndex\": 1
+            }
+        ]
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetBalanceResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetBalanceResult {
+            balance: Some(299999999999900),
+            utxo_ids: Some(vec![avax::UtxoId {
+                tx_id: Some(String::from(
+                    "WPQdyLNqHfiEKp4zcCpayRHYDVYuh1hqs9c1RqgZXS4VPgdvo",
+                )),
+                output_index: Some(1),
+            }]),
+        }),
+    };
+    assert_eq!(parsed, expected);
+}

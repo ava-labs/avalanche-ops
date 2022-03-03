@@ -97,7 +97,7 @@ impl _GetBalanceResponse {
     fn convert(&self) -> io::Result<GetBalanceResponse> {
         let result = match &self.result {
             Some(s) => {
-                let result = match u64::from_str_radix(s, 16) {
+                let result = match u64::from_str_radix(strip_0x(s), 16) {
                     Ok(v) => v,
                     Err(e) => {
                         return Err(Error::new(
@@ -116,4 +116,36 @@ impl _GetBalanceResponse {
             result,
         })
     }
+}
+
+fn strip_0x(s: &str) -> &str {
+    if &s[0..2] == "0x" {
+        &s[2..]
+    } else {
+        s
+    }
+}
+
+#[test]
+fn test_convert() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance
+    let resp: _GetBalanceResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"id\": 1,
+    \"result\": \"0x1388\"
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetBalanceResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(5000),
+    };
+    assert_eq!(parsed, expected);
 }

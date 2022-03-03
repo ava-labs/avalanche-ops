@@ -122,7 +122,7 @@ pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBa
     Ok(parsed)
 }
 
-/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 struct _GetBalanceResponse {
     jsonrpc: String,
@@ -131,7 +131,7 @@ struct _GetBalanceResponse {
     result: Option<_GetBalanceResult>,
 }
 
-/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 struct _GetBalanceResult {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -244,4 +244,58 @@ impl _GetBalanceResponse {
             result: Some(result),
         })
     }
+}
+
+#[test]
+fn test_convert() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+    let resp: _GetBalanceResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"balance\": \"20000000000000000\",
+        \"unlocked\": \"10000000000000000\",
+        \"lockedStakeable\": \"10000000000000000\",
+        \"lockedNotStakeable\": \"0\",
+        \"utxoIDs\": [
+            {
+                \"txID\": \"11111111111111111111111111111111LpoYY\",
+                \"outputIndex\": 1
+            },
+            {
+                \"txID\": \"11111111111111111111111111111111LpoYY\",
+                \"outputIndex\": 0
+            }
+        ]
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetBalanceResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetBalanceResult {
+            balance: Some(20000000000000000),
+            unlocked: Some(10000000000000000),
+            locked_stakeable: Some(10000000000000000),
+            locked_not_stakeable: Some(0),
+            utxo_ids: Some(vec![
+                avax::UtxoId {
+                    tx_id: Some(String::from("11111111111111111111111111111111LpoYY")),
+                    output_index: Some(1),
+                },
+                avax::UtxoId {
+                    tx_id: Some(String::from("11111111111111111111111111111111LpoYY")),
+                    output_index: Some(0),
+                },
+            ]),
+        }),
+    };
+    assert_eq!(parsed, expected);
 }
