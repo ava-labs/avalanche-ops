@@ -265,7 +265,8 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     let mut kms_cmk_arn: String = String::new();
     let mut s3_bucket_name: String = String::new();
     let mut cloudwatch_config_file_path: String = String::new();
-    let mut avalanche_bin: String = String::new();
+    let mut avalanched_bin_path: String = String::new();
+    let mut avalanche_bin_path: String = String::new();
     let mut avalanche_data_volume_path: String = String::new();
     for c in tags {
         let k = c.key().unwrap();
@@ -287,8 +288,11 @@ fn execute_run(log_level: &str) -> io::Result<()> {
             "CLOUDWATCH_CONFIG_FILE_PATH" => {
                 cloudwatch_config_file_path = v.to_string();
             }
-            "AVALANCHE_BIN" => {
-                avalanche_bin = v.to_string();
+            "AVALANCHED_BIN_PATH" => {
+                avalanched_bin_path = v.to_string();
+            }
+            "AVALANCHE_BIN_PATH" => {
+                avalanche_bin_path = v.to_string();
             }
             "AVALANCHE_DATA_VOLUME_PATH" => {
                 avalanche_data_volume_path = v.to_string();
@@ -318,8 +322,11 @@ fn execute_run(log_level: &str) -> io::Result<()> {
     if cloudwatch_config_file_path.is_empty() {
         panic!("'CLOUDWATCH_CONFIG_FILE_PATH' tag not found")
     }
-    if avalanche_bin.is_empty() {
-        panic!("'AVALANCHE_BIN' tag not found")
+    if avalanched_bin_path.is_empty() {
+        panic!("'AVALANCHED_BIN_PATH' tag not found")
+    }
+    if avalanche_bin_path.is_empty() {
+        panic!("'AVALANCHE_BIN_PATH' tag not found")
     }
     if avalanche_data_volume_path.is_empty() {
         panic!("'AVALANCHE_DATA_VOLUME_PATH' tag not found")
@@ -327,7 +334,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
 
     let envelope = envelope::Envelope::new(Some(kms_manager), Some(kms_cmk_arn));
 
-    if !Path::new(&avalanche_bin).exists() {
+    if !Path::new(&avalanche_bin_path).exists() {
         info!("STEP: downloading avalanche binary from S3");
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         rt.block_on(s3_manager.get_object(
@@ -338,17 +345,17 @@ fn execute_run(log_level: &str) -> io::Result<()> {
         .expect("failed get_object avalanche_bin_compressed_path");
         compress::unpack_file(
             &tmp_avalanche_bin_compressed_path,
-            &avalanche_bin,
+            &avalanche_bin_path,
             compress::Decoder::Zstd,
         )
         .expect("failed unpack_file avalanche_bin_compressed_path");
-        let f = File::open(&avalanche_bin).expect("failed to open avalanche_bin");
+        let f = File::open(&avalanche_bin_path).expect("failed to open avalanche_bin");
         f.set_permissions(PermissionsExt::from_mode(0o777))
             .expect("failed to set file permission for avalanche_bin");
         fs::remove_file(&tmp_avalanche_bin_compressed_path)?;
     }
 
-    let plugins_dir = get_plugins_dir(&avalanche_bin);
+    let plugins_dir = get_plugins_dir(&avalanche_bin_path);
     if !Path::new(&plugins_dir).exists() {
         info!("STEP: creating '{}' for plugins", plugins_dir);
         fs::create_dir_all(plugins_dir.clone()).unwrap();
@@ -361,7 +368,7 @@ fn execute_run(log_level: &str) -> io::Result<()> {
                     &avalanche_ops::StorageNamespace::PluginsDir(id.clone()).encode(),
                 )),
             ))
-            .unwrap();
+            .expect("failed list_objects PluginsDir");
         info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
             let s3_key = obj.key().expect("unexpected None s3 object");
@@ -885,7 +892,7 @@ StandardError=append:/var/log/avalanche/avalanche.log
 
 [Install]
 WantedBy=multi-user.target",
-        avalanche_bin,
+        avalanche_bin_path,
         spec.avalanchego_config.clone().config_file.unwrap(),
     );
     let mut avalanche_service_file = tempfile::NamedTempFile::new().unwrap();
@@ -998,14 +1005,84 @@ WantedBy=multi-user.target",
                 .as_secs() as f64;
 
             // requested for the last 5-min
-            let needs_update = (now_unix - last_modified_unix) > 300 as f64;
+            let needs_update = (now_unix - last_modified_unix) > 300_f64;
             info!(
                 "last_modified_unix {}, now_unix {} [needs update: {}]",
                 last_modified_unix, now_unix, needs_update
             );
 
-            // TODO
-            //
+            if needs_update {
+                info!("STEP: downloading avalanched binary from S3");
+                let tmp_avalanched_bin_path = random::tmp_path(15, Some(".zstd")).unwrap();
+                rt.block_on(s3_manager.get_object(
+                    &s3_bucket_name,
+                    &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalanchedBin(id.clone()).encode(),
+                    &tmp_avalanched_bin_path,
+                ))
+                .expect("failed get_object EventsUpdateArtifactsInstallDirAvalanchedBin");
+                let f = File::open(&tmp_avalanched_bin_path)
+                    .expect("failed to open EventsUpdateArtifactsInstallDirAvalanchedBin");
+                f.set_permissions(PermissionsExt::from_mode(0o777))
+                    .expect("failed to set file permission for EventsUpdateArtifactsInstallDirAvalanchedBin");
+                fs::copy(&tmp_avalanched_bin_path, &avalanched_bin_path)
+                    .expect("failed fs::copy avalanched file");
+
+                info!("STEP: downloading avalanche binary from S3");
+                let tmp_avalanche_bin_compressed_path =
+                    random::tmp_path(15, Some(".zstd")).unwrap();
+                rt.block_on(s3_manager.get_object(
+                    &s3_bucket_name,
+                    &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.clone()).encode(),
+                    &tmp_avalanche_bin_compressed_path,
+                ))
+                .expect("failed get_object EventsUpdateArtifactsInstallDirAvalancheBinCompressed");
+                compress::unpack_file(
+                    &tmp_avalanche_bin_compressed_path,
+                    &avalanche_bin_path,
+                    compress::Decoder::Zstd,
+                )
+                .expect("failed unpack_file avalanche_bin_compressed_path");
+                let f = File::open(&avalanche_bin_path).expect("failed to open avalanche_bin");
+                f.set_permissions(PermissionsExt::from_mode(0o777))
+                    .expect("failed to set file permission for avalanche_bin");
+                fs::remove_file(&tmp_avalanche_bin_compressed_path)?;
+
+                let plugins_dir = get_plugins_dir(&avalanche_bin_path);
+                if !Path::new(&plugins_dir).exists() {
+                    info!("STEP: creating '{}' for plugins", plugins_dir);
+                    fs::create_dir_all(plugins_dir.clone()).unwrap();
+                }
+
+                info!("STEP: downloading plugins from S3 (if any) to overwrite");
+                let objects = rt
+                    .block_on(s3_manager.list_objects(
+                        &s3_bucket_name,
+                        Some(s3::append_slash(
+                            &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(id).encode(),
+                        )),
+                    ))
+                    .expect("failed list_objects for EventsUpdateArtifactsInstallDirPluginsDir");
+                info!("listed {} plugins from S3", objects.len());
+                for obj in objects.iter() {
+                    let s3_key = obj.key().expect("unexpected None s3 object");
+                    let file_name = extract_filename(s3_key);
+                    let file_path = format!("{}/{}", plugins_dir, file_name);
+
+                    let tmp_path = random::tmp_path(15, None).unwrap();
+                    rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
+                        .expect("failed get_object plugin file");
+                    compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
+                    let f = File::open(file_path).expect("failed to open plugin file");
+                    f.set_permissions(PermissionsExt::from_mode(0o777))
+                        .expect("failed to set file permission");
+                    fs::remove_file(&tmp_path)?;
+                }
+
+                // updated the avalanched itself, so sleep for cloudwatch logs and restart
+                warn!("artifacts have been updated... will trigger avalanched restart by panic here...");
+                thread::sleep(Duration::from_secs(120));
+                panic!("panic avalanched to trigger restarts via systemd service!!!")
+            }
         } else {
             warn!(
                 "update artifacts event not found (seeing {} objects)",
@@ -1043,7 +1120,7 @@ WantedBy=multi-user.target",
 
         info!("sleeping 3-min...");
         thread::sleep(Duration::from_secs(180));
-        cnt = cnt + 1;
+        cnt += 1;
     }
 }
 
@@ -1152,7 +1229,7 @@ fn execute_download_backup(
         s3_bucket, s3_key, tmp_file_path
     );
     rt.block_on(s3_manager.get_object(s3_bucket, s3_key, tmp_file_path))
-        .unwrap();
+        .expect("failed get_object backup");
 
     info!(
         "STEP: unpack backup {} to {} with {}",

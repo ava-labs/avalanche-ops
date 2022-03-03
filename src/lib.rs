@@ -710,7 +710,6 @@ pub enum StorageNamespace {
     GenesisFile(String),
 
     AvalanchedBin(String),
-    AvalancheBin(String),
     AvalancheBinCompressed(String),
     PluginsDir(String),
 
@@ -732,12 +731,13 @@ pub enum StorageNamespace {
 
     BackupsDir(String),
 
-    /// TODO
     /// If this "event" file has been modified for the last x-min,
     /// avalanched triggers updates events based on the install artifacts
     /// in "EventsUpdateArtifactsInstallDir"
     EventsUpdateArtifactsEvent(String),
-    EventsUpdateArtifactsInstallDir(String),
+    EventsUpdateArtifactsInstallDirAvalanchedBin(String),
+    EventsUpdateArtifactsInstallDirAvalancheBinCompressed(String),
+    EventsUpdateArtifactsInstallDirPluginsDir(String),
 }
 
 impl StorageNamespace {
@@ -752,7 +752,6 @@ impl StorageNamespace {
             StorageNamespace::GenesisFile(id) => format!("{}/genesis.json", id),
 
             StorageNamespace::AvalanchedBin(id) => format!("{}/install/avalanched", id),
-            StorageNamespace::AvalancheBin(id) => format!("{}/install/avalanche", id),
             StorageNamespace::AvalancheBinCompressed(id) => {
                 format!("{}/install/avalanche.zstd", id)
             }
@@ -822,8 +821,14 @@ impl StorageNamespace {
             StorageNamespace::EventsUpdateArtifactsEvent(id) => {
                 format!("{}/events/update-artifacts/event", id)
             }
-            StorageNamespace::EventsUpdateArtifactsInstallDir(id) => {
-                format!("{}/events/update-artifacts/install", id)
+            StorageNamespace::EventsUpdateArtifactsInstallDirAvalanchedBin(id) => {
+                format!("{}/events/update-artifacts/install/avalanched", id)
+            }
+            StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id) => {
+                format!("{}/events/update-artifacts/install/avalanche.zstd", id)
+            }
+            StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(id) => {
+                format!("{}/events/update-artifacts/install/plugins", id)
             }
         }
     }

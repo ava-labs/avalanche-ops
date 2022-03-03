@@ -215,7 +215,7 @@ impl Manager {
                 return Ok(current_stack);
             }
 
-            cnt = cnt + 1;
+            cnt += 1;
         }
 
         return Err(Other {
