@@ -185,11 +185,23 @@ pub struct AvalancheGo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_config_dir: Option<String>,
 
-    /// TODO: for fastsync, document this
+    /// A comma seperated string of explicit nodeID and IPs
+    /// to contact for starting state sync. Useful for testing.
+    /// NOTE: Actual state data will be downloaded from nodes
+    /// specified in the C-Chain config, or the entire network
+    /// if no list specified there.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_sync_ids: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_sync_ips: Option<String>,
+
+    /// Continous profile flags
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_continuous_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_continuous_freq: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_continuous_max_files: Option<u32>,
 }
 
 impl Default for AvalancheGo {
@@ -249,6 +261,10 @@ impl AvalancheGo {
 
             state_sync_ids: None,
             state_sync_ips: None,
+
+            profile_continuous_enabled: None,
+            profile_continuous_freq: None,
+            profile_continuous_max_files: None,
         }
     }
 
@@ -430,6 +446,7 @@ impl AvalancheGo {
             }
         }
 
+        // staking
         if self.staking_enabled.is_some() && !self.staking_enabled.unwrap() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -449,6 +466,7 @@ impl AvalancheGo {
             ));
         }
 
+        // state sync
         if self.state_sync_ids.is_some() && self.state_sync_ips.is_none() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -459,6 +477,26 @@ impl AvalancheGo {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "non-empty 'state-sync-ips' but empty 'state-sync-ids'",
+            ));
+        }
+
+        // continuous profiles
+        if self.profile_continuous_enabled.is_some() && !self.profile_continuous_enabled.unwrap() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "'profile-continuous-enabled' must be true",
+            ));
+        }
+        if self.profile_continuous_freq.is_some() && self.profile_continuous_enabled.is_none() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "non-empty 'profile-continuous-freq' but empty 'profile-continuous-enabled'",
+            ));
+        }
+        if self.profile_continuous_max_files.is_some() && self.profile_continuous_enabled.is_none() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "non-empty 'profile-continuous-max-files' but empty 'profile-continuous-enabled'",
             ));
         }
 

@@ -159,7 +159,7 @@ fn create_default_spec_command() -> Command<'static> {
         .arg(
             Arg::new("AVALANCHEGO_STATE_SYNC_IDS") 
                 .long("avalanchego-state-sync-ids")
-                .help("Sets state-sync-ids for fast-sync")
+                .help("Sets explicit state-sync-ids for avalanchego")
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -167,7 +167,31 @@ fn create_default_spec_command() -> Command<'static> {
         .arg(
             Arg::new("AVALANCHEGO_STATE_SYNC_IPS") 
                 .long("avalanchego-state-sync-ips")
-                .help("Sets state-sync-ips for fast-sync")
+                .help("Sets explicit state-sync-ips for avalanchego")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_PROFILE_CONTINUOUS_ENABLED")
+                .long("avalanchego-profile-continuous-enabled")
+                .help("Sets profile-continuous-enabled for avalanchego")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_PROFILE_CONTINUOUS_FREQ")
+                .long("avalanchego-profile-continuous-freq")
+                .help("Sets profile-continuous-freq for avalanchego")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_PROFILE_CONTINUOUS_MAX_FILES")
+                .long("avalanchego-profile-continuous-max-files")
+                .help("Sets profile-continuous-max-files for avalanchego")
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
