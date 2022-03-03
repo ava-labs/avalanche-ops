@@ -122,12 +122,22 @@ impl Manager {
         );
 
         let start = Instant::now();
+        let mut cnt: u128 = 0;
         loop {
             let elapsed = start.elapsed();
             if elapsed.gt(&timeout) {
                 break;
             }
-            thread::sleep(interval);
+
+            let itv = {
+                if cnt > 0 {
+                    // first poll with no wait
+                    Duration::from_secs(1)
+                } else {
+                    interval
+                }
+            };
+            thread::sleep(itv);
 
             let ret = self
                 .cli
@@ -204,6 +214,8 @@ impl Manager {
                 );
                 return Ok(current_stack);
             }
+
+            cnt = cnt + 1;
         }
 
         return Err(Other {

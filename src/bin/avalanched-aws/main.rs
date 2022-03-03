@@ -932,7 +932,7 @@ WantedBy=multi-user.target",
     }
 
     info!("avalanched now periodically publishing node information...");
-    let mut cnt: i128 = 0;
+    let mut cnt: u128 = 0;
     loop {
         // to be downloaded in bootstrapping non-beacon nodes
         // for custom networks, runs every 9-min
