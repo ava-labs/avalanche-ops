@@ -904,11 +904,14 @@ WantedBy=multi-user.target",
         avalanche_service_file_path,
         "/etc/systemd/system/avalanche.service",
     )
-    .unwrap();
-    bash::run("sudo systemctl daemon-reload").unwrap();
-    bash::run("sudo systemctl disable avalanche.service").unwrap();
-    bash::run("sudo systemctl enable avalanche.service").unwrap();
-    bash::run("sudo systemctl start --no-block avalanche.service").unwrap();
+    .expect("failed to copy /etc/systemd/system/avalanche.service");
+    bash::run("sudo systemctl daemon-reload").expect("failed systemctl daemon-reload command");
+    bash::run("sudo systemctl disable avalanche.service")
+        .expect("failed systemctl disable command");
+    bash::run("sudo systemctl enable avalanche.service").expect("failed systemctl enable command");
+    // in case restarts...
+    bash::run("sudo systemctl restart --no-block avalanche.service")
+        .expect("failed systemctl restart command");
 
     // this can take awhile if loaded from backups or syncing from peers
     info!("'avalanched run' all success -- now waiting for local node liveness check");
@@ -1080,7 +1083,7 @@ WantedBy=multi-user.target",
 
                 // updated the avalanched itself, so sleep for cloudwatch logs and restart
                 warn!("artifacts have been updated... will trigger avalanched restart by panic here...");
-                thread::sleep(Duration::from_secs(120));
+                thread::sleep(Duration::from_secs(180)); // sleep to prevent duplicate updates
                 panic!("panic avalanched to trigger restarts via systemd service!!!")
             }
         } else {
