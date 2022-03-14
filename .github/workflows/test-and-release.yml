@@ -1,0 +1,248 @@
+name: Test and release
+
+# ref. https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  static_analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          components: rustfmt, clippy
+          override: true
+      - name: Check Rust version
+        run: rustc --version
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+      - name: Run static analysis tests
+        shell: bash
+        run: scripts/static-analysis.sh
+
+  unit_tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Check Rust version
+        run: rustc --version
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+      - name: Run unit tests
+        run: scripts/tests.unit.sh
+
+  compatibility_tests:
+    name: Compatibility tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Check Go version
+        run: go version
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Check Rust version
+        run: rustc --version
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+      - name: Run compatibility tests
+        run: scripts/tests.compatibility.sh
+
+  release:
+    name: Release ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    needs: [static_analysis, unit_tests, compatibility_tests]
+    strategy:
+      matrix:
+        job:
+          # https://doc.rust-lang.org/nightly/rustc/platform-support.html
+          - os: ubuntu-latest
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            platform: darwin
+            target: x86_64-apple-darwin
+
+          # TODO: NOT WORKING "aesv8-armx-linux64.S": No such file or directory"
+          # - os: ubuntu-latest
+          #   platform: linux
+          #   target: aarch64-unknown-linux-gnu
+
+          # TODO: NOT WORKING "openssl-sys-0.9.72/build/find_normal.rs:180:5"
+          # - os: macos-latest
+          #   platform: darwin
+          #   target: aarch64-apple-darwin
+          # - os: windows-latest
+          #   platform: win32
+          #   target: x86_64-pc-windows-msvc
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.job.target }}
+          override: true
+      - name: Check Rust version
+        run: rustc --version
+
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+
+      # TODO: add M1 builds/tests
+      # ref. https://github.com/gakonst/foundry/blob/708f48f8681fea3a42a34a0eed52090b3e37563e/.github/workflows/release.yml#L109
+      - name: Apple M1 setup
+        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+        run: |
+          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+
+      - name: Compile binaries
+        env:
+          RUSTFLAGS: -C link-args=-s
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --bin avalanche-ops-aws --bin avalanched-aws --bin dev-machine --bin subnetctl --target ${{ matrix.job.target }}
+
+      - name: Compress binaries
+        id: release_artifacts
+        env:
+          PLATFORM_NAME: ${{ matrix.job.platform }}
+          TARGET: ${{ matrix.job.target }}
+        shell: bash
+        run: |
+          if [ "$PLATFORM_NAME" == "linux" ]; then
+
+            ./target/${TARGET}/release/avalanche-ops-aws --help
+            cp ./target/${TARGET}/release/avalanche-ops-aws avalanche-ops-aws.${TARGET}
+            echo "::set-output name=file_name_avalanche_ops::avalanche-ops-aws.${TARGET}"
+            tar -czvf avalanche-ops-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-ops-aws
+            echo "::set-output name=file_name_avalanche_ops_tar_gz::avalanche-ops-aws_${TARGET}.tar.gz"
+
+            ./target/${TARGET}/release/avalanched-aws --help
+            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
+            echo "::set-output name=file_name_avalanched::avalanched-aws.${TARGET}"
+            tar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
+            echo "::set-output name=file_name_avalanched_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+
+            ./target/${TARGET}/release/dev-machine --help
+            cp ./target/${TARGET}/release/dev-machine dev-machine.${TARGET}
+            echo "::set-output name=file_name_dev_machine::dev-machine.${TARGET}"
+            tar -czvf dev-machine_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine
+            echo "::set-output name=file_name_dev_machine_tar_gz::dev-machine_${TARGET}.tar.gz"
+
+            ./target/${TARGET}/release/subnetctl --help
+            cp ./target/${TARGET}/release/subnetctl subnetctl.${TARGET}
+            echo "::set-output name=file_name_subnetctl::subnetctl.${TARGET}"
+            tar -czvf subnetctl_${TARGET}.tar.gz -C ./target/${TARGET}/release subnetctl
+            echo "::set-output name=file_name_subnetctl_tar_gz::subnetctl_${TARGET}.tar.gz"
+
+          elif [ "$PLATFORM_NAME" == "darwin" ]; then
+
+            cp ./target/${TARGET}/release/avalanche-ops-aws avalanche-ops-aws.${TARGET}
+            echo "::set-output name=file_name_avalanche_ops::avalanche-ops-aws.${TARGET}"
+            gtar -czvf avalanche-ops-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-ops-aws
+            echo "::set-output name=file_name_avalanche_ops_tar_gz::avalanche-ops-aws_${TARGET}.tar.gz"
+
+            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
+            echo "::set-output name=file_name_avalanched::avalanched-aws.${TARGET}"
+            gtar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
+            echo "::set-output name=file_name_avalanched_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+
+            cp ./target/${TARGET}/release/dev-machine dev-machine.${TARGET}
+            echo "::set-output name=file_name_dev_machine::dev-machine.${TARGET}"
+            gtar -czvf dev-machine_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine
+            echo "::set-output name=file_name_dev_machine_tar_gz::dev-machine_${TARGET}.tar.gz"
+
+            cp ./target/${TARGET}/release/subnetctl subnetctl.${TARGET}
+            echo "::set-output name=file_name_subnetctl::subnetctl.${TARGET}"
+            gtar -czvf subnetctl_${TARGET}.tar.gz -C ./target/${TARGET}/release subnetctl
+            echo "::set-output name=file_name_subnetctl_tar_gz::subnetctl_${TARGET}.tar.gz"
+
+          else
+
+            echo "skipping $PLATFORM_NAME"
+
+          fi
+
+      # release tip from latest commits
+      # https://github.com/softprops/action-gh-release
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+      - name: Release latest
+        uses: softprops/action-gh-release@v1
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          name: Latest release
+          tag_name: latest
+          prerelease: true
+          body: Latest builds from the last commit.
+          files: |
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_subnetctl }}
+            ${{ steps.release_artifacts.outputs.file_name_subnetctl_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_tar_gz }}
+
+      # release only for tags
+      # https://github.com/softprops/action-gh-release
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+      - name: Release tag
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          prerelease: true
+          body: Release builds for ${{ github.ref_name }}.
+          files: |
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_subnetctl }}
+            ${{ steps.release_artifacts.outputs.file_name_subnetctl_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_tar_gz }}

@@ -1,0 +1,225 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "IAM instance role"
+
+# takes about 3-minute
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+Parameters:
+  Id:
+    Type: String
+    Description: Unique identifier, prefix for all resources created below.
+
+  KmsCmkArn:
+    Type: String
+    Description: KMS CMK ARN that de/encrypts resources.
+
+  S3BucketName:
+    Type: String
+    Description: S3 bucket name to store.
+
+  S3BucketDbBackupName:
+    Type: String
+    Default: ""
+    Description: S3 bucket name to download backups from.
+
+Mappings:
+  ServicePrincipals:
+    aws-cn:
+      ec2: ec2.amazonaws.com.cn
+    aws:
+      ec2: ec2.amazonaws.com
+
+Conditions:
+  HasS3BucketDbBackupName:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: S3BucketDbBackupName
+          - ""
+
+Resources:
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["-", [!Ref Id, "instance-role"]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - Fn::FindInMap:
+                    - ServicePrincipals
+                    - Ref: AWS::Partition
+                    - ec2
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Path: /
+      Policies:
+        - PolicyName: avalanche-ops-instance-role-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances # to fetch tags
+                  - ec2:DescribeTags # to find network/resource information
+                  - ec2:DescribeVolumes # to wait for volume attachment
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt # to generate TLS key and encrypt
+                  - kms:GenerateDataKey* # to encrypt TLS key
+                  - kms:DescribeKey # to describe the CMK
+                Resource: { Ref: KmsCmkArn }
+              - Effect: Allow
+                Action:
+                  - s3:List*
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject # to download artifacts
+                  - s3:PutObject # to upload generated TLS keys
+                Resource:
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/install/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/pki/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/discover/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/discover/bootstrapping-beacon-nodes/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/discover/ready-beacon-nodes/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/discover/ready-non-beacon-nodes/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/backups/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/events/*",
+                      ],
+                    ]
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:PutRetentionPolicy
+                Resource:
+                  # Ref: http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-cloudwatch-logs
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}:log-stream:*"
+        - Fn::If:
+            - HasS3BucketDbBackupName
+            - PolicyName: avalanche-ops-instance-role-policy-for-db-backup
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - s3:GetObject # to download backups
+                    Resource:
+                      - !Join [
+                          "",
+                          [
+                            !Sub "arn:${AWS::Partition}:s3:::",
+                            !Ref S3BucketDbBackupName,
+                            "/*",
+                          ],
+                        ]
+            - !Ref AWS::NoValue
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Join ["-", [!Ref Id, "instance-profile"]]
+      Path: "/"
+      Roles:
+        - !Ref InstanceRole
+
+Outputs:
+  InstanceRoleArn:
+    Value: !GetAtt InstanceRole.Arn
+    Description: Role ARN
+
+  InstanceProfileArn:
+    Value: !GetAtt InstanceProfile.Arn
+    Description: Instance profile ARN

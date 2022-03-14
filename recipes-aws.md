@@ -1,0 +1,708 @@
+
+**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.1**
+
+# avalanche-ops-recipes
+
+Recipes for avalanche-ops https://github.com/ava-labs/avalanche-ops.
+
+## Step 1: Install `avalanche-ops`
+
+To download from release, visit https://github.com/ava-labs/avalanche-ops/releases.
+
+To compiles from source:
+
+```bash
+# if you don't have rust on your local
+curl -sSf https://sh.rustup.rs | sh -s -- -y \
+&& . ${HOME}/.cargo/env \
+&& rustc --version && cargo --version \
+&& which rustc && which cargo
+```
+
+```bash
+# to build binaries
+./script/build.release.sh
+```
+
+Make sure you have access to the following CLI:
+
+```bash
+avalanche-ops-aws -h
+```
+
+## Step 2: Install artifacts on your local machine
+
+In order to provision avalanche node, you need the software compiled for the remote machine's OS and architecture (e.g., if your server runs linux, then you need provide linux binaries to `avalanche-ops` commands).
+
+For instance, to download the latest `avalanchego` release:
+
+```bash
+# https://github.com/ava-labs/avalanchego/releases
+VERSION=1.7.7
+DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
+rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
+curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
+tar xzvf /tmp/avalanchego.tar.gz -C /tmp
+find /tmp/avalanchego-v${VERSION}
+```
+
+To cross-compile locally, run something like:
+
+```bash
+# https://github.com/FiloSottile/homebrew-musl-cross
+brew install FiloSottile/musl-cross/musl-cross
+ln -s /usr/local/opt/musl-cross/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+
+# -ldflags=-w to turn off DWARF debugging information
+# -ldflags=-s to disable generation of the Go symbol table
+rm -rf ${HOME}/go/src/github.com/ava-labs/avalanchego/build
+cd ${HOME}/go/src/github.com/ava-labs/avalanchego
+CC=x86_64-linux-musl-gcc \
+CXX=x86_64-linux-musl-g++ \
+CGO_ENABLED=1 \
+STATIC_COMPILATION=1 \
+GOOS=linux GOARCH=amd64 ./scripts/build.sh
+
+find ${HOME}/go/src/github.com/ava-labs/avalanchego/build
+ls -lah ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+```
+
+You also need the `avalanched` daemon to run in the remote machines, which can be downloaded from the release page https://github.com/ava-labs/avalanche-ops/releases.
+
+```bash
+# this does not work... manually download for now...
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+```
+
+## Step 3: Write avalanche-ops spec file
+
+Now you need to write specification of how networks/nodes are to be provisioned. Use `avalanche-ops-aws default-spec` to auto-generate the file with some defaults.
+
+```bash
+avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ./avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin [AVALANCHE_BUILD_DIR]/avalanchego \
+--install-artifacts-plugins-dir [AVALANCHE_BUILD_DIR]/plugins \
+--network-name custom \
+--avalanchego-log-level INFO \
+--spec-file-path spec.yaml
+```
+
+## Step 4: Apply the spec
+
+Apply the spec to create resources:
+
+```bash
+# make sure you have access to your AWS account
+ROLE_ARN=$(aws sts get-caller-identity --query Arn --output text);
+echo $ROLE_ARN
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text);
+echo ${ACCOUNT_ID}
+```
+
+```bash
+avalanche-ops-aws apply --spec-file-path spec.yaml
+avalanche-ops-aws delete --spec-file-path spec.yaml
+```
+
+Once `apply` command succeeds, the terminal outputs some helper commands to access the instances:
+
+```bash
+chmod 400 test.key
+# instance 'i-abc' (running, us-west-2a)
+ssh -o "StrictHostKeyChecking no" -i test.key ubuntu@52.41.144.41
+aws ssm start-session --region us-west-2 --target i-abc
+
+# in the machine, you can run something like this
+sudo tail -f /var/log/avalanched/avalanched.log
+sudo tail -f /var/log/avalanche/avalanche.log
+ls -lah /avalanche-data/
+
+# logs are available in CloudWatch
+# metrics are available in CloudWatch
+```
+
+## Step 5: Connect to MetaMask
+
+```bash
+# add custom network to MetaMask using the following chain ID and RPC
+cat [YOUR_SPEC_PATH] | grep metamask_rpc:
+cat [YOUR_SPEC_PATH] | grep chainId:
+
+# use pre-funded test keys
+cat [YOUR_SPEC_PATH] | grep private_key_hex:
+```
+
+## Step 6: Delete
+
+Make sure to delete the resources if you don't need them anymore:
+
+```bash
+avalanche-ops-aws delete --spec-file-path spec.yaml
+
+# add these if you don't need log groups
+# --delete-cloudwatch-log-group \
+# --delete-s3-objects
+```
+
+## Recipes
+
+- If `avalanche-ops-aws default-spec --spec-file-path` is **non-empty**, test ID is set based on the file name.
+- If `avalanche-ops-aws default-spec --spec-file-path` is **not specified (empty)**, test ID is auto-generated.
+
+### Custom network with NO initial database state
+
+```bash
+# to set the test ID "my-test-cluster"
+# use "--spec-file-path ~/my-test-cluster.yaml"
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name custom \
+--avalanchego-log-level DEBUG
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+```bash
+# to check balances
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws check-balances \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Custom network with NO initial database state, with Coreth EVM config file
+
+See https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config for more.
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--coreth-metrics-enabled \
+--coreth-continuous-profiler-enabled \
+--coreth-offline-pruning-enabled \
+--network-name custom \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Custom network with NO initial database state, with new install artifacts (trigger updates)
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name custom \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws update-artifacts \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Custom network with NO initial database state, with HTTP TLS enabled only for NLB DNS
+
+TODOs
+- Set up ACM CNAME with your DNS service (for subdomains).
+- Set up CNAME record to point to the NLB DNS.
+
+```bash
+# REPLACE THIS WITH YOURS
+ACM_CERT_ARN=arn:aws:acm:us-west-2:931867039610:certificate/ab473dd8-09dd-41a3-ab59-df53739bec0d
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--nlb-acm-certificate-arn $ACM_CERT_ARN \
+--network-name custom \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+```bash
+cat ${HOME}/test-custom-https-for-nlb.yaml \
+| grep cloudformation_asg_nlb_dns_name
+# Use "https://[NLB_DNS]:443" for web wallet
+```
+
+### Custom network with NO initial database state, with HTTP TLS enabled only for `avalanchego`
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name custom \
+--avalanchego-log-level INFO \
+--avalanchego-http-tls-enabled \
+--spec-file-path [YOUR_SPEC_PATH]
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Custom network with NO initial database state, with snow-machine
+
+See https://pkg.go.dev/github.com/ava-labs/snow-machine for more.
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-snow-machine-file-path ${HOME}/coreth.json \
+--network-name custom \
+---keys-to-generate 5 \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Custom network with initial database state
+
+TODO: network forking
+
+### Custom network with NO initial database state, with subnet-evm
+
+First, make sure you have `subnet-evm` installed in your local machine (for uploads). 
+
+Install the following:
+- https://github.com/ava-labs/subnet-evm
+- https://github.com/ava-labs/subnet-cli
+
+See ["install `subnet-evm` in the custom network"](./example-aws.md#optional-install-subnet-evm-in-the-custom-network) for demo.
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/subnet-cli
+go install -v .
+subnet-cli create VMID subnetevm
+# srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/subnetctl vm-id --name subnetevm
+# srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
+
+cd ${HOME}/go/src/github.com/ava-labs/subnet-evm
+CC=x86_64-linux-musl-gcc \
+CXX=x86_64-linux-musl-g++ \
+CGO_ENABLED=1 \
+STATIC_COMPILATION=1 \
+GOOS=linux GOARCH=amd64 ./scripts/build.sh \
+${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
+```
+
+```bash
+# TODO: pre-generate subnet ID
+# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
+# with real subnet ID from subnet-cli wizard
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name custom \
+--avalanchego-log-level INFO \
+--avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
+--enable-subnet-evm
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws check-balances --spec-file-path [YOUR_SPEC_PATH]
+```
+
+```bash
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+
+# to keep s3 objects + cloudwatch logs
+```
+
+Once the custom network is created, run the following commands to get the test key, RPC endpoints, and node IDs:
+
+```bash
+# make sure to pick the second "private_key_hex" or later keys
+# that has immediately unlocked P-chain balance
+cat [YOUR_SPEC_PATH] | grep private_key_hex:
+
+  private_key_hex: ...
+    private_key_hex: mykeyinhex
+    ...
+
+cat <<EOF > /tmp/test.key
+...
+EOF
+cat /tmp/test.key
+```
+
+```bash
+# to get HTTP RPC endpoints
+cat [YOUR_SPEC_PATH] | grep http_rpc:
+```
+
+```bash
+# to node IDs
+# cat [YOUR_SPEC_PATH] | grep node_id:
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws read-spec \
+--spec-file-path [YOUR_SPEC_PATH] \
+--node-ids
+```
+
+```bash
+# this will spend 2,000 AVAX
+# for custom networks, beacon nodes are already validate primary network
+# so, only non-beacon nodes will be added as validators
+subnet-cli add validator \
+--enable-prompt \
+--private-key-path=/tmp/test.key \
+--public-uri=[HTTP_RPC] \
+--node-ids="..." \
+--stake-amount=2000000000000 \
+--validate-reward-fee-percent=2
+
+subnet-cli wizard \
+--enable-prompt \
+--public-uri=[HTTP_RPC] \
+--private-key-path=/tmp/test.key \
+--vm-genesis-path=.../aops-custom-202203-h35WM6.subnet-evm.genesis.json \
+--vm-id=srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \
+--chain-name=subnetevm \
+--node-ids="..."
+```
+
+`apply` command will output the following. Use the following to get access to each EC2 instance:
+
+```bash
+chmod 400 .../aops-custom-202203-2SiZni-ec2-access.key
+# instance 'i-0745f9a8c2f7a11ae' (running, us-west-2b)
+ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@52.10.170.241
+aws ssm start-session --region us-west-2 --target i-0745f9a8c2f7a11ae
+# instance 'i-0e03a6819f1bbcd53' (running, us-west-2c)
+ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@52.10.70.244
+aws ssm start-session --region us-west-2 --target i-0e03a6819f1bbcd53
+
+chmod 400 .../aops-custom-202203-2SiZni-ec2-access.key
+# instance 'i-0755c83dd506bbb86' (running, us-west-2a)
+ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@35.166.119.11
+aws ssm start-session --region us-west-2 --target i-0755c83dd506bbb86
+# instance 'i-0b93f92dbcd1194ac' (running, us-west-2b)
+ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@52.39.135.248
+aws ssm start-session --region us-west-2 --target i-0b93f92dbcd1194ac
+
+```
+
+```bash
+# when "MTJJNXu7YxTsUKEZgE78Tz6jSHa8Ra2AowtnawQ7iNZTjAbhi" is the subnet ID from subnet-cli
+sudo systemctl cat avalanche
+/usr/local/bin/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy --version
+
+# to replace the avalanche configuration
+sudo cat /etc/avalanche.config.json
+cp /etc/avalanche.config.json /tmp/avalanche.config.json
+sed -i -- 's/hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf/MTJJNXu7YxTsUKEZgE78Tz6jSHa8Ra2AowtnawQ7iNZTjAbhi/g' /tmp/avalanche.config.json
+cat /tmp/avalanche.config.json
+sudo cp /tmp/avalanche.config.json /etc/avalanche.config.json
+
+sudo systemctl restart avalanche
+sleep 5
+sudo tail -200 /var/log/avalanche/avalanche.log | grep MTJJNXu7YxTsUKEZgE78Tz6jSHa8Ra2AowtnawQ7iNZTjAbhi
+
+# to check the status
+sudo find /var/log/avalanche/
+sudo tail -f /var/log/avalanche/avalanche.log
+
+# when "2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx" is the blockchain ID
+cat [YOUR_SPEC_PATH] | grep metamask_rpc:
+
+# use the blockchain ID for metamask RPC
+# for example, use the public IP of the validator node
+http://[PUBLIC_IP]:9650/ext/bc/2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx/rpc
+[HTTP_RPC]/ext/bc/2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx/rpc
+
+# check the logs
+sudo tail -f /var/log/avalanche/2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx.log
+```
+
+References
+- https://github.com/ava-labs/subnet-evm#run-subnet-cli-wizard
+- https://github.com/ava-labs/subnet-evm/blob/v0.1.1/scripts/run.sh
+- https://github.com/ava-labs/subnet-evm/blob/v0.1.1/runner/main.go
+
+TODOs
+- Support native P-chain API calls from `avalanche-ops`.
+  - Create subnet.
+  - Add subnet validator.
+  - Create blockchain.
+- Support subnet ID creation.
+- Support dynamic subnet whitelisting.
+
+### Fuji network with NO initial database state
+
+This will sync from peer (rather than downloading from S3):
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name fuji \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Fuji network with NO initial database state, with fast-sync
+
+This will fast-sync from peer (rather than downloading from S3):
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name fuji \
+--avalanchego-log-level INFO \
+--avalanchego-state-sync-ids ... \
+--avalanchego-state-sync-ips ... \
+--spec-file-path [YOUR_SPEC_PATH]
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Fuji network with initial database state
+
+```bash
+# list and sort by timestamp
+# this takes >40-min to complete...
+# TOOD: make this faster
+aws s3 ls --recursive --human-readable s3://avalanche-db-daily/testnet | sort
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--db-backup-s3-region us-east-1 \
+--db-backup-s3-bucket avalanche-db-daily \
+--db-backup-s3-key testnet-db-daily-02-26-2022-050001-tar.gz \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name fuji \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws read-spec \
+--spec-file-path [YOUR_SPEC_PATH]
+--instance-ids
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws read-spec \
+--spec-file-path [YOUR_SPEC_PATH]
+--public-ips
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws read-spec \
+--spec-file-path [YOUR_SPEC_PATH]
+--nlb-endpoint
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws read-spec \
+--spec-file-path [YOUR_SPEC_PATH]
+--http-endpoints
+
+cat $HOME/test-fuji-from-backup-db.yaml \
+| grep cloudformation_asg_nlb_dns_name
+# Use "https://[NLB_DNS]:443" for web wallet
+```
+
+### Main network with NO initial database state
+
+This will sync from peer (rather than downloading from S3):
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name mainnet \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+### Main network with initial database state
+
+```bash
+# list and sort by timestamp
+# this takes hours to complete...
+# TOOD: make this faster
+aws s3 ls --recursive --human-readable s3://avalanche-db-daily/mainnet | sort
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws default-spec \
+--region us-west-2 \
+--db-backup-s3-region us-east-1 \
+--db-backup-s3-bucket avalanche-db-daily \
+--db-backup-s3-key mainnet-db-daily-02-25-2022-050003-tar.gz \
+--install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
+--install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--network-name mainnet \
+--avalanchego-log-level INFO
+
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws apply --spec-file-path [YOUR_SPEC_PATH]
+
+# only if you want to delete s3 objects + cloudwatch logs
+cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+./target/release/avalanche-ops-aws delete \
+--delete-cloudwatch-log-group \
+--delete-s3-objects \
+--spec-file-path [YOUR_SPEC_PATH]
+```
+
+## FAQ: What if I want to control the systemd serviec manually?
+
+`avalanche-ops` can help you set up infrastructure, but you may want full control over avalanche nodes for some tweaks. You can disable all systemd services for `avalanche-ops` as follows:
+
+```bash
+sudo systemctl cat avalanched.service
+sudo systemctl status avalanched.service
+sudo systemctl stop avalanched.service
+sudo systemctl disable avalanched.service
+sudo journalctl -f -u avalanched.service
+sudo tail -f /var/log/avalanched/avalanched.log
+
+sudo systemctl cat avalanche.service
+sudo systemctl status avalanche.service
+sudo systemctl stop avalanche.service
+sudo systemctl disable avalanche.service
+sudo journalctl -f -u avalanche.service
+sudo tail -f /var/log/avalanche/avalanche.log
+```
