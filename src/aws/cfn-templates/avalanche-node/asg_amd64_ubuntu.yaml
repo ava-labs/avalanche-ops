@@ -17,7 +17,7 @@ Parameters:
 
   NodeKind:
     Type: String
-    AllowedValues: ["beacon", "non-beacon"]
+    AllowedValues: ["anchor", "non-anchor"]
     Description: Node kind.
 
   KmsCmkArn:
@@ -211,14 +211,14 @@ Conditions:
       - 4
 
   # only create 1 NLB once
-  # for both beacon- and non-beacon nodes
+  # for both anchor- and non-anchor nodes
   EmptyNlbTargetGroupArn:
     Fn::Equals:
       - Ref: NlbTargetGroupArn
       - ""
 
   # only create 1 HTTPs listener once
-  # for both beacon- and non-beacon nodes
+  # for both anchor- and non-anchor nodes
   HasNlbAcmCertificateArn:
     Fn::And:
       # EmptyNlbTargetGroupArn
