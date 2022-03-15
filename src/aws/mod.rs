@@ -117,7 +117,7 @@ pub struct Resources {
     pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
 
     /// CloudFormation stack name of Auto Scaling Group (ASG)
-    /// for beacon nodes.
+    /// for anchor nodes.
     /// None if mainnet.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -128,7 +128,7 @@ pub struct Resources {
     pub cloudformation_asg_beacon_nodes_logical_id: Option<String>,
 
     /// CloudFormation stack name of Auto Scaling Group (ASG)
-    /// for non-beacon nodes.
+    /// for non-anchor nodes.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_non_beacon_nodes: Option<String>,

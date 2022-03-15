@@ -48,8 +48,8 @@ pub struct Genesis {
     #[serde(rename = "initialStakedFunds", skip_serializing_if = "Option::is_none")]
     pub initial_staked_funds: Option<Vec<String>>,
     /// MUST BE non-empty for an existing network.
-    /// Non-beacon nodes request "GetAcceptedFrontier" from initial stakers
-    /// (not from specified beacon nodes).
+    /// Non-anchor nodes request "GetAcceptedFrontier" from initial stakers
+    /// (not from specified anchor nodes).
     #[serde(rename = "initialStakers", skip_serializing_if = "Option::is_none")]
     pub initial_stakers: Option<Vec<Staker>>,
 

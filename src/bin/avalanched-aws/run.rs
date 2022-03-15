@@ -583,7 +583,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
     }
 
     // mainnet/other pre-defined test nets have hard-coded beacon nodes
-    // thus no need for beacon nodes
+    // thus no need for anchor nodes
     if spec.avalanchego_config.is_custom_network() && matches!(node_kind, node::Kind::NonBeacon) {
         thread::sleep(Duration::from_secs(1));
         info!(
@@ -592,17 +592,17 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         );
 
         // "avalanche-ops" should always set up beacon nodes first
-        // so here we assume beacon nodes are already set up
+        // so here we assume anchor nodes are already set up
         // and their information is already available via shared,
         // remote storage for service discovery
-        // so that we block non-beacon nodes until beacon nodes are ready
+        // so that we block non-anchor nodes until beacon nodes are ready
         //
         // always send a new "list_objects" on remote storage
         // rather than relying on potentially stale (not via "spec")
         // in case the member lists for "beacon" nodes becomes stale
         // (e.g., machine replacement in "beacon" nodes ASG)
         //
-        // TODO: handle stale beacon nodes by heartbeats timestamps
+        // TODO: handle stale anchor nodes by heartbeats timestamps
         let target_nodes = spec
             .machine
             .beacon_nodes

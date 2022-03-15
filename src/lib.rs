@@ -33,13 +33,13 @@ pub mod dev;
 
 pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
 
-/// Default machine beacon nodes size.
+/// Default machine anchor nodes size.
 /// only required for custom networks
 pub const DEFAULT_MACHINE_BEACON_NODES: u32 = 2;
 pub const MIN_MACHINE_BEACON_NODES: u32 = 1;
 pub const MAX_MACHINE_BEACON_NODES: u32 = 10; // TODO: allow higher number?
 
-/// Default machine non-beacon nodes size.
+/// Default machine non-anchor nodes size.
 pub const DEFAULT_MACHINE_NON_BEACON_NODES: u32 = 2;
 pub const MIN_MACHINE_NON_BEACON_NODES: u32 = 1;
 pub const MAX_MACHINE_NON_BEACON_NODES: u32 = 200; // TODO: allow higher number?
@@ -930,7 +930,7 @@ pub enum StorageNamespace {
     Ec2AccessKeyCompressedEncrypted(String),
 
     /// Valid genesis file with initial stakers.
-    /// Only updated after beacon nodes become active.
+    /// Only updated after anchor nodes become active.
     GenesisFile(String),
 
     AvalanchedBin(String),

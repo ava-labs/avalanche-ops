@@ -703,7 +703,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
         println!();
 
-        // wait for beacon nodes to generate certs and node ID and post to remote storage
+        // wait for anchor nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
         let mut objects: Vec<Object>;
         loop {
@@ -774,9 +774,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
         let desired_capacity = spec.machine.non_beacon_nodes;
 
-        // we did not create beacon nodes for mainnet/* nodes
+        // we did not create anchor nodes for mainnet/* nodes
         // so no nlb creation before
-        // we create here for non-beacon nodes
+        // we create here for non-anchor nodes
         let need_to_create_nlb = aws_resources
             .cloudformation_asg_nlb_target_group_arn
             .is_none();
@@ -796,7 +796,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 ));
             };
         } else {
-            // already created for beacon nodes
+            // already created for anchor nodes
             asg_non_beacon_params.push(build_param(
                 "NlbTargetGroupArn",
                 &aws_resources
@@ -931,7 +931,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNodesDir(spec.id.clone())
             }
         };
-        // wait for non-beacon nodes to generate certs and node ID and post to remote storage
+        // wait for non-anchor nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
         let mut objects: Vec<Object>;
         loop {

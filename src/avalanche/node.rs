@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// Defines the node type.
-/// MUST BE either "beacon" or "non-beacon"
+/// MUST BE either "anchor" or "non-beacon"
 #[derive(Eq, PartialEq, Clone)]
 pub enum Kind {
     Beacon,
@@ -42,7 +42,7 @@ impl Kind {
     }
 }
 
-/// Represents each beacon/non-beacon node.
+/// Represents each anchor/non-beacon node.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Node {
@@ -84,7 +84,7 @@ impl Node {
         }
     }
 
-    /// Saves the current beacon node to disk
+    /// Saves the current anchor node to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing Node to '{}'", file_path);
