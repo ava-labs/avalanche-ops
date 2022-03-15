@@ -120,10 +120,10 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         panic!("'NODE_KIND' tag not found")
     }
     let node_kind = {
-        if _node_kind.eq("beacon") {
-            node::Kind::Beacon
+        if _node_kind.eq("anchor") {
+            node::Kind::Anchor
         } else {
-            node::Kind::NonBeacon
+            node::Kind::NonAnchor
         }
     };
     if kms_cmk_arn.is_empty() {
@@ -390,7 +390,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         {
             info!("STEP: publishing node information before db backup downloads");
             let s3_key = {
-                if matches!(node_kind, node::Kind::Beacon) {
+                if matches!(node_kind, node::Kind::Anchor) {
                     avalanche_ops::StorageNamespace::DiscoverProvisioningBeaconNode(
                         id.clone(),
                         local_node.clone(),
@@ -460,7 +460,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
     }
 
     if spec.avalanchego_config.is_custom_network()
-        && matches!(node_kind, node::Kind::Beacon)
+        && matches!(node_kind, node::Kind::Anchor)
         && spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
@@ -483,7 +483,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
 
         thread::sleep(Duration::from_secs(30));
         info!("STEP: waiting for all seed/bootstrapping beacon nodes to be ready");
-        let target_nodes = spec.machine.beacon_nodes.unwrap();
+        let target_nodes = spec.machine.anchor_nodes.unwrap();
         let mut objects: Vec<Object>;
         loop {
             thread::sleep(Duration::from_secs(20));
@@ -557,7 +557,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
     }
 
     if spec.avalanchego_config.is_custom_network()
-        && matches!(node_kind, node::Kind::NonBeacon)
+        && matches!(node_kind, node::Kind::NonAnchor)
         && spec.avalanchego_config.genesis.is_some()
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
@@ -584,7 +584,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
 
     // mainnet/other pre-defined test nets have hard-coded beacon nodes
     // thus no need for anchor nodes
-    if spec.avalanchego_config.is_custom_network() && matches!(node_kind, node::Kind::NonBeacon) {
+    if spec.avalanchego_config.is_custom_network() && matches!(node_kind, node::Kind::NonAnchor) {
         thread::sleep(Duration::from_secs(1));
         info!(
             "STEP: downloading beacon node information for network '{}'",
@@ -599,14 +599,14 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         //
         // always send a new "list_objects" on remote storage
         // rather than relying on potentially stale (not via "spec")
-        // in case the member lists for "beacon" nodes becomes stale
-        // (e.g., machine replacement in "beacon" nodes ASG)
+        // in case the member lists for "anchor" nodes becomes stale
+        // (e.g., machine replacement in "anchor" nodes ASG)
         //
         // TODO: handle stale anchor nodes by heartbeats timestamps
         let target_nodes = spec
             .machine
-            .beacon_nodes
-            .expect("unexpected None machine.beacon_nodes for custom network");
+            .anchor_nodes
+            .expect("unexpected None machine.anchor_nodes for custom network");
         let mut objects: Vec<Object>;
         loop {
             thread::sleep(Duration::from_secs(20));
@@ -798,7 +798,7 @@ WantedBy=multi-user.target",
         // for custom networks, runs every 9-min
         if (cnt < 5 || cnt % 3 == 0)
             && spec.avalanchego_config.is_custom_network()
-            && matches!(node_kind, node::Kind::Beacon)
+            && matches!(node_kind, node::Kind::Anchor)
         {
             info!("STEP: publishing beacon node information");
 
@@ -821,7 +821,7 @@ WantedBy=multi-user.target",
         }
 
         // for all network types, runs every 9-min
-        if (cnt < 5 || cnt % 3 == 0) && matches!(node_kind, node::Kind::NonBeacon) {
+        if (cnt < 5 || cnt % 3 == 0) && matches!(node_kind, node::Kind::NonAnchor) {
             info!("STEP: publishing non-beacon node information");
             let s3_key = avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNode(
                 id.clone(),

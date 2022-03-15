@@ -122,13 +122,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             Some(avalanche_ops::StackName::Vpc(spec.id.clone()).encode());
     }
     if spec.avalanchego_config.is_custom_network()
-        && aws_resources.cloudformation_asg_beacon_nodes.is_none()
+        && aws_resources.cloudformation_asg_anchor_nodes.is_none()
     {
-        aws_resources.cloudformation_asg_beacon_nodes =
+        aws_resources.cloudformation_asg_anchor_nodes =
             Some(avalanche_ops::StackName::AsgBeaconNodes(spec.id.clone()).encode());
     }
-    if aws_resources.cloudformation_asg_non_beacon_nodes.is_none() {
-        aws_resources.cloudformation_asg_non_beacon_nodes =
+    if aws_resources.cloudformation_asg_non_anchor_nodes.is_none() {
+        aws_resources.cloudformation_asg_non_anchor_nodes =
             Some(avalanche_ops::StackName::AsgNonBeaconNodes(spec.id.clone()).encode());
     }
     spec.aws_resources = Some(aws_resources.clone());
@@ -555,9 +555,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     // TODO: support bootstrap from existing DB for beacon nodes
     let mut current_nodes: Vec<node::Node> = Vec::new();
-    if spec.machine.beacon_nodes.unwrap_or(0) > 0
+    if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && aws_resources
-            .cloudformation_asg_beacon_nodes_logical_id
+            .cloudformation_asg_anchor_nodes_logical_id
             .is_none()
     {
         execute!(
@@ -568,20 +568,20 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         )?;
 
         // TODO: support other platforms
-        let cloudformation_asg_beacon_nodes_yaml =
+        let cloudformation_asg_anchor_nodes_yaml =
             Asset::get("src/aws/cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml").unwrap();
-        let cloudformation_asg_beacon_nodes_tmpl =
-            std::str::from_utf8(cloudformation_asg_beacon_nodes_yaml.data.as_ref()).unwrap();
-        let cloudformation_asg_beacon_nodes_stack_name = aws_resources
-            .cloudformation_asg_beacon_nodes
+        let cloudformation_asg_anchor_nodes_tmpl =
+            std::str::from_utf8(cloudformation_asg_anchor_nodes_yaml.data.as_ref()).unwrap();
+        let cloudformation_asg_anchor_nodes_stack_name = aws_resources
+            .cloudformation_asg_anchor_nodes
             .clone()
             .unwrap();
 
-        let desired_capacity = spec.machine.beacon_nodes.unwrap();
+        let desired_capacity = spec.machine.anchor_nodes.unwrap();
 
         // must deep-copy as shared with other node kind
         let mut asg_beacon_params = asg_parameters.clone();
-        asg_beacon_params.push(build_param("NodeKind", "beacon"));
+        asg_beacon_params.push(build_param("NodeKind", "anchor"));
         asg_beacon_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
@@ -594,10 +594,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         };
 
         rt.block_on(cloudformation_manager.create_stack(
-            cloudformation_asg_beacon_nodes_stack_name.as_str(),
+            cloudformation_asg_anchor_nodes_stack_name.as_str(),
             None,
             OnFailure::Delete,
-            cloudformation_asg_beacon_nodes_tmpl,
+            cloudformation_asg_anchor_nodes_tmpl,
             Some(Vec::from([
                 Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
@@ -613,7 +613,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         thread::sleep(Duration::from_secs(30));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
-                cloudformation_asg_beacon_nodes_stack_name.as_str(),
+                cloudformation_asg_anchor_nodes_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(wait_secs),
                 Duration::from_secs(30),
@@ -625,7 +625,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             let v = o.output_value.unwrap();
             info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("AsgLogicalId") {
-                aws_resources.cloudformation_asg_beacon_nodes_logical_id = Some(v);
+                aws_resources.cloudformation_asg_anchor_nodes_logical_id = Some(v);
                 continue;
             }
             if k.eq("NlbArn") {
@@ -642,12 +642,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
         }
         if aws_resources
-            .cloudformation_asg_beacon_nodes_logical_id
+            .cloudformation_asg_anchor_nodes_logical_id
             .is_none()
         {
             return Err(Error::new(
                 ErrorKind::Other,
-                "aws_resources.cloudformation_asg_beacon_nodes_logical_id not found",
+                "aws_resources.cloudformation_asg_anchor_nodes_logical_id not found",
             ));
         }
         if aws_resources.cloudformation_asg_nlb_arn.is_none() {
@@ -673,11 +673,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
 
         let asg_name = aws_resources
-            .cloudformation_asg_beacon_nodes_logical_id
+            .cloudformation_asg_anchor_nodes_logical_id
             .clone()
             .unwrap();
         let mut droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
-        let target_nodes = spec.machine.beacon_nodes.unwrap();
+        let target_nodes = spec.machine.anchor_nodes.unwrap();
         if (droplets.len() as u32) < target_nodes {
             // TODO: better retries
             thread::sleep(Duration::from_secs(30));
@@ -753,7 +753,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     }
 
     if aws_resources
-        .cloudformation_asg_non_beacon_nodes_logical_id
+        .cloudformation_asg_non_anchor_nodes_logical_id
         .is_none()
     {
         execute!(
@@ -763,16 +763,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ResetColor
         )?;
 
-        let cloudformation_asg_non_beacon_nodes_yaml =
+        let cloudformation_asg_non_anchor_nodes_yaml =
             Asset::get("src/aws/cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml").unwrap();
-        let cloudformation_asg_non_beacon_nodes_tmpl =
-            std::str::from_utf8(cloudformation_asg_non_beacon_nodes_yaml.data.as_ref()).unwrap();
-        let cloudformation_asg_non_beacon_nodes_stack_name = aws_resources
-            .cloudformation_asg_non_beacon_nodes
+        let cloudformation_asg_non_anchor_nodes_tmpl =
+            std::str::from_utf8(cloudformation_asg_non_anchor_nodes_yaml.data.as_ref()).unwrap();
+        let cloudformation_asg_non_anchor_nodes_stack_name = aws_resources
+            .cloudformation_asg_non_anchor_nodes
             .clone()
             .unwrap();
 
-        let desired_capacity = spec.machine.non_beacon_nodes;
+        let desired_capacity = spec.machine.non_anchor_nodes;
 
         // we did not create anchor nodes for mainnet/* nodes
         // so no nlb creation before
@@ -782,22 +782,22 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .is_none();
 
         // must deep-copy as shared with other node kind
-        let mut asg_non_beacon_params = asg_parameters.clone();
-        asg_non_beacon_params.push(build_param("NodeKind", "non-beacon"));
-        asg_non_beacon_params.push(build_param(
+        let mut asg_non_anchor_params = asg_parameters.clone();
+        asg_non_anchor_params.push(build_param("NodeKind", "non-anchor"));
+        asg_non_anchor_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
         if need_to_create_nlb {
             if aws_resources.nlb_acm_certificate_arn.is_some() {
-                asg_non_beacon_params.push(build_param(
+                asg_non_anchor_params.push(build_param(
                     "NlbAcmCertificateArn",
                     &aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
                 ));
             };
         } else {
             // already created for anchor nodes
-            asg_non_beacon_params.push(build_param(
+            asg_non_anchor_params.push(build_param(
                 "NlbTargetGroupArn",
                 &aws_resources
                     .cloudformation_asg_nlb_target_group_arn
@@ -807,14 +807,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
 
         rt.block_on(cloudformation_manager.create_stack(
-            cloudformation_asg_non_beacon_nodes_stack_name.as_str(),
+            cloudformation_asg_non_anchor_nodes_stack_name.as_str(),
             None,
             OnFailure::Delete,
-            cloudformation_asg_non_beacon_nodes_tmpl,
+            cloudformation_asg_non_anchor_nodes_tmpl,
             Some(Vec::from([
                 Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
-            Some(asg_non_beacon_params),
+            Some(asg_non_anchor_params),
         ))
         .unwrap();
 
@@ -825,7 +825,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         thread::sleep(Duration::from_secs(30));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
-                cloudformation_asg_non_beacon_nodes_stack_name.as_str(),
+                cloudformation_asg_non_anchor_nodes_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(wait_secs),
                 Duration::from_secs(30),
@@ -837,7 +837,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             let v = o.output_value.unwrap();
             info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("AsgLogicalId") {
-                aws_resources.cloudformation_asg_non_beacon_nodes_logical_id = Some(v);
+                aws_resources.cloudformation_asg_non_anchor_nodes_logical_id = Some(v);
                 continue;
             }
             if need_to_create_nlb {
@@ -856,12 +856,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
         }
         if aws_resources
-            .cloudformation_asg_non_beacon_nodes_logical_id
+            .cloudformation_asg_non_anchor_nodes_logical_id
             .is_none()
         {
             return Err(Error::new(
                 ErrorKind::Other,
-                "aws_resources.cloudformation_asg_non_beacon_nodes_logical_id not found",
+                "aws_resources.cloudformation_asg_non_anchor_nodes_logical_id not found",
             ));
         }
         if need_to_create_nlb {
@@ -891,11 +891,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         let asg_name = aws_resources
-            .cloudformation_asg_non_beacon_nodes_logical_id
+            .cloudformation_asg_non_anchor_nodes_logical_id
             .clone()
-            .expect("unexpected None cloudformation_asg_non_beacon_nodes_logical_id");
+            .expect("unexpected None cloudformation_asg_non_anchor_nodes_logical_id");
         let mut droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
-        let target_nodes = spec.machine.non_beacon_nodes;
+        let target_nodes = spec.machine.non_anchor_nodes;
         if (droplets.len() as u32) < target_nodes {
             // TODO: better retries
             thread::sleep(Duration::from_secs(30));
@@ -953,9 +953,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let non_beacon_node =
+            let non_anchor_node =
                 avalanche_ops::StorageNamespace::parse_node_from_path(s3_key).unwrap();
-            current_nodes.push(non_beacon_node.clone());
+            current_nodes.push(non_anchor_node.clone());
         }
         spec.current_nodes = Some(current_nodes.clone());
         spec.aws_resources = Some(aws_resources.clone());

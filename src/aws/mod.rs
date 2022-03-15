@@ -121,21 +121,21 @@ pub struct Resources {
     /// None if mainnet.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_beacon_nodes: Option<String>,
+    pub cloudformation_asg_anchor_nodes: Option<String>,
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_beacon_nodes_logical_id: Option<String>,
+    pub cloudformation_asg_anchor_nodes_logical_id: Option<String>,
 
     /// CloudFormation stack name of Auto Scaling Group (ASG)
     /// for non-anchor nodes.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_non_beacon_nodes: Option<String>,
+    pub cloudformation_asg_non_anchor_nodes: Option<String>,
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_non_beacon_nodes_logical_id: Option<String>,
+    pub cloudformation_asg_non_anchor_nodes_logical_id: Option<String>,
 
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
@@ -188,11 +188,11 @@ impl Resources {
             cloudformation_vpc_security_group_id: None,
             cloudformation_vpc_public_subnet_ids: None,
 
-            cloudformation_asg_beacon_nodes: None,
-            cloudformation_asg_beacon_nodes_logical_id: None,
+            cloudformation_asg_anchor_nodes: None,
+            cloudformation_asg_anchor_nodes_logical_id: None,
 
-            cloudformation_asg_non_beacon_nodes: None,
-            cloudformation_asg_non_beacon_nodes_logical_id: None,
+            cloudformation_asg_non_anchor_nodes: None,
+            cloudformation_asg_non_anchor_nodes_logical_id: None,
 
             cloudformation_asg_nlb_arn: None,
             cloudformation_asg_nlb_target_group_arn: None,
