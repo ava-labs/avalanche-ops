@@ -5,7 +5,7 @@
 
 # Avalanche Ops
 
-A **single command to launch Avalanche nodes from scratch that joins any network of choice (e.g., test, fuji, main) or creates a custom Avalanche network**. Provisions all resources required to run a node or network with recommended setups (configurable).
+A **single command to launch Avalanche nodes from scratch that joins any network of choice (e.g., test, fuji, main) or create a custom Avalanche network**. Provisions all resources required to run a node or network with recommended setups (configurable).
 
 Distributed systems are full of subtle edge cases. The fact that such event or bug may only emerge under special circumstances warrants exhaustive test coverage beyond simple unit testing. Furthermore, the lack of tests slows down software release process, let alone long-term architectural changes.
 
