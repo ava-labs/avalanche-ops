@@ -234,7 +234,7 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete ASG for non-beacon nodes\n"),
+            Print("\n\n\nSTEP: triggering delete ASG for non-anchor nodes\n"),
             ResetColor
         )?;
 
@@ -255,7 +255,7 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: triggering delete ASG for anchor nodes\n"),
             ResetColor
         )?;
 
@@ -275,7 +275,7 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete ASG for non-beacon nodes\n"),
+            Print("\n\n\nSTEP: confirming delete ASG for non-anchor nodes\n"),
             ResetColor
         )?;
 
@@ -305,7 +305,7 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: confirming delete ASG for anchor nodes\n"),
             ResetColor
         )?;
 

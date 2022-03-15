@@ -219,8 +219,8 @@ impl StackName {
         match self {
             StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
             StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::AsgBeaconNodes(id) => format!("{}-asg-beacon-nodes", id),
-            StackName::AsgNonBeaconNodes(id) => format!("{}-asg-non-beacon-nodes", id),
+            StackName::AsgBeaconNodes(id) => format!("{}-asg-anchor-nodes", id),
+            StackName::AsgNonBeaconNodes(id) => format!("{}-asg-non-anchor-nodes", id),
         }
     }
 }
@@ -985,54 +985,54 @@ impl StorageNamespace {
             }
 
             StorageNamespace::DiscoverProvisioningBeaconNodesDir(id) => {
-                format!("{}/discover/provisioning-non-beacon-nodes", id)
+                format!("{}/discover/provisioning-non-anchor-nodes", id)
             }
             StorageNamespace::DiscoverProvisioningBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/provisioning-non-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
             StorageNamespace::DiscoverProvisioningNonBeaconNodesDir(id) => {
-                format!("{}/discover/provisioning-non-beacon-nodes", id)
+                format!("{}/discover/provisioning-non-anchor-nodes", id)
             }
             StorageNamespace::DiscoverProvisioningNonBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/provisioning-non-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
 
             StorageNamespace::DiscoverBootstrappingBeaconNodesDir(id) => {
-                format!("{}/discover/bootstrapping-beacon-nodes", id)
+                format!("{}/discover/bootstrapping-anchor-nodes", id)
             }
             StorageNamespace::DiscoverBootstrappingBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/bootstrapping-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/bootstrapping-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
 
             StorageNamespace::DiscoverReadyBeaconNodesDir(id) => {
-                format!("{}/discover/ready-beacon-nodes", id)
+                format!("{}/discover/ready-anchor-nodes", id)
             }
             StorageNamespace::DiscoverReadyBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/ready-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/ready-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
             StorageNamespace::DiscoverReadyNonBeaconNodesDir(id) => {
-                format!("{}/discover/ready-non-beacon-nodes", id)
+                format!("{}/discover/ready-non-anchor-nodes", id)
             }
             StorageNamespace::DiscoverReadyNonBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/ready-non-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/ready-non-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }

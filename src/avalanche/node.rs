@@ -42,7 +42,7 @@ impl Kind {
     }
 }
 
-/// Represents each anchor/non-beacon node.
+/// Represents each anchor/non-anchor node.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Node {
@@ -157,7 +157,7 @@ impl Node {
 #[test]
 fn test_node() {
     let d = r#"
-kind: beacon
+kind: anchor
 machine_id: i-123123
 node_id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
 public_ip: 1.2.3.4

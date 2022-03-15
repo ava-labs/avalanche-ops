@@ -553,7 +553,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ));
     }
 
-    // TODO: support bootstrap from existing DB for beacon nodes
+    // TODO: support bootstrap from existing DB for anchor nodes
     let mut current_nodes: Vec<node::Node> = Vec::new();
     if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && aws_resources
@@ -563,7 +563,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: create ASG for anchor nodes\n"),
             ResetColor
         )?;
 
@@ -580,14 +580,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let desired_capacity = spec.machine.anchor_nodes.unwrap();
 
         // must deep-copy as shared with other node kind
-        let mut asg_beacon_params = asg_parameters.clone();
-        asg_beacon_params.push(build_param("NodeKind", "anchor"));
-        asg_beacon_params.push(build_param(
+        let mut asg_anchor_params = asg_parameters.clone();
+        asg_anchor_params.push(build_param("NodeKind", "anchor"));
+        asg_anchor_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
         if aws_resources.nlb_acm_certificate_arn.is_some() {
-            asg_beacon_params.push(build_param(
+            asg_anchor_params.push(build_param(
                 "NlbAcmCertificateArn",
                 &aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
             ));
@@ -601,7 +601,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             Some(Vec::from([
                 Tag::builder().key("KIND").value("avalanche-ops").build(),
             ])),
-            Some(asg_beacon_params),
+            Some(asg_anchor_params),
         ))
         .unwrap();
 
@@ -722,7 +722,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 )
                 .unwrap();
             info!(
-                "{} beacon nodes are bootstrapped and ready (expecting {} nodes)",
+                "{} anchor nodes are bootstrapped and ready (expecting {} nodes)",
                 objects.len(),
                 target_nodes
             );
@@ -733,9 +733,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
-            let beacon_node =
+            let anchor_node =
                 avalanche_ops::StorageNamespace::parse_node_from_path(s3_key).unwrap();
-            current_nodes.push(beacon_node.clone());
+            current_nodes.push(anchor_node.clone());
         }
 
         spec.aws_resources = Some(aws_resources.clone());
@@ -748,7 +748,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ))
         .unwrap();
 
-        info!("waiting for beacon nodes bootstrap and ready (to be safe)");
+        info!("waiting for anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(15));
     }
 
@@ -759,7 +759,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create ASG for non-beacon nodes\n"),
+            Print("\n\n\nSTEP: create ASG for non-anchor nodes\n"),
             ResetColor
         )?;
 
@@ -943,7 +943,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 ))
                 .unwrap();
             info!(
-                "{} non-beacon nodes are ready (expecting {} nodes)",
+                "{} non-anchor nodes are ready (expecting {} nodes)",
                 objects.len(),
                 target_nodes
             );
@@ -976,12 +976,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             spec.sync(spec_file_path)?;
             println!();
             warn!(
-                "non-beacon nodes are downloading db backups, can take awhile, check back later..."
+                "non-anchor nodes are downloading db backups, can take awhile, check back later..."
             );
             return Ok(());
         }
 
-        info!("waiting for non-beacon nodes bootstrap and ready (to be safe)");
+        info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));
     }
     spec.current_nodes = Some(current_nodes.clone());
