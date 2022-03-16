@@ -458,54 +458,53 @@ subnet-cli wizard \
 `apply` command will output the following. Use the following to get access to each EC2 instance:
 
 ```bash
-chmod 400 .../aops-custom-202203-2SiZni-ec2-access.key
-# instance 'i-0745f9a8c2f7a11ae' (running, us-west-2b)
-ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@52.10.170.241
-aws ssm start-session --region us-west-2 --target i-0745f9a8c2f7a11ae
-# instance 'i-0e03a6819f1bbcd53' (running, us-west-2c)
-ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@52.10.70.244
-aws ssm start-session --region us-west-2 --target i-0e03a6819f1bbcd53
+chmod 400 /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key
+# instance 'i-05f6c2cc7e7d619fc' (running, us-west-2a)
+ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@18.236.145.200
+aws ssm start-session --region us-west-2 --target i-05f6c2cc7e7d619fc
+# instance 'i-081a2e02547a9b1fb' (running, us-west-2b)
+ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@34.221.104.130
+aws ssm start-session --region us-west-2 --target i-081a2e02547a9b1fb
 
-chmod 400 .../aops-custom-202203-2SiZni-ec2-access.key
-# instance 'i-0755c83dd506bbb86' (running, us-west-2a)
-ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@35.166.119.11
-aws ssm start-session --region us-west-2 --target i-0755c83dd506bbb86
-# instance 'i-0b93f92dbcd1194ac' (running, us-west-2b)
-ssh -o "StrictHostKeyChecking no" -i .../aops-custom-202203-2SiZni-ec2-access.key ubuntu@52.39.135.248
-aws ssm start-session --region us-west-2 --target i-0b93f92dbcd1194ac
-
+chmod 400 /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key
+# instance 'i-0f738acc6c0ecdf1c' (running, us-west-2b)
+ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@52.37.128.232
+aws ssm start-session --region us-west-2 --target i-0f738acc6c0ecdf1c
+# instance 'i-073a5a49d0f92a111' (pending, us-west-2c)
+ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@34.221.58.58
+aws ssm start-session --region us-west-2 --target i-073a5a49d0f92a111
 ```
 
 ```bash
-# when "MTJJNXu7YxTsUKEZgE78Tz6jSHa8Ra2AowtnawQ7iNZTjAbhi" is the subnet ID from subnet-cli
+# when "2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7" is the subnet ID from subnet-cli
 sudo systemctl cat avalanche
 /usr/local/bin/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy --version
 
 # to replace the avalanche configuration
 sudo cat /etc/avalanche.config.json
 cp /etc/avalanche.config.json /tmp/avalanche.config.json
-sed -i -- 's/hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf/MTJJNXu7YxTsUKEZgE78Tz6jSHa8Ra2AowtnawQ7iNZTjAbhi/g' /tmp/avalanche.config.json
+sed -i -- 's/hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf/2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7/g' /tmp/avalanche.config.json
 cat /tmp/avalanche.config.json
 sudo cp /tmp/avalanche.config.json /etc/avalanche.config.json
 
 sudo systemctl restart avalanche
 sleep 5
-sudo tail -200 /var/log/avalanche/avalanche.log | grep MTJJNXu7YxTsUKEZgE78Tz6jSHa8Ra2AowtnawQ7iNZTjAbhi
+sudo tail -200 /var/log/avalanche/avalanche.log | grep 2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7
 
 # to check the status
 sudo find /var/log/avalanche/
 sudo tail -f /var/log/avalanche/avalanche.log
 
-# when "2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx" is the blockchain ID
+# when "tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8" is the blockchain ID
 cat [YOUR_SPEC_PATH] | grep metamask_rpc:
 
 # use the blockchain ID for metamask RPC
 # for example, use the public IP of the validator node
-http://[PUBLIC_IP]:9650/ext/bc/2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx/rpc
-[HTTP_RPC]/ext/bc/2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx/rpc
+http://[PUBLIC_IP]:9650/ext/bc/tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8/rpc
+[HTTP_RPC]/ext/bc/tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8/rpc
 
 # check the logs
-sudo tail -f /var/log/avalanche/2bpoqY48AMKvWsUoHvhxwqQTwySD69ZPMMnpjQEuMeqR6z3MYx.log
+sudo tail -f /var/log/avalanche/tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8.log
 ```
 
 References
