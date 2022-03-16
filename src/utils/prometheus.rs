@@ -596,6 +596,7 @@ fn test_parse_avalanchego_metrics() {
             timestamp: None,
         }
     );
+
     assert_eq!(
         match_metric(&s.metrics, |s| s.metric
             == "avalanche_network_codec_put_compress_time_sum"),
@@ -606,8 +607,11 @@ fn test_parse_avalanchego_metrics() {
             timestamp: None,
         }
     );
+
+    let mv = match_metric(&s.metrics, |s| s.metric == "avalanche_db_read_size_sum");
+    assert_eq!(mv.value.to_f64(), 92685.0);
     assert_eq!(
-        match_metric(&s.metrics, |s| s.metric == "avalanche_db_read_size_sum"),
+        mv,
         &Metric {
             metric: "avalanche_db_read_size_sum".to_string(),
             value: Value::Gauge(92685.0),
@@ -615,6 +619,7 @@ fn test_parse_avalanchego_metrics() {
             timestamp: None,
         }
     );
+
     assert_eq!(
         match_metric(&s.metrics, |s| s.metric == "avalanche_db_new_iterator_sum"),
         &Metric {
@@ -624,6 +629,7 @@ fn test_parse_avalanchego_metrics() {
             timestamp: None,
         }
     );
+
     assert_eq!(
         match_metric(&s.metrics, |s| s.metric
             == "avalanche_C_handler_get_accepted_frontier_sum"),
@@ -634,6 +640,7 @@ fn test_parse_avalanchego_metrics() {
             timestamp: None,
         }
     );
+
     assert_eq!(
         match_metric(&s.metrics, |s| {
             s.metric == "avalanche_network_bandwidth_throttler_inbound_acquire_latency_sum"
@@ -645,6 +652,7 @@ fn test_parse_avalanchego_metrics() {
             timestamp: None,
         }
     );
+
     assert_eq!(
         match_metric(&s.metrics, |s| s.metric
             == "avalanche_network_peerlist_compression_saved_sent_bytes_sum"),
@@ -655,6 +663,7 @@ fn test_parse_avalanchego_metrics() {
             timestamp: None,
         }
     );
+
     assert_eq!(
         match_metric(&s.metrics, |s| s.metric
             == "avalanche_network_peerlist_received_bytes"),
