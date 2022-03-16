@@ -6,12 +6,15 @@ use std::{
     string::String,
 };
 
+use aws_sdk_cloudwatch::{
+    model::MetricDatum, types::SdkError as MetricsSdkError, Client as MetricsClient,
+};
 use aws_sdk_cloudwatchlogs::{
     error::{
         CreateLogGroupError, CreateLogGroupErrorKind, DeleteLogGroupError, DeleteLogGroupErrorKind,
     },
-    types::SdkError,
-    Client,
+    types::SdkError as LogsSdkError,
+    Client as LogsClient,
 };
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
@@ -22,25 +25,65 @@ use crate::errors::{Error::API, Result};
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,
-    cli: Client,
+    metrics_cli: MetricsClient,
+    logs_cli: LogsClient,
 }
 
 impl Manager {
     pub fn new(shared_config: &aws_config::Config) -> Self {
         let cloned = shared_config.clone();
-        let cli = Client::new(shared_config);
+        let metrics_cli = MetricsClient::new(shared_config);
+        let logs_cli = LogsClient::new(shared_config);
         Self {
             shared_config: cloned,
-            cli,
+            metrics_cli,
+            logs_cli,
         }
     }
 
+    /// Posts CloudWatch metrics.
+    /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricData.html
+    /// ref. https://docs.rs/aws-sdk-cloudwatch/latest/aws_sdk_cloudwatch/struct.Client.html#method.put_metric_data
+    pub async fn put_metric_data(&self, namespace: &str, data: Vec<MetricDatum>) -> Result<()> {
+        info!(
+            "posting CloudWatch {} metrics in '{}'",
+            data.len(),
+            namespace
+        );
+        if data.len() > 20 {
+            return Err(API {
+                message: format!("put_metric_data limit is 20, got {}", data.len()),
+                is_retryable: false,
+            });
+        }
+
+        let ret = self
+            .metrics_cli
+            .put_metric_data()
+            .namespace(namespace)
+            .set_metric_data(Some(data))
+            .send()
+            .await;
+        match ret {
+            Ok(_) => {
+                info!("successfully post metrics");
+            }
+            Err(e) => {
+                return Err(API {
+                    message: format!("failed put_metric_data {:?}", e),
+                    is_retryable: is_metrics_error_retryable(&e),
+                });
+            }
+        };
+        Ok(())
+    }
+
     /// Creates a CloudWatch log group.
+    /// ref. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-logs-loggroup.html
     pub async fn create_log_group(&self, log_group_name: &str) -> Result<()> {
-        // ref. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-logs-loggroup.html
         info!("creating CloudWatch log group '{}'", log_group_name);
         let ret = self
-            .cli
+            .logs_cli
             .create_log_group()
             .log_group_name(log_group_name)
             .send()
@@ -48,10 +91,10 @@ impl Manager {
         let already_created = match ret {
             Ok(_) => false,
             Err(e) => {
-                if !is_error_create_log_group_already_exists(&e) {
+                if !is_logs_error_create_log_group_already_exists(&e) {
                     return Err(API {
                         message: format!("failed create_log_group {:?}", e),
-                        is_retryable: is_error_retryable(&e),
+                        is_retryable: is_logs_error_retryable(&e),
                     });
                 }
                 warn!("log_group already exists ({})", e);
@@ -65,11 +108,11 @@ impl Manager {
     }
 
     /// Deletes a CloudWatch log group.
+    /// ref. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-logs-loggroup.html
     pub async fn delete_log_group(&self, log_group_name: &str) -> Result<()> {
-        // ref. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-logs-loggroup.html
         info!("deleting CloudWatch log group '{}'", log_group_name);
         let ret = self
-            .cli
+            .logs_cli
             .delete_log_group()
             .log_group_name(log_group_name)
             .send()
@@ -78,7 +121,7 @@ impl Manager {
             Ok(_) => true,
             Err(e) => {
                 let mut ignore_err: bool = false;
-                if is_error_delete_log_group_does_not_exist(&e) {
+                if is_logs_error_delete_log_group_does_not_exist(&e) {
                     warn!(
                         "delete_log_group failed; '{}' does not exist ({}",
                         log_group_name, e
@@ -88,7 +131,7 @@ impl Manager {
                 if !ignore_err {
                     return Err(API {
                         message: format!("failed delete_log_group {:?}", e),
-                        is_retryable: is_error_retryable(&e),
+                        is_retryable: is_logs_error_retryable(&e),
                     });
                 }
                 false
@@ -102,18 +145,27 @@ impl Manager {
 }
 
 #[inline]
-pub fn is_error_retryable<E>(e: &SdkError<E>) -> bool {
+pub fn is_metrics_error_retryable<E>(e: &MetricsSdkError<E>) -> bool {
     match e {
-        SdkError::TimeoutError(_) | SdkError::ResponseError { .. } => true,
-        SdkError::DispatchFailure(e) => e.is_timeout() || e.is_io(),
+        MetricsSdkError::TimeoutError(_) | MetricsSdkError::ResponseError { .. } => true,
+        MetricsSdkError::DispatchFailure(e) => e.is_timeout() || e.is_io(),
         _ => false,
     }
 }
 
 #[inline]
-fn is_error_create_log_group_already_exists(e: &SdkError<CreateLogGroupError>) -> bool {
+pub fn is_logs_error_retryable<E>(e: &LogsSdkError<E>) -> bool {
     match e {
-        SdkError::ServiceError { err, .. } => {
+        LogsSdkError::TimeoutError(_) | LogsSdkError::ResponseError { .. } => true,
+        LogsSdkError::DispatchFailure(e) => e.is_timeout() || e.is_io(),
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_logs_error_create_log_group_already_exists(e: &LogsSdkError<CreateLogGroupError>) -> bool {
+    match e {
+        LogsSdkError::ServiceError { err, .. } => {
             matches!(
                 err.kind,
                 CreateLogGroupErrorKind::ResourceAlreadyExistsException(_)
@@ -124,9 +176,9 @@ fn is_error_create_log_group_already_exists(e: &SdkError<CreateLogGroupError>) -
 }
 
 #[inline]
-fn is_error_delete_log_group_does_not_exist(e: &SdkError<DeleteLogGroupError>) -> bool {
+fn is_logs_error_delete_log_group_does_not_exist(e: &LogsSdkError<DeleteLogGroupError>) -> bool {
     match e {
-        SdkError::ServiceError { err, .. } => {
+        LogsSdkError::ServiceError { err, .. } => {
             matches!(
                 err.kind,
                 DeleteLogGroupErrorKind::ResourceNotFoundException(_)

@@ -9,6 +9,7 @@ edition = "2021"
 # https://github.com/awslabs/aws-sdk-rust/releases
 aws-config = "0.8.0"
 aws-sdk-cloudformation = "0.8.0"
+aws-sdk-cloudwatch = "0.8.0"
 aws-sdk-cloudwatchlogs = "0.8.0"
 aws-sdk-ec2 = "0.8.0"
 aws-sdk-kms = "0.8.0"
