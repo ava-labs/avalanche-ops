@@ -17,21 +17,16 @@ cargo run --example aws_sts
 cargo run --example utils_compress
 cargo run --example utils_random
 
-rm -f /tmp/test.insecure.key /tmp/test.insecure.cert
-cargo run --example utils_cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
-pushd ./avalanchego-compatibility
-go run ./load-node-id/main.go /tmp/test.insecure.key /tmp/test.insecure.cert
-popd
-
-cargo run --example avalanche_key -- ./artifacts/ewoq.key.json
-
 echo "ALL SUCCESS!"
 
 # cargo run --example avalanche_api_avm -- \
-# http://aops-custom-202203-2ijQQQ-nlb-d24e3491ac67fd8e.elb.us-west-2.amazonaws.com:9650 X-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
+# [HTTP RPC ENDPOINT] X-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
 
 # cargo run --example avalanche_api_platform -- \
-# http://aops-custom-202203-2ijQQQ-nlb-d24e3491ac67fd8e.elb.us-west-2.amazonaws.com:9650 P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
+# [HTTP RPC ENDPOINT] P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
 
 # cargo run --example avalanche_api_eth -- \
-# http://aops-custom-202203-2ijQQQ-nlb-d24e3491ac67fd8e.elb.us-west-2.amazonaws.com:9650 0xc41Cc85E565aBd1Ecdd6d32C72F16E4a4B530157
+# [HTTP RPC ENDPOINT] 0xc41Cc85E565aBd1Ecdd6d32C72F16E4a4B530157
+
+# cargo run --example avalanche_api_info -- \
+# [HTTP RPC ENDPOINT]
