@@ -1,5 +1,6 @@
 use std::{io, process::Command, time::Duration};
 
+use aws_sdk_cloudwatch::model::MetricDatum;
 use log::info;
 use serde::Serialize;
 
@@ -81,6 +82,165 @@ pub struct Metrics {
     pub avalanche_c_handler_connected_sum: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_c_handler_disconnected_sum: Option<f64>,
+}
+
+impl Metrics {
+    pub fn to_cw_metric_data(&self) -> Vec<Vec<MetricDatum>> {
+        let batch1: Vec<MetricDatum> = vec![
+            MetricDatum::builder()
+                .metric_name("avalanche_X_db_get_count")
+                .value(self.avalanche_x_db_get_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_accepted_count")
+                .value(self.avalanche_x_whitelist_tx_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_accepted_sum")
+                .value(self.avalanche_x_whitelist_tx_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_polls_accepted_count")
+                .value(self.avalanche_x_whitelist_tx_polls_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_polls_accepted_sum")
+                .value(self.avalanche_x_whitelist_tx_polls_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_polls_rejected_count")
+                .value(self.avalanche_x_whitelist_tx_polls_rejected_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_polls_rejected_sum")
+                .value(self.avalanche_x_db_get_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_processing")
+                .value(self.avalanche_x_whitelist_tx_processing.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_rejected_count")
+                .value(self.avalanche_x_whitelist_tx_rejected_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_tx_rejected_sum")
+                .value(self.avalanche_x_whitelist_tx_rejected_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_vtx_issue_failure")
+                .value(self.avalanche_x_whitelist_vtx_issue_failure.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_whitelist_vtx_issue_success")
+                .value(self.avalanche_x_whitelist_vtx_issue_success.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_db_get_count")
+                .value(self.avalanche_p_db_get_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_db_get_count")
+                .value(self.avalanche_c_db_get_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_accepted_frontier_sum")
+                .value(self.avalanche_c_handler_get_accepted_frontier_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_app_gossip_sum")
+                .value(self.avalanche_c_handler_app_gossip_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_app_request_sum")
+                .value(self.avalanche_c_handler_app_request_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_app_request_failed_sum")
+                .value(self.avalanche_c_handler_app_request_failed_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_app_response_sum")
+                .value(self.avalanche_c_handler_app_response_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_accepted_frontier_sum")
+                .value(self.avalanche_c_handler_accepted_frontier_sum.unwrap())
+                .build(),
+        ];
+
+        let batch2: Vec<MetricDatum> = vec![
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_accepted_frontier_failed_sum")
+                .value(
+                    self.avalanche_c_handler_get_accepted_frontier_failed_sum
+                        .unwrap(),
+                )
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_accepted_sum")
+                .value(self.avalanche_c_handler_get_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_accepted_sum")
+                .value(self.avalanche_c_handler_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_accepted_failed_sum")
+                .value(self.avalanche_c_handler_get_accepted_failed_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_ancestors_sum")
+                .value(self.avalanche_c_handler_get_ancestors_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_ancestors_sum")
+                .value(self.avalanche_c_handler_ancestors_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_ancestors_failed_sum")
+                .value(self.avalanche_c_handler_get_ancestors_failed_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_sum")
+                .value(self.avalanche_c_handler_get_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_put_sum")
+                .value(self.avalanche_c_handler_put_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_get_failed_sum")
+                .value(self.avalanche_c_handler_get_failed_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_push_query_sum")
+                .value(self.avalanche_c_handler_push_query_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_pull_query_sum")
+                .value(self.avalanche_c_handler_pull_query_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_chits_sum")
+                .value(self.avalanche_c_handler_chits_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_query_failed_sum")
+                .value(self.avalanche_c_handler_query_failed_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_connected_sum")
+                .value(self.avalanche_c_handler_connected_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_disconnected_sum")
+                .value(self.avalanche_c_handler_disconnected_sum.unwrap())
+                .build(),
+        ];
+
+        vec![batch1, batch2]
+    }
 }
 
 pub async fn get(u: &str) -> io::Result<Metrics> {

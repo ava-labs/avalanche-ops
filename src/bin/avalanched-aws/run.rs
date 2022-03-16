@@ -15,7 +15,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::{self, avalanchego::genesis as avalanchego_genesis, constants, node},
+    avalanche::{self, api::metrics, avalanchego::genesis as avalanchego_genesis, constants, node},
     aws::{self, cloudwatch, ec2, envelope, kms, s3},
     utils::{bash, cert, compress, random},
 };
@@ -70,6 +70,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
+    let cw_manager = cloudwatch::Manager::new(&shared_config);
 
     info!("STEP: fetching tags from the local instance");
     let tags = rt.block_on(ec2_manager.fetch_tags(&instance_id)).unwrap();
@@ -839,6 +840,20 @@ WantedBy=multi-user.target",
             rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
                 .expect("failed put_object node::Info");
             fs::remove_file(&tmp_path)?;
+        }
+
+        // TODO: move this to another async worker
+        info!("STEP: fetching avalanche metrics");
+        let ms = rt
+            .block_on(metrics::get(&local_node.http_endpoint))
+            .expect("failed metrics::get");
+        let cw_namespace = aws_resources
+            .cloudwatch_avalanche_metrics_namespace
+            .clone()
+            .unwrap();
+        for batch in ms.to_cw_metric_data() {
+            rt.block_on(cw_manager.put_metric_data(&cw_namespace, batch))
+                .expect("failed put_metric_data");
         }
 
         // runs every 3-minute

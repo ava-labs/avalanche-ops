@@ -131,6 +131,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         aws_resources.cloudformation_asg_non_anchor_nodes =
             Some(avalanche_ops::StackName::AsgNonBeaconNodes(spec.id.clone()).encode());
     }
+    if aws_resources
+        .cloudwatch_avalanche_metrics_namespace
+        .is_none()
+    {
+        aws_resources.cloudwatch_avalanche_metrics_namespace =
+            Some(format!("{}-avalanche-metrics", spec.id));
+    }
     spec.aws_resources = Some(aws_resources.clone());
     spec.sync(spec_file_path)?;
 
