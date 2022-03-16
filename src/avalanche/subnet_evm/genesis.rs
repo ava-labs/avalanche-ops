@@ -28,6 +28,7 @@ pub struct Genesis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<String>,
 
+    /// Make sure this is set equal to "ChainConfig.FeeConfig.gas_limit".
     #[serde(with = "big_int_hex_format")]
     pub gas_limit: BigInt,
     #[serde(with = "big_int_hex_format")]
@@ -233,6 +234,7 @@ impl ChainConfig {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FeeConfig {
+    /// Make sure this is set equal to "Genesis.gas_limit".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gas_limit: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
