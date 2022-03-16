@@ -21,7 +21,7 @@ bs58 = "0.4.0"
 byteorder = "1.4.3"
 chrono = "0.4.19"
 clap = { version = "3.1.6", features = ["derive"] }
-crossterm = "0.23.0"
+crossterm = "0.23.1"
 dialoguer = "0.10.0"
 dirs = "4.0.0"
 env_logger = "0.9.0"
@@ -53,7 +53,7 @@ url = "2.2.2"
 walkdir = "2.3.2"
 whoami = "1.2.1"
 zip = "0.5.13"
-zstd = "0.11.0"
+zstd = "0.11.1+zstd.1.5.2"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
