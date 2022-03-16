@@ -10,7 +10,7 @@ fi
 # ARCHS=arm64 ./scripts/build.cross.sh
 #
 # TODO: "arm64" not working...
-# "Compiling aws-config v0.6.0" gets killed 
+# "Compiling aws-config v0.8.0" gets killed 
 #
 DEFAULT_ARCHS='amd64'
 ARCHS=${ARCHS:-$DEFAULT_ARCHS}

@@ -29,6 +29,7 @@ pub struct Genesis {
     pub extra_data: Option<String>,
 
     /// Make sure this is set equal to "ChainConfig.FeeConfig.gas_limit".
+    /// ref. https://github.com/ava-labs/subnet-evm/pull/63
     #[serde(with = "big_int_hex_format")]
     pub gas_limit: BigInt,
     #[serde(with = "big_int_hex_format")]
@@ -235,6 +236,7 @@ impl ChainConfig {
 #[serde(rename_all = "camelCase")]
 pub struct FeeConfig {
     /// Make sure this is set equal to "Genesis.gas_limit".
+    /// ref. https://github.com/ava-labs/subnet-evm/pull/63
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gas_limit: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
