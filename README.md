@@ -40,6 +40,10 @@ To set up a custom network, provide **`avalanche-ops`** with executable binaries
 
 ## `avalanche-ops` and `avalanched` on AWS
 
+![example-aws/32](./img/example-aws/32.png)
+
+![example-aws/43](./img/example-aws/43.png)
+
 See [`recipes-aws.md`](./recipes-aws.md) and [`example-aws.md`](./example-aws.md).
 
 ## Installation
