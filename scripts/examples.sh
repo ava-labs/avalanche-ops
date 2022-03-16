@@ -30,3 +30,6 @@ echo "ALL SUCCESS!"
 
 # cargo run --example avalanche_api_info -- \
 # [HTTP RPC ENDPOINT]
+
+# cargo run --example avalanche_api_metrics -- \
+# [HTTP RPC ENDPOINT]

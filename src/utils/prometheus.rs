@@ -325,6 +325,18 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn to_f64(&self) -> f64 {
+        match self {
+            Value::Counter(v) => *v,
+            Value::Gauge(v) => *v,
+            Value::Untyped(v) => *v,
+
+            // TODO: fix this
+            Value::Histogram(_) => 0.0,
+            Value::Summary(_) => 0.0,
+        }
+    }
+
     fn push_histogram(&mut self, h: HistogramCount) {
         if let &mut Value::Histogram(ref mut hs) = self {
             hs.push(h)
