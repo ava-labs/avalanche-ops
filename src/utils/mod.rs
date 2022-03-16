@@ -7,5 +7,6 @@ pub mod http;
 pub mod humanize;
 pub mod id;
 pub mod prefix;
+pub mod prometheus;
 pub mod random;
 pub mod time;
