@@ -33,16 +33,16 @@ pub mod dev;
 
 pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
 
-/// Default machine beacon nodes size.
+/// Default machine anchor nodes size.
 /// only required for custom networks
-pub const DEFAULT_MACHINE_BEACON_NODES: u32 = 2;
-pub const MIN_MACHINE_BEACON_NODES: u32 = 1;
-pub const MAX_MACHINE_BEACON_NODES: u32 = 10; // TODO: allow higher number?
+pub const DEFAULT_MACHINE_ANCHOR_NODES: u32 = 2;
+pub const MIN_MACHINE_ANCHOR_NODES: u32 = 1;
+pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10; // TODO: allow higher number?
 
-/// Default machine non-beacon nodes size.
-pub const DEFAULT_MACHINE_NON_BEACON_NODES: u32 = 2;
-pub const MIN_MACHINE_NON_BEACON_NODES: u32 = 1;
-pub const MAX_MACHINE_NON_BEACON_NODES: u32 = 200; // TODO: allow higher number?
+/// Default machine non-anchor nodes size.
+pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
+pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
+pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 200; // TODO: allow higher number?
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
@@ -171,9 +171,9 @@ impl Endpoints {
 #[serde(rename_all = "snake_case")]
 pub struct Machine {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub beacon_nodes: Option<u32>,
+    pub anchor_nodes: Option<u32>,
     #[serde(default)]
-    pub non_beacon_nodes: u32,
+    pub non_anchor_nodes: u32,
     #[serde(default)]
     pub instance_types: Option<Vec<String>>,
 }
@@ -219,8 +219,8 @@ impl StackName {
         match self {
             StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
             StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::AsgBeaconNodes(id) => format!("{}-asg-beacon-nodes", id),
-            StackName::AsgNonBeaconNodes(id) => format!("{}-asg-non-beacon-nodes", id),
+            StackName::AsgBeaconNodes(id) => format!("{}-asg-anchor-nodes", id),
+            StackName::AsgNonBeaconNodes(id) => format!("{}-asg-non-anchor-nodes", id),
         }
     }
 }
@@ -328,17 +328,17 @@ impl Spec {
                 }
             }
         };
-        let (beacon_nodes, non_beacon_nodes) =
+        let (anchor_nodes, non_anchor_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
-                Some(_) => (None, DEFAULT_MACHINE_NON_BEACON_NODES),
+                Some(_) => (None, DEFAULT_MACHINE_NON_ANCHOR_NODES),
                 None => (
-                    Some(DEFAULT_MACHINE_BEACON_NODES),
-                    DEFAULT_MACHINE_NON_BEACON_NODES,
+                    Some(DEFAULT_MACHINE_ANCHOR_NODES),
+                    DEFAULT_MACHINE_NON_ANCHOR_NODES,
                 ),
             };
         let machine = Machine {
-            beacon_nodes,
-            non_beacon_nodes,
+            anchor_nodes,
+            non_anchor_nodes,
             instance_types: Some(vec![
                 String::from("c6a.large"),
                 String::from("m6a.large"),
@@ -596,21 +596,21 @@ impl Spec {
             }
         }
 
-        if self.machine.non_beacon_nodes < MIN_MACHINE_NON_BEACON_NODES {
+        if self.machine.non_anchor_nodes < MIN_MACHINE_NON_ANCHOR_NODES {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
-                    "'machine.non_beacon_nodes' {} <minimum {}",
-                    self.machine.non_beacon_nodes, MIN_MACHINE_NON_BEACON_NODES
+                    "'machine.non_anchor_nodes' {} <minimum {}",
+                    self.machine.non_anchor_nodes, MIN_MACHINE_NON_ANCHOR_NODES
                 ),
             ));
         }
-        if self.machine.non_beacon_nodes > MAX_MACHINE_NON_BEACON_NODES {
+        if self.machine.non_anchor_nodes > MAX_MACHINE_NON_ANCHOR_NODES {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
-                    "'machine.non_beacon_nodes' {} >maximum {}",
-                    self.machine.non_beacon_nodes, MAX_MACHINE_NON_BEACON_NODES
+                    "'machine.non_anchor_nodes' {} >maximum {}",
+                    self.machine.non_anchor_nodes, MAX_MACHINE_NON_ANCHOR_NODES
                 ),
             ));
         }
@@ -665,11 +665,11 @@ impl Spec {
                     ),
                 ));
             }
-            if self.machine.beacon_nodes.unwrap_or(0) > 0 {
+            if self.machine.anchor_nodes.unwrap_or(0) > 0 {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
-                        "cannot specify non-zero 'machine.beacon_nodes' for network_id {:?}",
+                        "cannot specify non-zero 'machine.anchor_nodes' for network_id {:?}",
                         self.avalanchego_config.network_id
                     ),
                 ));
@@ -684,29 +684,29 @@ impl Spec {
                     ),
                 ));
             }
-            if self.machine.beacon_nodes.unwrap_or(0) == 0 {
+            if self.machine.anchor_nodes.unwrap_or(0) == 0 {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    "cannot specify 0 for 'machine.beacon_nodes' for custom network",
+                    "cannot specify 0 for 'machine.anchor_nodes' for custom network",
                 ));
             }
-            if self.machine.beacon_nodes.unwrap_or(0) < MIN_MACHINE_BEACON_NODES {
+            if self.machine.anchor_nodes.unwrap_or(0) < MIN_MACHINE_ANCHOR_NODES {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
-                        "'machine.beacon_nodes' {} below min {}",
-                        self.machine.beacon_nodes.unwrap_or(0),
-                        MIN_MACHINE_BEACON_NODES
+                        "'machine.anchor_nodes' {} below min {}",
+                        self.machine.anchor_nodes.unwrap_or(0),
+                        MIN_MACHINE_ANCHOR_NODES
                     ),
                 ));
             }
-            if self.machine.beacon_nodes.unwrap_or(0) > MAX_MACHINE_BEACON_NODES {
+            if self.machine.anchor_nodes.unwrap_or(0) > MAX_MACHINE_ANCHOR_NODES {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
-                        "'machine.beacon_nodes' {} exceeds limit {}",
-                        self.machine.beacon_nodes.unwrap_or(0),
-                        MAX_MACHINE_BEACON_NODES
+                        "'machine.anchor_nodes' {} exceeds limit {}",
+                        self.machine.anchor_nodes.unwrap_or(0),
+                        MAX_MACHINE_ANCHOR_NODES
                     ),
                 ));
             }
@@ -760,7 +760,7 @@ aws_resources:
   instance_system_metrics: true
 
 machine:
-  non_beacon_nodes: 20
+  non_anchor_nodes: 20
   instance_types:
   - m5.large
   - c5.large
@@ -835,8 +835,8 @@ coreth_config:
         }),
 
         machine: Machine {
-            beacon_nodes: None,
-            non_beacon_nodes: 20,
+            anchor_nodes: None,
+            non_anchor_nodes: 20,
             instance_types: Some(vec![
                 String::from("m5.large"),
                 String::from("c5.large"),
@@ -883,8 +883,8 @@ coreth_config:
         plugins_dir.to_string()
     );
 
-    assert!(cfg.machine.beacon_nodes.is_none());
-    assert_eq!(cfg.machine.non_beacon_nodes, 20);
+    assert!(cfg.machine.anchor_nodes.is_none());
+    assert_eq!(cfg.machine.non_anchor_nodes, 20);
     assert!(cfg.machine.instance_types.is_some());
     let instance_types = cfg.machine.instance_types.unwrap();
     assert_eq!(instance_types[0], "m5.large");
@@ -930,7 +930,7 @@ pub enum StorageNamespace {
     Ec2AccessKeyCompressedEncrypted(String),
 
     /// Valid genesis file with initial stakers.
-    /// Only updated after beacon nodes become active.
+    /// Only updated after anchor nodes become active.
     GenesisFile(String),
 
     AvalanchedBin(String),
@@ -985,54 +985,54 @@ impl StorageNamespace {
             }
 
             StorageNamespace::DiscoverProvisioningBeaconNodesDir(id) => {
-                format!("{}/discover/provisioning-non-beacon-nodes", id)
+                format!("{}/discover/provisioning-non-anchor-nodes", id)
             }
             StorageNamespace::DiscoverProvisioningBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/provisioning-non-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
             StorageNamespace::DiscoverProvisioningNonBeaconNodesDir(id) => {
-                format!("{}/discover/provisioning-non-beacon-nodes", id)
+                format!("{}/discover/provisioning-non-anchor-nodes", id)
             }
             StorageNamespace::DiscoverProvisioningNonBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/provisioning-non-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/provisioning-non-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
 
             StorageNamespace::DiscoverBootstrappingBeaconNodesDir(id) => {
-                format!("{}/discover/bootstrapping-beacon-nodes", id)
+                format!("{}/discover/bootstrapping-anchor-nodes", id)
             }
             StorageNamespace::DiscoverBootstrappingBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/bootstrapping-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/bootstrapping-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
 
             StorageNamespace::DiscoverReadyBeaconNodesDir(id) => {
-                format!("{}/discover/ready-beacon-nodes", id)
+                format!("{}/discover/ready-anchor-nodes", id)
             }
             StorageNamespace::DiscoverReadyBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/ready-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/ready-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
             StorageNamespace::DiscoverReadyNonBeaconNodesDir(id) => {
-                format!("{}/discover/ready-non-beacon-nodes", id)
+                format!("{}/discover/ready-non-anchor-nodes", id)
             }
             StorageNamespace::DiscoverReadyNonBeaconNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
-                    "{}/discover/ready-non-beacon-nodes/{}_{}.yaml",
+                    "{}/discover/ready-non-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
@@ -1102,7 +1102,7 @@ fn test_storage_path() {
     let node_ip = "1.2.3.4";
 
     let node = node::Node::new(
-        node::Kind::NonBeacon,
+        node::Kind::NonAnchor,
         &instance_id,
         node_id,
         node_ip,
@@ -1112,7 +1112,7 @@ fn test_storage_path() {
     let p = StorageNamespace::DiscoverReadyNonBeaconNode(
         id,
         node::Node {
-            kind: String::from("non-beacon"),
+            kind: String::from("non-anchor"),
             machine_id: instance_id.clone(),
             node_id: node_id.to_string(),
             public_ip: node_ip.to_string(),

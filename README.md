@@ -5,7 +5,7 @@
 
 # Avalanche Ops
 
-A **single command to launch Avalanche nodes from scratch that joins any network of choice (e.g., test, fuji, main) or creates a custom Avalanche network**. Provisions all resources required to run a node or network with recommended setups (configurable).
+A **single command to launch Avalanche nodes from scratch that joins any network of choice (e.g., test, fuji, main) or create a custom Avalanche network**. Provisions all resources required to run a node or network with recommended setups (configurable).
 
 Distributed systems are full of subtle edge cases. The fact that such event or bug may only emerge under special circumstances warrants exhaustive test coverage beyond simple unit testing. Furthermore, the lack of tests slows down software release process, let alone long-term architectural changes.
 
@@ -28,13 +28,13 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 - 🚫 NOT using Kubernetes, prefers physical machines (or cloud VMs)
 - 🚫 **NOT production ready yet** (under heavy development)
 
-*Why not production ready?* (1) The way we set up AutoScaling group (AWS ASG) for beacon nodes may not work for long-running network, where nodes get replaced by ASG for EC2 health check failures (e.g., degraded network, EC2 hardwares). We need to set up proper health checks against Avalanche health API. (2) We need to support static IP (thus static node ID) and static certificates by implementing another layer of control plane. (3) We need to track more avalanche layer metrics natively via CloudWatch or DataDog. Contributions are welcome!
+*Why not production ready?* (1) The way we set up AutoScaling group (AWS ASG) for anchor nodes may not work for long-running network, where nodes get replaced by ASG for EC2 health check failures (e.g., degraded network, EC2 hardwares). We need to set up proper health checks against Avalanche health API. (2) We need to support static IP (thus static node ID) and static certificates by implementing another layer of control plane. (3) We need to track more avalanche layer metrics natively via CloudWatch or DataDog. Contributions are welcome!
 
 ## Workflow
 
-**`avalanche-ops`** is the client (or "control plane") that runs on the operator's host machine or test runner, which provisions a set of remote machines based on user-provided configuration. **`avalanched`** is an agent (or daemon) that runs on every remote machine, which creates and installs Avalanche-specific resources (e.g., TLS certificate generation, beacon-node discovery, write avalanche node service file).
+**`avalanche-ops`** is the client (or "control plane") that runs on the operator's host machine or test runner, which provisions a set of remote machines based on user-provided configuration. **`avalanched`** is an agent (or daemon) that runs on every remote machine, which creates and installs Avalanche-specific resources (e.g., TLS certificate generation, anchor-node discovery, write avalanche node service file).
 
-To set up a custom network, provide **`avalanche-ops`** with executable binaries to run in remote machines. Which then generates a genesis file with pre-funded keys and provisions remote machines to install the user-provided artifacts. A custom network requires two groups of machines: (1) beacon node (only required for custom network), and (2) non-beacon node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-beacon nodes list the storage to discover beacon nodes.
+To set up a custom network, provide **`avalanche-ops`** with executable binaries to run in remote machines. Which then generates a genesis file with pre-funded keys and provisions remote machines to install the user-provided artifacts. A custom network requires two groups of machines: (1) anchor node (beacon node, only required for custom network), and (2) non-anchor node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-anchor nodes list the storage to discover anchor nodes.
 
 ![avalanche-ops.drawio.png](./img/avalanche-ops.drawio.png)
 

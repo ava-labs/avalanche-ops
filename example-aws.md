@@ -21,7 +21,7 @@ Then apply the configuration:
 
 <hr>
 
-Wait for beacon nodes to be ready:
+Wait for anchor nodes to be ready:
 
 ![example-aws/05](./img/example-aws/05.png)
 
@@ -35,7 +35,7 @@ Check your S3 bucket for generated artifacts **(all private keys are encrypted u
 
 <hr>
 
-Check the beacon nodes:
+Check the anchor nodes:
 
 ![example-aws/08](./img/example-aws/08.png)
 
@@ -49,7 +49,7 @@ Check the beacon nodes:
 
 <hr>
 
-Check non-beacon nodes created in a separate Auto Scaling Groups:
+Check non-anchor nodes created in a separate Auto Scaling Groups:
 
 ![example-aws/13](./img/example-aws/13.png)
 
@@ -57,7 +57,7 @@ Check non-beacon nodes created in a separate Auto Scaling Groups:
 
 <hr>
 
-Check how non-beacon nodes discovered other beacon nodes and publish non-beacon nodes information:
+Check how non-anchor nodes discovered other anchor nodes and publish non-anchor nodes information:
 
 ![example-aws/15](./img/example-aws/15.png)
 
@@ -121,7 +121,7 @@ Import the test keys for pre-funded wallets:
 
 ### Optional: install `subnet-evm` in the custom network
 
-To set up [`subnet-evm`](https://github.com/ava-labs/subnet-evm), use [`subnet-cli`](https://github.com/ava-labs/subnet-cli) to add two non-beacon nodes as validators:
+To set up [`subnet-evm`](https://github.com/ava-labs/subnet-evm), use [`subnet-cli`](https://github.com/ava-labs/subnet-cli) to add two non-anchor nodes as validators:
 
 ![example-aws/34](./img/example-aws/34.png)
 

@@ -227,68 +227,68 @@ pub fn execute(
     }
 
     if aws_resources
-        .cloudformation_asg_non_beacon_nodes_logical_id
+        .cloudformation_asg_non_anchor_nodes_logical_id
         .is_some()
     {
         thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete ASG for non-beacon nodes\n"),
+            Print("\n\n\nSTEP: triggering delete ASG for non-anchor nodes\n"),
             ResetColor
         )?;
 
-        let asg_non_beacon_nodes_stack_name = aws_resources
-            .cloudformation_asg_non_beacon_nodes
+        let asg_non_anchor_nodes_stack_name = aws_resources
+            .cloudformation_asg_non_anchor_nodes
             .clone()
             .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(asg_non_beacon_nodes_stack_name.as_str()))
+        rt.block_on(cloudformation_manager.delete_stack(asg_non_anchor_nodes_stack_name.as_str()))
             .unwrap();
     }
 
-    if spec.machine.beacon_nodes.unwrap_or(0) > 0
+    if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && aws_resources
-            .cloudformation_asg_beacon_nodes_logical_id
+            .cloudformation_asg_anchor_nodes_logical_id
             .is_some()
     {
         thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: triggering delete ASG for anchor nodes\n"),
             ResetColor
         )?;
 
-        let asg_beacon_nodes_stack_name = aws_resources
-            .cloudformation_asg_beacon_nodes
+        let asg_anchor_nodes_stack_name = aws_resources
+            .cloudformation_asg_anchor_nodes
             .clone()
             .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(asg_beacon_nodes_stack_name.as_str()))
+        rt.block_on(cloudformation_manager.delete_stack(asg_anchor_nodes_stack_name.as_str()))
             .unwrap();
     }
 
     if aws_resources
-        .cloudformation_asg_non_beacon_nodes_logical_id
+        .cloudformation_asg_non_anchor_nodes_logical_id
         .is_some()
     {
         thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete ASG for non-beacon nodes\n"),
+            Print("\n\n\nSTEP: confirming delete ASG for non-anchor nodes\n"),
             ResetColor
         )?;
 
-        let asg_non_beacon_nodes_stack_name =
-            aws_resources.cloudformation_asg_non_beacon_nodes.unwrap();
+        let asg_non_anchor_nodes_stack_name =
+            aws_resources.cloudformation_asg_non_anchor_nodes.unwrap();
 
-        let desired_capacity = spec.machine.non_beacon_nodes;
+        let desired_capacity = spec.machine.non_anchor_nodes;
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
         rt.block_on(cloudformation_manager.poll_stack(
-            asg_non_beacon_nodes_stack_name.as_str(),
+            asg_non_anchor_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(wait_secs),
             Duration::from_secs(30),
@@ -296,28 +296,28 @@ pub fn execute(
         .unwrap();
     }
 
-    if spec.machine.beacon_nodes.unwrap_or(0) > 0
+    if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && aws_resources
-            .cloudformation_asg_beacon_nodes_logical_id
+            .cloudformation_asg_anchor_nodes_logical_id
             .is_some()
     {
         thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete ASG for beacon nodes\n"),
+            Print("\n\n\nSTEP: confirming delete ASG for anchor nodes\n"),
             ResetColor
         )?;
 
-        let asg_beacon_nodes_stack_name = aws_resources.cloudformation_asg_beacon_nodes.unwrap();
+        let asg_anchor_nodes_stack_name = aws_resources.cloudformation_asg_anchor_nodes.unwrap();
 
-        let desired_capacity = spec.machine.beacon_nodes.unwrap();
+        let desired_capacity = spec.machine.anchor_nodes.unwrap();
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
         rt.block_on(cloudformation_manager.poll_stack(
-            asg_beacon_nodes_stack_name.as_str(),
+            asg_anchor_nodes_stack_name.as_str(),
             StackStatus::DeleteComplete,
             Duration::from_secs(wait_secs),
             Duration::from_secs(30),

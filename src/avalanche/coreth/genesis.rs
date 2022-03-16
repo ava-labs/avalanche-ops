@@ -113,7 +113,7 @@ impl Genesis {
         }
     }
 
-    /// Saves the current beacon node to disk
+    /// Saves the current anchor node to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing Genesis to '{}'", file_path);

@@ -132,7 +132,7 @@ Resources:
                         !Ref S3BucketName,
                         "/",
                         !Ref Id,
-                        "/discover/bootstrapping-beacon-nodes/*",
+                        "/discover/bootstrapping-anchor-nodes/*",
                       ],
                     ]
                   - !Join [
@@ -142,7 +142,7 @@ Resources:
                         !Ref S3BucketName,
                         "/",
                         !Ref Id,
-                        "/discover/ready-beacon-nodes/*",
+                        "/discover/ready-anchor-nodes/*",
                       ],
                     ]
                   - !Join [
@@ -152,7 +152,7 @@ Resources:
                         !Ref S3BucketName,
                         "/",
                         !Ref Id,
-                        "/discover/ready-non-beacon-nodes/*",
+                        "/discover/ready-non-anchor-nodes/*",
                       ],
                     ]
                   - !Join [

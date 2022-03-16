@@ -435,8 +435,8 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 
 ```bash
 # this will spend 2,000 AVAX
-# for custom networks, beacon nodes are already validate primary network
-# so, only non-beacon nodes will be added as validators
+# for custom networks, anchor nodes are already validate primary network
+# so, only non-anchor nodes will be added as validators
 subnet-cli add validator \
 --enable-prompt \
 --private-key-path=/tmp/test.key \

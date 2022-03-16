@@ -15,25 +15,25 @@ use crate::{
 };
 
 /// Defines the node type.
-/// MUST BE either "beacon" or "non-beacon"
+/// MUST BE either "anchor" or "non-anchor"
 #[derive(Eq, PartialEq, Clone)]
 pub enum Kind {
-    Beacon,
-    NonBeacon,
+    Anchor,
+    NonAnchor,
 }
 
 impl Kind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Kind::Beacon => "beacon",
-            Kind::NonBeacon => "non-beacon",
+            Kind::Anchor => "anchor",
+            Kind::NonAnchor => "non-anchor",
         }
     }
     pub fn from_str(&self, s: &str) -> io::Result<Self> {
         match s {
-            "beacon" => Ok(Kind::Beacon),
-            "non-beacon" => Ok(Kind::NonBeacon),
-            "non_beacon" => Ok(Kind::NonBeacon),
+            "anchor" => Ok(Kind::Anchor),
+            "non-anchor" => Ok(Kind::NonAnchor),
+            "non_anchor" => Ok(Kind::NonAnchor),
             _ => Err(Error::new(
                 ErrorKind::Other,
                 format!("unknown node type '{}'", s),
@@ -42,7 +42,7 @@ impl Kind {
     }
 }
 
-/// Represents each beacon/non-beacon node.
+/// Represents each anchor/non-anchor node.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Node {
@@ -84,7 +84,7 @@ impl Node {
         }
     }
 
-    /// Saves the current beacon node to disk
+    /// Saves the current anchor node to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         info!("syncing Node to '{}'", file_path);
@@ -157,7 +157,7 @@ impl Node {
 #[test]
 fn test_node() {
     let d = r#"
-kind: beacon
+kind: anchor
 machine_id: i-123123
 node_id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
 public_ip: 1.2.3.4
@@ -177,7 +177,7 @@ http_endpoint: http://1.2.3.4:9650
     assert!(ret.is_ok());
 
     let orig = Node::new(
-        Kind::Beacon,
+        Kind::Anchor,
         "i-123123",
         "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
         "1.2.3.4",
@@ -187,7 +187,7 @@ http_endpoint: http://1.2.3.4:9650
     assert_eq!(node, orig);
 
     // manually check to make sure the serde deserializer works
-    assert_eq!(node.kind, String::from("beacon"));
+    assert_eq!(node.kind, String::from("anchor"));
     assert_eq!(node.machine_id, String::from("i-123123"));
     assert_eq!(
         node.node_id,
