@@ -17,6 +17,10 @@ pub struct Metrics {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_peers: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_pull_query_sent: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_push_query_sent: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_throttler_outbound_acquire_failures: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_requests_average_latency: Option<f64>,
@@ -193,6 +197,8 @@ impl Metrics {
             ts: Utc::now(),
 
             avalanche_network_peers: None,
+            avalanche_network_pull_query_sent: None,
+            avalanche_network_push_query_sent: None,
             avalanche_network_throttler_outbound_acquire_failures: None,
             avalanche_requests_average_latency: None,
 
@@ -329,6 +335,16 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_network_peers")
                 .value(self.avalanche_network_peers.unwrap())
+                .unit(StandardUnit::Count)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_pull_query_sent")
+                .value(self.avalanche_network_pull_query_sent.unwrap())
+                .unit(StandardUnit::Count)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_push_query_sent")
+                .value(self.avalanche_network_push_query_sent.unwrap())
                 .unit(StandardUnit::Count)
                 .build(),
             MetricDatum::builder()
@@ -480,7 +496,7 @@ impl Metrics {
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_vm_total_staked")
-                .value(self.avalanche_p_vm_total_staked.unwrap())
+                .value(self.avalanche_p_vm_total_staked.unwrap() / 1000000000.0) // On the P-Chain, one AVAX is 10^9  units.
                 .unit(StandardUnit::Count)
                 .build(),
             MetricDatum::builder()
@@ -805,6 +821,22 @@ pub async fn get(u: &str) -> io::Result<Metrics> {
             prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_network_peers")
                 .value
                 .to_f64(),
+        ),
+
+        avalanche_network_pull_query_sent: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_pull_query_sent"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_push_query_sent: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_push_query_sent"
+            })
+            .value
+            .to_f64(),
         ),
 
         avalanche_network_throttler_outbound_acquire_failures: Some(
