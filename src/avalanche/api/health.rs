@@ -10,7 +10,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use log::info;
 use serde::{Deserialize, Deserializer};
 
-use crate::utils::http;
+use crate::utils::{http, rfc3339};
 
 /// Represents AvalancheGo health status.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/api/health#APIHealthReply
@@ -29,7 +29,7 @@ pub struct Response {
 pub struct CheckResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
-    #[serde(with = "rfc3339_format")]
+    #[serde(with = "rfc3339::serde_format")]
     pub timestamp: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<i64>,
@@ -59,25 +59,6 @@ where
     struct Wrapper(#[serde(deserialize_with = "datefmt")] DateTime<Utc>);
     let v = Option::deserialize(deserializer)?;
     Ok(v.map(|Wrapper(a)| a))
-}
-
-/// ref. https://serde.rs/custom-date-format.html
-mod rfc3339_format {
-    use chrono::{DateTime, TimeZone, Utc};
-    use serde::{self, Deserialize, Deserializer};
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-
-        // ref. https://docs.rs/chrono/0.4.19/chrono/struct.DateTime.html#method.parse_from_rfc3339
-        match DateTime::parse_from_rfc3339(&s).map_err(serde::de::Error::custom) {
-            Ok(dt) => Ok(Utc.from_utc_datetime(&dt.naive_utc())),
-            Err(e) => Err(e),
-        }
-    }
 }
 
 impl Response {

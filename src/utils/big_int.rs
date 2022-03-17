@@ -56,7 +56,7 @@ fn test_hex() {
     assert_eq!(to_upper_hex(&big_num), "0x1312D00",);
 }
 
-pub mod big_int_hex_format {
+pub mod serde_hex_format {
     use crate::utils::big_int;
     use num_bigint::BigInt;
     use serde::{self, Deserialize, Deserializer, Serializer};

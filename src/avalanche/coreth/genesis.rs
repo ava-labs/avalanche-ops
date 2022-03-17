@@ -10,7 +10,7 @@ use log::info;
 use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::big_int::{self, big_int_hex_format};
+use crate::utils::big_int;
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/params#ChainConfig
@@ -22,17 +22,17 @@ pub struct Genesis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config: Option<ChainConfig>,
 
-    #[serde(with = "big_int_hex_format")]
+    #[serde(with = "big_int::serde_hex_format")]
     pub nonce: BigInt,
-    #[serde(with = "big_int_hex_format")]
+    #[serde(with = "big_int::serde_hex_format")]
     pub timestamp: BigInt,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<String>,
 
-    #[serde(with = "big_int_hex_format")]
+    #[serde(with = "big_int::serde_hex_format")]
     pub gas_limit: BigInt,
-    #[serde(with = "big_int_hex_format")]
+    #[serde(with = "big_int::serde_hex_format")]
     pub difficulty: BigInt,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -45,9 +45,9 @@ pub struct Genesis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alloc: Option<BTreeMap<String, AllocAccount>>,
 
-    #[serde(with = "big_int_hex_format")]
+    #[serde(with = "big_int::serde_hex_format")]
     pub number: BigInt,
-    #[serde(with = "big_int_hex_format")]
+    #[serde(with = "big_int::serde_hex_format")]
     pub gas_used: BigInt,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -237,7 +237,7 @@ pub struct AllocAccount {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<BTreeMap<String, String>>,
 
-    #[serde(with = "big_int_hex_format")]
+    #[serde(with = "big_int::serde_hex_format")]
     pub balance: BigInt,
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/core#GenesisMultiCoinBalance

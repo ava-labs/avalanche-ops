@@ -9,4 +9,5 @@ pub mod id;
 pub mod prefix;
 pub mod prometheus;
 pub mod random;
+pub mod rfc3339;
 pub mod time;
