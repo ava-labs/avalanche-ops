@@ -794,6 +794,7 @@ WantedBy=multi-user.target",
 
     info!("avalanched now periodically publishing node information...");
     let mut cnt: u128 = 0;
+    let mut prev_metrics: Option<metrics::Metrics> = None;
     loop {
         // to be downloaded in bootstrapping non-anchor nodes
         // for custom networks, runs every 9-min
@@ -844,15 +845,18 @@ WantedBy=multi-user.target",
 
         // TODO: move this to another async worker
         info!("STEP: fetching avalanche metrics");
-        let ms = rt
+        let cur_metrics = rt
             .block_on(metrics::get(&local_node.http_endpoint))
             .expect("failed metrics::get");
         let cw_namespace = aws_resources
             .cloudwatch_avalanche_metrics_namespace
             .clone()
             .unwrap();
-        rt.block_on(cw_manager.put_metric_data(&cw_namespace, ms.to_cw_metric_data()))
-            .expect("failed put_metric_data");
+        rt.block_on(
+            cw_manager.put_metric_data(&cw_namespace, cur_metrics.to_cw_metric_data(prev_metrics)),
+        )
+        .expect("failed put_metric_data");
+        prev_metrics = Some(cur_metrics.clone());
 
         // runs every 3-minute
         info!("STEP: checking update artifacts event key");

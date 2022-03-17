@@ -181,7 +181,104 @@ pub struct Metrics {
     pub avalanche_c_benchlist_benched_num: Option<f64>,
 }
 
+impl Default for Metrics {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
 impl Metrics {
+    pub fn default() -> Self {
+        Self {
+            ts: Utc::now(),
+
+            avalanche_network_peers: None,
+            avalanche_network_throttler_outbound_acquire_failures: None,
+            avalanche_requests_average_latency: None,
+
+            avalanche_x_db_get_count: None,
+            avalanche_x_db_write_size_sum: None,
+            avalanche_x_db_read_size_sum: None,
+            avalanche_x_vtx_processing: None,
+            avalanche_x_txs_accepted_count: None,
+            avalanche_x_txs_accepted_sum: None,
+            avalanche_x_txs_rejected_count: None,
+            avalanche_x_txs_rejected_sum: None,
+            avalanche_x_txs_polls_accepted_count: None,
+            avalanche_x_txs_polls_accepted_sum: None,
+            avalanche_x_polls_successful: None,
+            avalanche_x_polls_failed: None,
+            avalanche_x_handler_chits_count: None,
+            avalanche_x_handler_query_failed_count: None,
+            avalanche_x_whitelist_tx_accepted_count: None,
+            avalanche_x_whitelist_tx_accepted_sum: None,
+            avalanche_x_whitelist_tx_polls_accepted_count: None,
+            avalanche_x_whitelist_tx_polls_accepted_sum: None,
+            avalanche_x_whitelist_tx_polls_rejected_count: None,
+            avalanche_x_whitelist_tx_polls_rejected_sum: None,
+            avalanche_x_whitelist_tx_processing: None,
+            avalanche_x_whitelist_tx_rejected_count: None,
+            avalanche_x_whitelist_tx_rejected_sum: None,
+            avalanche_x_whitelist_vtx_issue_failure: None,
+            avalanche_x_whitelist_vtx_issue_success: None,
+            avalanche_x_benchlist_benched_num: None,
+
+            avalanche_p_vm_total_staked: None,
+            avalanche_p_db_get_count: None,
+            avalanche_p_db_write_size_sum: None,
+            avalanche_p_db_read_size_sum: None,
+            avalanche_p_blks_accepted_count: None,
+            avalanche_p_blks_accepted_sum: None,
+            avalanche_p_blks_rejected_count: None,
+            avalanche_p_blks_rejected_sum: None,
+            avalanche_p_blks_polls_accepted_count: None,
+            avalanche_p_blks_polls_accepted_sum: None,
+            avalanche_p_polls_successful: None,
+            avalanche_p_polls_failed: None,
+            avalanche_p_handler_chits_count: None,
+            avalanche_p_handler_query_failed_count: None,
+            avalanche_p_benchlist_benched_num: None,
+
+            avalanche_c_db_get_count: None,
+            avalanche_c_db_write_size_sum: None,
+            avalanche_c_db_read_size_sum: None,
+            avalanche_c_blks_processing: None,
+            avalanche_c_blks_accepted_count: None,
+            avalanche_c_blks_accepted_sum: None,
+            avalanche_c_blks_rejected_count: None,
+            avalanche_c_blks_rejected_sum: None,
+            avalanche_c_blks_polls_accepted_count: None,
+            avalanche_c_blks_polls_accepted_sum: None,
+            avalanche_c_polls_successful: None,
+            avalanche_c_polls_failed: None,
+            avalanche_c_handler_chits_count: None,
+            avalanche_c_handler_query_failed_count: None,
+            avalanche_c_handler_get_accepted_frontier_sum: None,
+            avalanche_c_handler_app_gossip_sum: None,
+            avalanche_c_handler_app_request_sum: None,
+            avalanche_c_handler_app_request_failed_sum: None,
+            avalanche_c_handler_app_response_sum: None,
+            avalanche_c_handler_accepted_frontier_sum: None,
+            avalanche_c_handler_get_accepted_frontier_failed_sum: None,
+            avalanche_c_handler_get_accepted_sum: None,
+            avalanche_c_handler_accepted_sum: None,
+            avalanche_c_handler_get_accepted_failed_sum: None,
+            avalanche_c_handler_get_ancestors_sum: None,
+            avalanche_c_handler_ancestors_sum: None,
+            avalanche_c_handler_get_ancestors_failed_sum: None,
+            avalanche_c_handler_get_sum: None,
+            avalanche_c_handler_put_sum: None,
+            avalanche_c_handler_get_failed_sum: None,
+            avalanche_c_handler_push_query_sum: None,
+            avalanche_c_handler_pull_query_sum: None,
+            avalanche_c_handler_chits_sum: None,
+            avalanche_c_handler_query_failed_sum: None,
+            avalanche_c_handler_connected_sum: None,
+            avalanche_c_handler_disconnected_sum: None,
+            avalanche_c_benchlist_benched_num: None,
+        }
+    }
+
     pub fn x_polls_success_rate(&self) -> f64 {
         let success = self.avalanche_x_polls_successful.unwrap_or(0.0);
         let failed = self.avalanche_x_polls_failed.unwrap_or(0.0);
@@ -212,8 +309,23 @@ impl Metrics {
         }
     }
 
-    pub fn to_cw_metric_data(&self) -> Vec<MetricDatum> {
-        vec![
+    pub fn c_blks_accepted_per_second(&self, prev: Metrics) -> f64 {
+        let elapsed = (self.ts.timestamp_millis() - prev.ts.timestamp_millis()) as f64;
+        let elapsed_seconds = elapsed / 1000.0;
+
+        let prev_accepted = prev.avalanche_c_blks_accepted_sum.unwrap_or(0.0);
+        let now_accepted = self.avalanche_c_blks_accepted_sum.unwrap_or(0.0);
+        let accepted = now_accepted - prev_accepted;
+
+        if accepted == 0.0 {
+            0.0
+        } else {
+            accepted / elapsed_seconds
+        }
+    }
+
+    pub fn to_cw_metric_data(&self, prev: Option<Metrics>) -> Vec<MetricDatum> {
+        let mut data = vec![
             MetricDatum::builder()
                 .metric_name("avalanche_network_peers")
                 .value(self.avalanche_network_peers.unwrap())
@@ -639,7 +751,18 @@ impl Metrics {
                 .value(self.avalanche_c_benchlist_benched_num.unwrap())
                 .unit(StandardUnit::Count)
                 .build(),
-        ]
+        ];
+        if prev.is_some() {
+            let prev_datum = prev.unwrap();
+            data.push(
+                MetricDatum::builder()
+                    .metric_name("avalanche_C_blks_accepted_per_second")
+                    .value(self.c_blks_accepted_per_second(prev_datum))
+                    .unit(StandardUnit::Count)
+                    .build(),
+            );
+        }
+        data
     }
 }
 
