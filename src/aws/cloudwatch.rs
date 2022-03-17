@@ -4,6 +4,7 @@ use std::{
     io::{self, Error, ErrorKind, Write},
     path::Path,
     string::String,
+    thread, time,
 };
 
 use aws_sdk_cloudwatch::{
@@ -42,39 +43,57 @@ impl Manager {
     }
 
     /// Posts CloudWatch metrics.
+    ///
     /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricData.html
     /// ref. https://docs.rs/aws-sdk-cloudwatch/latest/aws_sdk_cloudwatch/struct.Client.html#method.put_metric_data
     pub async fn put_metric_data(&self, namespace: &str, data: Vec<MetricDatum>) -> Result<()> {
-        info!(
-            "posting CloudWatch {} metrics in '{}'",
-            data.len(),
-            namespace
-        );
-        if data.len() > 20 {
-            return Err(API {
-                message: format!("put_metric_data limit is 20, got {}", data.len()),
-                is_retryable: false,
-            });
+        let n = data.len();
+        info!("posting CloudWatch {} metrics in '{}'", n, namespace);
+        if n <= 20 {
+            let ret = self
+                .metrics_cli
+                .put_metric_data()
+                .namespace(namespace)
+                .set_metric_data(Some(data))
+                .send()
+                .await;
+            match ret {
+                Ok(_) => {
+                    info!("successfully post metrics");
+                }
+                Err(e) => {
+                    return Err(API {
+                        message: format!("failed put_metric_data {:?}", e),
+                        is_retryable: is_metrics_error_retryable(&e),
+                    });
+                }
+            };
+        } else {
+            warn!("put_metric_data limit is 20, got {}; batching by 20...", n);
+            for batch in data.chunks(20) {
+                let batch_n = batch.len();
+                let ret = self
+                    .metrics_cli
+                    .put_metric_data()
+                    .namespace(namespace)
+                    .set_metric_data(Some(batch.to_vec()))
+                    .send()
+                    .await;
+                match ret {
+                    Ok(_) => {
+                        info!("successfully post {} metrics in batch", batch_n);
+                    }
+                    Err(e) => {
+                        return Err(API {
+                            message: format!("failed put_metric_data {:?}", e),
+                            is_retryable: is_metrics_error_retryable(&e),
+                        });
+                    }
+                }
+                thread::sleep(time::Duration::from_secs(1));
+            }
         }
 
-        let ret = self
-            .metrics_cli
-            .put_metric_data()
-            .namespace(namespace)
-            .set_metric_data(Some(data))
-            .send()
-            .await;
-        match ret {
-            Ok(_) => {
-                info!("successfully post metrics");
-            }
-            Err(e) => {
-                return Err(API {
-                    message: format!("failed put_metric_data {:?}", e),
-                    is_retryable: is_metrics_error_retryable(&e),
-                });
-            }
-        };
         Ok(())
     }
 

@@ -851,10 +851,8 @@ WantedBy=multi-user.target",
             .cloudwatch_avalanche_metrics_namespace
             .clone()
             .unwrap();
-        for batch in ms.to_cw_metric_data() {
-            rt.block_on(cw_manager.put_metric_data(&cw_namespace, batch))
-                .expect("failed put_metric_data");
-        }
+        rt.block_on(cw_manager.put_metric_data(&cw_namespace, ms.to_cw_metric_data()))
+            .expect("failed put_metric_data");
 
         // runs every 3-minute
         info!("STEP: checking update artifacts event key");

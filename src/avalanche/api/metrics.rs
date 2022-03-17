@@ -1,6 +1,6 @@
 use std::{io, process::Command, time::Duration};
 
-use aws_sdk_cloudwatch::model::MetricDatum;
+use aws_sdk_cloudwatch::model::{MetricDatum, StandardUnit};
 use log::info;
 use serde::Serialize;
 
@@ -9,7 +9,40 @@ use crate::utils::{http, prometheus};
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct Metrics {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_peers: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_throttler_outbound_acquire_failures: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_requests_average_latency: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_db_get_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_db_write_size_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_db_read_size_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_vtx_processing: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_txs_accepted_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_txs_accepted_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_txs_rejected_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_txs_rejected_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_txs_polls_accepted_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_txs_polls_accepted_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_polls_successful: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_polls_failed: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_handler_chits_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_handler_query_failed_count: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_whitelist_tx_accepted_count: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -32,12 +65,68 @@ pub struct Metrics {
     pub avalanche_x_whitelist_vtx_issue_failure: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_whitelist_vtx_issue_success: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_x_benchlist_benched_num: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_vm_total_staked: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_p_db_get_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_db_write_size_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_db_read_size_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_blks_accepted_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_blks_accepted_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_blks_rejected_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_blks_rejected_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_blks_polls_accepted_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_blks_polls_accepted_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_polls_successful: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_polls_failed: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_handler_chits_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_handler_query_failed_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_p_benchlist_benched_num: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_c_db_get_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_db_write_size_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_db_read_size_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_blks_processing: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_blks_accepted_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_blks_accepted_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_blks_rejected_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_blks_rejected_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_blks_polls_accepted_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_blks_polls_accepted_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_polls_successful: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_polls_failed: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_handler_chits_count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_handler_query_failed_count: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_c_handler_get_accepted_frontier_sum: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,14 +171,118 @@ pub struct Metrics {
     pub avalanche_c_handler_connected_sum: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_c_handler_disconnected_sum: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_c_benchlist_benched_num: Option<f64>,
 }
 
 impl Metrics {
-    pub fn to_cw_metric_data(&self) -> Vec<Vec<MetricDatum>> {
-        let batch1: Vec<MetricDatum> = vec![
+    pub fn x_polls_success_rate(&self) -> f64 {
+        let success = self.avalanche_x_polls_successful.unwrap_or(0.0);
+        let failed = self.avalanche_x_polls_failed.unwrap_or(0.0);
+        if success == 0.0 {
+            0.0
+        } else {
+            success / (success + failed)
+        }
+    }
+
+    pub fn p_polls_success_rate(&self) -> f64 {
+        let success = self.avalanche_p_polls_successful.unwrap_or(0.0);
+        let failed = self.avalanche_p_polls_failed.unwrap_or(0.0);
+        if success == 0.0 {
+            0.0
+        } else {
+            success / (success + failed)
+        }
+    }
+
+    pub fn c_polls_success_rate(&self) -> f64 {
+        let success = self.avalanche_c_polls_successful.unwrap_or(0.0);
+        let failed = self.avalanche_c_polls_failed.unwrap_or(0.0);
+        if success == 0.0 {
+            0.0
+        } else {
+            success / (success + failed)
+        }
+    }
+
+    pub fn to_cw_metric_data(&self) -> Vec<MetricDatum> {
+        vec![
+            MetricDatum::builder()
+                .metric_name("avalanche_network_peers")
+                .value(self.avalanche_network_peers.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_throttler_outbound_acquire_failures")
+                .value(
+                    self.avalanche_network_throttler_outbound_acquire_failures
+                        .unwrap(),
+                )
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_requests_average_latency")
+                .value(self.avalanche_requests_average_latency.unwrap())
+                .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_db_get_count")
                 .value(self.avalanche_x_db_get_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_db_write_size_sum")
+                .value(self.avalanche_x_db_write_size_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_db_read_size_sum")
+                .value(self.avalanche_x_db_read_size_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_vtx_processing")
+                .value(self.avalanche_x_vtx_processing.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_txs_accepted_count")
+                .value(self.avalanche_x_txs_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_txs_accepted_sum")
+                .value(self.avalanche_x_txs_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_txs_rejected_count")
+                .value(self.avalanche_x_txs_rejected_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_txs_rejected_sum")
+                .value(self.avalanche_x_txs_rejected_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_txs_polls_accepted_count")
+                .value(self.avalanche_x_txs_polls_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_txs_polls_accepted_sum")
+                .value(self.avalanche_x_txs_polls_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_polls_successful")
+                .value(self.avalanche_x_polls_successful.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_polls_failed")
+                .value(self.avalanche_x_polls_failed.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_polls_success_rate")
+                .value(self.x_polls_success_rate())
+                .unit(StandardUnit::Percent)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_handler_chits_count")
+                .value(self.avalanche_x_handler_chits_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_X_handler_query_failed_count")
+                .value(self.avalanche_x_handler_query_failed_count.unwrap())
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_accepted_count")
@@ -113,7 +306,7 @@ impl Metrics {
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_polls_rejected_sum")
-                .value(self.avalanche_x_db_get_count.unwrap())
+                .value(self.avalanche_x_whitelist_tx_polls_rejected_sum.unwrap())
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_processing")
@@ -136,12 +329,134 @@ impl Metrics {
                 .value(self.avalanche_x_whitelist_vtx_issue_success.unwrap())
                 .build(),
             MetricDatum::builder()
+                .metric_name("avalanche_X_benchlist_benched_num")
+                .value(self.avalanche_x_benchlist_benched_num.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_vm_total_staked")
+                .value(self.avalanche_p_vm_total_staked.unwrap())
+                .build(),
+            MetricDatum::builder()
                 .metric_name("avalanche_P_db_get_count")
                 .value(self.avalanche_p_db_get_count.unwrap())
                 .build(),
             MetricDatum::builder()
+                .metric_name("avalanche_P_db_write_size_sum")
+                .value(self.avalanche_p_db_write_size_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_db_read_size_sum")
+                .value(self.avalanche_p_db_read_size_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_blks_accepted_count")
+                .value(self.avalanche_p_blks_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_blks_accepted_sum")
+                .value(self.avalanche_p_blks_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_blks_rejected_count")
+                .value(self.avalanche_p_blks_rejected_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_blks_rejected_sum")
+                .value(self.avalanche_p_blks_rejected_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_blks_polls_accepted_count")
+                .value(self.avalanche_p_blks_polls_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_blks_polls_accepted_sum")
+                .value(self.avalanche_p_blks_polls_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_polls_successful")
+                .value(self.avalanche_p_polls_successful.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_polls_failed")
+                .value(self.avalanche_p_polls_failed.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_polls_success_rate")
+                .value(self.p_polls_success_rate())
+                .unit(StandardUnit::Percent)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_handler_chits_count")
+                .value(self.avalanche_p_handler_chits_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_handler_query_failed_count")
+                .value(self.avalanche_p_handler_query_failed_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_P_benchlist_benched_num")
+                .value(self.avalanche_p_benchlist_benched_num.unwrap())
+                .build(),
+            MetricDatum::builder()
                 .metric_name("avalanche_C_db_get_count")
                 .value(self.avalanche_c_db_get_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_db_write_size_sum")
+                .value(self.avalanche_c_db_write_size_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_db_read_size_sum")
+                .value(self.avalanche_c_db_read_size_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_blks_processing")
+                .value(self.avalanche_c_blks_processing.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_blks_accepted_count")
+                .value(self.avalanche_c_blks_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_blks_accepted_sum")
+                .value(self.avalanche_c_blks_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_blks_rejected_count")
+                .value(self.avalanche_c_blks_rejected_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_blks_rejected_sum")
+                .value(self.avalanche_c_blks_rejected_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_blks_polls_accepted_count")
+                .value(self.avalanche_c_blks_polls_accepted_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_blks_polls_accepted_sum")
+                .value(self.avalanche_c_blks_polls_accepted_sum.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_polls_successful")
+                .value(self.avalanche_c_polls_successful.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_polls_failed")
+                .value(self.avalanche_c_polls_failed.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_polls_success_rate")
+                .value(self.c_polls_success_rate())
+                .unit(StandardUnit::Percent)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_chits_count")
+                .value(self.avalanche_c_handler_chits_count.unwrap())
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_C_handler_query_failed_count")
+                .value(self.avalanche_c_handler_query_failed_count.unwrap())
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_accepted_frontier_sum")
@@ -167,9 +482,6 @@ impl Metrics {
                 .metric_name("avalanche_C_handler_accepted_frontier_sum")
                 .value(self.avalanche_c_handler_accepted_frontier_sum.unwrap())
                 .build(),
-        ];
-
-        let batch2: Vec<MetricDatum> = vec![
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_accepted_frontier_failed_sum")
                 .value(
@@ -237,9 +549,11 @@ impl Metrics {
                 .metric_name("avalanche_C_handler_disconnected_sum")
                 .value(self.avalanche_c_handler_disconnected_sum.unwrap())
                 .build(),
-        ];
-
-        vec![batch1, batch2]
+            MetricDatum::builder()
+                .metric_name("avalanche_C_benchlist_benched_num")
+                .value(self.avalanche_c_benchlist_benched_num.unwrap())
+                .build(),
+        ]
     }
 }
 
@@ -274,211 +588,518 @@ pub async fn get(u: &str) -> io::Result<Metrics> {
 
     let s = prometheus::Scrape::from_bytes(&output)?;
 
-    let mv = prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_db_get_count");
-    let avalanche_x_db_get_count = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_accepted_count"
-    });
-    let avalanche_x_whitelist_tx_accepted_count = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_accepted_sum"
-    });
-    let avalanche_x_whitelist_tx_accepted_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_polls_accepted_count"
-    });
-    let avalanche_x_whitelist_tx_polls_accepted_count = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_polls_accepted_sum"
-    });
-    let avalanche_x_whitelist_tx_polls_accepted_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_polls_rejected_count"
-    });
-    let avalanche_x_whitelist_tx_polls_rejected_count = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_polls_rejected_sum"
-    });
-    let avalanche_x_whitelist_tx_polls_rejected_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_processing"
-    });
-    let avalanche_x_whitelist_tx_processing = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_rejected_count"
-    });
-    let avalanche_x_whitelist_tx_rejected_count = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_tx_rejected_sum"
-    });
-    let avalanche_x_whitelist_tx_rejected_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_vtx_issue_failure"
-    });
-    let avalanche_x_whitelist_vtx_issue_failure = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_X_whitelist_vtx_issue_success"
-    });
-    let avalanche_x_whitelist_vtx_issue_success = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_db_get_count");
-    let avalanche_p_db_get_count = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_db_get_count");
-    let avalanche_c_db_get_count = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_get_accepted_frontier_sum"
-    });
-    let avalanche_c_handler_get_accepted_frontier_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_app_gossip_sum"
-    });
-    let avalanche_c_handler_app_gossip_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_app_request_sum"
-    });
-    let avalanche_c_handler_app_request_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_app_request_failed_sum"
-    });
-    let avalanche_c_handler_app_request_failed_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_app_response_sum"
-    });
-    let avalanche_c_handler_app_response_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_accepted_frontier_sum"
-    });
-    let avalanche_c_handler_accepted_frontier_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_get_accepted_frontier_failed_sum"
-    });
-    let avalanche_c_handler_get_accepted_frontier_failed_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_get_accepted_sum"
-    });
-    let avalanche_c_handler_get_accepted_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_accepted_sum"
-    });
-    let avalanche_c_handler_accepted_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_get_accepted_failed_sum"
-    });
-    let avalanche_c_handler_get_accepted_failed_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_get_ancestors_sum"
-    });
-    let avalanche_c_handler_get_ancestors_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_ancestors_sum"
-    });
-    let avalanche_c_handler_ancestors_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_get_ancestors_failed_sum"
-    });
-    let avalanche_c_handler_get_ancestors_failed_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_handler_get_sum");
-    let avalanche_c_handler_get_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_handler_put_sum");
-    let avalanche_c_handler_put_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_get_failed_sum"
-    });
-    let avalanche_c_handler_get_failed_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_push_query_sum"
-    });
-    let avalanche_c_handler_push_query_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_pull_query_sum"
-    });
-    let avalanche_c_handler_pull_query_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_handler_chits_sum");
-    let avalanche_c_handler_chits_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_query_failed_sum"
-    });
-    let avalanche_c_handler_query_failed_sum = Some(mv.value.to_f64());
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_connected_sum"
-    });
-    let avalanche_c_handler_connected_sum = Some(mv.value.to_f64());
-
-    let mv = prometheus::match_metric(&s.metrics, |s| {
-        s.metric == "avalanche_C_handler_disconnected_sum"
-    });
-    let avalanche_c_handler_disconnected_sum = Some(mv.value.to_f64());
-
     Ok(Metrics {
-        avalanche_x_db_get_count,
-        avalanche_x_whitelist_tx_accepted_count,
-        avalanche_x_whitelist_tx_accepted_sum,
-        avalanche_x_whitelist_tx_polls_accepted_count,
-        avalanche_x_whitelist_tx_polls_accepted_sum,
-        avalanche_x_whitelist_tx_polls_rejected_count,
-        avalanche_x_whitelist_tx_polls_rejected_sum,
-        avalanche_x_whitelist_tx_processing,
-        avalanche_x_whitelist_tx_rejected_count,
-        avalanche_x_whitelist_tx_rejected_sum,
-        avalanche_x_whitelist_vtx_issue_failure,
-        avalanche_x_whitelist_vtx_issue_success,
+        avalanche_network_peers: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_network_peers")
+                .value
+                .to_f64(),
+        ),
 
-        avalanche_p_db_get_count,
+        avalanche_network_throttler_outbound_acquire_failures: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_throttler_outbound_acquire_failures"
+            })
+            .value
+            .to_f64(),
+        ),
 
-        avalanche_c_db_get_count,
-        avalanche_c_handler_get_accepted_frontier_sum,
-        avalanche_c_handler_app_gossip_sum,
-        avalanche_c_handler_app_request_sum,
-        avalanche_c_handler_app_request_failed_sum,
-        avalanche_c_handler_app_response_sum,
-        avalanche_c_handler_accepted_frontier_sum,
-        avalanche_c_handler_get_accepted_frontier_failed_sum,
-        avalanche_c_handler_get_accepted_sum,
-        avalanche_c_handler_accepted_sum,
-        avalanche_c_handler_get_accepted_failed_sum,
-        avalanche_c_handler_get_ancestors_sum,
-        avalanche_c_handler_ancestors_sum,
-        avalanche_c_handler_get_ancestors_failed_sum,
-        avalanche_c_handler_get_sum,
-        avalanche_c_handler_put_sum,
-        avalanche_c_handler_get_failed_sum,
-        avalanche_c_handler_push_query_sum,
-        avalanche_c_handler_pull_query_sum,
-        avalanche_c_handler_chits_sum,
-        avalanche_c_handler_query_failed_sum,
-        avalanche_c_handler_connected_sum,
-        avalanche_c_handler_disconnected_sum,
+        avalanche_requests_average_latency: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_requests_average_latency"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_x_db_get_count: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_db_get_count")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_db_write_size_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_db_write_size_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_db_read_size_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_db_read_size_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_vtx_processing: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_vtx_processing")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_txs_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_txs_accepted_count")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_txs_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_txs_accepted_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_txs_rejected_count: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_txs_rejected_count")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_txs_rejected_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_txs_rejected_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_txs_polls_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_txs_polls_accepted_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_txs_polls_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_txs_polls_accepted_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_polls_successful: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_polls_successful")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_polls_failed: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_polls_failed")
+                .value
+                .to_f64(),
+        ),
+        avalanche_x_handler_chits_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_handler_chits_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_handler_query_failed_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_handler_query_failed_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_accepted_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_accepted_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_polls_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_polls_accepted_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_polls_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_polls_accepted_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_polls_rejected_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_polls_rejected_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_polls_rejected_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_polls_rejected_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_processing: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_processing"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_rejected_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_rejected_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_tx_rejected_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_tx_rejected_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_vtx_issue_failure: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_vtx_issue_failure"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_whitelist_vtx_issue_success: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_whitelist_vtx_issue_success"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_x_benchlist_benched_num: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_X_benchlist_benched_num"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_p_vm_total_staked: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_vm_total_staked")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_db_get_count: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_db_get_count")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_db_write_size_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_db_write_size_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_db_read_size_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_db_read_size_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_blks_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_P_blks_accepted_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_p_blks_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_blks_accepted_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_blks_rejected_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_P_blks_rejected_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_p_blks_rejected_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_blks_rejected_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_polls_successful: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_polls_successful")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_polls_failed: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_polls_failed")
+                .value
+                .to_f64(),
+        ),
+        avalanche_p_blks_polls_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_P_blks_polls_accepted_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_p_blks_polls_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_P_blks_polls_accepted_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_p_handler_chits_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_P_handler_chits_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_p_handler_query_failed_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_P_handler_query_failed_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_p_benchlist_benched_num: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_P_benchlist_benched_num"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_c_db_get_count: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_db_get_count")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_db_write_size_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_db_write_size_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_db_read_size_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_db_read_size_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_blks_processing: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_blks_processing")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_blks_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_blks_accepted_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_blks_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_blks_accepted_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_blks_rejected_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_blks_rejected_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_blks_rejected_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_blks_rejected_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_blks_polls_accepted_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_blks_polls_accepted_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_blks_polls_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_blks_polls_accepted_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_polls_successful: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_polls_successful")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_polls_failed: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_polls_failed")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_handler_chits_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_chits_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_query_failed_count: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_query_failed_count"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_get_accepted_frontier_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_get_accepted_frontier_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_app_gossip_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_app_gossip_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_app_request_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_app_request_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_app_request_failed_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_app_request_failed_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_app_response_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_app_response_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_accepted_frontier_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_accepted_frontier_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_get_accepted_frontier_failed_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_get_accepted_frontier_failed_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_get_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_get_accepted_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_accepted_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_accepted_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_get_accepted_failed_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_get_accepted_failed_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_get_ancestors_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_get_ancestors_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_ancestors_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_ancestors_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_get_ancestors_failed_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_get_ancestors_failed_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_get_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_handler_get_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_handler_put_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_handler_put_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_handler_get_failed_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_get_failed_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_push_query_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_push_query_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_pull_query_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_pull_query_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_chits_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_handler_chits_sum")
+                .value
+                .to_f64(),
+        ),
+        avalanche_c_handler_query_failed_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_query_failed_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_connected_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_connected_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_handler_disconnected_sum: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_handler_disconnected_sum"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_c_benchlist_benched_num: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_C_benchlist_benched_num"
+            })
+            .value
+            .to_f64(),
+        ),
     })
 }
