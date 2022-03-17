@@ -340,8 +340,8 @@ impl Metrics {
                 .unit(StandardUnit::Count)
                 .build(),
             MetricDatum::builder()
-                .metric_name("avalanche_requests_average_latency_ms")
-                .value(self.avalanche_requests_average_latency.unwrap() / 1000000.0)
+                .metric_name("avalanche_requests_average_latency_seconds")
+                .value(self.avalanche_requests_average_latency.unwrap() / 1000000000.0)
                 .unit(StandardUnit::Milliseconds)
                 .build(),
             MetricDatum::builder()
@@ -352,12 +352,12 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_X_db_write_size_sum")
                 .value(self.avalanche_x_db_write_size_sum.unwrap())
-                .unit(StandardUnit::Count)
+                .unit(StandardUnit::Bytes)
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_db_read_size_sum")
                 .value(self.avalanche_x_db_read_size_sum.unwrap())
-                .unit(StandardUnit::Count)
+                .unit(StandardUnit::Bytes)
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_vtx_processing")
@@ -491,12 +491,12 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_P_db_write_size_sum")
                 .value(self.avalanche_p_db_write_size_sum.unwrap())
-                .unit(StandardUnit::Count)
+                .unit(StandardUnit::Bytes)
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_db_read_size_sum")
                 .value(self.avalanche_p_db_read_size_sum.unwrap())
-                .unit(StandardUnit::Count)
+                .unit(StandardUnit::Bytes)
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_blks_accepted_count")
@@ -566,12 +566,12 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_C_db_write_size_sum")
                 .value(self.avalanche_c_db_write_size_sum.unwrap())
-                .unit(StandardUnit::Count)
+                .unit(StandardUnit::Bytes)
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_db_read_size_sum")
                 .value(self.avalanche_c_db_read_size_sum.unwrap())
-                .unit(StandardUnit::Count)
+                .unit(StandardUnit::Bytes)
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_processing")
