@@ -358,7 +358,7 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_requests_average_latency_seconds")
                 .value(self.avalanche_requests_average_latency.unwrap() / 1000000000.0)
-                .unit(StandardUnit::Milliseconds)
+                .unit(StandardUnit::Seconds)
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_db_get_count")
