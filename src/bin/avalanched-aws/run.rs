@@ -1008,8 +1008,27 @@ WantedBy=multi-user.target",
         );
         }
 
-        info!("sleeping 3-min...");
-        thread::sleep(Duration::from_secs(180));
+        info!("sleeping 100-sec...");
+        thread::sleep(Duration::from_secs(100));
+
+        // TODO: move this to another async worker
+        info!("STEP: fetching avalanche metrics");
+        let cur_metrics = rt
+            .block_on(metrics::get(&local_node.http_endpoint))
+            .expect("failed metrics::get");
+        let cw_namespace = aws_resources
+            .cloudwatch_avalanche_metrics_namespace
+            .clone()
+            .unwrap();
+        rt.block_on(
+            cw_manager.put_metric_data(&cw_namespace, cur_metrics.to_cw_metric_data(prev_metrics)),
+        )
+        .expect("failed put_metric_data");
+        prev_metrics = Some(cur_metrics.clone());
+
+        info!("sleeping 1-min...");
+        thread::sleep(Duration::from_secs(60));
+
         cnt += 1;
     }
 }
