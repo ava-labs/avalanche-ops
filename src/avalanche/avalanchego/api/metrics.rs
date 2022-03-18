@@ -49,6 +49,22 @@ pub struct Metrics {
     pub avalanche_network_accepted_frontier_sent_bytes: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_accepted_frontier_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_accepted_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_accepted_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_accepted_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_accepted_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_ancestors_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_ancestors_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_ancestors_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_ancestors_received_bytes: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_db_get_count: Option<f64>,
@@ -238,6 +254,14 @@ impl Metrics {
             avalanche_network_get_accepted_frontier_received_bytes: None,
             avalanche_network_accepted_frontier_sent_bytes: None,
             avalanche_network_accepted_frontier_received_bytes: None,
+            avalanche_network_get_accepted_sent_bytes: None,
+            avalanche_network_get_accepted_received_bytes: None,
+            avalanche_network_accepted_sent_bytes: None,
+            avalanche_network_accepted_received_bytes: None,
+            avalanche_network_get_ancestors_sent_bytes: None,
+            avalanche_network_get_ancestors_received_bytes: None,
+            avalanche_network_ancestors_sent_bytes: None,
+            avalanche_network_ancestors_received_bytes: None,
 
             avalanche_x_db_get_count: None,
             avalanche_x_db_write_size_sum: None,
@@ -479,6 +503,54 @@ impl Metrics {
                     self.avalanche_network_accepted_frontier_received_bytes
                         .unwrap(),
                 )
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_accepted_sent_bytes")
+                .value(self.avalanche_network_get_accepted_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_accepted_received_bytes")
+                .value(self.avalanche_network_get_accepted_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_accepted_sent_bytes")
+                .value(self.avalanche_network_accepted_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_accepted_received_bytes")
+                .value(self.avalanche_network_accepted_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_ancestors_sent_bytes")
+                .value(self.avalanche_network_get_ancestors_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_ancestors_received_bytes")
+                .value(self.avalanche_network_get_ancestors_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_ancestors_sent_bytes")
+                .value(self.avalanche_network_ancestors_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_ancestors_received_bytes")
+                .value(self.avalanche_network_ancestors_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
                 .build(),
@@ -1135,6 +1207,70 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
         avalanche_network_accepted_frontier_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_accepted_frontier_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_get_accepted_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_accepted_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_get_accepted_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_accepted_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_accepted_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_accepted_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_accepted_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_accepted_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_get_ancestors_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_ancestors_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_get_ancestors_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_ancestors_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_ancestors_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_ancestors_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_ancestors_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_ancestors_received_bytes"
             })
             .value
             .to_f64(),
