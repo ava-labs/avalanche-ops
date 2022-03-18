@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc};
 
 use aws_sdk_s3::{
     error::{CreateBucketError, CreateBucketErrorKind, DeleteBucketError},
@@ -23,6 +23,7 @@ use crate::{
 };
 
 /// Implements AWS S3 manager.
+#[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,
@@ -149,7 +150,11 @@ impl Manager {
     /// Deletes objects by "prefix".
     /// If "prefix" is "None", empties a S3 bucket, deleting all files.
     /// ref. https://github.com/awslabs/aws-sdk-rust/blob/main/examples/s3/src/bin/delete-objects.rs
-    pub async fn delete_objects(&self, bucket_name: &str, prefix: Option<String>) -> Result<()> {
+    pub async fn delete_objects(
+        &self,
+        bucket_name: Arc<String>,
+        prefix: Option<Arc<String>>,
+    ) -> Result<()> {
         let reg = self.shared_config.region().unwrap();
         info!(
             "deleting objects S3 bucket '{}' in region {} (prefix {:?})",
@@ -158,7 +163,7 @@ impl Manager {
             prefix,
         );
 
-        let objects = self.list_objects(bucket_name, prefix).await?;
+        let objects = self.list_objects(bucket_name.clone(), prefix).await?;
         let mut object_ids: Vec<ObjectIdentifier> = vec![];
         for obj in objects {
             let k = String::from(obj.key().unwrap_or(""));
@@ -172,7 +177,7 @@ impl Manager {
             let ret = self
                 .cli
                 .delete_objects()
-                .bucket(bucket_name)
+                .bucket(bucket_name.to_string())
                 .delete(deletes)
                 .send()
                 .await;
@@ -204,18 +209,30 @@ impl Manager {
     /// "mydata/myprefix/" for prefix
     pub async fn list_objects(
         &self,
-        bucket_name: &str,
-        prefix: Option<String>,
+        bucket_name: Arc<String>,
+        prefix: Option<Arc<String>>,
     ) -> Result<Vec<Object>> {
-        let pfx = prefix.unwrap_or_default();
+        let pfx = {
+            if prefix.is_some() {
+                let s = prefix.unwrap();
+                let s = s.to_string();
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s)
+                }
+            } else {
+                None
+            }
+        };
 
         info!("listing bucket {} with prefix '{:?}'", bucket_name, pfx);
         let mut objects: Vec<Object> = Vec::new();
         let mut token = String::new();
         loop {
-            let mut builder = self.cli.list_objects_v2().bucket(bucket_name);
-            if !pfx.is_empty() {
-                builder = builder.set_prefix(Some(pfx.to_owned()));
+            let mut builder = self.cli.list_objects_v2().bucket(bucket_name.to_string());
+            if pfx.is_some() {
+                builder = builder.set_prefix(pfx.clone());
             }
             if !token.is_empty() {
                 builder = builder.set_continuation_token(Some(token.to_owned()));
@@ -259,7 +276,7 @@ impl Manager {
 
         if objects.len() > 1 {
             info!(
-                "sorting {} objects in bucket {} with prefix {}",
+                "sorting {} objects in bucket {} with prefix {:?}",
                 objects.len(),
                 bucket_name,
                 pfx
@@ -286,15 +303,20 @@ impl Manager {
     ///       "fs::read" reads all data onto memory
     ///       ".body(ByteStream::from(contents))" passes the whole data to an API call
     ///
-    pub async fn put_object(&self, file_path: &str, s3_bucket: &str, s3_key: &str) -> Result<()> {
-        if !Path::new(file_path).exists() {
+    pub async fn put_object(
+        &self,
+        file_path: Arc<String>,
+        s3_bucket: Arc<String>,
+        s3_key: Arc<String>,
+    ) -> Result<()> {
+        if !Path::new(&file_path.to_string()).exists() {
             return Err(Other {
                 message: format!("file path {} does not exist", file_path),
                 is_retryable: false,
             });
         }
 
-        let meta = fs::metadata(file_path).map_err(|e| Other {
+        let meta = fs::metadata(file_path.as_str()).map_err(|e| Other {
             message: format!("failed metadata {}", e),
             is_retryable: false,
         })?;
@@ -307,7 +329,7 @@ impl Manager {
             s3_key
         );
 
-        let byte_stream = ByteStream::from_path(Path::new(file_path))
+        let byte_stream = ByteStream::from_path(Path::new(file_path.as_str()))
             .await
             .map_err(|e| Other {
                 message: format!("failed ByteStream::from_file {}", e),
@@ -315,8 +337,8 @@ impl Manager {
             })?;
         self.cli
             .put_object()
-            .bucket(s3_bucket)
-            .key(s3_key)
+            .bucket(s3_bucket.to_string())
+            .key(s3_key.to_string())
             .body(byte_stream)
             .acl(ObjectCannedAcl::Private)
             .send()
@@ -335,8 +357,16 @@ impl Manager {
     ///       "aws_smithy_http::byte_stream:ByteStream.collect" reads all the data into memory
     ///       "File.write_all_buf(&mut bytes)" to write bytes
     ///
-    pub async fn get_object(&self, s3_bucket: &str, s3_key: &str, file_path: &str) -> Result<()> {
-        if Path::new(file_path).exists() {
+    /// "If a single piece of data must be accessible from more than one task
+    /// concurrently, then it must be shared using synchronization primitives such as Arc."
+    /// ref. https://tokio.rs/tokio/tutorial/spawning
+    pub async fn get_object(
+        &self,
+        s3_bucket: Arc<String>,
+        s3_key: Arc<String>,
+        file_path: Arc<String>,
+    ) -> Result<()> {
+        if Path::new(file_path.as_str()).exists() {
             return Err(Other {
                 message: format!("file path {} already exists", file_path),
                 is_retryable: false,
@@ -346,8 +376,8 @@ impl Manager {
         let head_output = self
             .cli
             .head_object()
-            .bucket(s3_bucket)
-            .key(s3_key)
+            .bucket(s3_bucket.to_string())
+            .key(s3_key.to_string())
             .send()
             .await
             .map_err(|e| API {
@@ -365,8 +395,8 @@ impl Manager {
         let mut output = self
             .cli
             .get_object()
-            .bucket(s3_bucket)
-            .key(s3_key)
+            .bucket(s3_bucket.to_string())
+            .key(s3_key.to_string())
             .send()
             .await
             .map_err(|e| API {
@@ -375,7 +405,7 @@ impl Manager {
             })?;
 
         // ref. https://docs.rs/tokio-stream/latest/tokio_stream/
-        let mut file = File::create(file_path).await.map_err(|e| Other {
+        let mut file = File::create(file_path.as_str()).await.map_err(|e| Other {
             message: format!("failed File::create {}", e),
             is_retryable: false,
         })?;

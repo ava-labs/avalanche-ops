@@ -1,17 +1,17 @@
 use std::{
     fs::{self, File},
-    io::{self, Write},
+    io::Write,
     os::unix::fs::PermissionsExt,
     path::Path,
+    sync::Arc,
     thread,
-    time::Duration,
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use log::{info, warn};
-use tokio::runtime::Runtime;
+use tokio;
 
 use avalanche_ops::{
     self,
@@ -42,30 +42,43 @@ pub fn command() -> Command<'static> {
         )
 }
 
-pub fn execute(log_level: &str) -> io::Result<()> {
+pub async fn execute(log_level: &str) {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let rt = Runtime::new().unwrap();
-
     info!("STEP: fetching intance metadata using IMDSv2");
 
-    let az = rt.block_on(ec2::fetch_availability_zone()).unwrap();
+    let az = tokio::spawn(ec2::fetch_availability_zone())
+        .await
+        .expect("failed spawn await")
+        .expect("failed ec2::fetch_availability_zone");
     info!("fetched availability zone {}", az);
 
-    let reg = rt.block_on(ec2::fetch_region()).unwrap();
+    let reg = tokio::spawn(ec2::fetch_region())
+        .await
+        .expect("failed spawn await")
+        .expect("failed ec2::fetch_region");
     info!("fetched region {}", reg);
 
-    let instance_id = rt.block_on(ec2::fetch_instance_id()).unwrap();
+    let instance_id = tokio::spawn(ec2::fetch_instance_id())
+        .await
+        .expect("failed spawn await")
+        .expect("failed ec2::fetch_instance_id");
     info!("fetched instance ID {}", instance_id);
 
-    let public_ipv4 = rt.block_on(ec2::fetch_public_ipv4()).unwrap();
+    let public_ipv4 = tokio::spawn(ec2::fetch_public_ipv4())
+        .await
+        .expect("failed spawn await")
+        .expect("failed ec2::fetch_public_ipv4");
     info!("fetched public ipv4 {}", public_ipv4);
 
     info!("STEP: loading AWS config");
-    let shared_config = rt.block_on(aws::load_config(Some(reg.clone()))).unwrap();
+    let shared_config = tokio::spawn(aws::load_config(Some(reg.clone())))
+        .await
+        .expect("failed spawn aws::load_config")
+        .expect("failed aws::load_config");
 
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
@@ -73,11 +86,19 @@ pub fn execute(log_level: &str) -> io::Result<()> {
     let cw_manager = cloudwatch::Manager::new(&shared_config);
 
     info!("STEP: fetching tags from the local instance");
-    let tags = rt.block_on(ec2_manager.fetch_tags(&instance_id)).unwrap();
+    let instance_id_arc = Arc::new(instance_id.clone());
+    let tags = tokio::spawn(async move {
+        let ec2_manager_arc = Arc::new(ec2_manager);
+        ec2_manager_arc.fetch_tags(instance_id_arc).await
+    })
+    .await
+    .expect("failed spawn await")
+    .expect("failed ec2_manager.fetch_tags");
+
     let mut id: String = String::new();
     let mut _node_kind: String = String::new();
     let mut kms_cmk_arn: String = String::new();
-    let mut s3_bucket_name: String = String::new();
+    let mut s3_bucket: String = String::new();
     let mut cloudwatch_config_file_path: String = String::new();
     let mut avalanched_bin_path: String = String::new();
     let mut avalanche_bin_path: String = String::new();
@@ -97,7 +118,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
                 kms_cmk_arn = v.to_string();
             }
             "S3_BUCKET_NAME" => {
-                s3_bucket_name = v.to_string();
+                s3_bucket = v.to_string();
             }
             "CLOUDWATCH_CONFIG_FILE_PATH" => {
                 cloudwatch_config_file_path = v.to_string();
@@ -130,7 +151,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
     if kms_cmk_arn.is_empty() {
         panic!("'KMS_CMK_ARN' tag not found")
     }
-    if s3_bucket_name.is_empty() {
+    if s3_bucket.is_empty() {
         panic!("'S3_BUCKET_NAME' tag not found")
     }
     if cloudwatch_config_file_path.is_empty() {
@@ -150,23 +171,37 @@ pub fn execute(log_level: &str) -> io::Result<()> {
 
     if !Path::new(&avalanche_bin_path).exists() {
         info!("STEP: downloading avalanche binary from S3");
+        let s3_manager_arc = Arc::new(s3_manager.clone());
+        let s3_bucket_arc = Arc::new(s3_bucket.clone());
+        let s3_key = avalanche_ops::StorageNamespace::AvalancheBinCompressed(id.clone()).encode();
+        let s3_key_arc = Arc::new(s3_key);
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
-        rt.block_on(s3_manager.get_object(
-            &s3_bucket_name,
-            &avalanche_ops::StorageNamespace::AvalancheBinCompressed(id.clone()).encode(),
-            &tmp_avalanche_bin_compressed_path,
-        ))
-        .expect("failed get_object avalanche_bin_compressed_path");
+        let tmp_avalanche_bin_compressed_path_arc =
+            Arc::new(tmp_avalanche_bin_compressed_path.clone());
+        tokio::spawn(async move {
+            s3_manager_arc
+                .get_object(
+                    s3_bucket_arc,
+                    s3_key_arc,
+                    tmp_avalanche_bin_compressed_path_arc,
+                )
+                .await
+        })
+        .await
+        .expect("failed spawn await")
+        .expect("failed s3_manager.get_object");
+
         compress::unpack_file(
             &tmp_avalanche_bin_compressed_path,
             &avalanche_bin_path,
             compress::Decoder::Zstd,
         )
         .expect("failed unpack_file avalanche_bin_compressed_path");
+
         let f = File::open(&avalanche_bin_path).expect("failed to open avalanche_bin");
         f.set_permissions(PermissionsExt::from_mode(0o777))
             .expect("failed to set file permission for avalanche_bin");
-        fs::remove_file(&tmp_avalanche_bin_compressed_path)?;
+        fs::remove_file(&tmp_avalanche_bin_compressed_path).expect("failed fs::remove_file");
     }
 
     let plugins_dir = get_plugins_dir(&avalanche_bin_path);
@@ -175,39 +210,62 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         fs::create_dir_all(plugins_dir.clone()).unwrap();
 
         info!("STEP: downloading plugins from S3 (if any)");
-        let objects = rt
-            .block_on(s3_manager.list_objects(
-                &s3_bucket_name,
-                Some(s3::append_slash(
-                    &avalanche_ops::StorageNamespace::PluginsDir(id.clone()).encode(),
-                )),
-            ))
-            .expect("failed list_objects PluginsDir");
+        let s3_manager_arc = Arc::new(s3_manager.clone());
+        let s3_bucket_arc = Arc::new(s3_bucket.clone());
+        let s3_key =
+            s3::append_slash(&avalanche_ops::StorageNamespace::PluginsDir(id.clone()).encode());
+        let s3_key_arc = Arc::new(s3_key);
+        let objects = tokio::spawn(async move {
+            s3_manager_arc
+                .list_objects(s3_bucket_arc, Some(s3_key_arc))
+                .await
+        })
+        .await
+        .expect("failed spawn await")
+        .expect("failed s3_manager.list_objects");
         info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
+            let s3_manager_arc = Arc::new(s3_manager.clone());
+            let s3_bucket_arc = Arc::new(s3_bucket.clone());
             let s3_key = obj.key().expect("unexpected None s3 object");
+            let s3_key_arc = Arc::new(s3_key.to_string());
             let file_name = extract_filename(s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
-
             let tmp_path = random::tmp_path(15, None).unwrap();
-            rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
-                .expect("failed get_object plugin file");
+            let tmp_path_arc = Arc::new(tmp_path.clone());
+            tokio::spawn(async move {
+                s3_manager_arc
+                    .get_object(s3_bucket_arc, s3_key_arc, tmp_path_arc)
+                    .await
+            })
+            .await
+            .expect("failed spawn await")
+            .expect("failed s3_manager.get_object");
+
             compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
+
             let f = File::open(file_path).expect("failed to open plugin file");
             f.set_permissions(PermissionsExt::from_mode(0o777))
                 .expect("failed to set file permission");
-            fs::remove_file(&tmp_path)?;
+            fs::remove_file(&tmp_path).expect("failed fs::remove_file");
         }
     }
 
     info!("STEP: downloading avalanche-ops::Spec from S3");
+    let s3_manager_arc = Arc::new(s3_manager.clone());
+    let s3_bucket_arc = Arc::new(s3_bucket.clone());
+    let s3_key = avalanche_ops::StorageNamespace::ConfigFile(id.clone()).encode();
+    let s3_key_arc = Arc::new(s3_key);
     let tmp_spec_file_path = random::tmp_path(15, Some(".yaml")).unwrap();
-    rt.block_on(s3_manager.get_object(
-        &s3_bucket_name,
-        &avalanche_ops::StorageNamespace::ConfigFile(id.clone()).encode(),
-        &tmp_spec_file_path,
-    ))
-    .expect("failed get_object spec file");
+    let tmp_spec_file_path_arc = Arc::new(tmp_spec_file_path.clone());
+    tokio::spawn(async move {
+        s3_manager_arc
+            .get_object(s3_bucket_arc, s3_key_arc, tmp_spec_file_path_arc)
+            .await
+    })
+    .await
+    .expect("failed spawn await")
+    .expect("failed s3_manager.get_object");
 
     let mut spec = avalanche_ops::Spec::load(&tmp_spec_file_path).unwrap();
     spec.avalanchego_config.public_ip = Some(public_ipv4.clone());
@@ -216,7 +274,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         .expect("failed to sync avalanchego config_file");
 
     // "avalanched" never updates "spec" file, runs in read-only mode
-    fs::remove_file(&tmp_spec_file_path)?;
+    fs::remove_file(&tmp_spec_file_path).expect("failed fs::remove_file");
 
     // ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
     info!("STEP: writing CloudWatch configuration JSON file");
@@ -300,6 +358,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         .clone()
         .staking_tls_cert_file
         .unwrap();
+    let tls_cert_path_arc = Arc::new(tls_cert_path);
     let tls_cert_exists = Path::new(&tls_cert_path).exists();
     if !tls_key_exists || !tls_cert_exists {
         info!(
@@ -309,19 +368,19 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         cert::generate(&tls_key_path, &tls_cert_path).unwrap();
 
         info!("uploading generated TLS certs to S3");
-        rt.block_on(
-            s3_manager.put_object(
-                &tls_cert_path,
-                &s3_bucket_name,
-                format!(
-                    "{}/{}.crt",
-                    avalanche_ops::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-                    instance_id
-                )
-                .as_str(),
-            ),
-        )
-        .unwrap();
+        let s3_manager_arc = Arc::new(s3_manager.clone());
+        let s3_bucket_arc = Arc::new(s3_bucket.clone());
+        let s3_key = format!(
+            "{}/{}.crt",
+            avalanche_ops::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+            instance_id
+        );
+        let s3_key_arc = Arc::new(s3_key);
+        tokio::spawn(s3_manager_arc.put_object(tls_cert_path_arc, s3_bucket_arc, s3_key_arc))
+            .await
+            .expect("failed spawn await")
+            .expect("failed s3_manager.put_object");
+
         let tmp_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         compress::pack_file(
@@ -330,23 +389,28 @@ pub fn execute(log_level: &str) -> io::Result<()> {
             compress::Encoder::Zstd(3),
         )
         .expect("failed pack_file tls_key_path");
-        rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
-            .expect("failed seal_aes_256_file compressed tls_key_path");
-        rt.block_on(
-            s3_manager.put_object(
-                &tmp_encrypted_path,
-                &s3_bucket_name,
-                format!(
-                    "{}/{}.key.zstd.seal_aes_256.encrypted",
-                    avalanche_ops::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-                    instance_id
-                )
-                .as_str(),
-            ),
-        )
-        .expect("failed put_object encrypted key file");
-        fs::remove_file(tmp_compressed_path)?;
-        fs::remove_file(tmp_encrypted_path)?;
+        let tmp_encrypted_path_arc = Arc::new(tmp_encrypted_path.clone());
+
+        tokio::spawn(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
+            .await
+            .expect("failed spawn await")
+            .expect("failed envelope.seal_aes_256_file");
+
+        let s3_manager_arc = Arc::new(s3_manager.clone());
+        let s3_bucket_arc = Arc::new(s3_bucket.clone());
+        let s3_key = format!(
+            "{}/{}.key.zstd.seal_aes_256.encrypted",
+            avalanche_ops::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+            instance_id
+        );
+        let s3_key_arc = Arc::new(s3_key);
+        tokio::spawn(s3_manager_arc.put_object(tmp_encrypted_path_arc, s3_bucket_arc, s3_key_arc))
+            .await
+            .expect("failed spawn await")
+            .expect("failed s3_manager.put_object");
+
+        fs::remove_file(tmp_compressed_path).expect("failed fs::remove_file");
+        fs::remove_file(tmp_encrypted_path).expect("failed fs::remove_file");
     }
 
     // loads the node ID from generated/existing certs
@@ -390,6 +454,8 @@ pub fn execute(log_level: &str) -> io::Result<()> {
             && aws_resources.db_backup_s3_key.is_some()
         {
             info!("STEP: publishing node information before db backup downloads");
+            let s3_manager_arc = Arc::new(s3_manager.clone());
+            let s3_bucket_arc = Arc::new(s3_bucket.clone());
             let s3_key = {
                 if matches!(node_kind, node::Kind::Anchor) {
                     avalanche_ops::StorageNamespace::DiscoverProvisioningBeaconNode(
@@ -402,8 +468,9 @@ pub fn execute(log_level: &str) -> io::Result<()> {
                         local_node.clone(),
                     )
                 }
-            };
-            let s3_key = s3_key.encode();
+            }
+            .encode();
+            let s3_key_arc = Arc::new(s3_key);
             let node_info = node::Info::new(
                 local_node.clone(),
                 spec.avalanchego_config.clone(),
@@ -411,15 +478,19 @@ pub fn execute(log_level: &str) -> io::Result<()> {
             );
             let tmp_path =
                 random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+            let tmp_path_arc = Arc::new(tmp_path.clone());
             node_info.sync(tmp_path.clone()).unwrap();
-            rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
-                .expect("failed put_object node::Info");
-            fs::remove_file(tmp_path)?;
+            tokio::spawn(s3_manager_arc.put_object(tmp_path_arc, s3_bucket_arc, s3_key_arc))
+                .await
+                .expect("failed spawn await")
+                .expect("failed s3_manager.put_object");
+            fs::remove_file(tmp_path).expect("failed fs::remove_file");
 
             thread::sleep(Duration::from_secs(1));
             let db_backup_s3_region = aws_resources.db_backup_s3_region.clone().unwrap();
             let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
             let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
+            let db_backup_s3_key_arc = Arc::new(db_backup_s3_key);
             let dec = compress::DirDecoder::new_from_file_name(&db_backup_s3_key).unwrap();
             info!(
                 "STEP: downloading database backup file 's3://{}/{}' [{}] in region {}",
@@ -429,9 +500,10 @@ pub fn execute(log_level: &str) -> io::Result<()> {
                 db_backup_s3_region,
             );
 
-            let db_backup_s3_config = rt
-                .block_on(aws::load_config(Some(db_backup_s3_region)))
-                .unwrap();
+            let db_backup_s3_config = tokio::spawn(aws::load_config(Some(db_backup_s3_region)))
+                .await
+                .expect("failed spawn await")
+                .expect("failed aws::load_config");
             let db_backup_s3_manager = s3::Manager::new(&db_backup_s3_config);
 
             // do not store in "tmp", will run out of space
@@ -441,18 +513,27 @@ pub fn execute(log_level: &str) -> io::Result<()> {
                 random::string(10),
                 dec.ext()
             );
-            rt.block_on(db_backup_s3_manager.get_object(
-                &db_backup_s3_bucket,
-                &db_backup_s3_key,
-                &download_path,
-            ))
-            .expect("failed get_object db backup file");
+            let download_path_arc = Arc::new(download_path);
+            tokio::spawn(async move {
+                let db_backup_s3_manager_arc = Arc::new(db_backup_s3_manager);
+                let db_backup_s3_bucket_src = Arc::new(db_backup_s3_bucket);
+                db_backup_s3_manager_arc
+                    .get_object(
+                        db_backup_s3_bucket_src,
+                        db_backup_s3_key_arc,
+                        download_path_arc,
+                    )
+                    .await
+            })
+            .await
+            .expect("failed spawn await")
+            .expect("failed s3_manager.get_object");
 
             compress::unpack_directory(&download_path, &spec.avalanchego_config.db_dir, dec)
                 .unwrap();
 
             info!("removing downloaded file {} after unpack", download_path);
-            fs::remove_file(download_path)?;
+            fs::remove_file(download_path).expect("failed fs::remove_file");
 
             // TODO: override network id to support network fork
         } else {
@@ -466,21 +547,27 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
         info!("STEP: publishing seed/bootstrapping anchor node information for discovery");
+        let s3_manager_arc = Arc::new(s3_manager.clone());
+        let s3_bucket_arc = Arc::new(s3_bucket.clone());
         let s3_key = avalanche_ops::StorageNamespace::DiscoverBootstrappingBeaconNode(
             id.clone(),
             local_node.clone(),
-        );
-        let s3_key = s3_key.encode();
+        )
+        .encode();
+        let s3_key_arc = Arc::new(s3_key.clone());
         let node_info = node::Info::new(
             local_node.clone(),
             spec.avalanchego_config.clone(),
             spec.coreth_config.clone(),
         );
         let tmp_path = random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+        let tmp_path_arc = Arc::new(tmp_path.clone());
         node_info.sync(tmp_path.clone()).unwrap();
-        rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
-            .expect("failed put_object node::Info");
-        fs::remove_file(tmp_path)?;
+        tokio::spawn(s3_manager_arc.put_object(tmp_path_arc, s3_bucket_arc, s3_key_arc))
+            .await
+            .expect("failed spawn await")
+            .expect("failed s3_manager.put_object");
+        fs::remove_file(tmp_path).expect("failed fs::remove_file");
 
         thread::sleep(Duration::from_secs(30));
         info!("STEP: waiting for all seed/bootstrapping anchor nodes to be ready");
@@ -488,19 +575,18 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         let mut objects: Vec<Object>;
         loop {
             thread::sleep(Duration::from_secs(20));
-            objects = rt
-                .block_on(
-                    s3_manager.list_objects(
-                        &s3_bucket_name,
-                        Some(s3::append_slash(
-                            &avalanche_ops::StorageNamespace::DiscoverBootstrappingBeaconNodesDir(
-                                id.clone(),
-                            )
-                            .encode(),
-                        )),
-                    ),
-                )
-                .unwrap();
+
+            let s3_manager_arc = Arc::new(s3_manager.clone());
+            let s3_bucket_arc = Arc::new(s3_bucket.clone());
+            let s3_key = s3::append_slash(
+                &avalanche_ops::StorageNamespace::DiscoverBootstrappingBeaconNodesDir(id.clone())
+                    .encode(),
+            );
+            let s3_key_arc = Arc::new(s3_key);
+            objects = tokio::spawn(s3_manager_arc.list_objects(s3_bucket_arc, Some(s3_key_arc)))
+                .await
+                .expect("failed spawn await")
+                .expect("failed s3_manager.list_objects");
             info!(
                 "{} seed/bootstrapping anchor nodes are ready (expecting {} nodes)",
                 objects.len(),
@@ -538,6 +624,7 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         );
 
         let avalanchego_genesis_path = spec.avalanchego_config.clone().genesis.unwrap();
+        let avalanchego_genesis_path_arc = Arc::new(avalanchego_genesis_path.clone());
         let mut avalanchego_genesis_template = spec
             .avalanchego_genesis_template
             .expect("unexpected None avalanchego_genesis_template for custom network");
@@ -548,13 +635,20 @@ pub fn execute(log_level: &str) -> io::Result<()> {
 
         // for now, just overwrite from every seed anchor node
         thread::sleep(Duration::from_secs(1));
+
         info!("STEP: upload the new genesis file, to be shared with non-anchor nodes");
-        rt.block_on(s3_manager.put_object(
-            &avalanchego_genesis_path,
-            &s3_bucket_name,
-            &avalanche_ops::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
+        let s3_manager_arc = Arc::new(s3_manager.clone());
+        let s3_bucket_arc = Arc::new(s3_bucket.clone());
+        let s3_key = avalanche_ops::StorageNamespace::GenesisFile(spec.id.clone()).encode();
+        let s3_key_arc = Arc::new(s3_key.clone());
+        tokio::spawn(s3_manager_arc.put_object(
+            avalanchego_genesis_path_arc,
+            s3_bucket_arc,
+            s3_key_arc,
         ))
-        .expect("failed put_object GenesisFile");
+        .await
+        .expect("failed spawn await")
+        .expect("failed s3_manager.put_object");
     }
 
     if spec.avalanchego_config.is_custom_network()
@@ -563,13 +657,20 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
         info!("STEP: downloading genesis file from S3 (updated from other anchor nodes)");
+        let s3_key = avalanche_ops::StorageNamespace::GenesisFile(spec.id.clone()).encode();
+        let s3_key_arc = Arc::new(s3_key);
         let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
-        rt.block_on(s3_manager.get_object(
-            &s3_bucket_name,
-            &avalanche_ops::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
-            &tmp_genesis_path,
-        ))
-        .expect("failed get_object GenesisFile");
+        let tmp_genesis_path_arc = Arc::new(tmp_genesis_path);
+        tokio::spawn(async move {
+            let s3_manager_arc = Arc::new(s3_manager.clone());
+            let s3_bucket_arc = Arc::new(s3_bucket.clone());
+            s3_manager_arc
+                .get_object(s3_bucket_arc, s3_key_arc, tmp_genesis_path_arc)
+                .await
+        })
+        .await
+        .expect("failed spawn await")
+        .expect("failed s3_manager.get_object");
         fs::copy(
             &tmp_genesis_path,
             spec.avalanchego_config.clone().genesis.unwrap(),
@@ -611,19 +712,17 @@ pub fn execute(log_level: &str) -> io::Result<()> {
         let mut objects: Vec<Object>;
         loop {
             thread::sleep(Duration::from_secs(20));
-            objects = rt
-                .block_on(
-                    s3_manager.list_objects(
-                        &s3_bucket_name,
-                        Some(s3::append_slash(
-                            &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNodesDir(
-                                id.clone(),
-                            )
-                            .encode(),
-                        )),
-                    ),
-                )
-                .expect("failed list_objects from 'DiscoverReadyBeaconNodesDir'");
+
+            let s3_manager_arc = Arc::new(s3_manager.clone());
+            let s3_bucket_arc = Arc::new(s3_bucket.clone());
+            let s3_key = s3::append_slash(
+                &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNodesDir(id.clone()).encode(),
+            );
+            let s3_key_arc = Arc::new(s3_key);
+            objects = tokio::spawn(s3_manager_arc.list_objects(s3_bucket_arc, Some(s3_key_arc)))
+                .await
+                .expect("failed spawn await")
+                .expect("failed s3_manager.list_objects");
             info!(
                 "{} anchor nodes are ready (expecting {} nodes)",
                 objects.len(),
@@ -678,8 +777,8 @@ pub fn execute(log_level: &str) -> io::Result<()> {
     spec.coreth_config
         .sync(&tmp_coreth_config_path)
         .expect("failed to sync coreth_config");
-    fs::copy(&tmp_coreth_config_path, chain_config_c_path).unwrap();
-    fs::remove_file(&tmp_coreth_config_path)?;
+    fs::copy(&tmp_coreth_config_path, chain_config_c_path).expect("failed fs::copy");
+    fs::remove_file(&tmp_coreth_config_path).expect("failed fs::remove_file");
 
     if spec.avalanchego_config.subnet_config_dir.is_some() {
         let subnet_config_dir = spec
@@ -767,10 +866,12 @@ WantedBy=multi-user.target",
     // this can take awhile if loaded from backups or syncing from peers
     info!("'avalanched run' all success -- now waiting for local node liveness check");
     loop {
-        let ret = rt.block_on(avalanche::api::health::check(
+        let ret = tokio::spawn(avalanche::api::health::check(
             &local_node.http_endpoint,
             true,
-        ));
+        ))
+        .await
+        .expect("failed spawn await");
         let (res, err) = match ret {
             Ok(res) => (res, None),
             Err(e) => (
@@ -803,12 +904,14 @@ WantedBy=multi-user.target",
             && matches!(node_kind, node::Kind::Anchor)
         {
             info!("STEP: publishing anchor node information");
-
+            let s3_manager_arc = Arc::new(s3_manager.clone());
+            let s3_bucket_arc = Arc::new(s3_bucket.clone());
             let s3_key = avalanche_ops::StorageNamespace::DiscoverReadyBeaconNode(
                 id.clone(),
                 local_node.clone(),
-            );
-            let s3_key = s3_key.encode();
+            )
+            .encode();
+            let s3_key_arc = Arc::new(s3_key.clone());
             let node_info = node::Info::new(
                 local_node.clone(),
                 spec.avalanchego_config.clone(),
@@ -816,20 +919,26 @@ WantedBy=multi-user.target",
             );
             let tmp_path =
                 random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+            let tmp_path_arc = Arc::new(tmp_path.clone());
             node_info.sync(tmp_path.clone()).unwrap();
-            rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
-                .expect("failed put_object node::Info");
-            fs::remove_file(&tmp_path)?;
+            tokio::spawn(s3_manager_arc.put_object(tmp_path_arc, s3_bucket_arc, s3_key_arc))
+                .await
+                .expect("failed spawn await")
+                .expect("failed s3_manager.put_object");
+            fs::remove_file(&tmp_path).expect("failed fs::remove_file");
         }
 
         // for all network types, runs every 9-min
         if (cnt < 5 || cnt % 3 == 0) && matches!(node_kind, node::Kind::NonAnchor) {
             info!("STEP: publishing non-anchor node information");
+            let s3_manager_arc = Arc::new(s3_manager.clone());
+            let s3_bucket_arc = Arc::new(s3_bucket.clone());
             let s3_key = avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNode(
                 id.clone(),
                 local_node.clone(),
-            );
-            let s3_key = s3_key.encode();
+            )
+            .encode();
+            let s3_key_arc = Arc::new(s3_key.clone());
             let node_info = node::Info::new(
                 local_node.clone(),
                 spec.avalanchego_config.clone(),
@@ -837,40 +946,44 @@ WantedBy=multi-user.target",
             );
             let tmp_path =
                 random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+            let tmp_path_arc = Arc::new(tmp_path.clone());
             node_info.sync(tmp_path.clone()).unwrap();
-            rt.block_on(s3_manager.put_object(&tmp_path, &s3_bucket_name, &s3_key))
-                .expect("failed put_object node::Info");
-            fs::remove_file(&tmp_path)?;
+            tokio::spawn(s3_manager_arc.put_object(tmp_path_arc, s3_bucket_arc, s3_key_arc))
+                .await
+                .expect("failed spawn await")
+                .expect("failed s3_manager.put_object");
+            fs::remove_file(&tmp_path).expect("failed fs::remove_file");
         }
 
         // TODO: move this to another async worker
         info!("STEP: fetching avalanche metrics");
-        let cur_metrics = rt
-            .block_on(metrics::get(&local_node.http_endpoint))
-            .expect("failed metrics::get");
+        let cur_metrics = tokio::spawn(metrics::get(&local_node.http_endpoint))
+            .await
+            .expect("failed spawn await")
+            .expect("failed metrics.get");
         let cw_namespace = aws_resources
             .cloudwatch_avalanche_metrics_namespace
             .clone()
             .unwrap();
-        rt.block_on(
+        tokio::spawn(
             cw_manager.put_metric_data(&cw_namespace, cur_metrics.to_cw_metric_data(prev_metrics)),
         )
-        .expect("failed put_metric_data");
+        .await
+        .expect("failed spawn await")
+        .expect("failed cw_manager.put_metric_data");
         prev_metrics = Some(cur_metrics.clone());
 
         // runs every 3-minute
         info!("STEP: checking update artifacts event key");
-        let objects = rt
-            .block_on(
-                s3_manager.list_objects(
-                    &s3_bucket_name,
-                    Some(
-                        avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(id.clone())
-                            .encode(),
-                    ),
-                ),
-            )
-            .expect("failed to list events update artifacts event");
+        let s3_manager_arc = Arc::new(s3_manager.clone());
+        let s3_bucket_arc = Arc::new(s3_bucket.clone());
+        let s3_key =
+            avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(id.clone()).encode();
+        let s3_key_arc = Arc::new(s3_key);
+        let objects = tokio::spawn(s3_manager_arc.list_objects(s3_bucket_arc, Some(s3_key_arc)))
+            .await
+            .expect("failed spawn await")
+            .expect("failed s3_manager.list_objects");
         if objects.len() == 1 {
             let obj = objects[0].clone();
             let last_modified = obj.last_modified.unwrap();
@@ -893,32 +1006,31 @@ WantedBy=multi-user.target",
             if needs_update {
                 info!("STEP: downloading avalanched binary from S3");
 
+                // TODO: replace "avalanched" itself?
                 // TODO: fs::copy fails with 'Os { code: 26, kind: ExecutableFileBusy, message: "Text file busy" }'
                 // can't replace the process itself...
-                //
-                // let tmp_avalanched_bin_path = random::tmp_path(15, Some(".zstd")).unwrap();
-                // rt.block_on(s3_manager.get_object(
-                //     &s3_bucket_name,
-                //     &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalanchedBin(id.clone()).encode(),
-                //     &tmp_avalanched_bin_path,
-                // ))
-                // .expect("failed get_object EventsUpdateArtifactsInstallDirAvalanchedBin");
-                // let f = File::open(&tmp_avalanched_bin_path)
-                //     .expect("failed to open EventsUpdateArtifactsInstallDirAvalanchedBin");
-                // f.set_permissions(PermissionsExt::from_mode(0o777))
-                //     .expect("failed to set file permission for EventsUpdateArtifactsInstallDirAvalanchedBin");
-                // fs::copy(&tmp_avalanched_bin_path, &avalanched_bin_path)
-                //     .expect("failed fs::copy avalanched file");
 
                 info!("STEP: downloading avalanche binary from S3");
+                let s3_key = avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.clone()).encode();
+                let s3_key_arc = Arc::new(s3_key);
                 let tmp_avalanche_bin_compressed_path =
                     random::tmp_path(15, Some(".zstd")).unwrap();
-                rt.block_on(s3_manager.get_object(
-                    &s3_bucket_name,
-                    &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.clone()).encode(),
-                    &tmp_avalanche_bin_compressed_path,
-                ))
-                .expect("failed get_object EventsUpdateArtifactsInstallDirAvalancheBinCompressed");
+                let tmp_avalanche_bin_compressed_path_arc =
+                    Arc::new(tmp_avalanche_bin_compressed_path);
+                tokio::spawn(async move {
+                    let s3_manager_arc = Arc::new(s3_manager.clone());
+                    let s3_bucket_arc = Arc::new(s3_bucket.clone());
+                    s3_manager
+                        .get_object(
+                            s3_bucket_arc,
+                            s3_key_arc,
+                            tmp_avalanche_bin_compressed_path_arc,
+                        )
+                        .await
+                })
+                .await
+                .expect("failed spawn await")
+                .expect("failed s3_manager.get_object");
 
                 warn!("stopping avalanche.service before unpack...");
                 bash::run("sudo systemctl stop avalanche.service")
@@ -935,7 +1047,8 @@ WantedBy=multi-user.target",
                 let f = File::open(&avalanche_bin_path).expect("failed to open avalanche_bin");
                 f.set_permissions(PermissionsExt::from_mode(0o777))
                     .expect("failed to set file permission for avalanche_bin");
-                fs::remove_file(&tmp_avalanche_bin_compressed_path)?;
+                fs::remove_file(&tmp_avalanche_bin_compressed_path)
+                    .expect("failed fs::remove_file");
 
                 let plugins_dir = get_plugins_dir(&avalanche_bin_path);
                 if !Path::new(&plugins_dir).exists() {
@@ -944,28 +1057,44 @@ WantedBy=multi-user.target",
                 }
 
                 info!("STEP: downloading plugins from S3 (if any) to overwrite");
-                let objects = rt
-                    .block_on(s3_manager.list_objects(
-                        &s3_bucket_name,
-                        Some(s3::append_slash(
-                            &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(id).encode(),
-                        )),
-                    ))
-                    .expect("failed list_objects for EventsUpdateArtifactsInstallDirPluginsDir");
+                let s3_manager_arc = Arc::new(s3_manager.clone());
+                let s3_bucket_arc = Arc::new(s3_bucket.clone());
+                let s3_key = s3::append_slash(
+                    &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(id)
+                        .encode(),
+                );
+                let s3_key_arc = Arc::new(s3_key);
+                let objects =
+                    tokio::spawn(s3_manager_arc.list_objects(s3_bucket_arc, Some(s3_key_arc)))
+                        .await
+                        .expect("failed spawn await")
+                        .expect("failed s3_manager.list_objects");
                 info!("listed {} plugins from S3", objects.len());
                 for obj in objects.iter() {
+                    let s3_manager_arc = Arc::new(s3_manager.clone());
+                    let s3_bucket_arc = Arc::new(s3_bucket.clone());
                     let s3_key = obj.key().expect("unexpected None s3 object");
+                    let s3_key_arc = Arc::new(s3_key.to_string());
                     let file_name = extract_filename(s3_key);
                     let file_path = format!("{}/{}", plugins_dir, file_name);
 
                     let tmp_path = random::tmp_path(15, None).unwrap();
-                    rt.block_on(s3_manager.get_object(&s3_bucket_name, s3_key, &tmp_path))
-                        .expect("failed get_object plugin file");
+                    let tmp_path_arc = Arc::new(tmp_path);
+                    tokio::spawn(async move {
+                        s3_manager_arc
+                            .get_object(s3_bucket_arc, s3_key_arc, tmp_path_arc)
+                            .await
+                    })
+                    .await
+                    .expect("failed spawn await")
+                    .expect("failed s3_manager.get_object");
+
                     compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
+
                     let f = File::open(file_path).expect("failed to open plugin file");
                     f.set_permissions(PermissionsExt::from_mode(0o777))
                         .expect("failed to set file permission");
-                    fs::remove_file(&tmp_path)?;
+                    fs::remove_file(&tmp_path).expect("failed fs::remove_file");
                 }
 
                 // updated the avalanched itself, so sleep for cloudwatch logs and restart
@@ -994,14 +1123,14 @@ WantedBy=multi-user.target",
             compress::DirEncoder::TarGzip.id(),
             spec.avalanchego_config.db_dir.clone(),
             db_dir_network,
-            &s3_bucket_name,
+            &s3_bucket,
             avalanche_ops::StorageNamespace::BackupsDir(id.clone()).encode(),
             compress::DirEncoder::TarGzip.ext(),
         );
             println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
             reg,
             compress::DirDecoder::TarGzip.id(),
-            &s3_bucket_name,
+            &s3_bucket,
             avalanche_ops::StorageNamespace::BackupsDir(id.clone()).encode(),
             compress::DirDecoder::TarGzip.ext(),
             spec.avalanchego_config.db_dir.clone(),
@@ -1013,17 +1142,22 @@ WantedBy=multi-user.target",
 
         // TODO: move this to another async worker
         info!("STEP: fetching avalanche metrics");
-        let cur_metrics = rt
-            .block_on(metrics::get(&local_node.http_endpoint))
-            .expect("failed metrics::get");
+        let cur_metrics = tokio::spawn(metrics::get(&local_node.http_endpoint))
+            .await
+            .expect("failed spawn await")
+            .expect("failed metrics.get");
         let cw_namespace = aws_resources
+            .clone()
             .cloudwatch_avalanche_metrics_namespace
             .clone()
             .unwrap();
-        rt.block_on(
-            cw_manager.put_metric_data(&cw_namespace, cur_metrics.to_cw_metric_data(prev_metrics)),
-        )
-        .expect("failed put_metric_data");
+        tokio::spawn(cw_manager.put_metric_data(
+            &cw_namespace,
+            cur_metrics.to_cw_metric_data(prev_metrics.clone()),
+        ))
+        .await
+        .expect("failed spawn await")
+        .expect("failed cw_manager.put_metric_data");
         prev_metrics = Some(cur_metrics.clone());
 
         info!("sleeping 1-min...");
