@@ -397,7 +397,7 @@ pub fn execute(
         thread::sleep(Duration::from_secs(5));
         rt.block_on(s3_manager.delete_objects(
             Arc::new(aws_resources.s3_bucket.clone()),
-            Some(Arc::new(spec.id.clone())),
+            Some(Arc::new(spec.id)),
         ))
         .unwrap();
     }

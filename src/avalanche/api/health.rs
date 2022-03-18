@@ -80,6 +80,9 @@ fn test_api_health() {
     assert!(parsed.healthy.unwrap());
 }
 
+/// "If a single piece of data must be accessible from more than one task
+/// concurrently, then it must be shared using synchronization primitives such as Arc."
+/// ref. https://tokio.rs/tokio/tutorial/spawning
 pub async fn check(u: Arc<String>, liveness: bool) -> io::Result<Response> {
     let url_path = {
         if liveness {
@@ -131,4 +134,11 @@ pub async fn check(u: Arc<String>, liveness: bool) -> io::Result<Response> {
         }
     };
     Ok(resp)
+}
+
+pub async fn spawn_check(u: &str, liveness: bool) -> io::Result<Response> {
+    let ep_arc = Arc::new(u.to_string());
+    tokio::spawn(async move { check(ep_arc, liveness).await })
+        .await
+        .expect("failed spawn await")
 }

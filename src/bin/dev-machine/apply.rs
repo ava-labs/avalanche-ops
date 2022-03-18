@@ -231,7 +231,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
         let tmp_encrypted_path = random::tmp_path(15, Some(".encrypted")).unwrap();
         rt.block_on(envelope.seal_aes_256_file(
-            Arc::new(tmp_compressed_path.clone()),
+            Arc::new(tmp_compressed_path),
             Arc::new(tmp_encrypted_path.clone()),
         ))
         .unwrap();
@@ -240,7 +240,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             avalanche_ops::StorageNamespace::Ec2AccessKeyCompressedEncrypted(spec.id.clone())
                 .encode();
         rt.block_on(s3_manager.put_object(
-            Arc::new(tmp_encrypted_path.clone()),
+            Arc::new(tmp_encrypted_path),
             Arc::new(aws_resources.bucket.clone()),
             Arc::new(s3_key),
         ))
@@ -566,7 +566,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let s3_key = avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id).encode();
         rt.block_on(s3_manager.put_object(
             Arc::new(spec_file_path.to_string()),
-            Arc::new(aws_resources.bucket.clone()),
+            Arc::new(aws_resources.bucket),
             Arc::new(s3_key),
         ))
         .unwrap();

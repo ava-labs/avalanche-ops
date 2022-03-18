@@ -150,6 +150,10 @@ impl Manager {
     /// Deletes objects by "prefix".
     /// If "prefix" is "None", empties a S3 bucket, deleting all files.
     /// ref. https://github.com/awslabs/aws-sdk-rust/blob/main/examples/s3/src/bin/delete-objects.rs
+    ///
+    /// "If a single piece of data must be accessible from more than one task
+    /// concurrently, then it must be shared using synchronization primitives such as Arc."
+    /// ref. https://tokio.rs/tokio/tutorial/spawning
     pub async fn delete_objects(
         &self,
         s3_bucket: Arc<String>,
@@ -303,6 +307,9 @@ impl Manager {
     ///       "fs::read" reads all data onto memory
     ///       ".body(ByteStream::from(contents))" passes the whole data to an API call
     ///
+    /// "If a single piece of data must be accessible from more than one task
+    /// concurrently, then it must be shared using synchronization primitives such as Arc."
+    /// ref. https://tokio.rs/tokio/tutorial/spawning
     pub async fn put_object(
         &self,
         file_path: Arc<String>,
@@ -479,4 +486,88 @@ pub fn append_slash(k: &str) -> String {
     } else {
         format!("{}/", k)
     }
+}
+
+pub async fn spawn_list_objects(
+    s3_manager: Manager,
+    s3_bucket: &str,
+    prefix: Option<String>,
+) -> Result<Vec<Object>> {
+    let s3_manager_arc = Arc::new(s3_manager);
+    let s3_bucket_arc = Arc::new(s3_bucket.to_string());
+    let pfx = {
+        if let Some(s) = prefix {
+            if s.is_empty() {
+                None
+            } else {
+                Some(Arc::new(s))
+            }
+        } else {
+            None
+        }
+    };
+    tokio::spawn(async move { s3_manager_arc.list_objects(s3_bucket_arc, pfx).await })
+        .await
+        .expect("failed spawn await")
+}
+
+pub async fn spawn_delete_objects(
+    s3_manager: Manager,
+    s3_bucket: &str,
+    prefix: Option<String>,
+) -> Result<()> {
+    let s3_manager_arc = Arc::new(s3_manager);
+    let s3_bucket_arc = Arc::new(s3_bucket.to_string());
+    let pfx = {
+        if let Some(s) = prefix {
+            if s.is_empty() {
+                None
+            } else {
+                Some(Arc::new(s))
+            }
+        } else {
+            None
+        }
+    };
+    tokio::spawn(async move { s3_manager_arc.delete_objects(s3_bucket_arc, pfx).await })
+        .await
+        .expect("failed spawn await")
+}
+
+pub async fn spawn_put_object(
+    s3_manager: Manager,
+    file_path: &str,
+    s3_bucket: &str,
+    s3_key: &str,
+) -> Result<()> {
+    let s3_manager_arc = Arc::new(s3_manager);
+    let file_path_arc = Arc::new(file_path.to_string());
+    let s3_bucket_arc = Arc::new(s3_bucket.to_string());
+    let s3_key_arc = Arc::new(s3_key.to_string());
+    tokio::spawn(async move {
+        s3_manager_arc
+            .put_object(file_path_arc, s3_bucket_arc, s3_key_arc)
+            .await
+    })
+    .await
+    .expect("failed spawn await")
+}
+
+pub async fn spawn_get_object(
+    s3_manager: Manager,
+    s3_bucket: &str,
+    s3_key: &str,
+    file_path: &str,
+) -> Result<()> {
+    let s3_manager_arc = Arc::new(s3_manager);
+    let s3_bucket_arc = Arc::new(s3_bucket.to_string());
+    let s3_key_arc = Arc::new(s3_key.to_string());
+    let file_path_arc = Arc::new(file_path.to_string());
+    tokio::spawn(async move {
+        s3_manager_arc
+            .get_object(s3_bucket_arc, s3_key_arc, file_path_arc)
+            .await
+    })
+    .await
+    .expect("failed spawn await")
 }

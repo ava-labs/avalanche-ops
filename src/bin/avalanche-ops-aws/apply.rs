@@ -22,7 +22,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::{self, api::health, node},
+    avalanche::{api::health, node},
     aws::{self, cloudformation, ec2, envelope, kms, s3, sts},
     utils::{compress, home_dir, random},
 };
@@ -315,13 +315,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
         let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         rt.block_on(envelope.seal_aes_256_file(
-            Arc::new(tmp_compressed_path.clone()),
+            Arc::new(tmp_compressed_path),
             Arc::new(tmp_encrypted_path.clone()),
         ))
         .unwrap();
         rt.block_on(
             s3_manager.put_object(
-                Arc::new(tmp_encrypted_path.clone()),
+                Arc::new(tmp_encrypted_path),
                 Arc::new(aws_resources.s3_bucket.clone()),
                 Arc::new(
                     avalanche_ops::StorageNamespace::Ec2AccessKeyCompressedEncrypted(

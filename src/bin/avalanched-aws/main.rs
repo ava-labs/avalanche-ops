@@ -1,5 +1,4 @@
 use clap::Command;
-use tokio;
 
 mod download_backup;
 mod run;

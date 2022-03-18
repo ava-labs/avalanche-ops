@@ -86,8 +86,11 @@ fn main() {
         Arc::new(sealed_aes_256_file_path.clone())
     ))
     .unwrap();
-    ab!(envelope.unseal_aes_256_file(&sealed_aes_256_file_path, &unsealed_aes_256_file_path))
-        .unwrap();
+    ab!(envelope.unseal_aes_256_file(
+        Arc::new(sealed_aes_256_file_path.clone()),
+        Arc::new(unsealed_aes_256_file_path.clone())
+    ))
+    .unwrap();
     let mut sealed_aes_256_file = File::open(sealed_aes_256_file_path).unwrap();
     let mut sealed_aes_256_file_contents = Vec::new();
     sealed_aes_256_file

@@ -48,6 +48,10 @@ impl Manager {
     ///
     /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricData.html
     /// ref. https://docs.rs/aws-sdk-cloudwatch/latest/aws_sdk_cloudwatch/struct.Client.html#method.put_metric_data
+    ///
+    /// "If a single piece of data must be accessible from more than one task
+    /// concurrently, then it must be shared using synchronization primitives such as Arc."
+    /// ref. https://tokio.rs/tokio/tutorial/spawning
     pub async fn put_metric_data(
         &self,
         namespace: Arc<String>,
@@ -211,6 +215,22 @@ fn is_logs_error_delete_log_group_does_not_exist(e: &LogsSdkError<DeleteLogGroup
         }
         _ => false,
     }
+}
+
+pub async fn spawn_put_metric_data(
+    cw_manager: Manager,
+    namespace: &str,
+    data: Vec<MetricDatum>,
+) -> Result<()> {
+    let cw_manager_arc = Arc::new(cw_manager);
+    let namespace_arc = Arc::new(namespace.to_string());
+    tokio::spawn(async move {
+        cw_manager_arc
+            .put_metric_data(namespace_arc, Arc::new(data))
+            .await
+    })
+    .await
+    .expect("failed spawn await")
 }
 
 /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html

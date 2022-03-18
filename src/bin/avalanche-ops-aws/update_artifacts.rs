@@ -175,7 +175,7 @@ pub fn execute(
     }
     rt.block_on(s3_manager.put_object(
         Arc::new(spec_file_path.to_string()),
-        Arc::new(aws_resources.s3_bucket.clone()),
+        Arc::new(aws_resources.s3_bucket),
         Arc::new(avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(spec.id).encode()),
     ))
     .expect("failed put_object EventsUpdateArtifactsEvent");

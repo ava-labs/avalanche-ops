@@ -55,10 +55,11 @@ fn main() {
     upload_file.write_all(&contents.to_vec()).unwrap();
     let upload_path = upload_file.path().to_str().unwrap();
     let s3_key = "sub-dir/aaa.txt";
-    rt.block_on(s3_manager.put_object(
-        Arc::new(upload_path.to_string()),
-        Arc::new(bucket.clone()),
-        Arc::new(s3_key.to_string()),
+    rt.block_on(s3::spawn_put_object(
+        s3_manager.clone(),
+        &upload_path,
+        &bucket,
+        &s3_key,
     ))
     .unwrap();
 
@@ -67,10 +68,11 @@ fn main() {
     println!();
     thread::sleep(time::Duration::from_secs(2));
     let download_path = random::tmp_path(10, None).unwrap();
-    rt.block_on(s3_manager.get_object(
-        Arc::new(bucket.clone()),
-        Arc::new(s3_key.to_string()),
-        Arc::new(download_path.clone()),
+    rt.block_on(s3::spawn_get_object(
+        s3_manager.clone(),
+        &bucket,
+        &s3_key,
+        &download_path,
     ))
     .unwrap();
     let download_contents = fs::read(download_path).unwrap();
@@ -82,9 +84,10 @@ fn main() {
     println!();
     thread::sleep(time::Duration::from_secs(1));
     let objects = rt
-        .block_on(s3_manager.list_objects(
-            Arc::new(bucket.clone()),
-            Some(Arc::new(String::from("sub-dir/"))),
+        .block_on(s3::spawn_list_objects(
+            s3_manager.clone(),
+            &bucket,
+            Some(String::from("sub-dir/")),
         ))
         .unwrap();
     for obj in objects.iter() {

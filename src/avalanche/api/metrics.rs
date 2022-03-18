@@ -768,8 +768,7 @@ impl Metrics {
                 .unit(StandardUnit::Count)
                 .build(),
         ];
-        if prev.is_some() {
-            let prev_datum = prev.unwrap();
+        if let Some(prev_datum) = prev {
             data.push(
                 MetricDatum::builder()
                     .metric_name("avalanche_C_blks_accepted_per_second")
@@ -782,6 +781,9 @@ impl Metrics {
     }
 }
 
+/// "If a single piece of data must be accessible from more than one task
+/// concurrently, then it must be shared using synchronization primitives such as Arc."
+/// ref. https://tokio.rs/tokio/tutorial/spawning
 pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
     let ts = Utc::now();
     let url_path = "ext/metrics";
@@ -1346,4 +1348,11 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .to_f64(),
         ),
     })
+}
+
+pub async fn spawn_get(u: &str) -> io::Result<Metrics> {
+    let ep_arc = Arc::new(u.to_string());
+    tokio::spawn(async move { get(ep_arc).await })
+        .await
+        .expect("failed spawn await")
 }

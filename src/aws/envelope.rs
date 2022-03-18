@@ -310,6 +310,10 @@ impl Envelope {
     }
 
     /// Envelope-encrypts data from a file and save the ciphertext to the other file.
+    ///
+    /// "If a single piece of data must be accessible from more than one task
+    /// concurrently, then it must be shared using synchronization primitives such as Arc."
+    /// ref. https://tokio.rs/tokio/tutorial/spawning
     pub async fn seal_aes_256_file(
         &self,
         src_file: Arc<String>,
@@ -333,7 +337,7 @@ impl Envelope {
             }
         };
 
-        let mut f = match File::create(dst_file.as_str()) {
+        let mut f = match File::create(dst_file.to_string()) {
             Ok(f) => f,
             Err(e) => {
                 return Err(Other {
@@ -356,9 +360,13 @@ impl Envelope {
     }
 
     /// Envelope-decrypts data from a file and save the plaintext to the other file.
-    pub async fn unseal_aes_256_file(&self, src_file: &str, dst_file: &str) -> Result<()> {
+    pub async fn unseal_aes_256_file(
+        &self,
+        src_file: Arc<String>,
+        dst_file: Arc<String>,
+    ) -> Result<()> {
         info!("envelope-decrypting file {} to {}", src_file, dst_file);
-        let d = match fs::read(src_file) {
+        let d = match fs::read(src_file.to_string()) {
             Ok(d) => d,
             Err(e) => {
                 return Err(Other {
@@ -375,7 +383,7 @@ impl Envelope {
             }
         };
 
-        let mut f = match File::create(dst_file) {
+        let mut f = match File::create(dst_file.to_string()) {
             Ok(f) => f,
             Err(e) => {
                 return Err(Other {
@@ -400,4 +408,21 @@ impl Envelope {
 
 fn zero_vec(n: usize) -> Vec<u8> {
     (0..n).map(|_| 0).collect()
+}
+
+pub async fn spawn_seal_aes_256_file(
+    envel: Envelope,
+    src_file: &str,
+    dst_file: &str,
+) -> Result<()> {
+    let envel_arc = Arc::new(envel);
+    let src_file_arc = Arc::new(src_file.to_string());
+    let dst_file_arc = Arc::new(dst_file.to_string());
+    tokio::spawn(async move {
+        envel_arc
+            .seal_aes_256_file(src_file_arc, dst_file_arc)
+            .await
+    })
+    .await
+    .expect("failed spawn await")
 }
