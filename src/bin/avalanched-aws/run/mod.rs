@@ -900,12 +900,12 @@ async fn fetch_metrics(
     cw_namespace: Arc<String>,
     metrics_ep: Arc<String>,
 ) {
-    info!("STEP: starting 'fetch_metrics' after 2-minute");
+    info!("STEP: starting 'fetch_metrics' in 2-minute");
     sleep(Duration::from_secs(120)).await;
 
     let mut prev_metrics: Option<metrics::Metrics> = None;
     loop {
-        info!("STEP: fetching metrics after sleeping 1-min");
+        info!("STEP: fetching metrics in 1-min");
         sleep(Duration::from_secs(60)).await;
 
         let cur_metrics = match metrics::spawn_get(metrics_ep.as_str()).await {
