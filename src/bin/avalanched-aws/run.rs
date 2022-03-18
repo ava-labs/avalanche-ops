@@ -903,10 +903,17 @@ async fn fetch_metrics(
 
     let mut prev_metrics: Option<metrics::Metrics> = None;
     loop {
-        info!("STEP: fetching metrics");
-        let cur_metrics = metrics::spawn_get(metrics_ep.as_str())
-            .await
-            .expect("failed metrics::get");
+        info!("STEP: fetching metrics after sleeping 1-min");
+        thread::sleep(Duration::from_secs(60));
+
+        let cur_metrics = match metrics::spawn_get(metrics_ep.as_str()).await {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("failed to fetch metrics {}, retrying...", e);
+                continue;
+            }
+        };
+
         cloudwatch::spawn_put_metric_data(
             cw_manager.clone(),
             cw_namespace.as_str(),
@@ -915,9 +922,6 @@ async fn fetch_metrics(
         .await
         .expect("failed cloudwatch::spawn_put_metric_data");
         prev_metrics = Some(cur_metrics.clone());
-
-        info!("sleeping 1-min for 'fetch_metrics'");
-        thread::sleep(Duration::from_secs(60));
     }
 }
 
@@ -969,7 +973,7 @@ async fn check_node_update(
         thread::sleep(Duration::from_secs(180));
 
         info!("STEP: checking update artifacts event key");
-        let objects = s3::spawn_list_objects(
+        let objects = match s3::spawn_list_objects(
             s3_manager.clone(),
             s3_bucket.as_str(),
             Some(
@@ -978,7 +982,13 @@ async fn check_node_update(
             ),
         )
         .await
-        .expect("failed s3::spawn_list_objects");
+        {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("failed s3::spawn_list_objects {}, retrying...", e);
+                continue;
+            }
+        };
 
         if objects.is_empty() {
             warn!("no event key found");
