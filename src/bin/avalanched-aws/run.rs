@@ -4,13 +4,13 @@ use std::{
     os::unix::fs::PermissionsExt,
     path::Path,
     sync::Arc,
-    thread,
     time::{Duration, SystemTime},
 };
 
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use log::{info, warn};
+use tokio::time::sleep;
 
 use avalanche_ops::{
     self,
@@ -458,7 +458,7 @@ pub async fn execute(log_level: &str) {
                 .expect("failed s3::spawn_put_object");
             fs::remove_file(tmp_path).expect("failed fs::remove_file");
 
-            thread::sleep(Duration::from_secs(1));
+            sleep(Duration::from_secs(1)).await;
             let db_backup_s3_region = aws_resources.db_backup_s3_region.clone().unwrap();
             let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
             let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
@@ -535,7 +535,7 @@ pub async fn execute(log_level: &str) {
 
         fs::remove_file(tmp_path).expect("failed fs::remove_file");
 
-        thread::sleep(Duration::from_secs(30));
+        sleep(Duration::from_secs(30)).await;
         info!("STEP: waiting for all seed/bootstrapping anchor nodes to be ready");
         let target_nodes = spec.machine.anchor_nodes.unwrap();
         let s3_key = s3::append_slash(
@@ -544,7 +544,7 @@ pub async fn execute(log_level: &str) {
         );
         let mut objects: Vec<Object>;
         loop {
-            thread::sleep(Duration::from_secs(20));
+            sleep(Duration::from_secs(20)).await;
             objects = s3::spawn_list_objects(s3_manager.clone(), &s3_bucket, Some(s3_key.clone()))
                 .await
                 .expect("failed s3::spawn_list_objects");
@@ -594,7 +594,7 @@ pub async fn execute(log_level: &str) {
             .expect("failed to sync avalanchego_genesis_path");
 
         // for now, just overwrite from every seed anchor node
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         info!("STEP: upload the new genesis file, to be shared with non-anchor nodes");
         s3::spawn_put_object(
@@ -638,7 +638,7 @@ pub async fn execute(log_level: &str) {
     // mainnet/other pre-defined test nets have hard-coded anchor nodes
     // thus no need for anchor nodes
     if spec.avalanchego_config.is_custom_network() && matches!(node_kind, node::Kind::NonAnchor) {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
         info!(
             "STEP: downloading anchor node information for network '{}'",
             spec.avalanchego_config.network_id,
@@ -665,7 +665,7 @@ pub async fn execute(log_level: &str) {
         );
         let mut objects: Vec<Object>;
         loop {
-            thread::sleep(Duration::from_secs(20));
+            sleep(Duration::from_secs(20)).await;
 
             objects = s3::spawn_list_objects(s3_manager.clone(), &s3_bucket, Some(s3_key.clone()))
                 .await
@@ -832,7 +832,7 @@ WantedBy=multi-user.target",
             "health/liveness check failed for {} ({:?}, {:?})",
             instance_id, res, err
         );
-        thread::sleep(Duration::from_secs(30));
+        sleep(Duration::from_secs(30)).await;
     }
 
     info!("spawning async routines...");
@@ -901,12 +901,12 @@ async fn fetch_metrics(
     metrics_ep: Arc<String>,
 ) {
     info!("STEP: starting 'fetch_metrics' after 2-minute");
-    thread::sleep(Duration::from_secs(120));
+    sleep(Duration::from_secs(120)).await;
 
     let mut prev_metrics: Option<metrics::Metrics> = None;
     loop {
         info!("STEP: fetching metrics after sleeping 1-min");
-        thread::sleep(Duration::from_secs(60));
+        sleep(Duration::from_secs(60)).await;
 
         let cur_metrics = match metrics::spawn_get(metrics_ep.as_str()).await {
             Ok(v) => v,
@@ -964,7 +964,7 @@ async fn publish_node_info_ready(
         fs::remove_file(&tmp_path).expect("failed fs::remove_file");
 
         info!("sleeping 10-min for 'publish_node_info_ready'");
-        thread::sleep(Duration::from_secs(600));
+        sleep(Duration::from_secs(600)).await;
     }
 }
 
@@ -978,7 +978,7 @@ async fn check_node_update(
 
     loop {
         info!("sleeping 3-min for 'check_node_update'");
-        thread::sleep(Duration::from_secs(180));
+        sleep(Duration::from_secs(180)).await;
 
         info!("STEP: checking update artifacts event key");
         let objects = match s3::spawn_list_objects(
@@ -1049,7 +1049,7 @@ async fn check_node_update(
         warn!("stopping avalanche.service before unpack...");
         bash::run("sudo systemctl stop avalanche.service").expect("failed systemctl stop command");
         warn!("stopped avalanche.service before unpack...");
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
 
         compress::unpack_file(
             &tmp_avalanche_bin_compressed_path,
@@ -1103,7 +1103,7 @@ async fn check_node_update(
 
         // updated the avalanched itself, so sleep for cloudwatch logs and restart
         warn!("artifacts have been updated... will trigger avalanched restart by panic here...");
-        thread::sleep(Duration::from_secs(240)); // sleep to prevent duplicate updates
+        sleep(Duration::from_secs(240)).await; // sleep to prevent duplicate updates
         panic!("panic avalanched to trigger restarts via systemd service!!!")
     }
 }
@@ -1144,7 +1144,7 @@ async fn print_backup_commands(
         );
 
         info!("sleeping 5-hour 'print_backup_commands'");
-        thread::sleep(Duration::from_secs(5 * 3600));
+        sleep(Duration::from_secs(5 * 3600)).await;
     }
 }
 
