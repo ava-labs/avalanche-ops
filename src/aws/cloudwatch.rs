@@ -4,6 +4,7 @@ use std::{
     io::{self, Error, ErrorKind, Write},
     path::Path,
     string::String,
+    sync::Arc,
     thread, time,
 };
 
@@ -23,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use crate::errors::{Error::API, Result};
 
 /// Implements AWS CloudWatch manager.
+#[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,
@@ -46,15 +48,19 @@ impl Manager {
     ///
     /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricData.html
     /// ref. https://docs.rs/aws-sdk-cloudwatch/latest/aws_sdk_cloudwatch/struct.Client.html#method.put_metric_data
-    pub async fn put_metric_data(&self, namespace: &str, data: Vec<MetricDatum>) -> Result<()> {
+    pub async fn put_metric_data(
+        &self,
+        namespace: Arc<String>,
+        data: Arc<Vec<MetricDatum>>,
+    ) -> Result<()> {
         let n = data.len();
         info!("posting CloudWatch {} metrics in '{}'", n, namespace);
         if n <= 20 {
             let ret = self
                 .metrics_cli
                 .put_metric_data()
-                .namespace(namespace)
-                .set_metric_data(Some(data))
+                .namespace(namespace.clone().to_string())
+                .set_metric_data(Some(data.to_vec()))
                 .send()
                 .await;
             match ret {
@@ -75,7 +81,7 @@ impl Manager {
                 let ret = self
                     .metrics_cli
                     .put_metric_data()
-                    .namespace(namespace)
+                    .namespace(namespace.to_string())
                     .set_metric_data(Some(batch.to_vec()))
                     .send()
                     .await;

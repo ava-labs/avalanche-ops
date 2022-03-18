@@ -1,6 +1,7 @@
 use std::{
     fs::File,
     io::{Read, Write},
+    sync::Arc,
     thread, time,
 };
 
@@ -80,7 +81,11 @@ fn main() {
     let envelope = envelope::Envelope::new(Some(kms_manager.clone()), Some(cmk.id.clone()));
     let sealed_aes_256_file_path = random::tmp_path(10, Some(".encrypted")).unwrap();
     let unsealed_aes_256_file_path = random::tmp_path(10, None).unwrap();
-    ab!(envelope.seal_aes_256_file(plaintext_file_path, &sealed_aes_256_file_path)).unwrap();
+    ab!(envelope.seal_aes_256_file(
+        Arc::new(plaintext_file_path.to_string()),
+        Arc::new(sealed_aes_256_file_path.clone())
+    ))
+    .unwrap();
     ab!(envelope.unseal_aes_256_file(&sealed_aes_256_file_path, &unsealed_aes_256_file_path))
         .unwrap();
     let mut sealed_aes_256_file = File::open(sealed_aes_256_file_path).unwrap();

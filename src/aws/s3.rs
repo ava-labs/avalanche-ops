@@ -41,7 +41,7 @@ impl Manager {
     }
 
     /// Creates a S3 bucket.
-    pub async fn create_bucket(&self, bucket_name: &str) -> Result<()> {
+    pub async fn create_bucket(&self, s3_bucket: &str) -> Result<()> {
         let reg = self.shared_config.region().unwrap();
         let constraint = BucketLocationConstraint::from(reg.to_string().as_str());
         let bucket_cfg = CreateBucketConfiguration::builder()
@@ -50,14 +50,14 @@ impl Manager {
 
         info!(
             "creating S3 bucket '{}' in region {}",
-            bucket_name,
+            s3_bucket,
             reg.to_string()
         );
         let ret = self
             .cli
             .create_bucket()
             .create_bucket_configuration(bucket_cfg)
-            .bucket(bucket_name)
+            .bucket(s3_bucket)
             .acl(BucketCannedAcl::Private)
             .send()
             .await;
@@ -77,7 +77,7 @@ impl Manager {
         if already_created {
             return Ok(());
         }
-        info!("created S3 bucket '{}'", bucket_name);
+        info!("created S3 bucket '{}'", s3_bucket);
 
         info!("setting S3 bucket public_access_block configuration to private");
         let public_access_block_cfg = PublicAccessBlockConfiguration::builder()
@@ -88,7 +88,7 @@ impl Manager {
             .build();
         self.cli
             .put_public_access_block()
-            .bucket(bucket_name)
+            .bucket(s3_bucket)
             .public_access_block_configuration(public_access_block_cfg)
             .send()
             .await
@@ -109,7 +109,7 @@ impl Manager {
             .build();
         self.cli
             .put_bucket_encryption()
-            .bucket(bucket_name)
+            .bucket(s3_bucket)
             .server_side_encryption_configuration(server_side_encryption_cfg)
             .send()
             .await
@@ -122,14 +122,14 @@ impl Manager {
     }
 
     /// Deletes a S3 bucket.
-    pub async fn delete_bucket(&self, bucket_name: &str) -> Result<()> {
+    pub async fn delete_bucket(&self, s3_bucket: &str) -> Result<()> {
         let reg = self.shared_config.region().unwrap();
         info!(
             "deleting S3 bucket '{}' in region {}",
-            bucket_name,
+            s3_bucket,
             reg.to_string()
         );
-        let ret = self.cli.delete_bucket().bucket(bucket_name).send().await;
+        let ret = self.cli.delete_bucket().bucket(s3_bucket).send().await;
         match ret {
             Ok(_) => {}
             Err(e) => {
@@ -142,7 +142,7 @@ impl Manager {
                 warn!("bucket already deleted or does not exist ({})", e);
             }
         };
-        info!("deleted S3 bucket '{}'", bucket_name);
+        info!("deleted S3 bucket '{}'", s3_bucket);
 
         Ok(())
     }
@@ -152,18 +152,18 @@ impl Manager {
     /// ref. https://github.com/awslabs/aws-sdk-rust/blob/main/examples/s3/src/bin/delete-objects.rs
     pub async fn delete_objects(
         &self,
-        bucket_name: Arc<String>,
+        s3_bucket: Arc<String>,
         prefix: Option<Arc<String>>,
     ) -> Result<()> {
         let reg = self.shared_config.region().unwrap();
         info!(
             "deleting objects S3 bucket '{}' in region {} (prefix {:?})",
-            bucket_name,
+            s3_bucket,
             reg.to_string(),
             prefix,
         );
 
-        let objects = self.list_objects(bucket_name.clone(), prefix).await?;
+        let objects = self.list_objects(s3_bucket.clone(), prefix).await?;
         let mut object_ids: Vec<ObjectIdentifier> = vec![];
         for obj in objects {
             let k = String::from(obj.key().unwrap_or(""));
@@ -177,7 +177,7 @@ impl Manager {
             let ret = self
                 .cli
                 .delete_objects()
-                .bucket(bucket_name.to_string())
+                .bucket(s3_bucket.to_string())
                 .delete(deletes)
                 .send()
                 .await;
@@ -190,7 +190,7 @@ impl Manager {
                     });
                 }
             };
-            info!("deleted {} objets in S3 bucket '{}'", n, bucket_name);
+            info!("deleted {} objets in S3 bucket '{}'", n, s3_bucket);
         } else {
             info!("nothing to delete; skipping...");
         }
@@ -209,7 +209,7 @@ impl Manager {
     /// "mydata/myprefix/" for prefix
     pub async fn list_objects(
         &self,
-        bucket_name: Arc<String>,
+        s3_bucket: Arc<String>,
         prefix: Option<Arc<String>>,
     ) -> Result<Vec<Object>> {
         let pfx = {
@@ -226,11 +226,11 @@ impl Manager {
             }
         };
 
-        info!("listing bucket {} with prefix '{:?}'", bucket_name, pfx);
+        info!("listing bucket {} with prefix '{:?}'", s3_bucket, pfx);
         let mut objects: Vec<Object> = Vec::new();
         let mut token = String::new();
         loop {
-            let mut builder = self.cli.list_objects_v2().bucket(bucket_name.to_string());
+            let mut builder = self.cli.list_objects_v2().bucket(s3_bucket.to_string());
             if pfx.is_some() {
                 builder = builder.set_prefix(pfx.clone());
             }
@@ -278,7 +278,7 @@ impl Manager {
             info!(
                 "sorting {} objects in bucket {} with prefix {:?}",
                 objects.len(),
-                bucket_name,
+                s3_bucket,
                 pfx
             );
             objects.sort_by(|a, b| {

@@ -20,6 +20,7 @@ use crate::{
 };
 
 /// Implements AWS EC2 manager.
+#[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,

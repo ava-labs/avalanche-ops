@@ -2,6 +2,7 @@ use std::{
     fs::{self},
     io::{self, stdout, Error, ErrorKind},
     path::Path,
+    sync::Arc,
     thread,
     time::Duration,
 };
@@ -303,7 +304,7 @@ pub fn execute(
             ResetColor
         )?;
 
-        rt.block_on(s3_manager.delete_objects(&aws_resources.bucket, None))
+        rt.block_on(s3_manager.delete_objects(Arc::new(aws_resources.bucket.clone()), None))
             .unwrap();
         rt.block_on(s3_manager.delete_bucket(&aws_resources.bucket))
             .unwrap();

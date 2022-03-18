@@ -1,4 +1,4 @@
-use std::{fs, io, path::Path};
+use std::{fs, io, path::Path, sync::Arc};
 
 use clap::{Arg, Command};
 use log::info;
@@ -116,8 +116,12 @@ pub fn execute(
         "STEP: downloading from S3 {} {} to {}",
         s3_bucket, s3_key, tmp_file_path
     );
-    rt.block_on(s3_manager.get_object(s3_bucket, s3_key, tmp_file_path))
-        .expect("failed get_object backup");
+    rt.block_on(s3_manager.get_object(
+        Arc::new(s3_bucket.to_string()),
+        Arc::new(s3_key.to_string()),
+        Arc::new(tmp_file_path.to_string()),
+    ))
+    .expect("failed get_object backup");
 
     info!(
         "STEP: unpack backup {} to {} with {}",

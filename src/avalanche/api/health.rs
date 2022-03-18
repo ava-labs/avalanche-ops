@@ -3,6 +3,7 @@ use std::{
     io::{self, Error, ErrorKind},
     process::Command,
     string::String,
+    sync::Arc,
     time::Duration,
 };
 
@@ -79,7 +80,7 @@ fn test_api_health() {
     assert!(parsed.healthy.unwrap());
 }
 
-pub async fn check(u: &str, liveness: bool) -> io::Result<Response> {
+pub async fn check(u: Arc<String>, liveness: bool) -> io::Result<Response> {
     let url_path = {
         if liveness {
             "ext/health/liveness"
@@ -91,7 +92,7 @@ pub async fn check(u: &str, liveness: bool) -> io::Result<Response> {
 
     let resp = {
         if u.starts_with("https") {
-            let joined = http::join_uri(u, url_path)?;
+            let joined = http::join_uri(u.as_str(), url_path)?;
 
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
@@ -110,7 +111,7 @@ pub async fn check(u: &str, liveness: bool) -> io::Result<Response> {
                 }
             }
         } else {
-            let req = http::create_get(u, url_path)?;
+            let req = http::create_get(u.as_str(), url_path)?;
             let buf =
                 match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false)
                     .await

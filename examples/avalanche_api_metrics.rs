@@ -1,4 +1,4 @@
-use std::env::args;
+use std::{env::args, sync::Arc};
 
 use log::info;
 use tokio::runtime::Runtime;
@@ -17,7 +17,7 @@ fn main() {
     let rt = Runtime::new().unwrap();
 
     let resp = rt
-        .block_on(metrics::get(&url))
+        .block_on(metrics::get(Arc::new(url)))
         .expect("failed metrics::get");
     info!("response: {:?}", resp);
 }

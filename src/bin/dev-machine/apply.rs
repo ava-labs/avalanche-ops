@@ -3,6 +3,7 @@ use std::{
     io::{self, stdout, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
     path::Path,
+    sync::Arc,
     thread,
     time::Duration,
 };
@@ -165,11 +166,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     )?;
     rt.block_on(s3_manager.create_bucket(&aws_resources.bucket))
         .unwrap();
+
     thread::sleep(Duration::from_secs(2));
+    let s3_key = avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode();
     rt.block_on(s3_manager.put_object(
-        spec_file_path,
-        &aws_resources.bucket,
-        &avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode(),
+        Arc::new(spec_file_path.to_string()),
+        Arc::new(aws_resources.bucket.clone()),
+        Arc::new(s3_key),
     ))
     .unwrap();
 
@@ -191,10 +194,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
+        let s3_key =
+            avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode();
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.bucket,
-            &avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.bucket.clone()),
+            Arc::new(s3_key),
         ))
         .unwrap();
     }
@@ -225,16 +230,20 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15, Some(".encrypted")).unwrap();
-        rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
-            .unwrap();
-        rt.block_on(
-            s3_manager.put_object(
-                &tmp_encrypted_path,
-                &aws_resources.bucket,
-                &avalanche_ops::StorageNamespace::Ec2AccessKeyCompressedEncrypted(spec.id.clone())
-                    .encode(),
-            ),
-        )
+        rt.block_on(envelope.seal_aes_256_file(
+            Arc::new(tmp_compressed_path.clone()),
+            Arc::new(tmp_encrypted_path.clone()),
+        ))
+        .unwrap();
+
+        let s3_key =
+            avalanche_ops::StorageNamespace::Ec2AccessKeyCompressedEncrypted(spec.id.clone())
+                .encode();
+        rt.block_on(s3_manager.put_object(
+            Arc::new(tmp_encrypted_path.clone()),
+            Arc::new(aws_resources.bucket.clone()),
+            Arc::new(s3_key),
+        ))
         .unwrap();
 
         aws_resources.ec2_key_path = Some(ec2_key_path);
@@ -242,10 +251,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
+        let s3_key =
+            avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode();
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.bucket,
-            &avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.bucket.clone()),
+            Arc::new(s3_key),
         ))
         .unwrap();
     }
@@ -312,10 +323,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
+        let s3_key =
+            avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode();
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.bucket,
-            &avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.bucket.clone()),
+            Arc::new(s3_key),
         ))
         .unwrap();
     }
@@ -395,10 +408,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
+        let s3_key =
+            avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode();
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.bucket,
-            &avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.bucket.clone()),
+            Arc::new(s3_key),
         ))
         .unwrap();
     }
@@ -548,10 +563,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         thread::sleep(Duration::from_secs(1));
+        let s3_key = avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id).encode();
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.bucket,
-            &avalanche_ops::StorageNamespace::DevMachineConfigFile(spec.id).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.bucket.clone()),
+            Arc::new(s3_key),
         ))
         .unwrap();
 

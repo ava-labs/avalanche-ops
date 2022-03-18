@@ -1,6 +1,7 @@
 use std::{
     fs::{self, File},
     io::{Cursor, Read, Write},
+    sync::Arc,
 };
 
 use aws_sdk_kms::model::{DataKeySpec, EncryptionAlgorithmSpec};
@@ -22,6 +23,7 @@ const DEK_AES_256_LENGTH: usize = 32;
 const AAD_TAG: &str = "avalanche-ops-envelope-encryption";
 
 /// Implements envelope encryption manager.
+#[derive(std::clone::Clone)]
 pub struct Envelope {
     aws_kms_manager: Option<kms::Manager>,
     aws_kms_key_id: Option<String>,
@@ -308,9 +310,13 @@ impl Envelope {
     }
 
     /// Envelope-encrypts data from a file and save the ciphertext to the other file.
-    pub async fn seal_aes_256_file(&self, src_file: &str, dst_file: &str) -> Result<()> {
+    pub async fn seal_aes_256_file(
+        &self,
+        src_file: Arc<String>,
+        dst_file: Arc<String>,
+    ) -> Result<()> {
         info!("envelope-encrypting file {} to {}", src_file, dst_file);
-        let d = match fs::read(src_file) {
+        let d = match fs::read(src_file.to_string()) {
             Ok(d) => d,
             Err(e) => {
                 return Err(Other {
@@ -327,7 +333,7 @@ impl Envelope {
             }
         };
 
-        let mut f = match File::create(dst_file) {
+        let mut f = match File::create(dst_file.as_str()) {
             Ok(f) => f,
             Err(e) => {
                 return Err(Other {

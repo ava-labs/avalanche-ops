@@ -1,4 +1,4 @@
-use std::{io, process::Command, time::Duration};
+use std::{io, process::Command, sync::Arc, time::Duration};
 
 use aws_sdk_cloudwatch::model::{MetricDatum, StandardUnit};
 use chrono::{DateTime, Utc};
@@ -782,14 +782,14 @@ impl Metrics {
     }
 }
 
-pub async fn get(u: &str) -> io::Result<Metrics> {
+pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
     let ts = Utc::now();
     let url_path = "ext/metrics";
     info!("checking {}/{}", u, url_path);
 
     let output = {
         if u.starts_with("https") {
-            let joined = http::join_uri(u, url_path)?;
+            let joined = http::join_uri(u.as_str(), url_path)?;
 
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
@@ -800,7 +800,7 @@ pub async fn get(u: &str) -> io::Result<Metrics> {
             let output = cmd.output()?;
             output.stdout
         } else {
-            let req = http::create_get(u, url_path)?;
+            let req = http::create_get(u.as_str(), url_path)?;
             let buf =
                 match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false)
                     .await
