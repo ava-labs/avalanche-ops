@@ -495,7 +495,7 @@ impl Metrics {
                 .unit(StandardUnit::Count)
                 .build(),
             MetricDatum::builder()
-                .metric_name("avalanche_P_vm_total_staked")
+                .metric_name("avalanche_P_vm_total_staked_avax")
                 .value(self.avalanche_p_vm_total_staked.unwrap() / 1000000000.0) // On the P-Chain, one AVAX is 10^9  units.
                 .unit(StandardUnit::Count)
                 .build(),
@@ -804,7 +804,7 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
         } else {
             let req = http::create_get(u.as_str(), url_path)?;
             let buf =
-                match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false)
+                match http::read_bytes(req, Duration::from_secs(30), u.starts_with("https"), false)
                     .await
                 {
                     Ok(u) => u,
