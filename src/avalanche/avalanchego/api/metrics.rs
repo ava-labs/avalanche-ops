@@ -58,6 +58,22 @@ pub struct Metrics {
     pub avalanche_network_chits_sent_bytes: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_chits_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_put_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_put_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_pull_query_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_pull_query_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_push_query_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_push_query_received_bytes: Option<f64>,
 
     /// Bootstrap messages.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -293,6 +309,14 @@ impl Metrics {
             // Consensus messages.
             avalanche_network_chits_sent_bytes: None,
             avalanche_network_chits_received_bytes: None,
+            avalanche_network_get_sent_bytes: None,
+            avalanche_network_get_received_bytes: None,
+            avalanche_network_put_sent_bytes: None,
+            avalanche_network_put_received_bytes: None,
+            avalanche_network_pull_query_sent_bytes: None,
+            avalanche_network_pull_query_received_bytes: None,
+            avalanche_network_push_query_sent_bytes: None,
+            avalanche_network_push_query_received_bytes: None,
 
             // Bootstrap messages.
             avalanche_network_get_accepted_frontier_sent_bytes: None,
@@ -575,6 +599,54 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_network_chits_received_bytes")
                 .value(self.avalanche_network_chits_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_sent_bytes")
+                .value(self.avalanche_network_get_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_received_bytes")
+                .value(self.avalanche_network_get_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_put_sent_bytes")
+                .value(self.avalanche_network_put_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_put_received_bytes")
+                .value(self.avalanche_network_put_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_pull_query_sent_bytes")
+                .value(self.avalanche_network_pull_query_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_pull_query_received_bytes")
+                .value(self.avalanche_network_pull_query_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_push_query_sent_bytes")
+                .value(self.avalanche_network_push_query_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_push_query_received_bytes")
+                .value(self.avalanche_network_push_query_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
                 .build(),
@@ -1360,6 +1432,62 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
         avalanche_network_chits_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_chits_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_get_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_get_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_put_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_put_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_put_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_put_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_pull_query_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_pull_query_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_pull_query_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_pull_query_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_push_query_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_push_query_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_push_query_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_push_query_received_bytes"
             })
             .value
             .to_f64(),
