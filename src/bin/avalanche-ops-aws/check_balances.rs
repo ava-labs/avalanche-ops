@@ -5,7 +5,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::api::{avm, eth, platform},
+    avalanche::avalanchego::api::{avm, eth, platform},
 };
 
 pub const NAME: &str = "check-balances";

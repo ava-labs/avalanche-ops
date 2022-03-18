@@ -10,11 +10,11 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    avalanche::api::{avax, jsonrpc},
+    avalanche::avalanchego::api::{avax, jsonrpc},
     utils::http,
 };
 
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBalanceResponse {
     pub jsonrpc: String,
@@ -23,17 +23,11 @@ pub struct GetBalanceResponse {
     pub result: Option<GetBalanceResult>,
 }
 
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBalanceResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub balance: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub unlocked: Option<u64>,
-    #[serde(rename = "lockedStakeable", skip_serializing_if = "Option::is_none")]
-    pub locked_stakeable: Option<u64>,
-    #[serde(rename = "lockedNotStakeable", skip_serializing_if = "Option::is_none")]
-    pub locked_not_stakeable: Option<u64>,
     #[serde(rename = "utxoIDs", skip_serializing_if = "Option::is_none")]
     pub utxo_ids: Option<Vec<avax::UtxoId>>,
 }
@@ -48,24 +42,22 @@ impl GetBalanceResult {
     pub fn default() -> Self {
         Self {
             balance: None,
-            unlocked: None,
-            locked_stakeable: None,
-            locked_not_stakeable: None,
             utxo_ids: None,
         }
     }
 }
 
-/// e.g., "platform.getBalance" on "http://[ADDR]:9650" and "/ext/bc/P" path.
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
-pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
-    info!("getting balance for {} via {} {}", paddr, url, path);
+/// e.g., "avm.getBalance" on "http://[ADDR]:9650" and "/ext/bc/X" path.
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
+pub async fn get_balance(url: &str, path: &str, xaddr: &str) -> io::Result<GetBalanceResponse> {
+    info!("getting balance for {} via {} {}", xaddr, url, path);
 
     let mut data = jsonrpc::Data::default();
-    data.method = String::from("platform.getBalance");
+    data.method = String::from("avm.getBalance");
 
     let mut params = HashMap::new();
-    params.insert(String::from("address"), paddr.to_string());
+    params.insert(String::from("assetID"), String::from("AVAX"));
+    params.insert(String::from("address"), xaddr.to_string());
     data.params = Some(params);
 
     let d = data.encode_json()?;
@@ -122,7 +114,7 @@ pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBa
     Ok(parsed)
 }
 
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 struct _GetBalanceResponse {
     jsonrpc: String,
@@ -131,17 +123,11 @@ struct _GetBalanceResponse {
     result: Option<_GetBalanceResult>,
 }
 
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 struct _GetBalanceResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     balance: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub unlocked: Option<String>,
-    #[serde(rename = "lockedStakeable", skip_serializing_if = "Option::is_none")]
-    pub locked_stakeable: Option<String>,
-    #[serde(rename = "lockedNotStakeable", skip_serializing_if = "Option::is_none")]
-    pub locked_not_stakeable: Option<String>,
     #[serde(rename = "utxoIDs", skip_serializing_if = "Option::is_none")]
     utxo_ids: Option<Vec<avax::UtxoId>>,
 }
@@ -172,60 +158,6 @@ impl _GetBalanceResponse {
                 .result
                 .clone()
                 .expect("unexpected None result")
-                .unlocked
-                .is_some()
-        {
-            let unlocked = self
-                .result
-                .clone()
-                .expect("unexpected None result")
-                .unlocked
-                .expect("unexpected None unlocked");
-            let unlocked = unlocked.parse::<u64>().unwrap();
-            result.unlocked = Some(unlocked);
-        }
-
-        if self.result.is_some()
-            && self
-                .result
-                .clone()
-                .expect("unexpected None result")
-                .locked_stakeable
-                .is_some()
-        {
-            let locked_stakeable = self
-                .result
-                .clone()
-                .expect("unexpected None result")
-                .locked_stakeable
-                .expect("unexpected None locked_stakeable");
-            let locked_stakeable = locked_stakeable.parse::<u64>().unwrap();
-            result.locked_stakeable = Some(locked_stakeable);
-        }
-
-        if self.result.is_some()
-            && self
-                .result
-                .clone()
-                .expect("unexpected None result")
-                .locked_not_stakeable
-                .is_some()
-        {
-            let locked_not_stakeable = self
-                .result
-                .clone()
-                .expect("unexpected None result")
-                .locked_not_stakeable
-                .expect("unexpected None locked_not_stakeable");
-            let locked_not_stakeable = locked_not_stakeable.parse::<u64>().unwrap();
-            result.locked_not_stakeable = Some(locked_not_stakeable);
-        }
-
-        if self.result.is_some()
-            && self
-                .result
-                .clone()
-                .expect("unexpected None result")
                 .utxo_ids
                 .is_some()
         {
@@ -248,25 +180,18 @@ impl _GetBalanceResponse {
 
 #[test]
 fn test_convert() {
-    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+    // ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
     let resp: _GetBalanceResponse = serde_json::from_str(
         "
 
 {
     \"jsonrpc\": \"2.0\",
     \"result\": {
-        \"balance\": \"20000000000000000\",
-        \"unlocked\": \"10000000000000000\",
-        \"lockedStakeable\": \"10000000000000000\",
-        \"lockedNotStakeable\": \"0\",
+        \"balance\": \"299999999999900\",
         \"utxoIDs\": [
             {
-                \"txID\": \"11111111111111111111111111111111LpoYY\",
+                \"txID\": \"WPQdyLNqHfiEKp4zcCpayRHYDVYuh1hqs9c1RqgZXS4VPgdvo\",
                 \"outputIndex\": 1
-            },
-            {
-                \"txID\": \"11111111111111111111111111111111LpoYY\",
-                \"outputIndex\": 0
             }
         ]
     },
@@ -281,20 +206,13 @@ fn test_convert() {
         jsonrpc: "2.0".to_string(),
         id: 1,
         result: Some(GetBalanceResult {
-            balance: Some(20000000000000000),
-            unlocked: Some(10000000000000000),
-            locked_stakeable: Some(10000000000000000),
-            locked_not_stakeable: Some(0),
-            utxo_ids: Some(vec![
-                avax::UtxoId {
-                    tx_id: Some(String::from("11111111111111111111111111111111LpoYY")),
-                    output_index: Some(1),
-                },
-                avax::UtxoId {
-                    tx_id: Some(String::from("11111111111111111111111111111111LpoYY")),
-                    output_index: Some(0),
-                },
-            ]),
+            balance: Some(299999999999900),
+            utxo_ids: Some(vec![avax::UtxoId {
+                tx_id: Some(String::from(
+                    "WPQdyLNqHfiEKp4zcCpayRHYDVYuh1hqs9c1RqgZXS4VPgdvo",
+                )),
+                output_index: Some(1),
+            }]),
         }),
     };
     assert_eq!(parsed, expected);

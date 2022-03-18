@@ -9,7 +9,7 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::{avalanche::api::jsonrpc, utils::http};
+use crate::{avalanche::avalanchego::api::jsonrpc, utils::http};
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetnodeversion
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]

@@ -4,7 +4,7 @@ use log::info;
 use tokio::runtime::Runtime;
 
 extern crate avalanche_ops;
-use avalanche_ops::avalanche::api::info;
+use avalanche_ops::avalanche::avalanchego::api::info;
 
 /// cargo run --example avalanche_api_info -- [HTTP RPC ENDPOINT]
 fn main() {

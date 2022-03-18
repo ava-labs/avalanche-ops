@@ -1,4 +1,3 @@
-pub mod api;
 pub mod avalanchego;
 pub mod constants;
 pub mod coreth;

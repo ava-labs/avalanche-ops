@@ -10,7 +10,7 @@ use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    avalanche::api::jsonrpc,
+    avalanche::avalanchego::api::jsonrpc,
     utils::{big_int, http},
 };
 

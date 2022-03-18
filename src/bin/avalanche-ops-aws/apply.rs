@@ -22,7 +22,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::{api::health, node},
+    avalanche::{avalanchego::api::health, node},
     aws::{self, cloudformation, ec2, envelope, kms, s3, sts},
     utils::{compress, home_dir, random},
 };

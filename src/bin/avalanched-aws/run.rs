@@ -15,8 +15,10 @@ use log::{info, warn};
 use avalanche_ops::{
     self,
     avalanche::{
-        api::{health, metrics},
-        avalanchego::genesis as avalanchego_genesis,
+        avalanchego::{
+            api::{health, metrics},
+            genesis as avalanchego_genesis,
+        },
         constants, node,
     },
     aws::{self, cloudwatch, ec2, envelope, kms, s3},
