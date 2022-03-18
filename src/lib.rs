@@ -940,18 +940,18 @@ pub enum StorageNamespace {
     PkiKeyDir(String),
 
     /// before db downloads
-    DiscoverProvisioningBeaconNodesDir(String),
-    DiscoverProvisioningBeaconNode(String, node::Node),
-    DiscoverProvisioningNonBeaconNodesDir(String),
-    DiscoverProvisioningNonBeaconNode(String, node::Node),
+    DiscoverProvisioningAnchorNodesDir(String),
+    DiscoverProvisioningAnchorNode(String, node::Node),
+    DiscoverProvisioningNonAnchorNodesDir(String),
+    DiscoverProvisioningNonAnchorNode(String, node::Node),
 
-    DiscoverBootstrappingBeaconNodesDir(String),
-    DiscoverBootstrappingBeaconNode(String, node::Node),
+    DiscoverBootstrappingAnchorNodesDir(String),
+    DiscoverBootstrappingAnchorNode(String, node::Node),
 
-    DiscoverReadyBeaconNodesDir(String),
-    DiscoverReadyBeaconNode(String, node::Node),
-    DiscoverReadyNonBeaconNodesDir(String),
-    DiscoverReadyNonBeaconNode(String, node::Node),
+    DiscoverReadyAnchorNodesDir(String),
+    DiscoverReadyAnchorNode(String, node::Node),
+    DiscoverReadyNonAnchorNodesDir(String),
+    DiscoverReadyNonAnchorNode(String, node::Node),
 
     BackupsDir(String),
 
@@ -984,20 +984,20 @@ impl StorageNamespace {
                 format!("{}/pki", id)
             }
 
-            StorageNamespace::DiscoverProvisioningBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverProvisioningAnchorNodesDir(id) => {
                 format!("{}/discover/provisioning-non-anchor-nodes", id)
             }
-            StorageNamespace::DiscoverProvisioningBeaconNode(id, node) => {
+            StorageNamespace::DiscoverProvisioningAnchorNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/provisioning-non-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
-            StorageNamespace::DiscoverProvisioningNonBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverProvisioningNonAnchorNodesDir(id) => {
                 format!("{}/discover/provisioning-non-anchor-nodes", id)
             }
-            StorageNamespace::DiscoverProvisioningNonBeaconNode(id, node) => {
+            StorageNamespace::DiscoverProvisioningNonAnchorNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/provisioning-non-anchor-nodes/{}_{}.yaml",
@@ -1005,10 +1005,10 @@ impl StorageNamespace {
                 )
             }
 
-            StorageNamespace::DiscoverBootstrappingBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverBootstrappingAnchorNodesDir(id) => {
                 format!("{}/discover/bootstrapping-anchor-nodes", id)
             }
-            StorageNamespace::DiscoverBootstrappingBeaconNode(id, node) => {
+            StorageNamespace::DiscoverBootstrappingAnchorNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/bootstrapping-anchor-nodes/{}_{}.yaml",
@@ -1016,20 +1016,20 @@ impl StorageNamespace {
                 )
             }
 
-            StorageNamespace::DiscoverReadyBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverReadyAnchorNodesDir(id) => {
                 format!("{}/discover/ready-anchor-nodes", id)
             }
-            StorageNamespace::DiscoverReadyBeaconNode(id, node) => {
+            StorageNamespace::DiscoverReadyAnchorNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/ready-anchor-nodes/{}_{}.yaml",
                     id, node.machine_id, compressed_id
                 )
             }
-            StorageNamespace::DiscoverReadyNonBeaconNodesDir(id) => {
+            StorageNamespace::DiscoverReadyNonAnchorNodesDir(id) => {
                 format!("{}/discover/ready-non-anchor-nodes", id)
             }
-            StorageNamespace::DiscoverReadyNonBeaconNode(id, node) => {
+            StorageNamespace::DiscoverReadyNonAnchorNode(id, node) => {
                 let compressed_id = node.compress_base58().unwrap();
                 format!(
                     "{}/discover/ready-non-anchor-nodes/{}_{}.yaml",
@@ -1109,7 +1109,7 @@ fn test_storage_path() {
         "http",
         9650,
     );
-    let p = StorageNamespace::DiscoverReadyNonBeaconNode(
+    let p = StorageNamespace::DiscoverReadyNonAnchorNode(
         id,
         node::Node {
             kind: String::from("non-anchor"),

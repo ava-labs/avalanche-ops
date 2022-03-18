@@ -725,7 +725,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     s3_manager.list_objects(
                         Arc::new(aws_resources.s3_bucket.clone()),
                         Some(Arc::new(s3::append_slash(
-                            &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNodesDir(
+                            &avalanche_ops::StorageNamespace::DiscoverReadyAnchorNodesDir(
                                 spec.id.clone(),
                             )
                             .encode(),
@@ -936,11 +936,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
         let s3_dir = {
             if require_db_download {
-                avalanche_ops::StorageNamespace::DiscoverProvisioningNonBeaconNodesDir(
+                avalanche_ops::StorageNamespace::DiscoverProvisioningNonAnchorNodesDir(
                     spec.id.clone(),
                 )
             } else {
-                avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNodesDir(spec.id.clone())
+                avalanche_ops::StorageNamespace::DiscoverReadyNonAnchorNodesDir(spec.id.clone())
             }
         };
         // wait for non-anchor nodes to generate certs and node ID and post to remote storage

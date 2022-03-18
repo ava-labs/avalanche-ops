@@ -431,12 +431,12 @@ pub async fn execute(log_level: &str) {
             info!("STEP: publishing node information before db backup downloads");
             let s3_key = {
                 if matches!(node_kind, node::Kind::Anchor) {
-                    avalanche_ops::StorageNamespace::DiscoverProvisioningBeaconNode(
+                    avalanche_ops::StorageNamespace::DiscoverProvisioningAnchorNode(
                         id.clone(),
                         local_node.clone(),
                     )
                 } else {
-                    avalanche_ops::StorageNamespace::DiscoverProvisioningNonBeaconNode(
+                    avalanche_ops::StorageNamespace::DiscoverProvisioningNonAnchorNode(
                         id.clone(),
                         local_node.clone(),
                     )
@@ -522,7 +522,7 @@ pub async fn execute(log_level: &str) {
             s3_manager.clone(),
             &tmp_path,
             &s3_bucket,
-            &avalanche_ops::StorageNamespace::DiscoverBootstrappingBeaconNode(
+            &avalanche_ops::StorageNamespace::DiscoverBootstrappingAnchorNode(
                 id.clone(),
                 local_node.clone(),
             )
@@ -537,7 +537,7 @@ pub async fn execute(log_level: &str) {
         info!("STEP: waiting for all seed/bootstrapping anchor nodes to be ready");
         let target_nodes = spec.machine.anchor_nodes.unwrap();
         let s3_key = s3::append_slash(
-            &avalanche_ops::StorageNamespace::DiscoverBootstrappingBeaconNodesDir(id.clone())
+            &avalanche_ops::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(id.clone())
                 .encode(),
         );
         let mut objects: Vec<Object>;
@@ -659,7 +659,7 @@ pub async fn execute(log_level: &str) {
             .anchor_nodes
             .expect("unexpected None machine.anchor_nodes for custom network");
         let s3_key = s3::append_slash(
-            &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNodesDir(id.clone()).encode(),
+            &avalanche_ops::StorageNamespace::DiscoverReadyAnchorNodesDir(id.clone()).encode(),
         );
         let mut objects: Vec<Object>;
         loop {
@@ -833,243 +833,82 @@ WantedBy=multi-user.target",
         thread::sleep(Duration::from_secs(30));
     }
 
-    info!("avalanched now periodically publishing node information...");
-    let mut cnt: u128 = 0;
+    info!("spawning async routines...");
+    let node_info_ready_s3_key = {
+        if matches!(node_kind, node::Kind::Anchor) {
+            avalanche_ops::StorageNamespace::DiscoverReadyAnchorNode(
+                id.to_string(),
+                local_node.clone(),
+            )
+            .encode()
+        } else {
+            avalanche_ops::StorageNamespace::DiscoverReadyNonAnchorNode(
+                id.to_string(),
+                local_node.clone(),
+            )
+            .encode()
+        }
+    };
+    let mut handles = vec![
+        tokio::spawn(fetch_metrics(
+            cw_manager.clone(),
+            Arc::new(
+                aws_resources
+                    .clone()
+                    .cloudwatch_avalanche_metrics_namespace
+                    .unwrap(),
+            ),
+            Arc::new(local_node.http_endpoint.clone()),
+        )),
+        tokio::spawn(publish_node_info_ready(
+            s3_manager.clone(),
+            Arc::new(s3_bucket.clone()),
+            Arc::new(node_info_ready_s3_key),
+            Arc::new(node::Info::new(
+                local_node.clone(),
+                spec.avalanchego_config.clone(),
+                spec.coreth_config.clone(),
+            )),
+        )),
+        tokio::spawn(check_node_update(
+            s3_manager.clone(),
+            Arc::new(s3_bucket.clone()),
+            Arc::new(id.clone()),
+            Arc::new(avalanche_bin_path),
+        )),
+    ];
+    if aws_resources.db_backup_s3_bucket.is_some() {
+        handles.push(tokio::spawn(print_backup_commands(
+            Arc::new(aws_resources.db_backup_s3_region.clone().unwrap()),
+            Arc::new(aws_resources.db_backup_s3_bucket.clone().unwrap()),
+            Arc::new(id.clone()),
+            Arc::new(spec.avalanchego_config.network_id),
+            Arc::new(spec.avalanchego_config.db_dir),
+        )));
+    }
+
+    info!("STEP: blocking on handles via JoinHandle");
+    for handle in handles {
+        handle.await.expect("failed handle");
+    }
+}
+
+async fn fetch_metrics(
+    cw_manager: cloudwatch::Manager,
+    cw_namespace: Arc<String>,
+    metrics_ep: Arc<String>,
+) {
+    info!("STEP: starting 'fetch_metrics'");
+
     let mut prev_metrics: Option<metrics::Metrics> = None;
     loop {
-        // to be downloaded in bootstrapping non-anchor nodes
-        // for custom networks, runs every 9-min
-        if (cnt < 5 || cnt % 3 == 0)
-            && spec.avalanchego_config.is_custom_network()
-            && matches!(node_kind, node::Kind::Anchor)
-        {
-            info!("STEP: publishing anchor node information");
-            let node_info = node::Info::new(
-                local_node.clone(),
-                spec.avalanchego_config.clone(),
-                spec.coreth_config.clone(),
-            );
-            let tmp_path =
-                random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
-            node_info.sync(tmp_path.clone()).unwrap();
-            s3::spawn_put_object(
-                s3_manager.clone(),
-                &tmp_path,
-                &s3_bucket,
-                &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNode(
-                    id.clone(),
-                    local_node.clone(),
-                )
-                .encode(),
-            )
-            .await
-            .expect("failed s3::spawn_put_object");
-            fs::remove_file(&tmp_path).expect("failed fs::remove_file");
-        }
-
-        // for all network types, runs every 9-min
-        if (cnt < 5 || cnt % 3 == 0) && matches!(node_kind, node::Kind::NonAnchor) {
-            info!("STEP: publishing non-anchor node information");
-            let node_info = node::Info::new(
-                local_node.clone(),
-                spec.avalanchego_config.clone(),
-                spec.coreth_config.clone(),
-            );
-            let tmp_path =
-                random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
-            node_info.sync(tmp_path.clone()).unwrap();
-            s3::spawn_put_object(
-                s3_manager.clone(),
-                &tmp_path,
-                &s3_bucket,
-                &avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNode(
-                    id.clone(),
-                    local_node.clone(),
-                )
-                .encode(),
-            )
-            .await
-            .expect("failed s3::spawn_put_object");
-            fs::remove_file(&tmp_path).expect("failed fs::remove_file");
-        }
-
-        // TODO: move this to another async worker
-        info!("STEP: fetching avalanche metrics");
-        let cw_namespace = aws_resources
-            .clone()
-            .cloudwatch_avalanche_metrics_namespace
-            .clone()
-            .unwrap();
-        let cur_metrics = metrics::spawn_get(&local_node.http_endpoint)
+        info!("STEP: fetching metrics");
+        let cur_metrics = metrics::spawn_get(metrics_ep.as_str())
             .await
             .expect("failed metrics::get");
         cloudwatch::spawn_put_metric_data(
             cw_manager.clone(),
-            &cw_namespace,
-            cur_metrics.to_cw_metric_data(prev_metrics.clone()),
-        )
-        .await
-        .expect("failed cloudwatch::spawn_put_metric_data");
-        prev_metrics = Some(cur_metrics.clone());
-
-        // runs every 3-minute
-        info!("STEP: checking update artifacts event key");
-        let objects = s3::spawn_list_objects(
-            s3_manager.clone(),
-            &s3_bucket,
-            Some(avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(id.clone()).encode()),
-        )
-        .await
-        .expect("failed s3::spawn_list_objects");
-
-        if objects.len() == 1 {
-            let obj = objects[0].clone();
-            let last_modified = obj.last_modified.unwrap();
-            let last_modified_unix = last_modified.as_secs_f64();
-
-            let now = SystemTime::now();
-            let now_unix = now
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("unexpected None duration_since")
-                .as_secs() as f64;
-
-            // requested for the last 6-min
-            // TODO: can this be smarter...?
-            let needs_update = (now_unix - last_modified_unix) < 360_f64;
-            info!(
-                "last_modified_unix {}, now_unix {} [needs update: {}]",
-                last_modified_unix, now_unix, needs_update
-            );
-
-            if needs_update {
-                info!("STEP: downloading avalanched binary from S3");
-
-                // TODO: replace "avalanched" itself?
-                // TODO: fs::copy fails with 'Os { code: 26, kind: ExecutableFileBusy, message: "Text file busy" }'
-                // can't replace the process itself...
-
-                info!("STEP: downloading avalanche binary from S3");
-                let tmp_avalanche_bin_compressed_path =
-                    random::tmp_path(15, Some(".zstd")).unwrap();
-                s3::spawn_get_object(
-                    s3_manager.clone(),
-                    &s3_bucket,
-                    &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.clone()).encode(),
-                    &tmp_avalanche_bin_compressed_path,
-                )
-                .await
-                .expect("failed s3::spawn_get_object");
-
-                warn!("stopping avalanche.service before unpack...");
-                bash::run("sudo systemctl stop avalanche.service")
-                    .expect("failed systemctl stop command");
-                warn!("stopped avalanche.service before unpack...");
-                thread::sleep(Duration::from_secs(10));
-
-                compress::unpack_file(
-                    &tmp_avalanche_bin_compressed_path,
-                    &avalanche_bin_path,
-                    compress::Decoder::Zstd,
-                )
-                .expect("failed unpack_file avalanche_bin_compressed_path");
-
-                let f = File::open(&avalanche_bin_path).expect("failed to open avalanche_bin");
-                f.set_permissions(PermissionsExt::from_mode(0o777))
-                    .expect("failed to set file permission for avalanche_bin");
-                fs::remove_file(&tmp_avalanche_bin_compressed_path)
-                    .expect("failed fs::remove_file");
-
-                let plugins_dir = get_plugins_dir(&avalanche_bin_path);
-                if !Path::new(&plugins_dir).exists() {
-                    info!("STEP: creating '{}' for plugins", plugins_dir);
-                    fs::create_dir_all(plugins_dir.clone()).unwrap();
-                }
-
-                info!("STEP: downloading plugins from S3 (if any) to overwrite");
-                let objects = s3::spawn_list_objects(
-                    s3_manager.clone(),
-                    &s3_bucket,
-                    Some(s3::append_slash(
-                        &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(id)
-                            .encode(),
-                    )),
-                )
-                .await
-                .expect("failed s3::spawn_list_objects");
-
-                info!("listed {} plugins from S3", objects.len());
-                for obj in objects.iter() {
-                    let s3_key = obj.key().expect("unexpected None s3 object");
-                    let tmp_path = random::tmp_path(15, None).unwrap();
-                    s3::spawn_get_object(s3_manager.clone(), &s3_bucket, s3_key, &tmp_path)
-                        .await
-                        .expect("failed s3::spawn_get_object");
-
-                    let file_name = extract_filename(s3_key);
-                    let file_path = format!("{}/{}", plugins_dir, file_name);
-                    compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
-
-                    let f = File::open(file_path).expect("failed to open plugin file");
-                    f.set_permissions(PermissionsExt::from_mode(0o777))
-                        .expect("failed to set file permission");
-                    fs::remove_file(&tmp_path).expect("failed fs::remove_file");
-                }
-
-                // updated the avalanched itself, so sleep for cloudwatch logs and restart
-                warn!("artifacts have been updated... will trigger avalanched restart by panic here...");
-                thread::sleep(Duration::from_secs(240)); // sleep to prevent duplicate updates
-                panic!("panic avalanched to trigger restarts via systemd service!!!")
-            }
-        } else {
-            warn!(
-                "update artifacts event not found (seeing {} objects)",
-                objects.len()
-            );
-        }
-
-        // prints every 30-min
-        if cnt % 10 == 0 {
-            // e.g., "--pack-dir /avalanche-data/network-1000000/v1.4.5"
-            let db_dir_network = match constants::NETWORK_ID_TO_NETWORK_NAME
-                .get(&spec.avalanchego_config.network_id)
-            {
-                Some(v) => String::from(*v),
-                None => format!("network-{}", spec.avalanchego_config.network_id),
-            };
-            println!("[TO BACK UP DATA] /usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
-            reg.clone(),
-            compress::DirEncoder::TarGzip.id(),
-            spec.avalanchego_config.db_dir.clone(),
-            db_dir_network,
-            &s3_bucket,
-            avalanche_ops::StorageNamespace::BackupsDir(id.clone()).encode(),
-            compress::DirEncoder::TarGzip.ext(),
-        );
-            println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
-            reg,
-            compress::DirDecoder::TarGzip.id(),
-            &s3_bucket,
-            avalanche_ops::StorageNamespace::BackupsDir(id.clone()).encode(),
-            compress::DirDecoder::TarGzip.ext(),
-            spec.avalanchego_config.db_dir.clone(),
-        );
-        }
-
-        info!("sleeping 100-sec...");
-        thread::sleep(Duration::from_secs(100));
-
-        info!("STEP: fetching avalanche metrics");
-        let cw_namespace = aws_resources
-            .clone()
-            .cloudwatch_avalanche_metrics_namespace
-            .clone()
-            .unwrap();
-        let cur_metrics = metrics::spawn_get(&local_node.http_endpoint)
-            .await
-            .expect("failed metrics::get");
-        cloudwatch::spawn_put_metric_data(
-            cw_manager.clone(),
-            &cw_namespace,
+            cw_namespace.as_str(),
             cur_metrics.to_cw_metric_data(prev_metrics.clone()),
         )
         .await
@@ -1078,8 +917,215 @@ WantedBy=multi-user.target",
 
         info!("sleeping 1-min...");
         thread::sleep(Duration::from_secs(60));
+    }
+}
 
-        cnt += 1;
+/// if run in anchor nodes, the uploaded file will be downloaded
+/// in bootstrapping non-anchor nodes for custom networks
+async fn publish_node_info_ready(
+    s3_manager: s3::Manager,
+    s3_bucket: Arc<String>,
+    s3_key: Arc<String>,
+    node_info: Arc<node::Info>,
+) {
+    info!("STEP: starting 'publish_node_info_ready'");
+
+    loop {
+        info!(
+            "STEP: posting node info ready for {}",
+            node_info.local_node.kind
+        );
+
+        let tmp_path = random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+        node_info.sync(tmp_path.clone()).unwrap();
+
+        s3::spawn_put_object(
+            s3_manager.clone(),
+            &tmp_path,
+            s3_bucket.as_str(),
+            s3_key.as_str(),
+        )
+        .await
+        .expect("failed s3::spawn_put_object");
+
+        fs::remove_file(&tmp_path).expect("failed fs::remove_file");
+
+        info!("sleeping 10-min...");
+        thread::sleep(Duration::from_secs(600));
+    }
+}
+
+async fn check_node_update(
+    s3_manager: s3::Manager,
+    s3_bucket: Arc<String>,
+    id: Arc<String>,
+    avalanche_bin_path: Arc<String>,
+) {
+    info!("STEP: starting 'check_node_update'");
+
+    loop {
+        info!("sleeping 3-min...");
+        thread::sleep(Duration::from_secs(180));
+
+        info!("STEP: checking update artifacts event key");
+        let objects = s3::spawn_list_objects(
+            s3_manager.clone(),
+            s3_bucket.as_str(),
+            Some(
+                avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(id.to_string())
+                    .encode(),
+            ),
+        )
+        .await
+        .expect("failed s3::spawn_list_objects");
+
+        if objects.is_empty() {
+            warn!("no event key found");
+            continue;
+        }
+
+        let obj = objects[0].clone();
+        let last_modified = obj.last_modified.unwrap();
+        let last_modified_unix = last_modified.as_secs_f64();
+
+        let now = SystemTime::now();
+        let now_unix = now
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("unexpected None duration_since")
+            .as_secs() as f64;
+
+        // requested for the last 6-min
+        // TODO: can this be smarter...?
+        let needs_update = (now_unix - last_modified_unix) < 360_f64;
+        info!(
+            "last_modified_unix {}, now_unix {} [needs update: {}]",
+            last_modified_unix, now_unix, needs_update
+        );
+
+        if !needs_update {
+            warn!(
+                "update artifacts event not found (seeing {} objects)",
+                objects.len()
+            );
+            continue;
+        }
+
+        info!("STEP: downloading avalanched binary from S3");
+
+        // TODO: replace "avalanched" itself?
+        // TODO: fs::copy fails with 'Os { code: 26, kind: ExecutableFileBusy, message: "Text file busy" }'
+        // can't replace the process itself...
+
+        info!("STEP: downloading avalanche binary from S3");
+        let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+        s3::spawn_get_object(
+                    s3_manager.clone(),
+                    &s3_bucket,
+                    &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.to_string()).encode(),
+                    &tmp_avalanche_bin_compressed_path,
+                )
+                .await
+                .expect("failed s3::spawn_get_object");
+
+        warn!("stopping avalanche.service before unpack...");
+        bash::run("sudo systemctl stop avalanche.service").expect("failed systemctl stop command");
+        warn!("stopped avalanche.service before unpack...");
+        thread::sleep(Duration::from_secs(10));
+
+        compress::unpack_file(
+            &tmp_avalanche_bin_compressed_path,
+            avalanche_bin_path.as_str(),
+            compress::Decoder::Zstd,
+        )
+        .expect("failed unpack_file avalanche_bin_compressed_path");
+
+        let f = File::open(avalanche_bin_path.as_str()).expect("failed to open avalanche_bin");
+        f.set_permissions(PermissionsExt::from_mode(0o777))
+            .expect("failed to set file permission for avalanche_bin");
+        fs::remove_file(&tmp_avalanche_bin_compressed_path).expect("failed fs::remove_file");
+
+        let plugins_dir = get_plugins_dir(avalanche_bin_path.as_str());
+        if !Path::new(&plugins_dir).exists() {
+            info!("STEP: creating '{}' for plugins", plugins_dir);
+            fs::create_dir_all(plugins_dir.clone()).unwrap();
+        }
+
+        info!("STEP: downloading plugins from S3 (if any) to overwrite");
+        let objects = s3::spawn_list_objects(
+            s3_manager.clone(),
+            &s3_bucket,
+            Some(s3::append_slash(
+                &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(
+                    id.to_string(),
+                )
+                .encode(),
+            )),
+        )
+        .await
+        .expect("failed s3::spawn_list_objects");
+
+        info!("listed {} plugins from S3", objects.len());
+        for obj in objects.iter() {
+            let s3_key = obj.key().expect("unexpected None s3 object");
+            let tmp_path = random::tmp_path(15, None).unwrap();
+            s3::spawn_get_object(s3_manager.clone(), &s3_bucket, s3_key, &tmp_path)
+                .await
+                .expect("failed s3::spawn_get_object");
+
+            let file_name = extract_filename(s3_key);
+            let file_path = format!("{}/{}", plugins_dir, file_name);
+            compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
+
+            let f = File::open(file_path).expect("failed to open plugin file");
+            f.set_permissions(PermissionsExt::from_mode(0o777))
+                .expect("failed to set file permission");
+            fs::remove_file(&tmp_path).expect("failed fs::remove_file");
+        }
+
+        // updated the avalanched itself, so sleep for cloudwatch logs and restart
+        warn!("artifacts have been updated... will trigger avalanched restart by panic here...");
+        thread::sleep(Duration::from_secs(240)); // sleep to prevent duplicate updates
+        panic!("panic avalanched to trigger restarts via systemd service!!!")
+    }
+}
+
+async fn print_backup_commands(
+    s3_region: Arc<String>,
+    s3_bucket: Arc<String>,
+    id: Arc<String>,
+    network_id: Arc<u32>,
+    db_dir: Arc<String>,
+) {
+    info!("STEP: starting 'print_backup_commands'");
+
+    loop {
+        // e.g., "--pack-dir /avalanche-data/network-1000000/v1.4.5"
+        let db_dir_network = match constants::NETWORK_ID_TO_NETWORK_NAME.get(network_id.as_ref()) {
+            Some(v) => String::from(*v),
+            None => format!("network-{}", network_id),
+        };
+
+        println!("[TO BACK UP DATA] /usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
+            s3_region,
+            compress::DirEncoder::TarGzip.id(),
+            db_dir,
+            db_dir_network,
+            &s3_bucket,
+            avalanche_ops::StorageNamespace::BackupsDir(id.to_string()).encode(),
+            compress::DirEncoder::TarGzip.ext(),
+        );
+
+        println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
+            s3_region,
+            compress::DirDecoder::TarGzip.id(),
+            s3_bucket,
+            avalanche_ops::StorageNamespace::BackupsDir(id.to_string()).encode(),
+            compress::DirDecoder::TarGzip.ext(),
+            db_dir,
+        );
+
+        info!("sleeping 60-min...");
+        thread::sleep(Duration::from_secs(360));
     }
 }
 
