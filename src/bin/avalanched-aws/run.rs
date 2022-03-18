@@ -915,7 +915,7 @@ async fn fetch_metrics(
         .expect("failed cloudwatch::spawn_put_metric_data");
         prev_metrics = Some(cur_metrics.clone());
 
-        info!("sleeping 1-min...");
+        info!("sleeping 1-min for 'fetch_metrics'");
         thread::sleep(Duration::from_secs(60));
     }
 }
@@ -950,7 +950,7 @@ async fn publish_node_info_ready(
 
         fs::remove_file(&tmp_path).expect("failed fs::remove_file");
 
-        info!("sleeping 10-min...");
+        info!("sleeping 10-min for 'publish_node_info_ready'");
         thread::sleep(Duration::from_secs(600));
     }
 }
@@ -964,7 +964,7 @@ async fn check_node_update(
     info!("STEP: starting 'check_node_update'");
 
     loop {
-        info!("sleeping 3-min...");
+        info!("sleeping 3-min for 'check_node_update'");
         thread::sleep(Duration::from_secs(180));
 
         info!("STEP: checking update artifacts event key");
@@ -1124,8 +1124,8 @@ async fn print_backup_commands(
             db_dir,
         );
 
-        info!("sleeping 60-min...");
-        thread::sleep(Duration::from_secs(360));
+        info!("sleeping 5-hour 'print_backup_commands'");
+        thread::sleep(Duration::from_secs(5 * 3600));
     }
 }
 
