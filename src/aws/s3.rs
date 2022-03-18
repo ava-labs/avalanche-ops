@@ -217,8 +217,7 @@ impl Manager {
         prefix: Option<Arc<String>>,
     ) -> Result<Vec<Object>> {
         let pfx = {
-            if prefix.is_some() {
-                let s = prefix.unwrap();
+            if let Some(s) = prefix {
                 let s = s.to_string();
                 if s.is_empty() {
                     None
