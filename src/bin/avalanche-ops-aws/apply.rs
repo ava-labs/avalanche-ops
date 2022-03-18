@@ -3,6 +3,7 @@ use std::{
     io::{self, stdout, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
     path::Path,
+    sync::Arc,
     thread,
     time::Duration,
 };
@@ -21,7 +22,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_ops::{
     self,
-    avalanche::{self, node},
+    avalanche::{api::health, node},
     aws::{self, cloudformation, ec2, envelope, kms, s3, sts},
     utils::{compress, home_dir, random},
 };
@@ -196,9 +197,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     // don't compress since we need to download this in user data
     // while instance bootstrapping
     rt.block_on(s3_manager.put_object(
-        &spec.install_artifacts.avalanched_bin,
-        &aws_resources.s3_bucket,
-        &avalanche_ops::StorageNamespace::AvalanchedBin(spec.id.clone()).encode(),
+        Arc::new(spec.install_artifacts.avalanched_bin.clone()),
+        Arc::new(aws_resources.s3_bucket.clone()),
+        Arc::new(avalanche_ops::StorageNamespace::AvalanchedBin(spec.id.clone()).encode()),
     ))
     .expect("failed put_object install_artifacts.avalanched_bin");
 
@@ -212,9 +213,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     )
     .expect("failed pack_file install_artifacts.avalanched_bin");
     rt.block_on(s3_manager.put_object(
-        &tmp_avalanche_bin_compressed_path,
-        &aws_resources.s3_bucket,
-        &avalanche_ops::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode(),
+        Arc::new(tmp_avalanche_bin_compressed_path.clone()),
+        Arc::new(aws_resources.s3_bucket.clone()),
+        Arc::new(avalanche_ops::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode()),
     ))
     .expect("failed put_object compressed avalanchego_bin");
     fs::remove_file(tmp_avalanche_bin_compressed_path)?;
@@ -241,27 +242,24 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 "uploading {} (compressed from {}) from plugins directory {}",
                 tmp_plugin_compressed_path, file_path, plugins_dir,
             );
-            rt.block_on(
-                s3_manager.put_object(
-                    &tmp_plugin_compressed_path,
-                    &aws_resources.s3_bucket,
-                    format!(
-                        "{}/{}{}",
-                        &avalanche_ops::StorageNamespace::PluginsDir(spec.id.clone()).encode(),
-                        file_name,
-                        compress::Encoder::Zstd(3).ext()
-                    )
-                    .as_str(),
-                ),
-            )
+            rt.block_on(s3_manager.put_object(
+                Arc::new(tmp_plugin_compressed_path.clone()),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(format!(
+                    "{}/{}{}",
+                    &avalanche_ops::StorageNamespace::PluginsDir(spec.id.clone()).encode(),
+                    file_name,
+                    compress::Encoder::Zstd(3).ext()
+                )),
+            ))
             .expect("failed put_object tmp_plugin_compressed_path");
             fs::remove_file(tmp_plugin_compressed_path)?;
         }
     }
     rt.block_on(s3_manager.put_object(
-        spec_file_path,
-        &aws_resources.s3_bucket,
-        &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+        Arc::new(spec_file_path.to_string()),
+        Arc::new(aws_resources.s3_bucket.clone()),
+        Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
     ))
     .unwrap();
 
@@ -283,9 +281,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.s3_bucket,
-            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -316,14 +314,21 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
 
         let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
-        rt.block_on(envelope.seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path))
-            .unwrap();
+        rt.block_on(envelope.seal_aes_256_file(
+            Arc::new(tmp_compressed_path),
+            Arc::new(tmp_encrypted_path.clone()),
+        ))
+        .unwrap();
         rt.block_on(
             s3_manager.put_object(
-                &tmp_encrypted_path,
-                &aws_resources.s3_bucket,
-                &avalanche_ops::StorageNamespace::Ec2AccessKeyCompressedEncrypted(spec.id.clone())
+                Arc::new(tmp_encrypted_path),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalanche_ops::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
+                        spec.id.clone(),
+                    )
                     .encode(),
+                ),
             ),
         )
         .unwrap();
@@ -333,9 +338,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.s3_bucket,
-            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -406,9 +411,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.s3_bucket,
-            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -491,9 +496,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.s3_bucket,
-            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -718,13 +723,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             objects = rt
                 .block_on(
                     s3_manager.list_objects(
-                        &aws_resources.s3_bucket,
-                        Some(s3::append_slash(
-                            &avalanche_ops::StorageNamespace::DiscoverReadyBeaconNodesDir(
+                        Arc::new(aws_resources.s3_bucket.clone()),
+                        Some(Arc::new(s3::append_slash(
+                            &avalanche_ops::StorageNamespace::DiscoverReadyAnchorNodesDir(
                                 spec.id.clone(),
                             )
                             .encode(),
-                        )),
+                        ))),
                     ),
                 )
                 .unwrap();
@@ -749,9 +754,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.s3_bucket,
-            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
 
@@ -931,11 +936,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
         let s3_dir = {
             if require_db_download {
-                avalanche_ops::StorageNamespace::DiscoverProvisioningNonBeaconNodesDir(
+                avalanche_ops::StorageNamespace::DiscoverProvisioningNonAnchorNodesDir(
                     spec.id.clone(),
                 )
             } else {
-                avalanche_ops::StorageNamespace::DiscoverReadyNonBeaconNodesDir(spec.id.clone())
+                avalanche_ops::StorageNamespace::DiscoverReadyNonAnchorNodesDir(spec.id.clone())
             }
         };
         // wait for non-anchor nodes to generate certs and node ID and post to remote storage
@@ -945,8 +950,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             thread::sleep(Duration::from_secs(30));
             objects = rt
                 .block_on(s3_manager.list_objects(
-                    &aws_resources.s3_bucket,
-                    Some(s3::append_slash(&s3_dir.encode())),
+                    Arc::new(aws_resources.s3_bucket.clone()),
+                    Some(Arc::new(s3::append_slash(&s3_dir.encode()))),
                 ))
                 .unwrap();
             info!(
@@ -969,9 +974,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.sync(spec_file_path)?;
 
         rt.block_on(s3_manager.put_object(
-            spec_file_path,
-            &aws_resources.s3_bucket,
-            &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .expect("failed put_object ConfigFile");
 
@@ -1047,9 +1052,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     spec.endpoints = Some(dns_endpoints.clone());
     spec.sync(spec_file_path)?;
     rt.block_on(s3_manager.put_object(
-        spec_file_path,
-        &aws_resources.s3_bucket,
-        &avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+        Arc::new(spec_file_path.to_string()),
+        Arc::new(aws_resources.s3_bucket.clone()),
+        Arc::new(avalanche_ops::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
     ))
     .expect("failed put_object ConfigFile");
     println!();
@@ -1059,11 +1064,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let mut success = false;
     for _ in 0..10_u8 {
-        let ret = rt.block_on(avalanche::api::health::check(&http_rpc, true));
+        let ret = rt.block_on(health::check(Arc::new(http_rpc.clone()), true));
         let (res, err) = match ret {
             Ok(res) => (res, None),
             Err(e) => (
-                avalanche::api::health::Response {
+                health::Response {
                     checks: None,
                     healthy: Some(false),
                 },
@@ -1099,11 +1104,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     for node in current_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(avalanche::api::health::check(&node.http_endpoint, true));
+            let ret = rt.block_on(health::check(Arc::new(node.http_endpoint.clone()), true));
             let (res, err) = match ret {
                 Ok(res) => (res, None),
                 Err(e) => (
-                    avalanche::api::health::Response {
+                    health::Response {
                         checks: None,
                         healthy: Some(false),
                     },

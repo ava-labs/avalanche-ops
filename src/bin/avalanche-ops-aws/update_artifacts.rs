@@ -1,6 +1,7 @@
 use std::{
     fs::{self},
     io::{self, stdout},
+    sync::Arc,
 };
 
 use clap::{Arg, Command};
@@ -128,9 +129,9 @@ pub fn execute(
     )
     .expect("failed pack_file install_artifacts_avalanche_bin");
     rt.block_on(s3_manager.put_object(
-        &tmp_avalanche_bin_compressed_path,
-        &aws_resources.s3_bucket,
-        &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(spec.id.clone()).encode(),
+        Arc::new(tmp_avalanche_bin_compressed_path.clone()),
+        Arc::new(aws_resources.s3_bucket.clone()),
+        Arc::new(avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(spec.id.clone()).encode()),
     ))
     .expect("failed put_object compressed install_artifacts_avalanche_bin");
     fs::remove_file(tmp_avalanche_bin_compressed_path)?;
@@ -158,15 +159,14 @@ pub fn execute(
             );
             rt.block_on(
                 s3_manager.put_object(
-                    &tmp_plugin_compressed_path,
-                    &aws_resources.s3_bucket,
-                    format!(
+                    Arc::new(tmp_plugin_compressed_path.clone()),
+                        Arc::new(aws_resources.s3_bucket.clone()),
+                    Arc::new(format!(
                         "{}/{}{}",
                         &avalanche_ops::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(spec.id.clone()).encode(),
                         file_name,
                         compress::Encoder::Zstd(3).ext()
-                    )
-                    .as_str(),
+                    )),
                 ),
             )
             .expect("failed put_object tmp_plugin_compressed_path");
@@ -174,9 +174,9 @@ pub fn execute(
         }
     }
     rt.block_on(s3_manager.put_object(
-        spec_file_path,
-        &aws_resources.s3_bucket,
-        &avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(spec.id).encode(),
+        Arc::new(spec_file_path.to_string()),
+        Arc::new(aws_resources.s3_bucket),
+        Arc::new(avalanche_ops::StorageNamespace::EventsUpdateArtifactsEvent(spec.id).encode()),
     ))
     .expect("failed put_object EventsUpdateArtifactsEvent");
 

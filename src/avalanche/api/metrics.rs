@@ -1,4 +1,4 @@
-use std::{io, process::Command, time::Duration};
+use std::{io, process::Command, sync::Arc, time::Duration};
 
 use aws_sdk_cloudwatch::model::{MetricDatum, StandardUnit};
 use chrono::{DateTime, Utc};
@@ -768,8 +768,7 @@ impl Metrics {
                 .unit(StandardUnit::Count)
                 .build(),
         ];
-        if prev.is_some() {
-            let prev_datum = prev.unwrap();
+        if let Some(prev_datum) = prev {
             data.push(
                 MetricDatum::builder()
                     .metric_name("avalanche_C_blks_accepted_per_second")
@@ -782,14 +781,17 @@ impl Metrics {
     }
 }
 
-pub async fn get(u: &str) -> io::Result<Metrics> {
+/// "If a single piece of data must be accessible from more than one task
+/// concurrently, then it must be shared using synchronization primitives such as Arc."
+/// ref. https://tokio.rs/tokio/tutorial/spawning
+pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
     let ts = Utc::now();
     let url_path = "ext/metrics";
     info!("checking {}/{}", u, url_path);
 
     let output = {
         if u.starts_with("https") {
-            let joined = http::join_uri(u, url_path)?;
+            let joined = http::join_uri(u.as_str(), url_path)?;
 
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
@@ -800,7 +802,7 @@ pub async fn get(u: &str) -> io::Result<Metrics> {
             let output = cmd.output()?;
             output.stdout
         } else {
-            let req = http::create_get(u, url_path)?;
+            let req = http::create_get(u.as_str(), url_path)?;
             let buf =
                 match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false)
                     .await
@@ -1346,4 +1348,11 @@ pub async fn get(u: &str) -> io::Result<Metrics> {
             .to_f64(),
         ),
     })
+}
+
+pub async fn spawn_get(u: &str) -> io::Result<Metrics> {
+    let ep_arc = Arc::new(u.to_string());
+    tokio::spawn(async move { get(ep_arc).await })
+        .await
+        .expect("failed spawn await")
 }

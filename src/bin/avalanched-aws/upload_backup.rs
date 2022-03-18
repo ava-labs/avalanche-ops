@@ -1,4 +1,4 @@
-use std::{fs, io, path::Path};
+use std::{fs, io, path::Path, sync::Arc};
 
 use clap::{Arg, Command};
 use log::info;
@@ -120,8 +120,12 @@ pub fn execute(
     compress::pack_directory(pack_dir, tmp_file_path, enc)?;
 
     info!("STEP: upload output {} to S3", tmp_file_path);
-    rt.block_on(s3_manager.put_object(tmp_file_path, s3_bucket, s3_key))
-        .unwrap();
+    rt.block_on(s3_manager.put_object(
+        Arc::new(tmp_file_path.to_string()),
+        Arc::new(s3_bucket.to_string()),
+        Arc::new(s3_key.to_string()),
+    ))
+    .unwrap();
     fs::remove_file(tmp_file_path)?;
 
     info!("'avalanched upload-backup' all success!");

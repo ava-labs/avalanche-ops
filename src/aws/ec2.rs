@@ -1,4 +1,4 @@
-use std::{fs::File, io::prelude::*, path::Path, time::Duration};
+use std::{fs::File, io::prelude::*, path::Path, sync::Arc, time::Duration};
 
 use aws_sdk_ec2::{
     error::DeleteKeyPairError,
@@ -20,6 +20,7 @@ use crate::{
 };
 
 /// Implements AWS EC2 manager.
+#[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,
@@ -106,12 +107,16 @@ impl Manager {
     }
 
     /// Fetches all tags for the specified instance.
-    pub async fn fetch_tags(&self, instance_id: &str) -> Result<Vec<Tag>> {
+    ///
+    /// "If a single piece of data must be accessible from more than one task
+    /// concurrently, then it must be shared using synchronization primitives such as Arc."
+    /// ref. https://tokio.rs/tokio/tutorial/spawning
+    pub async fn fetch_tags(&self, instance_id: Arc<String>) -> Result<Vec<Tag>> {
         info!("fetching tags for '{}'", instance_id);
         let ret = self
             .cli
             .describe_instances()
-            .instance_ids(String::from(instance_id))
+            .instance_ids(instance_id.to_string())
             .send()
             .await;
         let resp = match ret {

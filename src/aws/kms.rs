@@ -42,7 +42,7 @@ impl DEK {
 }
 
 /// Implements AWS KMS manager.
-#[derive(std::clone::Clone)]
+#[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,

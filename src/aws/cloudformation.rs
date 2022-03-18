@@ -17,6 +17,7 @@ use crate::errors::{
 };
 
 /// Implements AWS CloudFormation manager.
+#[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,

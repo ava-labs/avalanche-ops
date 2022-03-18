@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::errors::{Error::API, Result};
 
 /// Implements AWS STS manager.
+#[derive(std::clone::Clone)]
 pub struct Manager {
     #[allow(dead_code)]
     shared_config: aws_config::Config,
