@@ -85,6 +85,16 @@ pub struct Metrics {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_ancestors_received_bytes: Option<f64>,
 
+    /// App messages.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_app_gossip_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_app_gossip_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_app_request_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_app_request_received_bytes: Option<f64>,
+
     /// X-chain metrics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_db_get_count: Option<f64>,
@@ -297,6 +307,12 @@ impl Metrics {
             avalanche_network_get_ancestors_received_bytes: None,
             avalanche_network_ancestors_sent_bytes: None,
             avalanche_network_ancestors_received_bytes: None,
+
+            // App messages.
+            avalanche_network_app_gossip_sent_bytes: None,
+            avalanche_network_app_gossip_received_bytes: None,
+            avalanche_network_app_request_sent_bytes: None,
+            avalanche_network_app_request_received_bytes: None,
 
             // X-chain metrics.
             avalanche_x_db_get_count: None,
@@ -641,6 +657,31 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_network_ancestors_received_bytes")
                 .value(self.avalanche_network_ancestors_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            // App messages.
+            MetricDatum::builder()
+                .metric_name("avalanche_network_app_gossip_sent_bytes")
+                .value(self.avalanche_network_app_gossip_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_app_gossip_received_bytes")
+                .value(self.avalanche_network_app_gossip_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_app_request_sent_bytes")
+                .value(self.avalanche_network_app_request_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_app_request_received_bytes")
+                .value(self.avalanche_network_app_request_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
                 .build(),
@@ -1405,6 +1446,36 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
         avalanche_network_ancestors_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_ancestors_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        // App messages.
+        avalanche_network_app_gossip_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_app_gossip_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_app_gossip_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_app_gossip_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_app_request_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_app_request_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_app_request_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_app_request_received_bytes"
             })
             .value
             .to_f64(),
