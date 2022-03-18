@@ -46,6 +46,26 @@ lazy_static! {
                 .unwrap(),
             Key::from_private_key("PrivateKey-BfJbL9SsyXBW9LbWrLSMDjWufPz6diNpu9vw5TQwpDBdWwohk")
                 .unwrap(),
+            Key::from_private_key("PrivateKey-2uyRJTVv8ot4V8Q7nUYGPwh2EigA3XzXdYcEwUMx6jsPr4Hwmh")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-85SNqwYiMTzaNMgJ9pKKkMHv9abL8G9qrtNzLzRGSo3dkP9yE")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-kFMUxLFyNagSBxL6Gyx8UrxMD4SdPKNPtkR6Nof1u3tuJ4tDv")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-cHuK2MmeHFDqYyb5SWh6xZ14zLoSj2Br2EoaL5DtC1NDP7CAm")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-2GrEehWjxhniGbsU8SZ5iMufpsbrNTMjQETK6eqi7TUcLWvzaE")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-cfMoaiqCXauTGmi4Tbwrq9kRcHfmiS3fqBRYu6vxDpBxoc8cW")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-geaod8DmFdjKpXzVcyXtZ61aoa4xxTygf7qruufFhSvNnc6Z1")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-2C1set4amHqBTFJbfBvC2NdCWmeQiR1mpwT9x9CfD9hanr1TQF")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-2o8tErrYbxCYvfCh1pY6XYmxreppnrkTM6aGwzuaQTAgNVz8ct")
+                .unwrap(),
+            Key::from_private_key("PrivateKey-2wcVsSwLnTb8NYhYqvMUVWKQv9BtZKVW2uWFZzzpx6AmRDFgXG")
+                .unwrap(),
         ];
         keys
     };
@@ -724,6 +744,406 @@ fn test_key() {
     assert_eq!(
         random_key.eth_address,
         "0x04d6C02f9232D93EF5A6A9ec0867503a28D44Ea5"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-2uyRJTVv8ot4V8Q7nUYGPwh2EigA3XzXdYcEwUMx6jsPr4Hwmh")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "fbfa28bf2c3244b8c8444bc7ee00e45cf7db4546d466f85a9b2686a9b989ed3d"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "MTo6jn3kNBsfNhUPFpvDi9YEjT66J2Lr6"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1upeulemvk20cmqujlk6mas4gwdqhs6e8a6vjtr"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1upeulemvk20cmqujlk6mas4gwdqhs6e8a6vjtr"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1upeulemvk20cmqujlk6mas4gwdqhs6e8a6vjtr"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1upeulemvk20cmqujlk6mas4gwdqhs6e8wq7gvk"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1upeulemvk20cmqujlk6mas4gwdqhs6e8wq7gvk"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1upeulemvk20cmqujlk6mas4gwdqhs6e8wq7gvk"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0xc3227327AbBa51017463868C3927EE2a8248cF51"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-85SNqwYiMTzaNMgJ9pKKkMHv9abL8G9qrtNzLzRGSo3dkP9yE")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "10116daa3ffc9e7ae2022cb51fb7f6d6dc5267a97b167185c9cfe2d994f5c56b"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "FbXSaYGEDuSqTCxSasWLhPeduNaMLwCVy"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax15qv4pp07zlqnjxkr2uufx92uc6jrccag38ztld"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax15qv4pp07zlqnjxkr2uufx92uc6jrccag38ztld"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax15qv4pp07zlqnjxkr2uufx92uc6jrccag38ztld"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom15qv4pp07zlqnjxkr2uufx92uc6jrccagzas3cc"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom15qv4pp07zlqnjxkr2uufx92uc6jrccagzas3cc"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom15qv4pp07zlqnjxkr2uufx92uc6jrccagzas3cc"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x687aF4572B3A49E9853D0ae71eaF1ddFE7b4CBbF"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-kFMUxLFyNagSBxL6Gyx8UrxMD4SdPKNPtkR6Nof1u3tuJ4tDv")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "6232dbcd903ccc481cbf25857b0730f1d1acfb90a2b9e2dbe1f36850545ac441"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "BihdeRASbrbf9BH679tZZTe8SiVBV18EX"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1wk2r4c28zlgrtnfav03wzqx4ghvysj6rssytfc"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1wk2r4c28zlgrtnfav03wzqx4ghvysj6rssytfc"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1wk2r4c28zlgrtnfav03wzqx4ghvysj6rssytfc"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1wk2r4c28zlgrtnfav03wzqx4ghvysj6rr2k3wd"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1wk2r4c28zlgrtnfav03wzqx4ghvysj6rr2k3wd"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1wk2r4c28zlgrtnfav03wzqx4ghvysj6rr2k3wd"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x56d09F3E92Be640b211C5b9B86ee3eAdCD489CE5"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-cHuK2MmeHFDqYyb5SWh6xZ14zLoSj2Br2EoaL5DtC1NDP7CAm")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "50222b0286da82d163711ee2694e8e46a04ee4383c64cb514e4b2f4821f45cff"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "KRu9gTeCfrWopLy4tRHYW8fMskfpLSs2U"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1egnu0ra99npw35dwnr7zp59dzzd58wyxq5rtdf"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1egnu0ra99npw35dwnr7zp59dzzd58wyxq5rtdf"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1egnu0ra99npw35dwnr7zp59dzzd58wyxq5rtdf"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1egnu0ra99npw35dwnr7zp59dzzd58wyxnw332u"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1egnu0ra99npw35dwnr7zp59dzzd58wyxnw332u"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1egnu0ra99npw35dwnr7zp59dzzd58wyxnw332u"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x3050EF785c8904E7845F066e98CdD628Cc68f6E9"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-2GrEehWjxhniGbsU8SZ5iMufpsbrNTMjQETK6eqi7TUcLWvzaE")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "a7aed4607b3fe09d5e16dca270aa1f064d06f3e74b07986429015abdc45775c3"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "9eDGn8JMHz8MM6QJQmrQ6Uf9bFjo57nMy"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1tm92gxhy73j3w685tg4a3p6syt9swv82a55kfm"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1tm92gxhy73j3w685tg4a3p6syt9swv82a55kfm"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1tm92gxhy73j3w685tg4a3p6syt9swv82a55kfm"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1tm92gxhy73j3w685tg4a3p6syt9swv82wwxvww"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1tm92gxhy73j3w685tg4a3p6syt9swv82wwxvww"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1tm92gxhy73j3w685tg4a3p6syt9swv82wwxvww"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x7bC6130728791EF93f13e98932fd9d208a397136"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-cfMoaiqCXauTGmi4Tbwrq9kRcHfmiS3fqBRYu6vxDpBxoc8cW")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "50f9357cc1f1ad6b5922ea45df3dce43275751420c8e6b17aa80e0b4ddfcf4c7"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "CLaqpS1Xd3xL1QZHb1jpCfkPjKqsBC9A6"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax103wcjkxal3835dw0mlq0qs290as7q5vaz85xte"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax103wcjkxal3835dw0mlq0qs290as7q5vaz85xte"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax103wcjkxal3835dw0mlq0qs290as7q5vaz85xte"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom103wcjkxal3835dw0mlq0qs290as7q5va3axuvv"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom103wcjkxal3835dw0mlq0qs290as7q5va3axuvv"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom103wcjkxal3835dw0mlq0qs290as7q5va3axuvv"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0xB2B91960A07fD07Ce5Ddd8d703fC530F7821D843"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-geaod8DmFdjKpXzVcyXtZ61aoa4xxTygf7qruufFhSvNnc6Z1")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "5a068cf3af83165a17171bce24294354e997de5e07a076e8e1cf151637a74297"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "8tSdLgxcnZhJ6bjtGEkLz5iymSuhkstbY"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax126phezer246ffl9gdp3vzdns2aplw94uz464zp"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax126phezer246ffl9gdp3vzdns2aplw94uz464zp"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax126phezer246ffl9gdp3vzdns2aplw94uz464zp"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom126phezer246ffl9gdp3vzdns2aplw94u30g095"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom126phezer246ffl9gdp3vzdns2aplw94u30g095"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom126phezer246ffl9gdp3vzdns2aplw94u30g095"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x86f65D20C03Af8798Abeabb480c735b0DB0b0F87"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-2C1set4amHqBTFJbfBvC2NdCWmeQiR1mpwT9x9CfD9hanr1TQF")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "9cb50683d048c5c77ae6bd4710e03fbf54e84426eb3e51d2a55c6aff98863245"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "JHs18HveD7UtNsrgztvhzLhm13gYK8yMh"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1hk4g3r3u49y47lhrsclflfh7te8kcuxf8xfq47"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1hk4g3r3u49y47lhrsclflfh7te8kcuxf8xfq47"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1hk4g3r3u49y47lhrsclflfh7te8kcuxf8xfq47"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1hk4g3r3u49y47lhrsclflfh7te8kcuxf5um6jt"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1hk4g3r3u49y47lhrsclflfh7te8kcuxf5um6jt"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1hk4g3r3u49y47lhrsclflfh7te8kcuxf5um6jt"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x1A660C1010d0f02206784B37693245f282563128"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-2o8tErrYbxCYvfCh1pY6XYmxreppnrkTM6aGwzuaQTAgNVz8ct")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "ec740ea3a0cd92192565f88523a996b52121002ba982698d0671af7e40bacdbd"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "La9JUXfkw22m2YXotqmeji1Pv4DMQu3om"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax166hsh5up22hn5q4n9fp5pkp9mqagktetdc475z"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax166hsh5up22hn5q4n9fp5pkp9mqagktetdc475z"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax166hsh5up22hn5q4n9fp5pkp9mqagktetdc475z"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom166hsh5up22hn5q4n9fp5pkp9mqagktet7z8ynh"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom166hsh5up22hn5q4n9fp5pkp9mqagktet7z8ynh"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom166hsh5up22hn5q4n9fp5pkp9mqagktet7z8ynh"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0xee08E740C974475936562df5189d82049b3a3813"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-2wcVsSwLnTb8NYhYqvMUVWKQv9BtZKVW2uWFZzzpx6AmRDFgXG")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "ffb30b47a3dbc705d098d3c4b4d1dc6b10cd970a084bdbc99200fba97c8f57ff"
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "55Xow8gQeKEwe8yupbz34MnQttWb3q9h7"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax19ja7989dgt76cp8sguwenl3urxs7vcal2sgle2"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax19ja7989dgt76cp8sguwenl3urxs7vcal2sgle2"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax19ja7989dgt76cp8sguwenl3urxs7vcal2sgle2"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom19ja7989dgt76cp8sguwenl3urxs7vcale2697l"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom19ja7989dgt76cp8sguwenl3urxs7vcale2697l"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom19ja7989dgt76cp8sguwenl3urxs7vcale2697l"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x65505c554F316186691375b59D7E5d70A533620E"
     );
 }
 
