@@ -6,6 +6,7 @@ use tokio::runtime::Runtime;
 extern crate avalanche_ops;
 use avalanche_ops::avalanche::api::metrics;
 
+/// cargo run --example avalanche_api_metrics -- [HTTP RPC ENDPOINT]
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(

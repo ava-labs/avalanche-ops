@@ -9,6 +9,7 @@ use aws_sdk_cloudformation::{
     types::SdkError,
     Client,
 };
+use aws_types::SdkConfig as AwsSdkConfig;
 use log::{info, warn};
 
 use crate::errors::{
@@ -20,12 +21,12 @@ use crate::errors::{
 #[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
-    shared_config: aws_config::Config,
+    shared_config: AwsSdkConfig,
     cli: Client,
 }
 
 impl Manager {
-    pub fn new(shared_config: &aws_config::Config) -> Self {
+    pub fn new(shared_config: &AwsSdkConfig) -> Self {
         let cloned = shared_config.clone();
         let cli = Client::new(shared_config);
         Self {

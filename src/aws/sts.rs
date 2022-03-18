@@ -1,3 +1,4 @@
+use aws_types::SdkConfig as AwsSdkConfig;
 use aws_sdk_sts::{types::SdkError, Client};
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -5,15 +6,15 @@ use serde::{Deserialize, Serialize};
 use crate::errors::{Error::API, Result};
 
 /// Implements AWS STS manager.
-#[derive(std::clone::Clone)]
+#[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
-    shared_config: aws_config::Config,
+    shared_config: AwsSdkConfig,
     cli: Client,
 }
 
 impl Manager {
-    pub fn new(shared_config: &aws_config::Config) -> Self {
+    pub fn new(shared_config: &AwsSdkConfig) -> Self {
         let cloned = shared_config.clone();
         let cli = Client::new(shared_config);
         Self {

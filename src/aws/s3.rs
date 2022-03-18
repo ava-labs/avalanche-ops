@@ -10,6 +10,7 @@ use aws_sdk_s3::{
     types::{ByteStream, SdkError},
     Client,
 };
+use aws_types::SdkConfig as AwsSdkConfig;
 use log::{debug, info, warn};
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
@@ -26,12 +27,12 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
-    shared_config: aws_config::Config,
+    shared_config: AwsSdkConfig,
     cli: Client,
 }
 
 impl Manager {
-    pub fn new(shared_config: &aws_config::Config) -> Self {
+    pub fn new(shared_config: &AwsSdkConfig) -> Self {
         let cloned = shared_config.clone();
         let cli = Client::new(shared_config);
         Self {

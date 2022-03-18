@@ -9,6 +9,7 @@ use avalanche_ops::{
     utils::{id, random, time as atime},
 };
 
+/// cargo run --example aws_s3
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(

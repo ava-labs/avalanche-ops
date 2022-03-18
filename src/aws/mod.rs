@@ -1,7 +1,8 @@
 use std::io;
 
-pub use aws_config::meta::region::RegionProviderChain;
+pub use aws_config::{self, meta::region::RegionProviderChain};
 use aws_sdk_ec2::Region;
+use aws_types::SdkConfig as AwsSdkConfig;
 use log::info;
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +15,7 @@ pub mod s3;
 pub mod sts;
 
 /// Loads an AWS config from default environments.
-pub async fn load_config(reg: Option<String>) -> io::Result<aws_config::Config> {
+pub async fn load_config(reg: Option<String>) -> io::Result<AwsSdkConfig> {
     info!("loading AWS configuration for region {:?}", reg);
     let regp = RegionProviderChain::first_try(reg.map(Region::new))
         .or_default_provider()

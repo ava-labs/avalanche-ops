@@ -18,6 +18,7 @@ use aws_sdk_cloudwatchlogs::{
     types::SdkError as LogsSdkError,
     Client as LogsClient,
 };
+use aws_types::SdkConfig as AwsSdkConfig;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
@@ -27,13 +28,13 @@ use crate::errors::{Error::API, Result};
 #[derive(Debug, Clone)]
 pub struct Manager {
     #[allow(dead_code)]
-    shared_config: aws_config::Config,
+    shared_config: AwsSdkConfig,
     metrics_cli: MetricsClient,
     logs_cli: LogsClient,
 }
 
 impl Manager {
-    pub fn new(shared_config: &aws_config::Config) -> Self {
+    pub fn new(shared_config: &AwsSdkConfig) -> Self {
         let cloned = shared_config.clone();
         let metrics_cli = MetricsClient::new(shared_config);
         let logs_cli = LogsClient::new(shared_config);

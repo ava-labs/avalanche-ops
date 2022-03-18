@@ -13,6 +13,7 @@ use avalanche_ops::{
     utils::{id, random},
 };
 
+/// cargo run --example aws_kms
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(

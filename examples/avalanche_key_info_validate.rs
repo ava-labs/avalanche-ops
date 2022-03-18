@@ -5,7 +5,7 @@ use log::info;
 extern crate avalanche_ops;
 use avalanche_ops::avalanche::key;
 
-/// cargo run --example avalanche_key_info_validate -- 9999 ../artifacts/ewoq.key.json
+/// cargo run --example avalanche_key_info_validate -- 9999 ./artifacts/ewoq.key.json
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(

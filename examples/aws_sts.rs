@@ -3,6 +3,7 @@ use log::info;
 extern crate avalanche_ops;
 use avalanche_ops::aws::{self, sts};
 
+/// cargo run --example aws_sts
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
