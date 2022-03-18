@@ -4,8 +4,8 @@ mod apply;
 mod check_balances;
 mod default_spec;
 mod delete;
+mod events;
 mod read_spec;
-mod update_artifacts;
 
 const NAME: &str = "avalanche-ops-aws";
 
@@ -18,7 +18,7 @@ fn main() {
             default_spec::command(),
             read_spec::command(),
             check_balances::command(),
-            update_artifacts::command(),
+            events::command(),
             apply::command(),
             delete::command(),
         ])
@@ -142,20 +142,23 @@ fn main() {
             .expect("failed to execute 'check-balances'");
         }
 
-        Some((update_artifacts::NAME, sub_matches)) => {
-            update_artifacts::execute(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches
-                    .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
-                    .unwrap(),
-                sub_matches
-                    .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
-                    .unwrap_or(""),
-                sub_matches.is_present("SKIP_PROMPT"),
-            )
-            .expect("failed to execute 'apply'");
-        }
+        Some((events::NAME, sub_matches)) => match sub_matches.subcommand() {
+            Some((events::update_artifacts::NAME, sub_sub_matches)) => {
+                events::update_artifacts::execute(
+                    sub_sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
+                    sub_sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
+                    sub_sub_matches
+                        .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
+                        .unwrap(),
+                    sub_sub_matches
+                        .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
+                        .unwrap_or(""),
+                    sub_sub_matches.is_present("SKIP_PROMPT"),
+                )
+                .expect("failed to execute 'events update-artifacts'");
+            }
+            _ => unreachable!("unknown sub-subcommand"),
+        },
 
         Some((apply::NAME, sub_matches)) => {
             apply::execute(

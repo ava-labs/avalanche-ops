@@ -141,7 +141,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             "Yes, let's create resources!",
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your option")
+            .with_prompt("Select your 'apply' option")
             .items(&options[..])
             .default(0)
             .interact()

@@ -1124,7 +1124,7 @@ async fn print_backup_commands(
             None => format!("network-{}", network_id),
         };
 
-        println!("[TO BACK UP DATA] /usr/local/bin/avalanched upload-backup --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
+        println!("[TO BACK UP DATA] /usr/local/bin/avalanched backup upload --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
             s3_region,
             compress::DirEncoder::TarGzip.id(),
             db_dir,
@@ -1134,7 +1134,7 @@ async fn print_backup_commands(
             compress::DirEncoder::TarGzip.ext(),
         );
 
-        println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched download-backup --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
+        println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched backup download --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
             s3_region,
             compress::DirDecoder::TarGzip.id(),
             s3_bucket,

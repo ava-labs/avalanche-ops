@@ -10,11 +10,12 @@ use avalanche_ops::{
     utils::{compress, random},
 };
 
-pub const NAME: &str = "download-backup";
+pub const NAME: &str = "upload";
 
-pub fn command() -> Command<'static> {
+// TODO: make this periodic
+pub fn subcommand() -> Command<'static> {
     Command::new(NAME)
-        .about("Downloads compressed/archived backup file from remote storage")
+        .about("Uploads the local data directory to remote storage")
         .arg(
             Arg::new("REGION")
                 .long("region")
@@ -37,18 +38,31 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("UNARCHIVE_DECOMPRESSION_METHOD")
-                .long("unarchive-decompression-method")
+            Arg::new("ARCHIVE_COMPRESSION_METHOD")
+                .long("archive-compression-method")
                 .short('c')
-                .help("Sets the decompression and unarchive method")
+                .help("Sets the archive and compression method")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .possible_value(compress::DirDecoder::TarGzip.id())
-                .possible_value(compress::DirDecoder::ZipGzip.id())
-                .possible_value(compress::DirDecoder::TarZstd.id())
-                .possible_value(compress::DirDecoder::ZipZstd.id())
-                .default_value(compress::DirDecoder::TarGzip.id()),
+                .possible_value(compress::DirEncoder::TarGzip.id())
+                .possible_value(compress::DirEncoder::ZipGzip.id())
+                .possible_value(compress::DirEncoder::TarZstd(1).id())
+                .possible_value(compress::DirEncoder::TarZstd(2).id())
+                .possible_value(compress::DirEncoder::TarZstd(3).id())
+                .possible_value(compress::DirEncoder::ZipZstd(1).id())
+                .possible_value(compress::DirEncoder::ZipZstd(2).id())
+                .possible_value(compress::DirEncoder::ZipZstd(3).id())
+                .default_value(compress::DirEncoder::TarGzip.id()),
+        )
+        .arg(
+            Arg::new("PACK_DIR")
+                .long("pack-dir")
+                .short('p')
+                .help("Sets the source directory path to compress/archive")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
         )
         .arg(
             Arg::new("S3_BUCKET")
@@ -68,24 +82,15 @@ pub fn command() -> Command<'static> {
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
-        .arg(
-            Arg::new("UNPACK_DIR")
-                .long("unpack-dir")
-                .short('u')
-                .help("Sets the destition db directory path to unpack")
-                .required(true)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
 }
 
 pub fn execute(
     reg: &str,
     log_level: &str,
-    decompression_unarchive_method: &str,
+    archive_compression_method: &str,
+    pack_dir: &str,
     s3_bucket: &str,
     s3_key: &str,
-    unpack_dir: &str,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -105,33 +110,24 @@ pub fn execute(
         .unwrap();
     let s3_manager = s3::Manager::new(&shared_config);
 
-    let dec = compress::DirDecoder::new(decompression_unarchive_method)?;
-
-    let parent_dir = Path::new(&unpack_dir)
+    let enc = compress::DirEncoder::new(archive_compression_method)?;
+    info!("STEP: backup {} with {}", pack_dir, enc.to_string());
+    let parent_dir = Path::new(&pack_dir)
         .parent()
         .expect("unexpected None parent dir");
     let tmp_file_path = parent_dir.join(random::string(10));
     let tmp_file_path = tmp_file_path.as_path().as_os_str().to_str().unwrap();
-    info!(
-        "STEP: downloading from S3 {} {} to {}",
-        s3_bucket, s3_key, tmp_file_path
-    );
-    rt.block_on(s3_manager.get_object(
+    compress::pack_directory(pack_dir, tmp_file_path, enc)?;
+
+    info!("STEP: upload output {} to S3", tmp_file_path);
+    rt.block_on(s3_manager.put_object(
+        Arc::new(tmp_file_path.to_string()),
         Arc::new(s3_bucket.to_string()),
         Arc::new(s3_key.to_string()),
-        Arc::new(tmp_file_path.to_string()),
     ))
-    .expect("failed get_object backup");
-
-    info!(
-        "STEP: unpack backup {} to {} with {}",
-        tmp_file_path,
-        unpack_dir,
-        dec.to_string()
-    );
-    compress::unpack_directory(tmp_file_path, unpack_dir, dec)?;
+    .unwrap();
     fs::remove_file(tmp_file_path)?;
 
-    info!("'avalanched download-backup' all success!");
+    info!("'avalanched backup upload' all success!");
     Ok(())
 }

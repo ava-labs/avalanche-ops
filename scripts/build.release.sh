@@ -15,8 +15,15 @@ cargo build \
 --bin subnetctl
 
 ./target/release/avalanche-ops-aws --help
+./target/release/avalanche-ops-aws apply --help
+./target/release/avalanche-ops-aws delete --help
+./target/release/avalanche-ops-aws default-spec --help
+./target/release/avalanche-ops-aws read-spec --help
+./target/release/avalanche-ops-aws check-balances --help
+./target/release/avalanche-ops-aws events --help
+./target/release/avalanche-ops-aws events update-artifacts --help
 ./target/release/avalanched-aws --help
-./target/release/avalanched-aws upload-backup --help
-./target/release/avalanched-aws download-backup --help
+./target/release/avalanched-aws backup upload --help
+./target/release/avalanched-aws backup download --help
 ./target/release/dev-machine --help
 ./target/release/subnetctl --help

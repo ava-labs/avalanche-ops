@@ -240,7 +240,7 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 
 ```bash
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
-./target/release/avalanche-ops-aws update-artifacts \
+./target/release/avalanche-ops-aws events update-artifacts \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --spec-file-path [YOUR_SPEC_PATH]

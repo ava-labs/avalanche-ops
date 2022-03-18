@@ -1,5 +1,5 @@
 use std::{
-    fs::{self},
+    fs,
     io::{self, stdout},
     sync::Arc,
 };
@@ -21,7 +21,7 @@ use avalanche_ops::{
 
 pub const NAME: &str = "update-artifacts";
 
-pub fn command() -> Command<'static> {
+pub fn subcommand() -> Command<'static> {
     Command::new(NAME)
         .about("Uploads new artifacts and triggers update event based on the spec file")
         .arg(
@@ -102,7 +102,7 @@ pub fn execute(
             "Yes, let's update artifacts!",
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your option")
+            .with_prompt("Select your 'update-artifacts' option")
             .items(&options[..])
             .default(0)
             .interact()

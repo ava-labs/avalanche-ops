@@ -128,7 +128,7 @@ pub fn execute(
             "Yes, let's delete resources!",
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your option")
+            .with_prompt("Select your 'delete' option")
             .items(&options[..])
             .default(0)
             .interact()
