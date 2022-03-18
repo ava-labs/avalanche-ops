@@ -9,6 +9,8 @@ use lazy_static::lazy_static;
 use log::info;
 use regex::Regex;
 
+use crate::utils::humanize;
+
 // ref. https://github.com/cmars/prometheus-scrape/blob/master/src/lib.rs
 // ref. https://github.com/ccakes/prometheus-parse-rs/blob/master/src/lib.rs
 lazy_static! {
@@ -358,7 +360,7 @@ pub struct Scrape {
 
 impl Scrape {
     pub fn from_bytes(d: &[u8]) -> io::Result<Self> {
-        info!("scraping {} bytes", d.len());
+        info!("scraping {} bytes", humanize::bytes(d.len() as f64));
         let br = BufReader::new(d);
         Self::parse(br.lines())
     }

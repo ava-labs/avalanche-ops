@@ -898,7 +898,8 @@ async fn fetch_metrics(
     cw_namespace: Arc<String>,
     metrics_ep: Arc<String>,
 ) {
-    info!("STEP: starting 'fetch_metrics'");
+    info!("STEP: starting 'fetch_metrics' after 5-minute");
+    thread::sleep(Duration::from_secs(300));
 
     let mut prev_metrics: Option<metrics::Metrics> = None;
     loop {
