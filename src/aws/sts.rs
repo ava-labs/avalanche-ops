@@ -1,5 +1,5 @@
-use aws_types::SdkConfig as AwsSdkConfig;
 use aws_sdk_sts::{types::SdkError, Client};
+use aws_types::SdkConfig as AwsSdkConfig;
 use log::info;
 use serde::{Deserialize, Serialize};
 

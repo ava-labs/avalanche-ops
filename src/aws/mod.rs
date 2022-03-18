@@ -1,6 +1,6 @@
 use std::io;
 
-pub use aws_config::{self, meta::region::RegionProviderChain};
+use aws_config::{self, meta::region::RegionProviderChain};
 use aws_sdk_ec2::Region;
 use aws_types::SdkConfig as AwsSdkConfig;
 use log::info;
