@@ -914,13 +914,20 @@ async fn fetch_metrics(
             }
         };
 
-        cloudwatch::spawn_put_metric_data(
+        match cloudwatch::spawn_put_metric_data(
             cw_manager.clone(),
             cw_namespace.as_str(),
             cur_metrics.to_cw_metric_data(prev_metrics.clone()),
         )
         .await
-        .expect("failed cloudwatch::spawn_put_metric_data");
+        {
+            Ok(_) => {}
+            Err(e) => {
+                warn!("failed to put metric data {}, retrying...", e);
+                prev_metrics = Some(cur_metrics.clone());
+                continue;
+            }
+        }
         prev_metrics = Some(cur_metrics.clone());
     }
 }
@@ -940,7 +947,6 @@ async fn publish_node_info_ready(
             "STEP: posting node info ready for {}",
             node_info.local_node.kind
         );
-
         let tmp_path = random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
         node_info.sync(tmp_path.clone()).unwrap();
 
