@@ -24,6 +24,10 @@ pub struct Metrics {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_msgs_failed_to_parse: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_inbound_conn_throttler_allowed: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_byte_throttler_inbound_awaiting_release: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_throttler_outbound_acquire_failures: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_throttler_outbound_awaiting_release: Option<f64>,
@@ -35,6 +39,16 @@ pub struct Metrics {
     pub avalanche_network_chits_sent_bytes: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_chits_received_bytes: Option<f64>,
+
+    /// Bootstrap messages.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_accepted_frontier_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_get_accepted_frontier_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_accepted_frontier_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_accepted_frontier_received_bytes: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_db_get_count: Option<f64>,
@@ -211,12 +225,19 @@ impl Metrics {
             avalanche_network_pull_query_sent: None,
             avalanche_network_push_query_sent: None,
             avalanche_network_msgs_failed_to_parse: None,
+            avalanche_network_inbound_conn_throttler_allowed: None,
+            avalanche_network_byte_throttler_inbound_awaiting_release: None,
             avalanche_network_throttler_outbound_acquire_failures: None,
             avalanche_network_throttler_outbound_awaiting_release: None,
             avalanche_requests_average_latency: None,
 
             avalanche_network_chits_sent_bytes: None,
             avalanche_network_chits_received_bytes: None,
+
+            avalanche_network_get_accepted_frontier_sent_bytes: None,
+            avalanche_network_get_accepted_frontier_received_bytes: None,
+            avalanche_network_accepted_frontier_sent_bytes: None,
+            avalanche_network_accepted_frontier_received_bytes: None,
 
             avalanche_x_db_get_count: None,
             avalanche_x_db_write_size_sum: None,
@@ -375,6 +396,24 @@ impl Metrics {
                 .timestamp(ts)
                 .build(),
             MetricDatum::builder()
+                .metric_name("avalanche_network_inbound_conn_throttler_allowed")
+                .value(
+                    self.avalanche_network_inbound_conn_throttler_allowed
+                        .unwrap(),
+                )
+                .unit(StandardUnit::Count)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_byte_throttler_inbound_awaiting_release")
+                .value(
+                    self.avalanche_network_byte_throttler_inbound_awaiting_release
+                        .unwrap(),
+                )
+                .unit(StandardUnit::Count)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
                 .metric_name("avalanche_network_throttler_outbound_acquire_failures")
                 .value(
                     self.avalanche_network_throttler_outbound_acquire_failures
@@ -407,6 +446,39 @@ impl Metrics {
             MetricDatum::builder()
                 .metric_name("avalanche_network_chits_received_bytes")
                 .value(self.avalanche_network_chits_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_accepted_frontier_sent_bytes")
+                .value(
+                    self.avalanche_network_get_accepted_frontier_sent_bytes
+                        .unwrap(),
+                )
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_get_accepted_frontier_received_bytes")
+                .value(
+                    self.avalanche_network_get_accepted_frontier_received_bytes
+                        .unwrap(),
+                )
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_accepted_frontier_sent_bytes")
+                .value(self.avalanche_network_accepted_frontier_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_accepted_frontier_received_bytes")
+                .value(
+                    self.avalanche_network_accepted_frontier_received_bytes
+                        .unwrap(),
+                )
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
                 .build(),
@@ -980,6 +1052,22 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .to_f64(),
         ),
 
+        avalanche_network_inbound_conn_throttler_allowed: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_inbound_conn_throttler_allowed"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_byte_throttler_inbound_awaiting_release: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_byte_throttler_inbound_awaiting_release"
+            })
+            .value
+            .to_f64(),
+        ),
+
         avalanche_network_throttler_outbound_acquire_failures: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_throttler_outbound_acquire_failures"
@@ -1015,6 +1103,38 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
         avalanche_network_chits_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_chits_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_get_accepted_frontier_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_accepted_frontier_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_get_accepted_frontier_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_get_accepted_frontier_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_accepted_frontier_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_accepted_frontier_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        avalanche_network_accepted_frontier_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_accepted_frontier_received_bytes"
             })
             .value
             .to_f64(),
