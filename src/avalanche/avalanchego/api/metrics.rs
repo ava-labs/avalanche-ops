@@ -15,6 +15,7 @@ pub struct Metrics {
     #[serde(with = "rfc3339::serde_format")]
     pub ts: DateTime<Utc>,
 
+    /// Network metrics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_peers: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -33,6 +34,24 @@ pub struct Metrics {
     pub avalanche_network_throttler_outbound_awaiting_release: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_requests_average_latency: Option<f64>,
+
+    /// Handshake messages.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_version_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_version_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_peerlist_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_peerlist_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_ping_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_ping_received_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_pong_sent_bytes: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanche_network_pong_received_bytes: Option<f64>,
 
     /// Consensus messages.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -66,6 +85,7 @@ pub struct Metrics {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_network_ancestors_received_bytes: Option<f64>,
 
+    /// X-chain metrics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_db_get_count: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -119,6 +139,7 @@ pub struct Metrics {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_x_benchlist_benched_num: Option<f64>,
 
+    /// P-chain metrics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_p_vm_total_staked: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -150,6 +171,7 @@ pub struct Metrics {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_p_benchlist_benched_num: Option<f64>,
 
+    /// C-chain metrics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanche_c_db_get_count: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -237,6 +259,7 @@ impl Metrics {
         Self {
             ts: Utc::now(),
 
+            // Network metrics.
             avalanche_network_peers: None,
             avalanche_network_pull_query_sent: None,
             avalanche_network_push_query_sent: None,
@@ -247,9 +270,21 @@ impl Metrics {
             avalanche_network_throttler_outbound_awaiting_release: None,
             avalanche_requests_average_latency: None,
 
+            // Handshake messages.
+            avalanche_network_version_sent_bytes: None,
+            avalanche_network_version_received_bytes: None,
+            avalanche_network_peerlist_sent_bytes: None,
+            avalanche_network_peerlist_received_bytes: None,
+            avalanche_network_ping_sent_bytes: None,
+            avalanche_network_ping_received_bytes: None,
+            avalanche_network_pong_sent_bytes: None,
+            avalanche_network_pong_received_bytes: None,
+
+            // Consensus messages.
             avalanche_network_chits_sent_bytes: None,
             avalanche_network_chits_received_bytes: None,
 
+            // Bootstrap messages.
             avalanche_network_get_accepted_frontier_sent_bytes: None,
             avalanche_network_get_accepted_frontier_received_bytes: None,
             avalanche_network_accepted_frontier_sent_bytes: None,
@@ -263,6 +298,7 @@ impl Metrics {
             avalanche_network_ancestors_sent_bytes: None,
             avalanche_network_ancestors_received_bytes: None,
 
+            // X-chain metrics.
             avalanche_x_db_get_count: None,
             avalanche_x_db_write_size_sum: None,
             avalanche_x_db_read_size_sum: None,
@@ -290,6 +326,7 @@ impl Metrics {
             avalanche_x_whitelist_vtx_issue_success: None,
             avalanche_x_benchlist_benched_num: None,
 
+            // P-chain metrics.
             avalanche_p_vm_total_staked: None,
             avalanche_p_db_get_count: None,
             avalanche_p_db_write_size_sum: None,
@@ -306,6 +343,7 @@ impl Metrics {
             avalanche_p_handler_query_failed_count: None,
             avalanche_p_benchlist_benched_num: None,
 
+            // C-chain metrics.
             avalanche_c_db_get_count: None,
             avalanche_c_db_write_size_sum: None,
             avalanche_c_db_read_size_sum: None,
@@ -395,6 +433,7 @@ impl Metrics {
         let ts = SmithyDateTime::from_nanos(self.ts.timestamp_nanos() as i128)
             .expect("failed to convert DateTime<Utc>");
         let mut data = vec![
+            // Network metrics.
             MetricDatum::builder()
                 .metric_name("avalanche_network_peers")
                 .value(self.avalanche_network_peers.unwrap())
@@ -461,6 +500,56 @@ impl Metrics {
                 .unit(StandardUnit::Seconds)
                 .timestamp(ts)
                 .build(),
+            // Handshake messages.
+            MetricDatum::builder()
+                .metric_name("avalanche_network_version_sent_bytes")
+                .value(self.avalanche_network_version_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_version_received_bytes")
+                .value(self.avalanche_network_version_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_peerlist_sent_bytes")
+                .value(self.avalanche_network_peerlist_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_peerlist_received_bytes")
+                .value(self.avalanche_network_peerlist_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_ping_sent_bytes")
+                .value(self.avalanche_network_ping_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_ping_received_bytes")
+                .value(self.avalanche_network_ping_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_pong_sent_bytes")
+                .value(self.avalanche_network_pong_sent_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            MetricDatum::builder()
+                .metric_name("avalanche_network_pong_received_bytes")
+                .value(self.avalanche_network_pong_received_bytes.unwrap())
+                .unit(StandardUnit::Bytes)
+                .timestamp(ts)
+                .build(),
+            // Consensus messages.
             MetricDatum::builder()
                 .metric_name("avalanche_network_chits_sent_bytes")
                 .value(self.avalanche_network_chits_sent_bytes.unwrap())
@@ -473,6 +562,7 @@ impl Metrics {
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
                 .build(),
+            // Bootstrap messages.
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_accepted_frontier_sent_bytes")
                 .value(
@@ -554,6 +644,7 @@ impl Metrics {
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
                 .build(),
+            // X-chain metrics.
             MetricDatum::builder()
                 .metric_name("avalanche_X_db_get_count")
                 .value(self.avalanche_x_db_get_count.unwrap())
@@ -715,6 +806,7 @@ impl Metrics {
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
                 .build(),
+            // P-chain metrics.
             MetricDatum::builder()
                 .metric_name("avalanche_P_vm_total_staked_avax")
                 .value(self.avalanche_p_vm_total_staked.unwrap() / 1000000000.0) // On the P-Chain, one AVAX is 10^9  units.
@@ -811,6 +903,7 @@ impl Metrics {
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
                 .build(),
+            // C-chain metrics.
             MetricDatum::builder()
                 .metric_name("avalanche_C_db_get_count")
                 .value(self.avalanche_c_db_get_count.unwrap())
@@ -1094,12 +1187,12 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
     Ok(Metrics {
         ts,
 
+        // Network metrics.
         avalanche_network_peers: Some(
             prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_network_peers")
                 .value
                 .to_f64(),
         ),
-
         avalanche_network_pull_query_sent: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_pull_query_sent"
@@ -1107,7 +1200,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_push_query_sent: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_push_query_sent"
@@ -1115,7 +1207,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_msgs_failed_to_parse: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_msgs_failed_to_parse"
@@ -1123,7 +1214,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_inbound_conn_throttler_allowed: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_inbound_conn_throttler_allowed"
@@ -1131,7 +1221,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_byte_throttler_inbound_awaiting_release: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_byte_throttler_inbound_awaiting_release"
@@ -1139,7 +1228,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_throttler_outbound_acquire_failures: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_throttler_outbound_acquire_failures"
@@ -1147,7 +1235,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_throttler_outbound_awaiting_release: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_throttler_outbound_awaiting_release"
@@ -1155,7 +1242,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_requests_average_latency: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_requests_average_latency"
@@ -1164,6 +1250,65 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .to_f64(),
         ),
 
+        // Handshake messages.
+        avalanche_network_version_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_version_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_version_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_version_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_peerlist_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_peerlist_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_peerlist_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_peerlist_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_ping_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_ping_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_ping_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_ping_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_pong_sent_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_pong_sent_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+        avalanche_network_pong_received_bytes: Some(
+            prometheus::match_metric(&s.metrics, |s| {
+                s.metric == "avalanche_network_pong_received_bytes"
+            })
+            .value
+            .to_f64(),
+        ),
+
+        // Consensus messages.
         avalanche_network_chits_sent_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_chits_sent_bytes"
@@ -1171,7 +1316,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_chits_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_chits_received_bytes"
@@ -1180,6 +1324,7 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .to_f64(),
         ),
 
+        // Bootstrap messages.
         avalanche_network_get_accepted_frontier_sent_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_get_accepted_frontier_sent_bytes"
@@ -1187,7 +1332,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_get_accepted_frontier_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_get_accepted_frontier_received_bytes"
@@ -1195,7 +1339,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_accepted_frontier_sent_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_accepted_frontier_sent_bytes"
@@ -1203,7 +1346,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_accepted_frontier_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_accepted_frontier_received_bytes"
@@ -1211,7 +1353,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_get_accepted_sent_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_get_accepted_sent_bytes"
@@ -1219,7 +1360,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_get_accepted_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_get_accepted_received_bytes"
@@ -1227,7 +1367,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_accepted_sent_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_accepted_sent_bytes"
@@ -1235,7 +1374,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_accepted_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_accepted_received_bytes"
@@ -1243,7 +1381,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_get_ancestors_sent_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_get_ancestors_sent_bytes"
@@ -1251,7 +1388,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_get_ancestors_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_get_ancestors_received_bytes"
@@ -1259,7 +1395,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_ancestors_sent_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_ancestors_sent_bytes"
@@ -1267,7 +1402,6 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .value
             .to_f64(),
         ),
-
         avalanche_network_ancestors_received_bytes: Some(
             prometheus::match_metric(&s.metrics, |s| {
                 s.metric == "avalanche_network_ancestors_received_bytes"
@@ -1276,6 +1410,7 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .to_f64(),
         ),
 
+        // X-chain metrics.
         avalanche_x_db_get_count: Some(
             prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_X_db_get_count")
                 .value
@@ -1439,6 +1574,7 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .to_f64(),
         ),
 
+        // P-chain metrics.
         avalanche_p_vm_total_staked: Some(
             prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_P_vm_total_staked")
                 .value
@@ -1529,6 +1665,7 @@ pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
             .to_f64(),
         ),
 
+        // C-chain metrics.
         avalanche_c_db_get_count: Some(
             prometheus::match_metric(&s.metrics, |s| s.metric == "avalanche_C_db_get_count")
                 .value
