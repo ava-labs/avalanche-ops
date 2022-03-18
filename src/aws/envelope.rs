@@ -426,3 +426,20 @@ pub async fn spawn_seal_aes_256_file(
     .await
     .expect("failed spawn await")
 }
+
+pub async fn spawn_unseal_aes_256_file(
+    envel: Envelope,
+    src_file: &str,
+    dst_file: &str,
+) -> Result<()> {
+    let envel_arc = Arc::new(envel);
+    let src_file_arc = Arc::new(src_file.to_string());
+    let dst_file_arc = Arc::new(dst_file.to_string());
+    tokio::spawn(async move {
+        envel_arc
+            .unseal_aes_256_file(src_file_arc, dst_file_arc)
+            .await
+    })
+    .await
+    .expect("failed spawn await")
+}
