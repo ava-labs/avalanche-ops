@@ -4,5 +4,6 @@ pub mod coreth;
 pub mod formatting;
 pub mod key;
 pub mod node;
+pub mod packer;
 pub mod subnet_evm;
 pub mod vm;
