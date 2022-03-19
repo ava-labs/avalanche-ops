@@ -11,6 +11,7 @@ use lazy_static::lazy_static;
 use log::info;
 use ring::digest::{digest, SHA256};
 use ripemd::{Digest, Ripemd160};
+use rust_embed::RustEmbed;
 use secp256k1::{self, rand::rngs::OsRng, PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use sha3::Keccak256;
@@ -26,47 +27,23 @@ pub const EWOQ_KEY: &str = "PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGz
 
 lazy_static! {
     pub static ref TEST_KEYS: Vec<Key> = {
-        let keys: Vec<Key> = vec![
-            Key::from_private_key(EWOQ_KEY).unwrap(),
-            Key::from_private_key("PrivateKey-2kqWNDaqUKQyE4ZsV5GLCGeizE6sHAJVyjnfjXoXrtcZpK9M67")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-SoNEe44ACVQttLGrhrPPn7hi2h8ok43R7zgQALiZZ2im2S6yj")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-qDaD5aAZs7EBq5TWEBa9LLBusBhXZY5PM831JExRhoM6nfAc5")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-2VfFU6KsGt4mcppQ5kvdKws6Jgxn32cwfEL9B1FEv72BqvxdtW")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-TZykRxv83FSZsf6QkENwYApnEhBLPpgJ88r1MD1iBvEXqj2gJ")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-D4cxxtZYXPJEPsJDhibRJYNGu8G9oNqHRegZDqaCLrxLAPYJF")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-2TAuVGfEZkGahWD19CbTzWoynkTHZGM3Bn1AD3Vensno6Uphor")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-F1gtp8JRhuEnJWnnpQg6pMY5MXAny968z6GsZMZWpyb8Ae1dr")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-BfJbL9SsyXBW9LbWrLSMDjWufPz6diNpu9vw5TQwpDBdWwohk")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-2uyRJTVv8ot4V8Q7nUYGPwh2EigA3XzXdYcEwUMx6jsPr4Hwmh")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-85SNqwYiMTzaNMgJ9pKKkMHv9abL8G9qrtNzLzRGSo3dkP9yE")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-kFMUxLFyNagSBxL6Gyx8UrxMD4SdPKNPtkR6Nof1u3tuJ4tDv")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-cHuK2MmeHFDqYyb5SWh6xZ14zLoSj2Br2EoaL5DtC1NDP7CAm")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-2GrEehWjxhniGbsU8SZ5iMufpsbrNTMjQETK6eqi7TUcLWvzaE")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-cfMoaiqCXauTGmi4Tbwrq9kRcHfmiS3fqBRYu6vxDpBxoc8cW")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-geaod8DmFdjKpXzVcyXtZ61aoa4xxTygf7qruufFhSvNnc6Z1")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-2C1set4amHqBTFJbfBvC2NdCWmeQiR1mpwT9x9CfD9hanr1TQF")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-2o8tErrYbxCYvfCh1pY6XYmxreppnrkTM6aGwzuaQTAgNVz8ct")
-                .unwrap(),
-            Key::from_private_key("PrivateKey-2wcVsSwLnTb8NYhYqvMUVWKQv9BtZKVW2uWFZzzpx6AmRDFgXG")
-                .unwrap(),
-        ];
+        #[derive(RustEmbed)]
+        #[folder = "artifacts/"]
+        #[prefix = "artifacts/"]
+        struct Asset;
+
+        let key_file = Asset::get("artifacts/test.insecure.secp256k1.keys").unwrap();
+        let text = std::str::from_utf8(key_file.data.as_ref()).expect("failed to load key file");
+
+        let mut lines = text.lines();
+        let mut keys: Vec<Key> = Vec::new();
+        loop {
+            if let Some(s) = lines.next() {
+                keys.push(Key::from_private_key(s).unwrap());
+                continue;
+            }
+            break;
+        }
         keys
     };
 }
