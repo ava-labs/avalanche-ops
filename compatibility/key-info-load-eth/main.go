@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -20,7 +17,10 @@ import (
 
 var keyFactory = new(crypto.FactorySECP256K1R)
 
-// go run main.go ../../artifacts/ewoq.key.json 9999
+// go run main.go 56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027 1
+// go run main.go 56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027 9999
+// go run main.go e73b5812225f2e1c62de93fb6ec35a9338882991577f9a6d5651dce61cecd852 1
+// go run main.go e73b5812225f2e1c62de93fb6ec35a9338882991577f9a6d5651dce61cecd852 9999
 func main() {
 	if len(os.Args) != 3 {
 		panic(fmt.Errorf("expected 3 args, got %d", len(os.Args)))
@@ -31,19 +31,17 @@ func main() {
 		panic(err)
 	}
 
-	b, err := ioutil.ReadFile(os.Args[1])
+	privKey := os.Args[1]
+	privKeyRaw, err := hex.DecodeString(privKey)
+	if err != nil {
+		panic(err)
+	}
+	encodedPrivKey, err := formatting.EncodeWithChecksum(formatting.CB58, privKeyRaw)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Print("loading key")
-	var ki1 keyInfo
-	if err := yaml.Unmarshal(b, &ki1); err != nil {
-		panic(err)
-	}
-	fmt.Println(string(b))
-
-	pk, err := decodePrivateKey(ki1.PrivateKey)
+	pk, err := decodePrivateKey(encodedPrivKey)
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +75,7 @@ func main() {
 		panic(fmt.Errorf("short address %s != %s", shortAddr, addr2))
 	}
 
-	ki2 := keyInfo{
+	ki := keyInfo{
 		PrivateKey:    pkEncoded,
 		PrivateKeyHex: hex.EncodeToString(pk.Bytes()),
 		XAddress:      xMainAddr,
@@ -86,11 +84,12 @@ func main() {
 		ShortAddress:  shortAddr,
 		EthAddress:    encodeEthAddr(pk),
 	}
-	if !reflect.DeepEqual(ki1, ki2) {
-		panic(fmt.Errorf("go key info %+v != loaded key info %+v", ki2, ki1))
+	b, err := yaml.Marshal(ki)
+	if err != nil {
+		panic(err)
 	}
 
-	fmt.Println("SUCCESS")
+	fmt.Println(string(b))
 }
 
 type keyInfo struct {

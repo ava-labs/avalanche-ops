@@ -150,6 +150,32 @@ impl Key {
         })
     }
 
+    /// Loads the specified Secp256k1 key with hex encoding.
+    /// Takes the "private_key" field in the "Key" struct.
+    pub fn from_private_key_eth(encoded_priv_key: &str) -> io::Result<Self> {
+        let priv_bytes = match hex::decode(encoded_priv_key) {
+            Ok(b) => b,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to decode hex private key ({})", e),
+                ));
+            }
+        };
+        if priv_bytes.len() != secp256k1::constants::SECRET_KEY_SIZE {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "unexpected secret key size ({}, expected {})",
+                    priv_bytes.len(),
+                    secp256k1::constants::SECRET_KEY_SIZE
+                ),
+            ));
+        }
+        let enc = formatting::encode_cb58_with_checksum(&priv_bytes);
+        Self::from_private_key(&enc)
+    }
+
     /// Implements "crypto.PublicKeySECP256K1R.Address()" and "formatting.FormatAddress".
     /// "human readable part" (hrp) must be valid output from "constants.GetHRP(networkID)".
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants
@@ -327,6 +353,10 @@ fn test_key() {
         "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
     );
     assert_eq!(
+        ewoq_key,
+        Key::from_private_key_eth(&ewoq_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         ewoq_key.short_address.clone(),
         "6Y3kysjF9jnHnYkdS9yGAuoHyae2eNmeV"
     );
@@ -371,6 +401,10 @@ fn test_key() {
         "e73b5812225f2e1c62de93fb6ec35a9338882991577f9a6d5651dce61cecd852"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "AFmizAhcFuJm3u3Jih8TQ7ACCJnUY3yTK"
     );
@@ -409,6 +443,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "3a94aab8123f3be575ea9679f893da5182e8b707e26f06159c264399113aef2a"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -451,6 +489,10 @@ fn test_key() {
         "6d7b68fca444069f3e65644848b215f1ecd4a90de8403734866dbb6af1c8957d"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "McqzEWWmhaqfHjieL2Pxiy95hzXDMb848"
     );
@@ -489,6 +531,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "c4c55bfa3b5fd618fbd63e8cd62a8e0277f6e008cf76472e0a00941c6d326b46"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -531,6 +577,10 @@ fn test_key() {
         "3c53c620aeb35bc15146b84688a5f478aaa1528e41c8ef11014b50ef4b110870"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "Q6j6SupDqiWLsMY3nRr4wEBxC3Six2W9a"
     );
@@ -569,6 +619,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "1b63a1eb7537baac2eef64d111caa99af41e7ce9b0ce9d067276af3fa9e8a777"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -611,6 +665,10 @@ fn test_key() {
         "bf1ebb0dcbc9f92c34a1beea6950c291d5eef8cc724477b43e3c4bca69af50aa"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "Q9RUX7iHDwGiss4xRcPswgCWJUJ4oenfG"
     );
@@ -649,6 +707,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "1fd0cdc3f62d6854af1397a14521efd4c073f35e003901312d7fa6bcd5c68c79"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -691,6 +753,10 @@ fn test_key() {
         "1834abcea6a56a4d7f1e2c3ad13a8b762a7c79ad5819fa30f31488943e82626a"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "Cka83XSSmLBYQYPRSLqYj13UzQDFTSUW4"
     );
@@ -729,6 +795,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "fbfa28bf2c3244b8c8444bc7ee00e45cf7db4546d466f85a9b2686a9b989ed3d"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -771,6 +841,10 @@ fn test_key() {
         "10116daa3ffc9e7ae2022cb51fb7f6d6dc5267a97b167185c9cfe2d994f5c56b"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "FbXSaYGEDuSqTCxSasWLhPeduNaMLwCVy"
     );
@@ -809,6 +883,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "6232dbcd903ccc481cbf25857b0730f1d1acfb90a2b9e2dbe1f36850545ac441"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -851,6 +929,10 @@ fn test_key() {
         "50222b0286da82d163711ee2694e8e46a04ee4383c64cb514e4b2f4821f45cff"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "KRu9gTeCfrWopLy4tRHYW8fMskfpLSs2U"
     );
@@ -889,6 +971,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "a7aed4607b3fe09d5e16dca270aa1f064d06f3e74b07986429015abdc45775c3"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -931,6 +1017,10 @@ fn test_key() {
         "50f9357cc1f1ad6b5922ea45df3dce43275751420c8e6b17aa80e0b4ddfcf4c7"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "CLaqpS1Xd3xL1QZHb1jpCfkPjKqsBC9A6"
     );
@@ -969,6 +1059,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "5a068cf3af83165a17171bce24294354e997de5e07a076e8e1cf151637a74297"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),
@@ -1011,6 +1105,10 @@ fn test_key() {
         "9cb50683d048c5c77ae6bd4710e03fbf54e84426eb3e51d2a55c6aff98863245"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "JHs18HveD7UtNsrgztvhzLhm13gYK8yMh"
     );
@@ -1051,6 +1149,10 @@ fn test_key() {
         "ec740ea3a0cd92192565f88523a996b52121002ba982698d0671af7e40bacdbd"
     );
     assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
         random_key.short_address.clone(),
         "La9JUXfkw22m2YXotqmeji1Pv4DMQu3om"
     );
@@ -1089,6 +1191,10 @@ fn test_key() {
     assert_eq!(
         random_key.private_key_hex.clone(),
         "ffb30b47a3dbc705d098d3c4b4d1dc6b10cd970a084bdbc99200fba97c8f57ff"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
         random_key.short_address.clone(),

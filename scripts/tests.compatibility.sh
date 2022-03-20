@@ -11,7 +11,7 @@ pushd ./compatibility
 go run ./key-info-gen/main.go 9999 /tmp/test.key.json
 go run ./key-info-validate/main.go 9999 /tmp/test.key.json
 popd
-cargo run --example avalanche_key_info_validate -- 9999 /tmp/test.key.json
+cargo run --example avalanche_key_info_validate -- /tmp/test.key.json 9999
 
 ###
 cargo run --example avalanche_key_info_gen -- 9999 /tmp/test.key.json
