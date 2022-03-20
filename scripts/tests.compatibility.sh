@@ -9,14 +9,14 @@ fi
 ###
 pushd ./compatibility
 go run ./key-info-gen/main.go 9999 /tmp/test.key.json
-go run ./key-info-validate/main.go 9999 /tmp/test.key.json
+go run ./key-info-validate/main.go /tmp/test.key.json 9999
 popd
 cargo run --example avalanche_key_info_validate -- /tmp/test.key.json 9999
 
 ###
 cargo run --example avalanche_key_info_gen -- 9999 /tmp/test.key.json
 pushd ./compatibility
-go run ./key-info-validate/main.go 9999 /tmp/test.key.json
+go run ./key-info-validate/main.go /tmp/test.key.json 9999
 popd
 
 ###
@@ -44,10 +44,6 @@ go run ./cert-gen/main.go /tmp/test.insecure.key /tmp/test.insecure.cert
 go run ./node-id-load/main.go /tmp/test.insecure.key /tmp/test.insecure.cert
 popd
 cargo run --example utils_cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
-
-###
-echo "ALL SUCCESS!"
-
 
 ###
 echo "ALL SUCCESS!"
