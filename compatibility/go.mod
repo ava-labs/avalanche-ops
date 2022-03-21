@@ -1,4 +1,4 @@
-module github.com/gyuho/avalanche-ops/compatibility
+module github.com/ava-labs/avalanche-ops/compatibility
 
 go 1.17
 
