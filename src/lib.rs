@@ -42,7 +42,7 @@ pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10; // TODO: allow higher number?
 /// Default machine non-anchor nodes size.
 pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
 pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
-pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 200; // TODO: allow higher number?
+pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20; // TODO: allow higher number?
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
