@@ -692,10 +692,10 @@ where
     for<'r> F: FnMut(&'r &'a Metric) -> bool,
 {
     let metric = samples.iter().find(f);
-    if metric.is_some() {
-        return metric.unwrap();
+    if let Some(v) = metric {
+        return v;
     }
-    return &NOT_FOUND_METRIC;
+    &NOT_FOUND_METRIC
 }
 
 pub fn pair_to_string(pair: &(&str, &str)) -> (String, String) {

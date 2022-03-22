@@ -76,9 +76,6 @@ pub mod serde_hex_format {
         let s = String::deserialize(deserializer)?;
 
         // ref. https://docs.rs/chrono/0.4.19/chrono/struct.DateTime.html#method.parse_from_rfc3339
-        match big_int::from_hex(&s).map_err(serde::de::Error::custom) {
-            Ok(dt) => Ok(dt),
-            Err(e) => Err(e),
-        }
+        big_int::from_hex(&s).map_err(serde::de::Error::custom)
     }
 }
