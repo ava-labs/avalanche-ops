@@ -1,3 +1,6 @@
+// TODO: this is an invariant, so we should move to its own crate
+// e.g., https://crates.io/crates/avalanche-key
+
 use std::{
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
@@ -9,7 +12,6 @@ use bitcoin::hashes::hex::ToHex;
 use ethereum_types::{Address, H256};
 use lazy_static::lazy_static;
 use log::info;
-use ring::digest::{digest, SHA256};
 use ripemd::{Digest, Ripemd160};
 use rust_embed::RustEmbed;
 use secp256k1::{self, rand::rngs::OsRng, PublicKey, Secp256k1, SecretKey};
@@ -18,6 +20,7 @@ use sha3::Keccak256;
 
 use crate::{
     avalanche::{constants, formatting},
+    utils::hash,
     utils::prefix,
 };
 
@@ -230,7 +233,7 @@ pub fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<String>
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
 fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
-    let digest_sha256 = compute_sha256(d);
+    let digest_sha256 = hash::compute_sha256(d);
 
     // "hashing.PubkeyBytesToAddress"
     // acquire hash digest in the form of GenericArray,
@@ -251,10 +254,6 @@ fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
     }
 
     Ok(ripemd160_sha256.to_vec())
-}
-
-fn compute_sha256(input: &[u8]) -> Vec<u8> {
-    digest(&SHA256, input).as_ref().into()
 }
 
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"

@@ -10,7 +10,7 @@ use log::info;
 extern crate avalanche_ops;
 use avalanche_ops::{
     aws::{self, envelope, kms},
-    utils::{id, random},
+    utils::{id, random, vector},
 };
 
 /// cargo run --example aws_kms
@@ -77,7 +77,10 @@ fn main() {
     info!("encrypted_file_contents: {:?}", encrypted_file_contents);
     info!("decrypted_file_contents: {:?}", decrypted_file_contents);
     assert_eq!(&decrypted_file_contents, plaintext.as_bytes());
-    assert!(eq_vectors(&decrypted_file_contents, plaintext.as_bytes()));
+    assert!(vector::eq_u8_vectors(
+        &decrypted_file_contents,
+        plaintext.as_bytes()
+    ));
 
     let envelope = envelope::Envelope::new(Some(kms_manager.clone()), Some(cmk.id.clone()));
     let sealed_aes_256_file_path = random::tmp_path(10, Some(".encrypted")).unwrap();
@@ -111,7 +114,7 @@ fn main() {
         unsealed_aes_256_file_contents
     );
     assert_eq!(&unsealed_aes_256_file_contents, plaintext.as_bytes());
-    assert!(eq_vectors(
+    assert!(vector::eq_u8_vectors(
         &unsealed_aes_256_file_contents,
         plaintext.as_bytes()
     ));
@@ -125,7 +128,10 @@ fn main() {
     info!("plaintext_sealed: {:?}", plaintext_sealed);
     info!("plaintext_sealed_unsealed: {:?}", plaintext_sealed_unsealed);
     assert_eq!(&plaintext_sealed_unsealed, plaintext.as_bytes());
-    assert!(eq_vectors(&plaintext_sealed_unsealed, plaintext.as_bytes()));
+    assert!(vector::eq_u8_vectors(
+        &plaintext_sealed_unsealed,
+        plaintext.as_bytes()
+    ));
 
     let ret = ab!(kms_manager.schedule_to_delete(&cmk.id));
     assert!(ret.is_ok());
@@ -135,8 +141,4 @@ fn main() {
     // error should be ignored if it's already scheduled for delete
     let ret = ab!(kms_manager.schedule_to_delete(&cmk.id));
     assert!(ret.is_ok());
-}
-
-fn eq_vectors(va: &[u8], vb: &[u8]) -> bool {
-    (va.len() == vb.len()) && va.iter().zip(vb).all(|(a, b)| *a == *b)
 }
