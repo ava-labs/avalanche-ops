@@ -1,6 +1,5 @@
 use std::{thread, time};
 
-use bytes::BufMut;
 use log::info;
 use tokio::{self, time::sleep};
 
@@ -12,11 +11,6 @@ async fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
     info!("Hello World!");
-
-    let mut buf = vec![];
-    buf.put_u8(0x01);
-    assert_eq!(buf, b"\x01");
-    info!("{}", buf.len());
 
     run().await;
 }
