@@ -256,6 +256,8 @@ pub struct DefaultSpecOption {
     pub coreth_metrics_enabled: bool,
     pub coreth_continuous_profiler_enabled: bool,
     pub coreth_offline_pruning_enabled: bool,
+    pub coreth_state_sync_enabled: bool,
+    pub coreth_state_sync_metrics_enabled: bool,
 
     pub enable_subnet_evm: bool,
 
@@ -450,6 +452,15 @@ impl Spec {
         }
         if opt.coreth_offline_pruning_enabled {
             coreth_config.offline_pruning_enabled = Some(true);
+        }
+        if opt.coreth_state_sync_enabled {
+            coreth_config.state_sync_enabled = Some(true);
+            if !opt.avalanchego_state_sync_ids.is_empty() {
+                coreth_config.state_sync_ids = Some(opt.avalanchego_state_sync_ids.clone());
+            }
+        }
+        if opt.coreth_state_sync_metrics_enabled {
+            coreth_config.state_sync_metrics_enabled = Some(true);
         }
 
         Self {

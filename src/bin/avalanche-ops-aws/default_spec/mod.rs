@@ -199,6 +199,22 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("CORETH_STATE_SYNC_ENABLED")
+                .long("coreth-state-sync-enabled")
+                .help("Sets state-sync-enabled for coreth")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("CORETH_STATE_SYNC_METRICS_ENABLED")
+                .long("coreth-state-sync-metrics-enabled")
+                .help("Sets state-sync-metrics-enabled for coreth")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("ENABLE_SUBNET_EVM")
                 .long("enable-subnet-evm")
                 .help("Sets to enable subnet-evm")

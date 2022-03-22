@@ -1,9 +1,11 @@
-# https://gallery.ecr.aws/ubuntu/ubuntu
-FROM public.ecr.aws/ubuntu/ubuntu:latest
+# https://gallery.ecr.aws/lts/ubuntu
+FROM public.ecr.aws/lts/ubuntu:latest
 
 # "build-essential" for linker "cc"
 # "pkg-config" for utility to find OpenSSL
 # "libssl-dev" for development packages of openssl
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt update \
 && apt install -y \
    curl build-essential pkg-config libssl-dev libc6 \

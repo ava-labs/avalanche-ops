@@ -93,6 +93,15 @@ pub struct Config {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_outbound_active_requests: Option<i64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_sync_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_sync_metrics_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_sync_server_trie_cache: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_sync_ids: Option<String>,
 }
 
 pub const DEFAULT_CORETH_ADMIN_API_ENABLED: bool = true;
@@ -158,6 +167,11 @@ impl Config {
             offline_pruning_data_directory: None,
 
             max_outbound_active_requests: None,
+
+            state_sync_enabled: None,
+            state_sync_metrics_enabled: None,
+            state_sync_server_trie_cache: None,
+            state_sync_ids: None,
         }
     }
 

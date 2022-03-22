@@ -106,6 +106,9 @@ fn main() {
                     .is_present("CORETH_CONTINUOUS_PROFILER_ENABLED"),
                 coreth_offline_pruning_enabled: sub_matches
                     .is_present("CORETH_OFFLINE_PRUNING_ENABLED"),
+                coreth_state_sync_enabled: sub_matches.is_present("CORETH_STATE_SYNC_ENABLED"),
+                coreth_state_sync_metrics_enabled: sub_matches
+                    .is_present("CORETH_STATE_SYNC_METRICS_ENABLED"),
 
                 enable_subnet_evm: sub_matches.is_present("ENABLE_SUBNET_EVM"),
 
