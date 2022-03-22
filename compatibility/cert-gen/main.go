@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/staking"
 )
 
+// go run ./cert-gen /tmp/test.insecure.key /tmp/test.insecure.crt
 // go run main.go /tmp/test.insecure.key /tmp/test.insecure.crt
 func main() {
 	args := os.Args

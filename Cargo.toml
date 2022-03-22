@@ -55,8 +55,10 @@ tokio-stream = "0.1.8"
 url = "2.2.2"
 walkdir = "2.3.2"
 whoami = "1.2.1"
-zip = "0.5.13"
-zstd = "0.11.1+zstd.1.5.2"
+zip = "0.6"
+
+# don't update until https://github.com/gyscos/zstd-rs/issues/147 is addressed
+zstd = "0.10"
 
 [dev-dependencies]
 tokio-test = "0.4.2"

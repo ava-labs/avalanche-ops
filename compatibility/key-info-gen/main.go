@@ -19,6 +19,7 @@ import (
 
 var keyFactory = new(crypto.FactorySECP256K1R)
 
+// go run ./key-info-gen 9999 /tmp/key.yaml
 // go run main.go 9999 /tmp/key.yaml
 func main() {
 	if len(os.Args) != 3 {
