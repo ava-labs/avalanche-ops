@@ -679,9 +679,13 @@ fn test_parse_avalanchego_metrics() {
 }
 
 lazy_static! {
-    static ref NOT_FOUND_METRIC: Metric = Metric{metric: "not_found".to_string(), value: Value::Gauge(0.0), labels: None, timestamp: None};
+    static ref NOT_FOUND_METRIC: Metric = Metric {
+        metric: "not_found".to_string(),
+        value: Value::Gauge(0.0),
+        labels: None,
+        timestamp: None
+    };
 }
-
 
 pub fn match_metric<'a, F>(samples: &'a [Metric], f: F) -> &'a Metric
 where
