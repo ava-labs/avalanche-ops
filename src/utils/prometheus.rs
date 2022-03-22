@@ -678,11 +678,20 @@ fn test_parse_avalanchego_metrics() {
     );
 }
 
+lazy_static! {
+    static ref NOT_FOUND_METRIC: Metric = Metric{metric: "not_found".to_string(), value: Value::Gauge(0.0), labels: None, timestamp: None};
+}
+
+
 pub fn match_metric<'a, F>(samples: &'a [Metric], f: F) -> &'a Metric
 where
     for<'r> F: FnMut(&'r &'a Metric) -> bool,
 {
-    samples.iter().find(f).as_ref().unwrap()
+    let metric = samples.iter().find(f);
+    if metric.is_some() {
+        return metric.unwrap();
+    }
+    return &NOT_FOUND_METRIC;
 }
 
 pub fn pair_to_string(pair: &(&str, &str)) -> (String, String) {
