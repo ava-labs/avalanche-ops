@@ -2,7 +2,7 @@ use std::io::{self, Error, ErrorKind};
 
 use bech32::{ToBase32, Variant};
 use bitcoin::util::base58;
-use openssl::sha::sha256;
+use ring::digest::{digest, SHA256};
 
 const CHECKSUM_LENGTH: usize = 4;
 
@@ -12,7 +12,7 @@ const CHECKSUM_LENGTH: usize = 4;
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#Checksum
 pub fn encode_cb58_with_checksum(d: &[u8]) -> String {
     // "hashing.Checksum" of "sha256.Sum256"
-    let checksum = sha256(d);
+    let checksum = compute_sha256(d);
     let checksum_length = checksum.len();
     let checksum = &checksum[checksum_length - CHECKSUM_LENGTH..];
 
@@ -44,7 +44,7 @@ pub fn decode_cb58_with_checksum(d: &str) -> io::Result<Vec<u8>> {
     let orig = &decoded[..decoded_length - CHECKSUM_LENGTH];
 
     // "hashing.Checksum" of "sha256.Sum256"
-    let orig_checksum = sha256(orig);
+    let orig_checksum = compute_sha256(orig);
     let orig_checksum_length = orig_checksum.len();
     let orig_checksum = &orig_checksum[orig_checksum_length - CHECKSUM_LENGTH..];
     if !eq_vectors(checksum, orig_checksum) {
@@ -55,6 +55,10 @@ pub fn decode_cb58_with_checksum(d: &str) -> io::Result<Vec<u8>> {
     }
 
     Ok(orig.to_vec())
+}
+
+fn compute_sha256(input: &[u8]) -> Vec<u8> {
+    digest(&SHA256, input).as_ref().into()
 }
 
 fn eq_vectors(va: &[u8], vb: &[u8]) -> bool {
