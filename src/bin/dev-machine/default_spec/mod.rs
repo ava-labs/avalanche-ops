@@ -85,7 +85,7 @@ pub fn execute(opt: Option) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{} apply --spec-file-path {}\n",
+            "{} apply \\\n--spec-file-path {}\n",
             std::env::current_exe()
                 .expect("unexpected None current_exe")
                 .display(),
