@@ -596,7 +596,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         stdout(),
         SetForegroundColor(Color::Red),
         Print(format!(
-            "{} delete --spec-file-path {}\n",
+            "{} delete \\\n--spec-file-path {}\n",
             std::env::current_exe()
                 .expect("unexpected None current_exe")
                 .display(),
