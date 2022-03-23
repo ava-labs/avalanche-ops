@@ -452,8 +452,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 .unwrap(),
         ),
     ]);
-    if spec.machine.instance_types.is_some() {
-        let instance_types = spec.machine.instance_types.clone().unwrap();
+
+    asg_parameters.push(build_param("Arch", &spec.machine.arch));
+    if !spec.machine.instance_types.is_empty() {
+        let instance_types = spec.machine.instance_types.clone();
         asg_parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
         asg_parameters.push(build_param(
             "InstanceTypesCount",
@@ -470,9 +472,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ResetColor
         )?;
 
-        // TODO: support other platforms
-        let cloudformation_asg_yaml =
-            Asset::get("src/aws/cfn-templates/dev-machine/asg_arm64_al2.yaml").unwrap();
+        let cloudformation_asg_yaml = Asset::get(&format!(
+            "src/aws/cfn-templates/dev-machine/asg_{}_al2.yaml",
+            spec.machine.arch
+        ))
+        .unwrap();
         let cloudformation_asg_tmpl =
             std::str::from_utf8(cloudformation_asg_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_stack_name = aws_resources.cloudformation_asg.clone().unwrap();
@@ -483,10 +487,17 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let mut parameters = asg_parameters.clone();
 
         // TODO: remove this... doesn't work for amd64 and other regions
-        if aws_resources.region == "us-west-2" && spec.machine.arch == "arm64" {
-            // 64-bit Arm with Kernel 5.10
-            // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2" returns Kernel 4.14
-            parameters.push(build_param("ImageId", "ami-074ae0a6f04be35ff"));
+        if aws_resources.region == "us-west-2" {
+            // manually overwrite to use latest kernel
+            if spec.machine.arch == "amd64" {
+                // 64-bit AMD with Kernel 5.10
+                // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2" returns Kernel 4.14
+                parameters.push(build_param("ImageId", "ami-00ee4df451840fa9d"));
+            } else if spec.machine.arch == "arm64" {
+                // 64-bit Arm with Kernel 5.10
+                // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2" returns Kernel 4.14
+                parameters.push(build_param("ImageId", "ami-0cde3ffbd04841819"));
+            }
         }
         parameters.push(build_param(
             "AsgDesiredCapacity",

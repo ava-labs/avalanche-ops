@@ -32,9 +32,10 @@ pub fn command() -> Command<'static> {
                 .help("Sets the machine architecture")
                 .required(true)
                 .takes_value(true)
-                .possible_value("arm64")
+                .possible_value(dev::ARCH_AMD64)
+                .possible_value(dev::ARCH_ARM64)
                 .allow_invalid_utf8(false)
-                .default_value(dev::DEFAULT_ARCH),
+                .default_value(dev::ARCH_ARM64),
         )
         .arg(
             Arg::new("SPEC_FILE_PATH")
@@ -84,7 +85,7 @@ pub fn execute(opt: Option) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{} apply --spec-file-path {}\n",
+            "{} apply \\\n--spec-file-path {}\n",
             std::env::current_exe()
                 .expect("unexpected None current_exe")
                 .display(),
