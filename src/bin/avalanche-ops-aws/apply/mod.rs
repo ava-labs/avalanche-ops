@@ -556,8 +556,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let param = build_param("VolumeSize", "400");
         asg_parameters.push(param);
     }
-    if spec.machine.instance_types.is_some() {
-        let instance_types = spec.machine.instance_types.clone().unwrap();
+
+    asg_parameters.push(build_param("Arch", &spec.machine.arch));
+    if !spec.machine.instance_types.is_empty() {
+        let instance_types = spec.machine.instance_types.clone();
         asg_parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
         asg_parameters.push(build_param(
             "InstanceTypesCount",

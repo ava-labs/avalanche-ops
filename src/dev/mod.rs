@@ -15,7 +15,91 @@ use crate::{
 
 pub const MIN_MACHINES: u32 = 1;
 pub const MAX_MACHINES: u32 = 2;
-pub const DEFAULT_ARCH: &str = "arm64";
+
+use lazy_static::lazy_static;
+
+pub const ARCH_AMD64: &str = "amd64";
+pub const ARCH_ARM64: &str = "arm64";
+
+lazy_static! {
+    /// Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
+    /// Avalanche test net ("fuji") runs "c5.2xlarge"
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/c6a/
+    /// c6a.large:   2 vCPU + 4  GiB RAM
+    /// c6a.xlarge:  4 vCPU + 8  GiB RAM
+    /// c6a.2xlarge: 8 vCPU + 16 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/m6a/
+    /// m6a.large:   2 vCPU + 8  GiB RAM
+    /// m6a.xlarge:  4 vCPU + 16 GiB RAM
+    /// m6a.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/m5/
+    /// m5.large:   2 vCPU + 8  GiB RAM
+    /// m5.xlarge:  4 vCPU + 16 GiB RAM
+    /// m5.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/c5/
+    /// c5.large:   2 vCPU + 4  GiB RAM
+    /// c5.xlarge:  4 vCPU + 8  GiB RAM
+    /// c5.2xlarge: 8 vCPU + 16 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/r5/
+    /// r5.large:   2 vCPU + 16 GiB RAM
+    /// r5.xlarge:  4 vCPU + 32 GiB RAM
+    /// r5.2xlarge: 8 vCPU + 64 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/t3/
+    /// t3.large:   2 vCPU + 8 GiB RAM
+    /// t3.xlarge:  4 vCPU + 16 GiB RAM
+    /// t3.2xlarge: 8 vCPU + 32 GiB RAM
+    pub static ref DEFAULT_EC2_INSTANCE_TYPES_AMD64: Vec<String> = vec![
+        String::from("c6a.large"),
+        String::from("m6a.large"),
+        String::from("m5.large"),
+        String::from("c5.large"),
+    ];
+
+    /// Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
+    /// Avalanche test net ("fuji") runs "c5.2xlarge"
+    ///
+    /// Graviton 3 (in preview)
+    /// https://aws.amazon.com/ec2/instance-types/c7g/
+    /// c7g.large:   2 vCPU + 8  GiB RAM
+    /// c7g.xlarge:  4 vCPU + 16 GiB RAM
+    /// c7g.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/c6g/
+    /// c6g.large:   2 vCPU + 4  GiB RAM
+    /// c6g.xlarge:  4 vCPU + 8  GiB RAM
+    /// c6g.2xlarge: 8 vCPU + 16 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/m6g/
+    /// m6g.large:   2 vCPU + 8  GiB RAM
+    /// m6g.xlarge:  4 vCPU + 16 GiB RAM
+    /// m6g.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/r6g/
+    /// r6g.large:   2 vCPU + 16 GiB RAM
+    /// r6g.xlarge:  4 vCPU + 32 GiB RAM
+    /// r6g.2xlarge: 8 vCPU + 64 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/t4/
+    /// t4g.large:   2 vCPU + 8 GiB RAM
+    /// t4g.xlarge:  4 vCPU + 16 GiB RAM
+    /// t4g.2xlarge: 8 vCPU + 32 GiB RAM
+    pub static ref DEFAULT_EC2_INSTANCE_TYPES_ARM64: Vec<String> = vec![
+        String::from("c6g.2xlarge"),
+        String::from("m6g.2xlarge"),
+        String::from("r6g.2xlarge"),
+        String::from("t4g.2xlarge"),
+    ];
+}
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -36,7 +120,7 @@ pub struct Machine {
     #[serde(default)]
     pub arch: String,
     #[serde(default)]
-    pub instance_types: Option<Vec<String>>,
+    pub instance_types: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -134,15 +218,16 @@ impl StackName {
 
 impl Spec {
     pub fn default(arch: &str) -> io::Result<Self> {
-        match arch {
-            DEFAULT_ARCH => {}
+        let instance_types = match arch {
+            ARCH_AMD64 => DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
+            ARCH_ARM64 => DEFAULT_EC2_INSTANCE_TYPES_ARM64.to_vec(),
             _ => {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!("arch {} is not supported yet", arch),
                 ));
             }
-        }
+        };
 
         Ok(Self {
             id: id::with_time("dev-machine"),
@@ -156,14 +241,7 @@ impl Spec {
             machine: Machine {
                 machines: 1,
                 arch: arch.to_string(),
-
-                // TODO: support amd64?
-                instance_types: Some(vec![
-                    String::from("c6g.2xlarge"),
-                    String::from("m6g.2xlarge"),
-                    String::from("r6g.2xlarge"),
-                    String::from("t4g.2xlarge"),
-                ]),
+                instance_types,
             },
         })
     }
@@ -326,9 +404,9 @@ machine:
         }),
 
         machine: Machine {
-            arch: DEFAULT_ARCH.to_string(),
+            arch: ARCH_ARM64.to_string(),
             machines: 1,
-            instance_types: Some(vec![String::from("c6g.large")]),
+            instance_types: vec![String::from("c6g.large")],
         },
     };
 
@@ -345,8 +423,7 @@ machine:
     assert_eq!(aws_reesources.bucket, bucket);
 
     assert_eq!(cfg.machine.machines, 1);
-    assert_eq!(cfg.machine.arch, DEFAULT_ARCH);
-    assert!(cfg.machine.instance_types.is_some());
-    let instance_types = cfg.machine.instance_types.unwrap();
+    assert_eq!(cfg.machine.arch, ARCH_ARM64);
+    let instance_types = cfg.machine.instance_types;
     assert_eq!(instance_types[0], "c6g.large");
 }

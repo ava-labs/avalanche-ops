@@ -1,24 +1,12 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Avalanche node (amd64)"
-
-# takes about 2-minute for 3 nodes (without NLB)
-# NLB takes about 3-minute
+Description: "Development machine (amd64)"
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Parameters:
   Id:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
-
-  NetworkId:
-    Type: Number
-    Description: Avalanche network ID, used for resource tagging.
-
-  NodeKind:
-    Type: String
-    AllowedValues: ["anchor", "non-anchor"]
-    Description: Node kind.
 
   KmsCmkArn:
     Type: String
@@ -49,11 +37,10 @@ Parameters:
     Default: ""
     Description: (Optional) Custom image ID. This value overrides any AWS Systems Manager Parameter Store value specified above.
 
-  # https://ubuntu.com/server/docs/cloud-images/amazon-ec2
-  # TODO: support arm64
+  # https://aws.amazon.com/blogs/compute/query-for-the-latest-amazon-linux-ami-ids-using-aws-systems-manager-parameter-store/
   ImageIdSsmParameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
 
   Arch:
@@ -152,35 +139,16 @@ Parameters:
   AsgMaxSize:
     Type: Number
     Description: Maximum size auto scaling group
-    Default: 10
+    Default: 2
     MinValue: 1
-    MaxValue: 1000
+    MaxValue: 3
 
   AsgDesiredCapacity:
     Type: Number
     Description: Desired size auto scaling group
-    Default: 5
+    Default: 1
     MinValue: 1
-    MaxValue: 1000
-
-  NlbTargetGroupArn:
-    Type: String
-    Default: ""
-    Description: NLB target group ARN for ASG
-
-  NlbVpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: VPC ID
-
-  NlbHttpPort:
-    Type: Number
-    Default: 9650
-    Description: HTTP port (only required for NLB)
-
-  NlbAcmCertificateArn:
-    Type: String
-    Default: ""
-    Description: (Optional) Certificates for NLB HTTPs traffic.
+    MaxValue: 3
 
 Conditions:
   HasImageId:
@@ -215,96 +183,12 @@ Conditions:
       - Ref: InstanceTypesCount
       - 4
 
-  # only create 1 NLB once
-  # for both anchor- and non-anchor nodes
-  EmptyNlbTargetGroupArn:
-    Fn::Equals:
-      - Ref: NlbTargetGroupArn
-      - ""
-
-  # only create 1 HTTPs listener once
-  # for both anchor- and non-anchor nodes
-  HasNlbAcmCertificateArn:
-    Fn::And:
-      # EmptyNlbTargetGroupArn
-      - Fn::Equals:
-          - Ref: NlbTargetGroupArn
-          - ""
-      - Fn::Not:
-          - Fn::Equals:
-              - Ref: NlbAcmCertificateArn
-              - ""
-
 Resources:
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
-  # takes 3-minute
-  NLB:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Condition: EmptyNlbTargetGroupArn
-    Properties:
-      Type: network
-      # load balancer name '...' cannot be longer than '32' characters
-      Name: !Join ["-", [!Ref Id, "nlb"]]
-      Subnets: !Ref PublicSubnetIds
-      # load balancer name '...' cannot be longer than '32' characters
-      Tags:
-        - { Key: Name, Value: !Sub "${Id}-nlb" }
-
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
-  NLBTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Condition: EmptyNlbTargetGroupArn
-    Properties:
-      # Target group name '...' cannot be longer than '32' characters
-      Name: !Join ["-", [!Ref Id, "tg"]]
-      # Health check enabled must be true for target groups
-      # with target type 'instance'
-      HealthCheckEnabled: true
-      HealthCheckProtocol: TCP
-      Protocol: TCP
-      TargetType: instance
-      VpcId: !Ref NlbVpcId
-      Port: !Ref NlbHttpPort
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: 60
-
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
-  NLBListenerTcp:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Condition: EmptyNlbTargetGroupArn
-    Properties:
-      LoadBalancerArn: !Ref NLB
-      Port: !Ref NlbHttpPort
-      Protocol: TCP
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref NLBTargetGroup
-
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
-  NLBListenerHttps:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Condition: HasNlbAcmCertificateArn
-    Properties:
-      LoadBalancerArn: !Ref NLB
-      Port: 443
-      # NLB can't use HTTPS (only ALB can use HTTPS)!
-      # supports "HTTPS" https://aws.amazon.com/premiumsupport/knowledge-center/associate-acm-certificate-alb-nlb/
-      Protocol: TLS
-      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticloadbalancingv2-listener-action.html#cfn-elasticloadbalancingv2-listener-action-type
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref NLBTargetGroup
-      # supports "HTTPS" https://aws.amazon.com/premiumsupport/knowledge-center/associate-acm-certificate-alb-nlb/
-      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticloadbalancingv2-listener-certificate.html
-      Certificates:
-        - { CertificateArn: !Ref NlbAcmCertificateArn }
-
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref Arch]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -340,10 +224,10 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${Arch}" }
+              - { Key: Name, Value: !Sub "${Id}-${Arch}" }
           - ResourceType: volume
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${Arch}" }
+              - { Key: Name, Value: !Sub "${Id}-${Arch}" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -355,28 +239,46 @@ Resources:
               #!/bin/bash
               set -xeu
 
-              export DEBIAN_FRONTEND=noninteractive
-              sudo apt-get update -y && sudo apt-get upgrade -y \
-              && sudo apt-get install -y \
-                  curl wget unzip zip gzip tar libssl-dev \
-                  python3-pip python-setuptools
+              sudo yum update -y && sudo yum upgrade -y
+              sudo yum install -y \
+              tmux \
+              curl wget \
+              tar unzip \
+              git gcc \
+              graphviz \
+              python3-pip \
+              openssl-devel \
+              chrony \
+              yum-utils device-mapper-persistent-data lvm2 \
+              amazon-linux-extras
 
-              curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
-              unzip awscli.v2.zip
+              sudo chkconfig chronyd on
+              cat <<EOF | sudo tee -a /etc/chrony.conf
+              # enables kernel synchronisation
+              rtcsync
+              EOF
+
+              amazon-linux-extras
+              sudo amazon-linux-extras enable vim=latest epel docker=latest
+              sudo amazon-linux-extras install -y vim epel docker
+              sudo systemctl daemon-reload
+              sudo systemctl start --no-block docker
+              sleep 2
+              sudo systemctl status docker --full --no-pager || true
+              sudo chmod 666 /var/run/docker.sock
+              docker ps
+
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscli.v2.zip
+              unzip awscliv2.zip
               sudo ./aws/install
               /usr/local/bin/aws --version
+              aws s3 ls s3://${S3BucketName}/
 
-              # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
-              sudo snap install amazon-ssm-agent --classic
-              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
-              mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
-              cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
-              [Service]
-              Restart=always
-              RestartSec=60s
-              EOF
-              sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
+              # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-manual-agent-install.html
+              sudo yum install -y https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_${Arch}/amazon-ssm-agent.rpm
+              sudo systemctl enable amazon-ssm-agent || true
+              sudo systemctl start --no-block amazon-ssm-agent
+              sudo systemctl status amazon-ssm-agent
 
               TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
               INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --retry 3 -s http://169.254.169.254/latest/meta-data/instance-id)
@@ -394,91 +296,16 @@ Resources:
 
               # TODO: why device name is not "/dev/xvdb"?
               sudo mkfs -t ext4 /dev/nvme1n1
-              mkdir -p /avalanche-data
-              sudo mount /dev/nvme1n1 /avalanche-data -t ext4
+              mkdir -p /data
+              sudo mount /dev/nvme1n1 /data -t ext4
               # auto remount in case of instance reboot
-              sudo echo '/dev/nvme1n1       /avalanche-data   ext4    defaults,nofail 0       2' >> /etc/fstab
+              sudo echo '/dev/nvme1n1       /data   ext4    defaults,nofail 0       2' >> /etc/fstab
               sudo mount --all
               lsblk
               df -h
 
-              aws s3 cp s3://${S3BucketName}/${Id}/install/avalanched /tmp/avalanched
-              chmod +x /tmp/avalanched
-              sudo mv /tmp/avalanched /usr/local/bin/avalanched
-
-              # aws s3 cp s3://${S3BucketName}/${Id}/install/avalanche /tmp/avalanche
-              # chmod +x /tmp/avalanche
-              # sudo mv /tmp/avalanche /usr/local/bin/avalanche
-
-              # TODO: make this configurable?
-              mkdir -p /var/log/avalanched
-              chmod 755 /var/log/avalanched
-              mkdir -p /etc/pki/tls/certs
-              chmod 755 /etc/pki/tls/certs
-              mkdir -p /var/log/avalanche
-              chmod 755 /var/log/avalanche
-
-              cat > /tmp/avalanched.service <<EOF
-              [Unit]
-              Description=avalanched (avalanche agent)
-
-              [Service]
-              Type=exec
-              TimeoutStartSec=300
-              Restart=on-failure
-              RestartSec=5s
-              LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched run
-              StandardOutput=append:/var/log/avalanched/avalanched.log
-              StandardError=append:/var/log/avalanched/avalanched.log
-
-              [Install]
-              WantedBy=multi-user.target
-              EOF
-              sudo mv /tmp/avalanched.service /etc/systemd/system/avalanched.service
-              sudo systemctl daemon-reload
-              sudo systemctl enable avalanched.service
-              sudo systemctl start --no-block avalanched.service
-
-              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
-              mkdir -p /tmp/install-cloudwatch-logs
-              pushd /tmp/install-cloudwatch-logs
-              wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
-              sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
-              popd
-
-              # enough time for "avalanched" to initialize cloudwatch configuration
-              sleep 10
-              echo "wait until /opt/aws/amazon-cloudwatch-agent/bin/config.json is written by avalanched"
-              while [[ ! -s /opt/aws/amazon-cloudwatch-agent/bin/config.json ]]
-                do
-                echo "waiting for /opt/aws/amazon-cloudwatch-agent/bin/config.json creation"
-                sleep 5
-              done
-
-              cat /opt/aws/amazon-cloudwatch-agent/bin/config.json
-              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
-              mkdir -p /etc/systemd/system/amazon-cloudwatch-agent.service.d
-              cat <<EOF > /etc/systemd/system/amazon-cloudwatch-agent.service.d/10-restart-always.conf
-              [Service]
-              Restart=always
-              RestartSec=60s
-              EOF
-
+              # TODO: install Rust/Go for all users
               # TODO: signal instance ready
-              # NOT WORKING; "print 'revision: %(revno)s' % version_info"
-              # curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
-              # pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
-              # if [[ $? -ne 0 ]]; then
-              #   /usr/local/bin/cfn-signal --resource AutoScalingGroup \
-              #     --stack ${AWS::StackName} \
-              #     --region ${AWS::Region} \
-              #     --success false
-              # else
-              #   /usr/local/bin/cfn-signal -e $? --resource AutoScalingGroup \
-              #     --stack ${AWS::StackName} \
-              #     --region ${AWS::Region}
-              # fi
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:
@@ -494,54 +321,28 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref Arch]]
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
       VPCZoneIdentifier: !Ref PublicSubnetIds
-      TargetGroupARNs:
-        - Fn::If:
-            - EmptyNlbTargetGroupArn
-            - !Ref NLBTargetGroup
-            - !Ref NlbTargetGroupArn
       HealthCheckType: EC2
       HealthCheckGracePeriod: 120
       MetricsCollection:
         - Granularity: "1Minute"
       Tags:
-        # we can either propagate these information
-        # via tags, CLI flags, avalanche-ops spec, etc.
-        # use tags for relatively static configurations
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+          Value: !Join ["-", [!Ref Id, !Ref Arch]]
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id
-        - Key: NETWORK_ID
-          PropagateAtLaunch: true
-          Value: !Ref NetworkId
-        - Key: NODE_KIND
-          PropagateAtLaunch: true
-          Value: !Ref NodeKind
         - Key: KMS_CMK_ARN
           PropagateAtLaunch: true
           Value: !Ref KmsCmkArn
         - Key: S3_BUCKET_NAME
           PropagateAtLaunch: true
           Value: !Ref S3BucketName
-        - Key: CLOUDWATCH_CONFIG_FILE_PATH
-          PropagateAtLaunch: true
-          Value: /opt/aws/amazon-cloudwatch-agent/bin/config.json
-        - Key: AVALANCHED_BIN_PATH
-          PropagateAtLaunch: true
-          Value: /usr/local/bin/avalanched
-        - Key: AVALANCHE_BIN_PATH
-          PropagateAtLaunch: true
-          Value: /usr/local/bin/avalanche
-        - Key: AVALANCHE_DATA_VOLUME_PATH
-          PropagateAtLaunch: true
-          Value: /avalanche-data
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       MixedInstancesPolicy:
         InstancesDistribution:
@@ -571,15 +372,3 @@ Outputs:
   # same as "AutoScalingGroupName"
   AsgLogicalId:
     Value: !Ref ASG
-
-  NlbArn:
-    Condition: EmptyNlbTargetGroupArn
-    Value: !Ref NLB
-
-  NlbTargetGroupArn:
-    Condition: EmptyNlbTargetGroupArn
-    Value: !Ref NLBTargetGroup
-
-  NlbDnsName:
-    Condition: EmptyNlbTargetGroupArn
-    Value: !GetAtt NLB.DNSName

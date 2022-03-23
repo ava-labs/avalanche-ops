@@ -175,7 +175,9 @@ pub struct Machine {
     #[serde(default)]
     pub non_anchor_nodes: u32,
     #[serde(default)]
-    pub instance_types: Option<Vec<String>>,
+    pub arch: String,
+    #[serde(default)]
+    pub instance_types: Vec<String>,
 }
 
 /// Represents artifacts for installation, to be shared with
@@ -267,6 +269,91 @@ pub struct DefaultSpecOption {
     pub spec_file_path: String,
 }
 
+use lazy_static::lazy_static;
+
+pub const ARCH_AMD64: &str = "amd64";
+pub const ARCH_ARM64: &str = "arm64";
+
+lazy_static! {
+    /// Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
+    /// Avalanche test net ("fuji") runs "c5.2xlarge"
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/c6a/
+    /// c6a.large:   2 vCPU + 4  GiB RAM
+    /// c6a.xlarge:  4 vCPU + 8  GiB RAM
+    /// c6a.2xlarge: 8 vCPU + 16 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/m6a/
+    /// m6a.large:   2 vCPU + 8  GiB RAM
+    /// m6a.xlarge:  4 vCPU + 16 GiB RAM
+    /// m6a.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/m5/
+    /// m5.large:   2 vCPU + 8  GiB RAM
+    /// m5.xlarge:  4 vCPU + 16 GiB RAM
+    /// m5.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/c5/
+    /// c5.large:   2 vCPU + 4  GiB RAM
+    /// c5.xlarge:  4 vCPU + 8  GiB RAM
+    /// c5.2xlarge: 8 vCPU + 16 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/r5/
+    /// r5.large:   2 vCPU + 16 GiB RAM
+    /// r5.xlarge:  4 vCPU + 32 GiB RAM
+    /// r5.2xlarge: 8 vCPU + 64 GiB RAM
+    ///
+    /// https://aws.amazon.com/ec2/instance-types/t3/
+    /// t3.large:   2 vCPU + 8 GiB RAM
+    /// t3.xlarge:  4 vCPU + 16 GiB RAM
+    /// t3.2xlarge: 8 vCPU + 32 GiB RAM
+    pub static ref DEFAULT_EC2_INSTANCE_TYPES_AMD64: Vec<String> = vec![
+        String::from("c6a.large"),
+        String::from("m6a.large"),
+        String::from("m5.large"),
+        String::from("c5.large"),
+    ];
+
+    /// Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
+    /// Avalanche test net ("fuji") runs "c5.2xlarge"
+    ///
+    /// Graviton 3 (in preview)
+    /// https://aws.amazon.com/ec2/instance-types/c7g/
+    /// c7g.large:   2 vCPU + 8  GiB RAM
+    /// c7g.xlarge:  4 vCPU + 16 GiB RAM
+    /// c7g.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/c6g/
+    /// c6g.large:   2 vCPU + 4  GiB RAM
+    /// c6g.xlarge:  4 vCPU + 8  GiB RAM
+    /// c6g.2xlarge: 8 vCPU + 16 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/m6g/
+    /// m6g.large:   2 vCPU + 8  GiB RAM
+    /// m6g.xlarge:  4 vCPU + 16 GiB RAM
+    /// m6g.2xlarge: 8 vCPU + 32 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/r6g/
+    /// r6g.large:   2 vCPU + 16 GiB RAM
+    /// r6g.xlarge:  4 vCPU + 32 GiB RAM
+    /// r6g.2xlarge: 8 vCPU + 64 GiB RAM
+    ///
+    /// Graviton 2
+    /// https://aws.amazon.com/ec2/instance-types/t4/
+    /// t4g.large:   2 vCPU + 8 GiB RAM
+    /// t4g.xlarge:  4 vCPU + 16 GiB RAM
+    /// t4g.2xlarge: 8 vCPU + 32 GiB RAM
+    pub static ref DEFAULT_EC2_INSTANCE_TYPES_ARM64: Vec<String> = vec![
+        String::from("c6g.2xlarge"),
+        String::from("m6g.2xlarge"),
+        String::from("r6g.2xlarge"),
+        String::from("t4g.2xlarge"),
+    ];
+}
+
 impl Spec {
     /// Creates a default Status based on the network ID.
     /// For custom networks, it generates the "keys" number of keys
@@ -338,15 +425,14 @@ impl Spec {
                     DEFAULT_MACHINE_NON_ANCHOR_NODES,
                 ),
             };
+
         let machine = Machine {
             anchor_nodes,
             non_anchor_nodes,
-            instance_types: Some(vec![
-                String::from("c6a.large"),
-                String::from("m6a.large"),
-                String::from("m5.large"),
-                String::from("c5.large"),
-            ]),
+
+            // TODO: support "arm64"
+            arch: ARCH_AMD64.to_string(),
+            instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
         };
 
         let (avalanchego_genesis_template, generated_seed_keys) = {
@@ -772,6 +858,7 @@ aws_resources:
 
 machine:
   non_anchor_nodes: 20
+  arch: amd64
   instance_types:
   - m5.large
   - c5.large
@@ -848,12 +935,13 @@ coreth_config:
         machine: Machine {
             anchor_nodes: None,
             non_anchor_nodes: 20,
-            instance_types: Some(vec![
+            arch: "amd64".to_string(),
+            instance_types: vec![
                 String::from("m5.large"),
                 String::from("c5.large"),
                 String::from("r5.large"),
                 String::from("t3.large"),
-            ]),
+            ],
         },
 
         install_artifacts: InstallArtifacts {
@@ -896,8 +984,7 @@ coreth_config:
 
     assert!(cfg.machine.anchor_nodes.is_none());
     assert_eq!(cfg.machine.non_anchor_nodes, 20);
-    assert!(cfg.machine.instance_types.is_some());
-    let instance_types = cfg.machine.instance_types.unwrap();
+    let instance_types = cfg.machine.instance_types;
     assert_eq!(instance_types[0], "m5.large");
     assert_eq!(instance_types[1], "c5.large");
     assert_eq!(instance_types[2], "r5.large");

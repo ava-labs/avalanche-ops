@@ -43,6 +43,11 @@ Parameters:
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
 
+  Arch:
+    Type: String
+    Default: "arm64"
+    Description: The name of the architecture.
+
   # Graviton 3 (in preview)
   # https://aws.amazon.com/ec2/instance-types/c7g/
   # c7g.large:   2 vCPU + 8  GiB RAM
@@ -180,7 +185,7 @@ Resources:
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref Id, "arm64"]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref Arch]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -216,10 +221,10 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-arm64" }
+              - { Key: Name, Value: !Sub "${Id}-${Arch}" }
           - ResourceType: volume
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-arm64" }
+              - { Key: Name, Value: !Sub "${Id}-${Arch}" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -267,7 +272,7 @@ Resources:
               aws s3 ls s3://${S3BucketName}/
 
               # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-manual-agent-install.html
-              sudo yum install -y https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_arm64/amazon-ssm-agent.rpm
+              sudo yum install -y https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_${Arch}/amazon-ssm-agent.rpm
               sudo systemctl enable amazon-ssm-agent || true
               sudo systemctl start --no-block amazon-ssm-agent
               sudo systemctl status amazon-ssm-agent
@@ -313,7 +318,7 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      AutoScalingGroupName: !Join ["-", [!Ref Id, "arm64"]]
+      AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref Arch]]
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
@@ -325,7 +330,7 @@ Resources:
       Tags:
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Join ["-", [!Ref Id, "arm64"]]
+          Value: !Join ["-", [!Ref Id, !Ref Arch]]
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id
