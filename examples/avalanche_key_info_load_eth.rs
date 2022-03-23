@@ -22,7 +22,7 @@ fn main() {
 
     info!("loading key");
     let k = key::Key::from_private_key_eth(&private_key).unwrap();
-    let info = k.to_info(network_id).unwrap();
+    let info = k.info(network_id).unwrap();
     assert_eq!(private_key, k.private_key_hex);
     assert_eq!(info.x_address, k.address("X", network_id).unwrap());
     assert_eq!(info.p_address, k.address("P", network_id).unwrap());

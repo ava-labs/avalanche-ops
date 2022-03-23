@@ -196,7 +196,11 @@ impl Key {
         formatting::address(chain_id_alias, hrp, &short_address_bytes)
     }
 
-    pub fn to_info(&self, network_id: u32) -> io::Result<PrivateKeyInfo> {
+    pub fn short_address_bytes(&self) -> io::Result<Vec<u8>> {
+        public_key_to_short_address_bytes(&self.public_key.expect("unexpected empty public_key"))
+    }
+
+    pub fn info(&self, network_id: u32) -> io::Result<PrivateKeyInfo> {
         let x = self.address("X", network_id)?;
         let p = self.address("P", network_id)?;
         let c = self.address("C", network_id)?;
@@ -225,7 +229,7 @@ pub fn bytes_to_short_address(d: &[u8]) -> io::Result<String> {
 /// "hashing.PubkeyBytesToAddress"
 /// ref. "pk.PublicKey().Address().Bytes()"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-pub fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<String> {
+fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<String> {
     let public_key_bytes_compressed = public_key.serialize();
     bytes_to_short_address(&public_key_bytes_compressed)
 }
@@ -258,7 +262,7 @@ fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
 
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-fn public_key_to_short_address_bytes(public_key: &PublicKey) -> io::Result<Vec<u8>> {
+pub fn public_key_to_short_address_bytes(public_key: &PublicKey) -> io::Result<Vec<u8>> {
     let public_key_bytes_compressed = public_key.serialize();
     bytes_to_short_address_bytes(&public_key_bytes_compressed)
 }
@@ -1226,6 +1230,138 @@ fn test_key() {
     assert_eq!(
         random_key.eth_address,
         "0x65505c554F316186691375b59D7E5d70A533620E"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-24jUJ9vZexUM6expyMcT48LBx27k1m7xpraoV62oSQAHdziao5")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "8c2bae69b0e1f6f3a5e784504ee93279226f997c5a6771b9bd6b881a8fee1e9d"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "Q4MzFZZDPHRPAHFeDs3NiyyaZDvxHKivf"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1lnk637g0edwnqc2tn8tel39652fswa3xmgyghf"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1lnk637g0edwnqc2tn8tel39652fswa3xmgyghf"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1lnk637g0edwnqc2tn8tel39652fswa3xmgyghf"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1lnk637g0edwnqc2tn8tel39652fswa3xgjkjsu"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1lnk637g0edwnqc2tn8tel39652fswa3xgjkjsu"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1lnk637g0edwnqc2tn8tel39652fswa3xgjkjsu"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x99b9DEA54C48Dfea6aA9A4Ca4623633EE04ddbB5"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-2MMvUMsxx6zsHSNXJdFD8yc5XkancvwyKPwpw4xUK3TCGDuNBY")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "b1ed77ad48555d49f03a7465f0685a7d86bfd5f3a3ccf1be01971ea8dec5471c"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "B6D4v1VtPYLbiUvYXtW4Px8oE9imC2vGW"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1d6kkj0qh4wcmus3tk59npwt3rluc6en78w0wqa"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1d6kkj0qh4wcmus3tk59npwt3rluc6en78w0wqa"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1d6kkj0qh4wcmus3tk59npwt3rluc6en78w0wqa"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1d6kkj0qh4wcmus3tk59npwt3rluc6en755a58g"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1d6kkj0qh4wcmus3tk59npwt3rluc6en755a58g"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1d6kkj0qh4wcmus3tk59npwt3rluc6en755a58g"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x7464A61A3CBD2D6bD6a367D3243029F3638246CE"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-cxb7KpGWhDMALTjNNSJ7UQkkomPesyWAPUaWRGdyeBNzR6f35")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "51a5e21237263396a5dfce60496d0ca3829d23fd33c38e6d13ae53b4810df9ca"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "P5wdRuZeaDt28eHMP5S3w9ZdoBfo7wuzF"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax17fpqs358de5lgu7a5ftpw2t8axf0pm33g6kyqx"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax17fpqs358de5lgu7a5ftpw2t8axf0pm33g6kyqx"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax17fpqs358de5lgu7a5ftpw2t8axf0pm33g6kyqx"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom17fpqs358de5lgu7a5ftpw2t8axf0pm33mqy78n"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom17fpqs358de5lgu7a5ftpw2t8axf0pm33mqy78n"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom17fpqs358de5lgu7a5ftpw2t8axf0pm33mqy78n"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x2bf91d42766c80Cb56fF482031b247EeC3792cCd"
     );
 }
 

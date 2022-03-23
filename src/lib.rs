@@ -452,7 +452,7 @@ impl Spec {
                             key::Key::generate().expect("unexpected key generate failure")
                         }
                     };
-                    let info = k.to_info(network_id).expect("unexpected to_info failure");
+                    let info = k.info(network_id).expect("unexpected to_info failure");
                     seed_keys.push(info);
                 }
                 (None, seed_keys)
