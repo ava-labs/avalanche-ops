@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use sha3::Keccak256;
 
 use crate::{
-    avalanche::types::{constants, formatting},
+    avalanche::{avalanchego::constants, types::formatting},
     utils::hash,
     utils::prefix,
 };

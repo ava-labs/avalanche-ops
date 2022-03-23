@@ -17,10 +17,9 @@ use avalanche_ops::{
     avalanche::{
         avalanchego::{
             api::{health, metrics},
-            genesis as avalanchego_genesis,
+            constants, genesis as avalanchego_genesis,
         },
         node,
-        types::constants,
     },
     aws::{self, cloudwatch, ec2, envelope, kms, s3},
     utils::{bash, cert, compress, random},
