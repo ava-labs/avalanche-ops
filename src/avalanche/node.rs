@@ -10,7 +10,9 @@ use openssl::x509::X509;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    avalanche::{avalanchego::config as avalanchego_config, coreth::config as coreth_config, key},
+    avalanche::{
+        avalanchego::config as avalanchego_config, coreth::config as coreth_config, types::key,
+    },
     utils::compress,
 };
 

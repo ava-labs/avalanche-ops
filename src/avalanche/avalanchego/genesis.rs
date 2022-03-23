@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     avalanche::{
-        avalanchego::config as avalanchego_config, coreth::genesis as coreth_genesis, key,
+        avalanchego::config as avalanchego_config, coreth::genesis as coreth_genesis, types::key,
     },
     utils::prefix,
 };

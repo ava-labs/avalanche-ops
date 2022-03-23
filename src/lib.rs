@@ -22,10 +22,10 @@ use crate::utils::{id, prefix, random, time};
 pub mod avalanche;
 use crate::avalanche::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
-    constants,
     coreth::config as coreth_config,
-    key, node,
+    node,
     subnet_evm::genesis as subnet_evm_genesis,
+    types::{constants, key},
 };
 
 /// ref. https://doc.rust-lang.org/reference/items/modules.html

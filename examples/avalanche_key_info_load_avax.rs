@@ -3,7 +3,7 @@ use std::env::args;
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::avalanche::key;
+use avalanche_ops::avalanche::types::key;
 
 /// cargo run --example avalanche_key_info_load_avax -- PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN 1
 /// cargo run --example avalanche_key_info_load_avax -- PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN 9999

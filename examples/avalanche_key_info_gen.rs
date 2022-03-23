@@ -1,7 +1,7 @@
 use std::env::args;
 
 extern crate avalanche_ops;
-use avalanche_ops::avalanche::key;
+use avalanche_ops::avalanche::types::key;
 
 /// cargo run --example avalanche_key_info_gen -- 9999 /tmp/key.json
 fn main() {

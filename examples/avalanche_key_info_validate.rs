@@ -3,7 +3,7 @@ use std::env::args;
 use log::info;
 
 extern crate avalanche_ops;
-use avalanche_ops::avalanche::key;
+use avalanche_ops::avalanche::types::key;
 
 /// cargo run --example avalanche_key_info_validate -- ./artifacts/ewoq.key.json 9999
 fn main() {

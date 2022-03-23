@@ -6,7 +6,7 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 
-use avalanche_ops::avalanche::vm;
+use avalanche_ops::avalanche::types::vm;
 
 pub const NAME: &str = "vm-id";
 
