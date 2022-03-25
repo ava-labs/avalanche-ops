@@ -1,5 +1,6 @@
 use clap::Command;
 
+mod get_utxos;
 mod vm_id;
 
 const APP_NAME: &str = "subnetctl";
@@ -18,7 +19,7 @@ See https://github.com/ava-labs/subnet-cli.
 
 ",
         )
-        .subcommands(vec![vm_id::command()])
+        .subcommands(vec![vm_id::command(), get_utxos::command()])
         .get_matches();
 
     match matches.subcommand() {
@@ -31,6 +32,24 @@ See https://github.com/ava-labs/subnet-cli.
                 name: sub_matches.value_of("NAME").unwrap_or("").to_string(),
             };
             vm_id::execute(opt).unwrap();
+        }
+
+        Some((get_utxos::NAME, sub_matches)) => {
+            let opt = get_utxos::Option {
+                log_level: sub_matches
+                    .value_of("LOG_LEVEL")
+                    .unwrap_or("info")
+                    .to_string(),
+                http_rpc_ep: sub_matches
+                    .value_of("HTTP_RPC_ENDPOINT")
+                    .unwrap_or("")
+                    .to_string(),
+                paddr: sub_matches
+                    .value_of("P_CHAIN_ADDRESS")
+                    .unwrap_or("")
+                    .to_string(),
+            };
+            get_utxos::execute(opt).unwrap();
         }
 
         _ => unreachable!("unknown subcommand"),
