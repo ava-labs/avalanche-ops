@@ -17,8 +17,14 @@ fn main() {
     let paddr = args().nth(2).expect("no x-chain address given");
 
     let rt = Runtime::new().unwrap();
+
     let resp = rt
         .block_on(platform::get_balance(&url, "/ext/bc/P", &paddr))
         .expect("failed to get balance");
-    info!("response: {:?}", resp);
+    info!("get_balance response: {:?}", resp);
+
+    let resp = rt
+        .block_on(platform::get_utxos(&url, "/ext/bc/P", &paddr))
+        .expect("failed to get UTXOs");
+    info!("get_utxos response: {:?}", resp);
 }
