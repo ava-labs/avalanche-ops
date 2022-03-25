@@ -11,5 +11,6 @@ pub mod prefix;
 pub mod prometheus;
 pub mod random;
 pub mod rfc3339;
+pub mod secp256k1r;
 pub mod time;
 pub mod vector;
