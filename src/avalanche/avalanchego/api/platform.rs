@@ -299,3 +299,166 @@ fn test_convert() {
     };
     assert_eq!(parsed, expected);
 }
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct GetUtxosRequest {
+    pub addresses: Vec<String>,
+    pub limit: u32,
+    pub encoding: String,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct GetUtxosResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<GetUtxosResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct EndIndex {
+    pub address: Vec<String>,
+    pub utxo: String,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct GetUtxosResult {
+    #[serde(rename = "numFetched", skip_serializing_if = "Option::is_none")]
+    pub num_fetched: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utxos: Option<Vec<String>>,
+    #[serde(rename = "endIndex", skip_serializing_if = "Option::is_none")]
+    pub end_index: Option<EndIndex>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub encoding: Option<String>,
+}
+
+impl Default for GetUtxosResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetUtxosResult {
+    pub fn default() -> Self {
+        Self {
+            num_fetched: None,
+            utxos: None,
+            end_index: None,
+            encoding: None,
+        }
+    }
+}
+
+/// e.g., "platform.getUTXOs" on "http://[ADDR]:9650" and "/ext/bc/P" path.
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
+    info!("getting UTXOs for {} via {} {}", paddr, url, path);
+
+    let mut data = DataForGetUtxos::default();
+    data.method = String::from("platform.getUTXOs");
+
+    let params = GetUtxosRequest {
+        addresses: vec![paddr.to_string()],
+        limit: 100,
+        encoding: String::from("hex"),
+    };
+    data.params = Some(params);
+
+    let d = data.encode_json()?;
+
+    let resp: GetUtxosResponse = {
+        if url.starts_with("https") {
+            let joined = http::join_uri(url, path)?;
+
+            // TODO: implement this with native Rust
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg("-X POST");
+            cmd.arg("--header 'content-type:application/json;'");
+            cmd.arg(format!("--data '{}'", d));
+            cmd.arg(joined.as_str());
+
+            let output = cmd.output()?;
+            match serde_json::from_slice(&output.stdout) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        } else {
+            let req = http::create_json_post(url, path, &d)?;
+            let buf = match http::read_bytes(
+                req,
+                Duration::from_secs(5),
+                url.starts_with("https"),
+                false,
+            )
+            .await
+            {
+                Ok(u) => u,
+                Err(e) => return Err(e),
+            };
+            match serde_json::from_slice(&buf) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        }
+    };
+
+    Ok(resp)
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/issuing-api-calls
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct DataForGetUtxos {
+    pub jsonrpc: String,
+    pub id: u32,
+    pub method: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<GetUtxosRequest>,
+}
+
+impl Default for DataForGetUtxos {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl DataForGetUtxos {
+    pub fn default() -> Self {
+        Self {
+            jsonrpc: String::from(jsonrpc::DEFAULT_VERSION),
+            id: jsonrpc::DEFAULT_ID,
+            method: String::new(),
+            params: None,
+        }
+    }
+
+    pub fn encode_json(&self) -> io::Result<String> {
+        match serde_json::to_string(&self) {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to serialize to JSON {}", e),
+                ));
+            }
+        }
+    }
+}
