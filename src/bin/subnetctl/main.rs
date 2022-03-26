@@ -1,6 +1,9 @@
 use clap::Command;
 
+use avalanche_ops::utils::rfc3339;
+
 mod add;
+mod create;
 mod get_utxos;
 mod vm_id;
 
@@ -20,7 +23,12 @@ See https://github.com/ava-labs/subnet-cli.
 
 ",
         )
-        .subcommands(vec![vm_id::command(), add::command(), get_utxos::command()])
+        .subcommands(vec![
+            vm_id::command(),
+            add::command(),
+            create::command(),
+            get_utxos::command(),
+        ])
         .get_matches();
 
     match matches.subcommand() {
@@ -37,6 +45,17 @@ See https://github.com/ava-labs/subnet-cli.
 
         Some((add::NAME, sub_matches)) => match sub_matches.subcommand() {
             Some((add::validator::NAME, sub_sub_matches)) => {
+                let stake_amount = sub_sub_matches.value_of("STAKE_AMOUNT").unwrap_or("");
+                let stake_amount = stake_amount.parse::<u64>().unwrap();
+
+                let valiate_reward_fee_percent = sub_sub_matches
+                    .value_of("VALIDATE_REWARD_FEE_PERCENT")
+                    .unwrap_or("");
+                let valiate_reward_fee_percent = valiate_reward_fee_percent.parse::<u32>().unwrap();
+
+                let validate_end = sub_sub_matches.value_of("VALIDATE_END").unwrap_or("");
+                let validate_end = rfc3339::parse(validate_end).unwrap();
+
                 let opt = add::validator::Option {
                     log_level: sub_sub_matches
                         .value_of("LOG_LEVEL")
@@ -46,6 +65,9 @@ See https://github.com/ava-labs/subnet-cli.
                         .value_of("HTTP_RPC_ENDPOINT")
                         .unwrap_or("")
                         .to_string(),
+                    stake_amount,
+                    validate_end,
+                    valiate_reward_fee_percent,
                 };
                 add::validator::execute(opt).unwrap();
             }
@@ -61,6 +83,36 @@ See https://github.com/ava-labs/subnet-cli.
                         .to_string(),
                 };
                 add::subnet_validator::execute(opt).unwrap();
+            }
+            _ => unreachable!("unknown subcommand"),
+        },
+
+        Some((create::NAME, sub_matches)) => match sub_matches.subcommand() {
+            Some((create::subnet::NAME, sub_sub_matches)) => {
+                let opt = create::subnet::Option {
+                    log_level: sub_sub_matches
+                        .value_of("LOG_LEVEL")
+                        .unwrap_or("info")
+                        .to_string(),
+                    http_rpc_ep: sub_sub_matches
+                        .value_of("HTTP_RPC_ENDPOINT")
+                        .unwrap_or("")
+                        .to_string(),
+                };
+                create::subnet::execute(opt).unwrap();
+            }
+            Some((create::blockchain::NAME, sub_sub_matches)) => {
+                let opt = create::blockchain::Option {
+                    log_level: sub_sub_matches
+                        .value_of("LOG_LEVEL")
+                        .unwrap_or("info")
+                        .to_string(),
+                    http_rpc_ep: sub_sub_matches
+                        .value_of("HTTP_RPC_ENDPOINT")
+                        .unwrap_or("")
+                        .to_string(),
+                };
+                create::blockchain::execute(opt).unwrap();
             }
             _ => unreachable!("unknown subcommand"),
         },
