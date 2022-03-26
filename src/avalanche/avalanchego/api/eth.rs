@@ -1,5 +1,6 @@
 use std::{
     io::{self, Error, ErrorKind},
+    path::Path,
     process::Command,
     string::String,
     time::Duration,
@@ -25,13 +26,17 @@ pub struct GetBalanceResponse {
 
 /// e.g., "eth_getBalance" on "http://[ADDR]:9650" and "/ext/bc/C/rpc" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance
-pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
-    info!("getting balance for {} via {} {}", paddr, url, path);
+pub async fn get_balance(url: &str, path: &str, eth_addr: &str) -> io::Result<GetBalanceResponse> {
+    info!(
+        "getting balances for {} via {:?}",
+        eth_addr,
+        Path::new(url).join(path)
+    );
 
     let mut data = jsonrpc::DataWithParamsArray::default();
     data.method = String::from("eth_getBalance");
 
-    let params = vec![String::from(paddr), "latest".to_string()];
+    let params = vec![String::from(eth_addr), "latest".to_string()];
     data.params = Some(params);
 
     let d = data.encode_json()?;
