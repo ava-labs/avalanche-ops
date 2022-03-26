@@ -7,6 +7,7 @@ pub mod import;
 
 use crate::avalanche::types::{avax, ids, secp256k1fx};
 
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#Validator
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Validator {
     pub node_id: ids::ShortId,

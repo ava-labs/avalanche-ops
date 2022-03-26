@@ -7,9 +7,9 @@ use std::{
     time::Duration,
 };
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use log::info;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
 use crate::utils::{http, rfc3339};
 
@@ -36,30 +36,8 @@ pub struct CheckResult {
     pub duration: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub contiguous_failures: Option<i64>,
-    #[serde(default, deserialize_with = "format_date")]
+    #[serde(default, deserialize_with = "rfc3339::format_date")]
     pub time_of_first_failure: Option<DateTime<Utc>>,
-}
-
-fn datefmt<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    // ref. https://docs.rs/chrono/0.4.19/chrono/struct.DateTime.html#method.parse_from_rfc3339
-    match DateTime::parse_from_rfc3339(&s).map_err(serde::de::Error::custom) {
-        Ok(dt) => Ok(Utc.from_utc_datetime(&dt.naive_utc())),
-        Err(e) => Err(e),
-    }
-}
-
-fn format_date<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper(#[serde(deserialize_with = "datefmt")] DateTime<Utc>);
-    let v = Option::deserialize(deserializer)?;
-    Ok(v.map(|Wrapper(a)| a))
 }
 
 impl Response {
