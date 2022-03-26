@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
-    path::Path,
     process::Command,
     string::String,
     sync::Arc,
@@ -92,12 +91,11 @@ pub async fn check(u: Arc<String>, liveness: bool) -> io::Result<Response> {
             "ext/health"
         }
     };
-    info!("checking for {:?}", Path::new(u.as_str()).join(url_path));
+    let joined = http::join_uri(u.as_str(), url_path)?;
+    info!("checking for {:?}", joined);
 
     let resp = {
         if u.starts_with("https") {
-            let joined = http::join_uri(u.as_str(), url_path)?;
-
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
             let mut cmd = Command::new("curl");

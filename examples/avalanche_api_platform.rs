@@ -7,6 +7,14 @@ extern crate avalanche_ops;
 use avalanche_ops::avalanche::avalanchego::api::platform;
 
 /// cargo run --example avalanche_api_platform -- [HTTP RPC ENDPOINT] P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
+///
+/// ```
+/// # or run this
+/// subnetctl get-utxos \
+/// --http-rpc-endpoint [HTTP RPC ENDPOINT] \
+/// --p-chain-address P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
+/// ```
+///
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
