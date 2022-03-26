@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
+    path::Path,
     process::Command,
     string::String,
     time::Duration,
@@ -59,7 +60,11 @@ impl GetBalanceResult {
 /// e.g., "platform.getBalance" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
 pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
-    info!("getting balance for {} via {} {}", paddr, url, path);
+    info!(
+        "getting balances for {} via {:?}",
+        paddr,
+        Path::new(url).join(path)
+    );
 
     let mut data = jsonrpc::Data::default();
     data.method = String::from("platform.getBalance");
@@ -247,7 +252,7 @@ impl _GetBalanceResponse {
 }
 
 #[test]
-fn test_convert() {
+fn test_convert_get_balance() {
     // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
     let resp: _GetBalanceResponse = serde_json::from_str(
         "
@@ -322,7 +327,7 @@ pub struct GetUtxosResponse {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct EndIndex {
-    pub address: Vec<String>,
+    pub address: String,
     pub utxo: String,
 }
 
@@ -330,7 +335,7 @@ pub struct EndIndex {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetUtxosResult {
     #[serde(rename = "numFetched", skip_serializing_if = "Option::is_none")]
-    pub num_fetched: Option<u64>,
+    pub num_fetched: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub utxos: Option<Vec<String>>,
     #[serde(rename = "endIndex", skip_serializing_if = "Option::is_none")]
@@ -356,10 +361,51 @@ impl GetUtxosResult {
     }
 }
 
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _GetUtxosResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<_GetUtxosResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _GetUtxosResult {
+    #[serde(rename = "numFetched", skip_serializing_if = "Option::is_none")]
+    pub num_fetched: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utxos: Option<Vec<String>>,
+    #[serde(rename = "endIndex", skip_serializing_if = "Option::is_none")]
+    pub end_index: Option<EndIndex>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub encoding: Option<String>,
+}
+
 /// e.g., "platform.getUTXOs" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+///
+/// ```
+/// curl -X POST --data '{
+///     "jsonrpc":"2.0",
+///     "id"     :1,
+///     "method" :"platform.getUTXOs",
+///     "params" :{
+///         "addresses":["P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5"],
+///         "limit":5,
+///         "encoding": "hex"
+///     }
+/// }' -H 'content-type:application/json;' [HTTP RPC ENDPOINT]/ext/bc/P
+/// ```
+///
 pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
-    info!("getting UTXOs for {} via {} {}", paddr, url, path);
+    info!(
+        "getting UTXOs for {} via {} {:?}",
+        paddr,
+        url,
+        Path::new(url).join(path)
+    );
 
     let mut data = DataForGetUtxos::default();
     data.method = String::from("platform.getUTXOs");
@@ -367,13 +413,13 @@ pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxo
     let params = GetUtxosRequest {
         addresses: vec![paddr.to_string()],
         limit: 100,
-        encoding: String::from("hex"),
+        encoding: String::from("cb58"),
     };
     data.params = Some(params);
 
     let d = data.encode_json()?;
 
-    let resp: GetUtxosResponse = {
+    let resp: _GetUtxosResponse = {
         if url.starts_with("https") {
             let joined = http::join_uri(url, path)?;
 
@@ -421,7 +467,8 @@ pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxo
         }
     };
 
-    Ok(resp)
+    let parsed = resp.convert()?;
+    Ok(parsed)
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/issuing-api-calls
@@ -461,4 +508,124 @@ impl DataForGetUtxos {
             }
         }
     }
+}
+
+impl _GetUtxosResponse {
+    fn convert(&self) -> io::Result<GetUtxosResponse> {
+        let mut result = GetUtxosResult::default();
+        if self.result.is_some()
+            && self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .num_fetched
+                .is_some()
+        {
+            let num_fetched = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .num_fetched
+                .expect("unexpected None num_fetched");
+            let num_fetched = num_fetched.parse::<u32>().unwrap();
+            result.num_fetched = Some(num_fetched);
+        }
+
+        if self.result.is_some()
+            && self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .utxos
+                .is_some()
+        {
+            let utxos = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .utxos
+                .expect("unexpected None utxos");
+            result.utxos = Some(utxos);
+        }
+
+        if self.result.is_some()
+            && self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .end_index
+                .is_some()
+        {
+            let end_index = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .end_index
+                .expect("unexpected None end_index");
+            result.end_index = Some(end_index);
+        }
+
+        if self.result.is_some()
+            && self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .encoding
+                .is_some()
+        {
+            let encoding = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .encoding
+                .expect("unexpected None encoding");
+            result.encoding = Some(encoding);
+        }
+
+        Ok(GetUtxosResponse {
+            jsonrpc: self.jsonrpc.clone(),
+            id: self.id,
+            result: Some(result),
+        })
+    }
+}
+
+#[test]
+fn test_convert_get_utxos() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+    let resp: _GetUtxosResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"numFetched\": \"0\",
+        \"utxos\": [],
+        \"endIndex\": {
+            \"address\": \"P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5\",
+            \"utxo\": \"11111111111111111111111111111111LpoYY\"
+        },
+        \"encoding\":\"hex\"
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetUtxosResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetUtxosResult {
+            num_fetched: Some(0),
+            utxos: None,
+            end_index: Some(EndIndex {
+                address: String::from("P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5"),
+                utxo: String::from("11111111111111111111111111111111LpoYY"),
+            }),
+            encoding: Some(String::from("hex")),
+        }),
+    };
+    assert_eq!(parsed, expected);
 }

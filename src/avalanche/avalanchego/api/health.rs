@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
+    path::Path,
     process::Command,
     string::String,
     sync::Arc,
@@ -91,7 +92,7 @@ pub async fn check(u: Arc<String>, liveness: bool) -> io::Result<Response> {
             "ext/health"
         }
     };
-    info!("checking {}/{}", u, url_path);
+    info!("checking for {:?}", Path::new(u.as_str()).join(url_path));
 
     let resp = {
         if u.starts_with("https") {

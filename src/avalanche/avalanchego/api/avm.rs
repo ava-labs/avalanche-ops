@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
+    path::Path,
     process::Command,
     string::String,
     time::Duration,
@@ -50,7 +51,11 @@ impl GetBalanceResult {
 /// e.g., "avm.getBalance" on "http://[ADDR]:9650" and "/ext/bc/X" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
 pub async fn get_balance(url: &str, path: &str, xaddr: &str) -> io::Result<GetBalanceResponse> {
-    info!("getting balance for {} via {} {}", xaddr, url, path);
+    info!(
+        "getting balances for {} via {:?}",
+        xaddr,
+        Path::new(url).join(path)
+    );
 
     let mut data = jsonrpc::Data::default();
     data.method = String::from("avm.getBalance");
