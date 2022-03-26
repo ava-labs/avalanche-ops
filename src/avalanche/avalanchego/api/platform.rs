@@ -389,7 +389,7 @@ pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxo
     let params = GetUtxosRequest {
         addresses: vec![paddr.to_string()],
         limit: 100,
-        encoding: String::from("cb58"),
+        encoding: String::from("hex"), // don't use "cb58"
     };
     data.params = Some(params);
 
@@ -564,8 +564,9 @@ impl _GetUtxosResponse {
     }
 }
 
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- avalanche::avalanchego::api::platform::test_convert_get_utxos_empty --exact --show-output
 #[test]
-fn test_convert_get_utxos() {
+fn test_convert_get_utxos_empty() {
     // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
     let resp: _GetUtxosResponse = serde_json::from_str(
         "
@@ -597,6 +598,51 @@ fn test_convert_get_utxos() {
             end_index: Some(EndIndex {
                 address: String::from("P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5"),
                 utxo: String::from("11111111111111111111111111111111LpoYY"),
+            }),
+            encoding: Some(String::from("hex")),
+        }),
+    };
+    assert_eq!(parsed, expected);
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- avalanche::avalanchego::api::platform::test_convert_get_utxos_non_empty --exact --show-output
+#[test]
+fn test_convert_get_utxos_non_empty() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+    let resp: _GetUtxosResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"numFetched\": \"1\",
+        \"utxos\": [
+            \"0x000000000000000000000000000000000000000000000000000000000000000000000000000088eec2e099c6a528e689618e8721e04ae85ea574c7a15a7968644d14d54780140000000702c68af0bb1400000000000000000000000000010000000165844a05405f3662c1928142c6c2a783ef871de939b564db\"
+        ],
+        \"endIndex\": {
+            \"address\": \"P-custom1vkzy5p2qtumx9svjs9pvds48s0hcw80f962vrs\",
+            \"utxo\": \"LUC1cmcxnfNR9LdkACS2ccGKLEK7SYqB4gLLTycQfg1koyfSq\"
+        },
+        \"encoding\": \"hex\"
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetUtxosResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetUtxosResult {
+            num_fetched: Some(1),
+            utxos: Some(vec![
+                String::from("0x000000000000000000000000000000000000000000000000000000000000000000000000000088eec2e099c6a528e689618e8721e04ae85ea574c7a15a7968644d14d54780140000000702c68af0bb1400000000000000000000000000010000000165844a05405f3662c1928142c6c2a783ef871de939b564db"),
+            ]),
+            end_index: Some(EndIndex {
+                address: String::from("P-custom1vkzy5p2qtumx9svjs9pvds48s0hcw80f962vrs"),
+                utxo: String::from("LUC1cmcxnfNR9LdkACS2ccGKLEK7SYqB4gLLTycQfg1koyfSq"),
             }),
             encoding: Some(String::from("hex")),
         }),

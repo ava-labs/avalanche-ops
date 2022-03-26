@@ -1,8 +1,8 @@
 use std::io::{self, Error, ErrorKind};
 
 use crate::{
-    avalanche::types::{codec, ids, packer, secp256k1fx},
-    utils::hash,
+    avalanche::types::{codec, formatting, ids, packer, secp256k1fx},
+    utils::{hash, prefix},
 };
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
@@ -86,6 +86,140 @@ fn test_utxo_id() {
     ];
     let expected_id = ids::Id::new(&expected_id);
     assert_eq!(utxo_id.id, expected_id);
+}
+
+/// Do not parse the internal tests.
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct Utxo {
+    pub tx_id: ids::Id,
+    pub output_index: u32,
+    pub asset_id: ids::Id,
+    pub out: secp256k1fx::TransferOutput,
+}
+
+impl Default for Utxo {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl Utxo {
+    pub fn default() -> Self {
+        Self {
+            tx_id: ids::Id::empty(),
+            output_index: 0,
+            asset_id: ids::Id::empty(),
+            out: secp256k1fx::TransferOutput::default(),
+        }
+    }
+
+    /// Parses the raw hex-encoded data from the "getUTXOs" API.
+    pub fn unpack_hex(d: &str) -> io::Result<Self> {
+        let d = prefix::strip_0x(d);
+        let decoded = formatting::decode_hex_with_checksum(d.as_bytes())?;
+        Self::unpack(&decoded)
+    }
+
+    /// Parses raw bytes to "Utxo".
+    /// It assumes the data are already decoded from "hex".
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
+    pub fn unpack(d: &[u8]) -> io::Result<Self> {
+        let packer = packer::Packer::load_bytes_for_unpack(d.len() + 1024, d);
+
+        let _codec_version = packer.unpack_u16();
+
+        // must unpack in the order of struct
+        let tx_id_bytes = match packer.unpack_bytes(ids::ID_LEN) {
+            Some(b) => b,
+            None => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "failed to unpack bytes (None)",
+                ));
+            }
+        };
+        let tx_id = ids::Id::new(&tx_id_bytes);
+
+        let output_index = packer.unpack_u32();
+
+        let asset_id_bytes = match packer.unpack_bytes(ids::ID_LEN) {
+            Some(b) => b,
+            None => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "failed to unpack bytes for asset_id (None)",
+                ));
+            }
+        };
+        let asset_id = ids::Id::new(&asset_id_bytes);
+
+        let type_id_secp256k1fx_transfer_output = packer.unpack_u32();
+        assert_eq!(type_id_secp256k1fx_transfer_output, 7);
+
+        let output_amount = packer.unpack_u64();
+        let locktime = packer.unpack_u64();
+        let threshold = packer.unpack_u32();
+
+        // parse output owners for address lists
+        let addr_len = packer.unpack_u32();
+        let mut addrs: Vec<ids::ShortId> = Vec::new();
+        for _ in 0..addr_len {
+            let addr = match packer.unpack_bytes(ids::SHORT_ID_LEN) {
+                Some(b) => ids::ShortId::new(&b),
+                None => {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "failed to unpack bytes for address (None)",
+                    ));
+                }
+            };
+            addrs.push(addr);
+        }
+        let output_owners = secp256k1fx::OutputOwners {
+            locktime,
+            threshold,
+            addrs,
+        };
+        let utxo = Utxo {
+            tx_id,
+            output_index,
+            asset_id,
+            out: secp256k1fx::TransferOutput {
+                amount: output_amount,
+                output_owners,
+            },
+        };
+        Ok(utxo)
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- avalanche::types::avax::test_utxo_unpack_hex --exact --show-output
+#[test]
+fn test_utxo_unpack_hex() {
+    let d = "0x000000000000000000000000000000000000000000000000000000000000000000000000000088eec2e099c6a528e689618e8721e04ae85ea574c7a15a7968644d14d54780140000000702c68af0bb1400000000000000000000000000010000000165844a05405f3662c1928142c6c2a783ef871de939b564db";
+    let addr = ids::ShortId::new(&<Vec<u8>>::from([
+        101, 132, 74, 5, 64, 95, 54, 98, 193, 146, 129, 66, 198, 194, 167, 131, 239, 135, 29, 233,
+    ]));
+    let utxo = Utxo::unpack_hex(d).unwrap();
+    let expected = Utxo {
+        tx_id: ids::Id::empty(),
+        output_index: 0,
+        asset_id: ids::Id::new(&<Vec<u8>>::from([
+            136, 238, 194, 224, 153, 198, 165, 40, 230, 137, 97, 142, 135, 33, 224, 74, 232, 94,
+            165, 116, 199, 161, 90, 121, 104, 100, 77, 20, 213, 71, 128, 20,
+        ])),
+        out: secp256k1fx::TransferOutput {
+            amount: 200000000000000000,
+            output_owners: secp256k1fx::OutputOwners {
+                locktime: 0,
+                threshold: 1,
+                addrs: vec![addr],
+            },
+        },
+    };
+    assert_eq!(utxo, expected);
+    println!("{:?}", utxo);
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput

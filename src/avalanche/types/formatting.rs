@@ -61,6 +61,38 @@ pub fn decode_cb58_with_checksum(d: &str) -> io::Result<Vec<u8>> {
     Ok(orig.to_vec())
 }
 
+/// Implements "formatting.Decode" with "formatting.Hex".
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/formatting#Decode
+pub fn decode_hex_with_checksum(d: &[u8]) -> io::Result<Vec<u8>> {
+    let decoded = match hex::decode(d) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("failed to decode base58 ({})", e),
+            ));
+        }
+    };
+    let decoded_length = decoded.len();
+
+    // verify checksum
+    let checksum = &decoded[decoded_length - CHECKSUM_LENGTH..];
+    let orig = &decoded[..decoded_length - CHECKSUM_LENGTH];
+
+    // "hashing.Checksum" of "sha256.Sum256"
+    let orig_checksum = hash::compute_sha256(orig);
+    let orig_checksum_length = orig_checksum.len();
+    let orig_checksum = &orig_checksum[orig_checksum_length - CHECKSUM_LENGTH..];
+    if !vector::eq_u8_vectors(checksum, orig_checksum) {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("invalid checksum {:?} != {:?}", checksum, orig_checksum),
+        ));
+    }
+
+    Ok(orig.to_vec())
+}
+
 /// Implements "formatting.FormatAddress/FormatBech32".
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/formatting#FormatAddress
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/formatting#FormatBech32
