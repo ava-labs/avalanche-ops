@@ -1,5 +1,6 @@
 use clap::Command;
 
+mod add;
 mod get_utxos;
 mod vm_id;
 
@@ -19,7 +20,7 @@ See https://github.com/ava-labs/subnet-cli.
 
 ",
         )
-        .subcommands(vec![vm_id::command(), get_utxos::command()])
+        .subcommands(vec![vm_id::command(), add::command(), get_utxos::command()])
         .get_matches();
 
     match matches.subcommand() {
@@ -33,6 +34,36 @@ See https://github.com/ava-labs/subnet-cli.
             };
             vm_id::execute(opt).unwrap();
         }
+
+        Some((add::NAME, sub_matches)) => match sub_matches.subcommand() {
+            Some((add::validator::NAME, sub_sub_matches)) => {
+                let opt = add::validator::Option {
+                    log_level: sub_sub_matches
+                        .value_of("LOG_LEVEL")
+                        .unwrap_or("info")
+                        .to_string(),
+                    http_rpc_ep: sub_sub_matches
+                        .value_of("HTTP_RPC_ENDPOINT")
+                        .unwrap_or("")
+                        .to_string(),
+                };
+                add::validator::execute(opt).unwrap();
+            }
+            Some((add::subnet_validator::NAME, sub_sub_matches)) => {
+                let opt = add::subnet_validator::Option {
+                    log_level: sub_sub_matches
+                        .value_of("LOG_LEVEL")
+                        .unwrap_or("info")
+                        .to_string(),
+                    http_rpc_ep: sub_sub_matches
+                        .value_of("HTTP_RPC_ENDPOINT")
+                        .unwrap_or("")
+                        .to_string(),
+                };
+                add::subnet_validator::execute(opt).unwrap();
+            }
+            _ => unreachable!("unknown subcommand"),
+        },
 
         Some((get_utxos::NAME, sub_matches)) => {
             let opt = get_utxos::Option {

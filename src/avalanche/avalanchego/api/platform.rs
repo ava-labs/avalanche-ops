@@ -379,20 +379,6 @@ pub struct _GetUtxosResult {
 
 /// e.g., "platform.getUTXOs" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
-///
-/// ```
-/// curl -X POST --data '{
-///     "jsonrpc":"2.0",
-///     "id"     :1,
-///     "method" :"platform.getUTXOs",
-///     "params" :{
-///         "addresses":["P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5"],
-///         "limit":5,
-///         "encoding": "hex"
-///     }
-/// }' -H 'content-type:application/json;' [HTTP RPC ENDPOINT]/ext/bc/P
-/// ```
-///
 pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
     let joined = http::join_uri(url, path)?;
     info!("getting UTXOs for {} via {:?}", paddr, joined);
