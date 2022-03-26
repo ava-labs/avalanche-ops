@@ -72,6 +72,22 @@ See https://github.com/ava-labs/subnet-cli.
                 add::validator::execute(opt).unwrap();
             }
             Some((add::subnet_validator::NAME, sub_sub_matches)) => {
+                let node_ids = sub_sub_matches
+                    .value_of("NODE_IDS")
+                    .unwrap_or("")
+                    .to_string();
+                let splits: Vec<&str> = node_ids.split(',').collect();
+                let mut node_ids: Vec<String> = vec![];
+                for s in splits {
+                    node_ids.push(String::from(s));
+                }
+
+                let validate_weight = sub_sub_matches
+                    .value_of("VALIDATE_WEIGHT")
+                    .unwrap_or("")
+                    .to_string();
+                let validate_weight = validate_weight.parse::<u64>().unwrap();
+
                 let opt = add::subnet_validator::Option {
                     log_level: sub_sub_matches
                         .value_of("LOG_LEVEL")
@@ -81,6 +97,12 @@ See https://github.com/ava-labs/subnet-cli.
                         .value_of("HTTP_RPC_ENDPOINT")
                         .unwrap_or("")
                         .to_string(),
+                    subnet_id: sub_sub_matches
+                        .value_of("SUBNET_ID")
+                        .unwrap_or("")
+                        .to_string(),
+                    node_ids,
+                    validate_weight,
                 };
                 add::subnet_validator::execute(opt).unwrap();
             }
@@ -109,6 +131,19 @@ See https://github.com/ava-labs/subnet-cli.
                         .to_string(),
                     http_rpc_ep: sub_sub_matches
                         .value_of("HTTP_RPC_ENDPOINT")
+                        .unwrap_or("")
+                        .to_string(),
+                    subnet_id: sub_sub_matches
+                        .value_of("SUBNET_ID")
+                        .unwrap_or("")
+                        .to_string(),
+                    chain_name: sub_sub_matches
+                        .value_of("CHAIN_NAME")
+                        .unwrap_or("")
+                        .to_string(),
+                    vm_id: sub_sub_matches.value_of("VM_ID").unwrap_or("").to_string(),
+                    vm_genesis_path: sub_sub_matches
+                        .value_of("VM_GENESIS_PATH")
                         .unwrap_or("")
                         .to_string(),
                 };

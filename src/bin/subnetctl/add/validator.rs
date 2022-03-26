@@ -46,7 +46,7 @@ pub fn command() -> Command<'static> {
                 .possible_value("debug")
                 .possible_value("info")
                 .allow_invalid_utf8(false)
-                .default_value("info"),
+                .default_value("info")
         )
         .arg(
             Arg::new("HTTP_RPC_ENDPOINT")
@@ -55,7 +55,7 @@ pub fn command() -> Command<'static> {
                 .help("HTTP RPC endpoint")
                 .required(true)
                 .takes_value(true)
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
         )
         .arg(
             Arg::new("STAKE_AMOUNT")
@@ -64,8 +64,8 @@ pub fn command() -> Command<'static> {
                 .help("stake amount denominated in nano AVAX (minimum amount that a validator must stake is 2,000 AVAX)")
                 .required(true)
                 .takes_value(true)
+                .allow_invalid_utf8(false)
                 .default_value("2000000000000")
-                .allow_invalid_utf8(false),
         )
         .arg(
             Arg::new("VALIDATE_END")
@@ -75,7 +75,7 @@ pub fn command() -> Command<'static> {
                 .required(true)
                 .takes_value(true)
                 .default_value(*DEFAULT_VALIATE_END)
-                .allow_invalid_utf8(false),
+                .allow_invalid_utf8(false)
         )
         .arg(
             Arg::new("VALIDATE_REWARD_FEE_PERCENT")
@@ -84,8 +84,8 @@ pub fn command() -> Command<'static> {
                 .help("percentage of fee that the validator will take rewards from its delegators")
                 .required(true)
                 .takes_value(true)
+                .allow_invalid_utf8(false)
                 .default_value("2")
-                .allow_invalid_utf8(false),
         )
 }
 
