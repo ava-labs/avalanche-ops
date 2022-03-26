@@ -32,11 +32,51 @@ pub fn command() -> Command<'static> {
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
+        .arg(
+            Arg::new("SUBNET_ID")
+                .long("subnet-id")
+                .short('s')
+                .help("subnet ID (must be formatted in ids.Id)")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("CHAIN_NAME")
+                .long("chain-name")
+                .short('c')
+                .help("chain name (must not include special characters)")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("VM_ID")
+                .long("vm-id")
+                .short('i')
+                .help("VM ID (must be formatted in ids.Id)")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("VM_GENESIS_PATH")
+                .long("vm-genesis-path")
+                .short('g')
+                .help("VM genesis file path")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
 }
 
 pub struct Option {
     pub log_level: String,
     pub http_rpc_ep: String,
+    pub subnet_id: String,
+    pub chain_name: String,
+    pub vm_id: String,
+    pub vm_genesis_path: String,
 }
 
 pub fn execute(opt: Option) -> io::Result<()> {
