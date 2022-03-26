@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
-    path::Path,
     process::Command,
     string::String,
     time::Duration,
@@ -60,11 +59,8 @@ impl GetBalanceResult {
 /// e.g., "platform.getBalance" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
 pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
-    info!(
-        "getting balances for {} via {:?}",
-        paddr,
-        Path::new(url).join(path)
-    );
+    let joined = http::join_uri(url, path)?;
+    info!("getting balances for {} via {:?}", paddr, joined);
 
     let mut data = jsonrpc::Data::default();
     data.method = String::from("platform.getBalance");
@@ -77,8 +73,6 @@ pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBa
 
     let resp: _GetBalanceResponse = {
         if url.starts_with("https") {
-            let joined = http::join_uri(url, path)?;
-
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
             let mut cmd = Command::new("curl");
@@ -400,12 +394,8 @@ pub struct _GetUtxosResult {
 /// ```
 ///
 pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
-    info!(
-        "getting UTXOs for {} via {} {:?}",
-        paddr,
-        url,
-        Path::new(url).join(path)
-    );
+    let joined = http::join_uri(url, path)?;
+    info!("getting UTXOs for {} via {:?}", paddr, joined);
 
     let mut data = DataForGetUtxos::default();
     data.method = String::from("platform.getUTXOs");
@@ -421,8 +411,6 @@ pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxo
 
     let resp: _GetUtxosResponse = {
         if url.starts_with("https") {
-            let joined = http::join_uri(url, path)?;
-
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
             let mut cmd = Command::new("curl");

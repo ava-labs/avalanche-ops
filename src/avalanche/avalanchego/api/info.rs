@@ -82,7 +82,8 @@ impl VmVersions {
 /// e.g., "info.getNodeVersion".
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetnodeversion
 pub async fn get_node_version(url: &str) -> io::Result<GetNodeVersionResponse> {
-    info!("getting node version for {}", url);
+    let joined = http::join_uri(url, "ext/info")?;
+    info!("getting node version for {:?}", joined);
 
     let mut data = jsonrpc::DataWithParamsArray::default();
     data.method = String::from("info.getNodeVersion");
@@ -91,8 +92,6 @@ pub async fn get_node_version(url: &str) -> io::Result<GetNodeVersionResponse> {
 
     let resp: GetNodeVersionResponse = {
         if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
             let mut cmd = Command::new("curl");

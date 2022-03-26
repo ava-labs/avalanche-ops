@@ -1,6 +1,5 @@
 use std::{
     io::{self, Error, ErrorKind},
-    path::Path,
     process::Command,
     string::String,
     time::Duration,
@@ -27,11 +26,8 @@ pub struct GetBalanceResponse {
 /// e.g., "eth_getBalance" on "http://[ADDR]:9650" and "/ext/bc/C/rpc" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance
 pub async fn get_balance(url: &str, path: &str, eth_addr: &str) -> io::Result<GetBalanceResponse> {
-    info!(
-        "getting balances for {} via {:?}",
-        eth_addr,
-        Path::new(url).join(path)
-    );
+    let joined = http::join_uri(url, path)?;
+    info!("getting balances for {} via {:?}", eth_addr, joined);
 
     let mut data = jsonrpc::DataWithParamsArray::default();
     data.method = String::from("eth_getBalance");
@@ -43,8 +39,6 @@ pub async fn get_balance(url: &str, path: &str, eth_addr: &str) -> io::Result<Ge
 
     let resp: GetBalanceResponse = {
         if url.starts_with("https") {
-            let joined = http::join_uri(url, path)?;
-
             // TODO: implement this with native Rust
             info!("sending via curl --insecure");
             let mut cmd = Command::new("curl");
