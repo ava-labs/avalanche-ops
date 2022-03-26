@@ -66,11 +66,22 @@ impl Packer {
 
     /// Create a new packer from the existing bytes.
     /// Resets the offset to the end of the existing bytes.
-    pub fn from_bytes(max_size: usize, b: &[u8]) -> Self {
+    pub fn load_bytes_for_pack(max_size: usize, b: &[u8]) -> Self {
         Self {
             max_size,
             bytes: Cell::new(BytesMut::from(b)),
             offset: Cell::new(b.len()),
+            error: Cell::new(None),
+        }
+    }
+
+    /// Create a new packer from the existing bytes.
+    /// Resets the offset to the beginning of the existing bytes.
+    pub fn load_bytes_for_unpack(max_size: usize, b: &[u8]) -> Self {
+        Self {
+            max_size,
+            bytes: Cell::new(BytesMut::from(b)),
+            offset: Cell::new(0),
             error: Cell::new(None),
         }
     }
@@ -647,7 +658,7 @@ fn test_expand() {
 #[test]
 fn test_packer_from_bytes() {
     let s: Vec<u8> = vec![0x01, 0x02, 0x03];
-    let packer = Packer::from_bytes(10000, &s);
+    let packer = Packer::load_bytes_for_pack(10000, &s);
     packer.pack_byte(0x10);
     assert!(!packer.errored());
     assert_eq!(packer.bytes_len(), 4);
