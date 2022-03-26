@@ -116,6 +116,7 @@ impl Utxo {
 
     /// Parses the raw hex-encoded data from the "getUTXOs" API.
     pub fn unpack_hex(d: &str) -> io::Result<Self> {
+        // ref. "utils/formatting.encode" prepends "0x" for "Hex" encoding
         let d = prefix::strip_0x(d);
         let decoded = formatting::decode_hex_with_checksum(d.as_bytes())?;
         Self::unpack(&decoded)
