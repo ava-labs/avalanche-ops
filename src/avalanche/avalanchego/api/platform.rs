@@ -607,7 +607,7 @@ fn test_convert_get_utxos() {
         id: 1,
         result: Some(GetUtxosResult {
             num_fetched: Some(0),
-            utxos: None,
+            utxos: Some(Vec::new()),
             end_index: Some(EndIndex {
                 address: String::from("P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5"),
                 utxo: String::from("11111111111111111111111111111111LpoYY"),
