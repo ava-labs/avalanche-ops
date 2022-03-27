@@ -14,6 +14,181 @@ use crate::{
     utils::http,
 };
 
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct GetHeightResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<GetHeightResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct GetHeightResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<u64>,
+}
+
+impl Default for GetHeightResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetHeightResult {
+    pub fn default() -> Self {
+        Self { height: None }
+    }
+}
+
+/// e.g., "platform.getHeight" on "http://[ADDR]:9650" and "/ext/bc/P" path.
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
+pub async fn get_height(url: &str, path: &str) -> io::Result<GetHeightResponse> {
+    let joined = http::join_uri(url, path)?;
+    info!("getting height for {:?}", joined);
+
+    let mut data = jsonrpc::Data::default();
+    data.method = String::from("platform.getHeight");
+
+    let params = HashMap::new();
+    data.params = Some(params);
+
+    let d = data.encode_json()?;
+
+    let resp: _GetHeightResponse = {
+        if url.starts_with("https") {
+            // TODO: implement this with native Rust
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg("-X POST");
+            cmd.arg("--header 'content-type:application/json;'");
+            cmd.arg(format!("--data '{}'", d));
+            cmd.arg(joined.as_str());
+
+            let output = cmd.output()?;
+            match serde_json::from_slice(&output.stdout) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        } else {
+            let req = http::create_json_post(url, path, &d)?;
+            let buf = match http::read_bytes(
+                req,
+                Duration::from_secs(5),
+                url.starts_with("https"),
+                false,
+            )
+            .await
+            {
+                Ok(u) => u,
+                Err(e) => return Err(e),
+            };
+            match serde_json::from_slice(&buf) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        }
+    };
+
+    let converted = resp.convert();
+    Ok(converted)
+}
+
+impl _GetHeightResponse {
+    fn convert(&self) -> GetHeightResponse {
+        let mut result = GetHeightResult::default();
+        if self.result.is_some() {
+            let raw_result = self.result.clone().expect("unexpected None result");
+            result = raw_result.convert();
+        }
+
+        GetHeightResponse {
+            jsonrpc: self.jsonrpc.clone(),
+            id: self.id,
+            result: Some(result),
+        }
+    }
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _GetHeightResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<_GetHeightResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _GetHeightResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<String>,
+}
+
+impl Default for _GetHeightResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl _GetHeightResult {
+    pub fn default() -> Self {
+        Self { height: None }
+    }
+
+    pub fn convert(&self) -> GetHeightResult {
+        let height = match self.height.clone() {
+            Some(v) => v,
+            None => String::from("0"),
+        };
+        let height = height.parse::<u64>().unwrap();
+        GetHeightResult {
+            height: Some(height),
+        }
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- avalanche::avalanchego::api::platform::test_get_height --exact --show-output
+#[test]
+fn test_get_height() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
+    let resp: _GetHeightResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"height\": \"0\"
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let converted = resp.convert();
+
+    let expected = GetHeightResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetHeightResult { height: Some(0) }),
+    };
+    assert_eq!(converted, expected);
+}
+
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBalanceResponse {
@@ -567,7 +742,7 @@ impl _GetUtxosResponse {
 /// RUST_LOG=debug cargo test --package avalanche-ops --lib -- avalanche::avalanchego::api::platform::test_convert_get_utxos_empty --exact --show-output
 #[test]
 fn test_convert_get_utxos_empty() {
-    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
     let resp: _GetUtxosResponse = serde_json::from_str(
         "
 
@@ -645,6 +820,784 @@ fn test_convert_get_utxos_non_empty() {
                 utxo: String::from("LUC1cmcxnfNR9LdkACS2ccGKLEK7SYqB4gLLTycQfg1koyfSq"),
             }),
             encoding: Some(String::from("hex")),
+        }),
+    };
+    assert_eq!(parsed, expected);
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct GetCurrentValidatorsResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<GetCurrentValidatorsResult>,
+}
+
+impl Default for GetCurrentValidatorsResponse {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetCurrentValidatorsResponse {
+    pub fn default() -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            id: 1,
+            result: None,
+        }
+    }
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct GetCurrentValidatorsResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validators: Option<Vec<ApiPrimaryValidator>>,
+}
+
+impl Default for GetCurrentValidatorsResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetCurrentValidatorsResult {
+    pub fn default() -> Self {
+        Self { validators: None }
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIStaker
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ApiPrimaryValidator {
+    #[serde(rename = "txID", skip_serializing_if = "Option::is_none")]
+    pub tx_id: Option<String>,
+    #[serde(rename = "startTime", skip_serializing_if = "Option::is_none")]
+    pub start_time: Option<u64>,
+    #[serde(rename = "endTime", skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<u64>,
+    #[serde(rename = "stakeAmount", skip_serializing_if = "Option::is_none")]
+    pub stake_amount: Option<u64>,
+    #[serde(rename = "nodeID", skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(rename = "rewardOwner", skip_serializing_if = "Option::is_none")]
+    pub reward_owner: Option<ApiOwner>,
+    #[serde(rename = "potentialReward", skip_serializing_if = "Option::is_none")]
+    pub potential_reward: Option<u64>,
+    #[serde(rename = "delegationFee", skip_serializing_if = "Option::is_none")]
+    pub delegation_fee: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uptime: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connected: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staked: Option<Vec<ApiUtxo>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delegators: Option<Vec<ApiPrimaryDelegator>>,
+}
+
+impl Default for ApiPrimaryValidator {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl ApiPrimaryValidator {
+    pub fn default() -> Self {
+        Self {
+            tx_id: None,
+            start_time: None,
+            end_time: None,
+            weight: None,
+            stake_amount: None,
+            node_id: None,
+            reward_owner: None,
+            potential_reward: None,
+            delegation_fee: None,
+            uptime: None,
+            connected: None,
+            staked: None,
+            delegators: None,
+        }
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIStaker
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ApiPrimaryDelegator {
+    #[serde(rename = "txID", skip_serializing_if = "Option::is_none")]
+    pub tx_id: Option<String>,
+    #[serde(rename = "startTime", skip_serializing_if = "Option::is_none")]
+    pub start_time: Option<u64>,
+    #[serde(rename = "endTime", skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<u64>,
+    #[serde(rename = "stakeAmount", skip_serializing_if = "Option::is_none")]
+    pub stake_amount: Option<u64>,
+    #[serde(rename = "nodeID", skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(rename = "rewardOwner", skip_serializing_if = "Option::is_none")]
+    pub reward_owner: Option<ApiOwner>,
+    #[serde(rename = "potentialReward", skip_serializing_if = "Option::is_none")]
+    pub potential_reward: Option<u64>,
+    #[serde(rename = "delegationFee", skip_serializing_if = "Option::is_none")]
+    pub delegation_fee: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uptime: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connected: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staked: Option<Vec<ApiUtxo>>,
+}
+
+impl Default for ApiPrimaryDelegator {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl ApiPrimaryDelegator {
+    pub fn default() -> Self {
+        Self {
+            tx_id: None,
+            start_time: None,
+            end_time: None,
+            weight: None,
+            stake_amount: None,
+            node_id: None,
+            reward_owner: None,
+            potential_reward: None,
+            delegation_fee: None,
+            uptime: None,
+            connected: None,
+            staked: None,
+        }
+    }
+}
+
+/// e.g., "platform.getBalance" on "http://[ADDR]:9650" and "/ext/bc/P" path.
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
+pub async fn get_current_validators(
+    url: &str,
+    path: &str,
+) -> io::Result<GetCurrentValidatorsResponse> {
+    let joined = http::join_uri(url, path)?;
+    info!("getting current validators via {:?}", joined);
+
+    let mut data = jsonrpc::Data::default();
+    data.method = String::from("platform.getCurrentValidators");
+
+    let params = HashMap::new();
+    data.params = Some(params);
+
+    let d = data.encode_json()?;
+
+    let resp: _GetCurrentValidatorsResponse = {
+        if url.starts_with("https") {
+            // TODO: implement this with native Rust
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg("-X POST");
+            cmd.arg("--header 'content-type:application/json;'");
+            cmd.arg(format!("--data '{}'", d));
+            cmd.arg(joined.as_str());
+
+            let output = cmd.output()?;
+            match serde_json::from_slice(&output.stdout) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        } else {
+            let req = http::create_json_post(url, path, &d)?;
+            let buf = match http::read_bytes(
+                req,
+                Duration::from_secs(5),
+                url.starts_with("https"),
+                false,
+            )
+            .await
+            {
+                Ok(u) => u,
+                Err(e) => return Err(e),
+            };
+            match serde_json::from_slice(&buf) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        }
+    };
+
+    let parsed = resp.convert()?;
+    Ok(parsed)
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _ApiPrimaryValidator {
+    #[serde(rename = "txID", skip_serializing_if = "Option::is_none")]
+    pub tx_id: Option<String>,
+    #[serde(rename = "startTime", skip_serializing_if = "Option::is_none")]
+    pub start_time: Option<String>,
+    #[serde(rename = "endTime", skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<String>,
+    #[serde(rename = "weight", skip_serializing_if = "Option::is_none")]
+    pub weight: Option<String>,
+    #[serde(rename = "stakeAmount", skip_serializing_if = "Option::is_none")]
+    pub stake_amount: Option<String>,
+    #[serde(rename = "nodeID", skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(rename = "rewardOwner", skip_serializing_if = "Option::is_none")]
+    pub reward_owner: Option<_ApiOwner>,
+    #[serde(rename = "potentialReward", skip_serializing_if = "Option::is_none")]
+    pub potential_reward: Option<String>,
+    #[serde(rename = "delegationFee", skip_serializing_if = "Option::is_none")]
+    pub delegation_fee: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uptime: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connected: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staked: Option<Vec<_ApiUtxo>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delegators: Option<Vec<_ApiPrimaryDelegator>>,
+}
+
+impl Default for _ApiPrimaryValidator {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl _ApiPrimaryValidator {
+    pub fn default() -> Self {
+        Self {
+            tx_id: None,
+            start_time: None,
+            end_time: None,
+            weight: None,
+            stake_amount: None,
+            node_id: None,
+            reward_owner: None,
+            potential_reward: None,
+            delegation_fee: None,
+            uptime: None,
+            connected: None,
+            staked: None,
+            delegators: None,
+        }
+    }
+
+    pub fn convert(&self) -> ApiPrimaryValidator {
+        let start_time = self.start_time.clone().unwrap_or(String::from("0"));
+        let start_time = start_time.parse::<u64>().unwrap();
+
+        let end_time = self.end_time.clone().unwrap_or(String::from("0"));
+        let end_time = end_time.parse::<u64>().unwrap();
+
+        let weight = self.weight.clone().unwrap_or(String::from("0"));
+        let weight = weight.parse::<u64>().unwrap();
+
+        let stake_amount = self.stake_amount.clone().unwrap_or(String::from("0"));
+        let stake_amount = stake_amount.parse::<u64>().unwrap();
+
+        let reward_owner = {
+            if self.reward_owner.is_none() {
+                None
+            } else {
+                let reward_owner = self.reward_owner.clone().unwrap();
+                let reward_owner = reward_owner.convert();
+                Some(reward_owner)
+            }
+        };
+
+        let potential_reward = self.potential_reward.clone().unwrap_or(String::from("0"));
+        let potential_reward = potential_reward.parse::<u64>().unwrap();
+
+        let delegation_fee = self.delegation_fee.clone().unwrap_or(String::from("0"));
+        let delegation_fee = delegation_fee.parse::<f32>().unwrap();
+
+        let uptime = self.uptime.clone().unwrap_or(String::from("0"));
+        let uptime = uptime.parse::<f32>().unwrap();
+
+        let staked = {
+            if self.staked.is_none() {
+                None
+            } else {
+                let raw_staked = self.staked.clone().unwrap();
+                let mut staked: Vec<ApiUtxo> = Vec::new();
+                for st in raw_staked.iter() {
+                    let converted = st.convert();
+                    staked.push(converted);
+                }
+                Some(staked)
+            }
+        };
+
+        let delegators = {
+            if self.delegators.is_none() {
+                None
+            } else {
+                let raw_delegators = self.delegators.clone().unwrap();
+                let mut delegators: Vec<ApiPrimaryDelegator> = Vec::new();
+                for st in raw_delegators.iter() {
+                    let converted = st.convert();
+                    delegators.push(converted);
+                }
+                Some(delegators)
+            }
+        };
+
+        ApiPrimaryValidator {
+            tx_id: self.tx_id.clone(),
+            start_time: Some(start_time),
+            end_time: Some(end_time),
+            weight: Some(weight),
+            stake_amount: Some(stake_amount),
+            node_id: self.node_id.clone(),
+            reward_owner,
+            potential_reward: Some(potential_reward),
+            delegation_fee: Some(delegation_fee),
+            uptime: Some(uptime),
+            connected: self.connected.clone(),
+            staked,
+            delegators,
+        }
+    }
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _ApiPrimaryDelegator {
+    #[serde(rename = "txID", skip_serializing_if = "Option::is_none")]
+    pub tx_id: Option<String>,
+    #[serde(rename = "startTime", skip_serializing_if = "Option::is_none")]
+    pub start_time: Option<String>,
+    #[serde(rename = "endTime", skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<String>,
+    #[serde(rename = "weight", skip_serializing_if = "Option::is_none")]
+    pub weight: Option<String>,
+    #[serde(rename = "stakeAmount", skip_serializing_if = "Option::is_none")]
+    pub stake_amount: Option<String>,
+    #[serde(rename = "nodeID", skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(rename = "rewardOwner", skip_serializing_if = "Option::is_none")]
+    pub reward_owner: Option<_ApiOwner>,
+    #[serde(rename = "potentialReward", skip_serializing_if = "Option::is_none")]
+    pub potential_reward: Option<String>,
+    #[serde(rename = "delegationFee", skip_serializing_if = "Option::is_none")]
+    pub delegation_fee: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uptime: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connected: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staked: Option<Vec<_ApiUtxo>>,
+}
+
+impl Default for _ApiPrimaryDelegator {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl _ApiPrimaryDelegator {
+    pub fn default() -> Self {
+        Self {
+            tx_id: None,
+            start_time: None,
+            end_time: None,
+            weight: None,
+            stake_amount: None,
+            node_id: None,
+            reward_owner: None,
+            potential_reward: None,
+            delegation_fee: None,
+            uptime: None,
+            connected: None,
+            staked: None,
+        }
+    }
+
+    pub fn convert(&self) -> ApiPrimaryDelegator {
+        let start_time = self.start_time.clone().unwrap_or(String::from("0"));
+        let start_time = start_time.parse::<u64>().unwrap();
+
+        let end_time = self.end_time.clone().unwrap_or(String::from("0"));
+        let end_time = end_time.parse::<u64>().unwrap();
+
+        let weight = self.weight.clone().unwrap_or(String::from("0"));
+        let weight = weight.parse::<u64>().unwrap();
+
+        let stake_amount = self.stake_amount.clone().unwrap_or(String::from("0"));
+        let stake_amount = stake_amount.parse::<u64>().unwrap();
+
+        let reward_owner = {
+            if self.reward_owner.is_none() {
+                None
+            } else {
+                let reward_owner = self.reward_owner.clone().unwrap();
+                let reward_owner = reward_owner.convert();
+                Some(reward_owner)
+            }
+        };
+
+        let potential_reward = self.potential_reward.clone().unwrap_or(String::from("0"));
+        let potential_reward = potential_reward.parse::<u64>().unwrap();
+
+        let delegation_fee = self.delegation_fee.clone().unwrap_or(String::from("0"));
+        let delegation_fee = delegation_fee.parse::<f32>().unwrap();
+
+        let uptime = self.uptime.clone().unwrap_or(String::from("0"));
+        let uptime = uptime.parse::<f32>().unwrap();
+
+        let staked = {
+            if self.staked.is_none() {
+                None
+            } else {
+                let raw_staked = self.staked.clone().unwrap();
+                let mut staked: Vec<ApiUtxo> = Vec::new();
+                for st in raw_staked.iter() {
+                    let converted = st.convert();
+                    staked.push(converted);
+                }
+                Some(staked)
+            }
+        };
+
+        ApiPrimaryDelegator {
+            tx_id: self.tx_id.clone(),
+            start_time: Some(start_time),
+            end_time: Some(end_time),
+            weight: Some(weight),
+            stake_amount: Some(stake_amount),
+            node_id: self.node_id.clone(),
+            reward_owner,
+            potential_reward: Some(potential_reward),
+            delegation_fee: Some(delegation_fee),
+            uptime: Some(uptime),
+            connected: self.connected.clone(),
+            staked,
+        }
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIOwner
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _ApiOwner {
+    pub locktime: String,
+    pub threshold: String,
+    pub addresses: Vec<String>,
+}
+
+impl Default for _ApiOwner {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl _ApiOwner {
+    pub fn default() -> Self {
+        Self {
+            locktime: String::new(),
+            threshold: String::new(),
+            addresses: Vec::new(),
+        }
+    }
+
+    pub fn convert(&self) -> ApiOwner {
+        let locktime = self.locktime.parse::<u64>().unwrap();
+        let threshold = self.threshold.parse::<u32>().unwrap();
+        ApiOwner {
+            locktime,
+            threshold,
+            addresses: self.addresses.clone(),
+        }
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIOwner
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct ApiOwner {
+    pub locktime: u64,
+    pub threshold: u32,
+    pub addresses: Vec<String>,
+}
+
+impl Default for ApiOwner {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl ApiOwner {
+    pub fn default() -> Self {
+        Self {
+            locktime: 0,
+            threshold: 0,
+            addresses: Vec::new(),
+        }
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIUTXO
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _ApiUtxo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locktime: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl Default for _ApiUtxo {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl _ApiUtxo {
+    pub fn default() -> Self {
+        Self {
+            locktime: None,
+            amount: None,
+            address: None,
+            message: None,
+        }
+    }
+
+    pub fn convert(&self) -> ApiUtxo {
+        let locktime = {
+            if self.locktime.is_some() {
+                let locktime = self.locktime.clone().unwrap();
+                let locktime = locktime.parse::<u64>().unwrap();
+                locktime
+            } else {
+                0
+            }
+        };
+        let amount = {
+            if self.amount.is_some() {
+                let amount = self.amount.clone().unwrap();
+                let amount = amount.parse::<u64>().unwrap();
+                amount
+            } else {
+                0
+            }
+        };
+        let address = self.address.clone().unwrap();
+        ApiUtxo {
+            locktime,
+            amount,
+            address,
+            message: self.message.clone(),
+        }
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIUTXO
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct ApiUtxo {
+    pub locktime: u64,
+    pub amount: u64,
+    pub address: String,
+    pub message: Option<String>,
+}
+
+impl Default for ApiUtxo {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl ApiUtxo {
+    pub fn default() -> Self {
+        Self {
+            locktime: 0,
+            amount: 0,
+            address: String::new(),
+            message: None,
+        }
+    }
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetCurrentValidatorsResponse {
+    jsonrpc: String,
+    id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    result: Option<_GetCurrentValidatorsResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetCurrentValidatorsResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validators: Option<Vec<_ApiPrimaryValidator>>,
+}
+
+impl _GetCurrentValidatorsResponse {
+    fn convert(&self) -> io::Result<GetCurrentValidatorsResponse> {
+        if self.result.as_ref().is_none() {
+            return Ok(GetCurrentValidatorsResponse::default());
+        };
+
+        let rs = self.result.as_ref().unwrap();
+        if rs.validators.is_none() {
+            return Ok(GetCurrentValidatorsResponse::default());
+        }
+
+        let mut validators: Vec<ApiPrimaryValidator> = Vec::new();
+        let raw_validators = rs.validators.clone().unwrap();
+        for raw_validator in raw_validators.iter() {
+            let validator = raw_validator.convert();
+            validators.push(validator);
+        }
+
+        Ok(GetCurrentValidatorsResponse {
+            jsonrpc: self.jsonrpc.clone(),
+            id: self.id,
+            result: Some(GetCurrentValidatorsResult {
+                validators: Some(validators),
+            }),
+        })
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- avalanche::avalanchego::api::platform::test_convert_get_current_validators --exact --show-output
+#[test]
+fn test_convert_get_current_validators() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
+    let resp: _GetCurrentValidatorsResponse = serde_json::from_str(
+        "
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"validators\": [
+            {
+                \"txID\": \"KPkPo9EerKZhSwrA8NfLTVWsgr16Ntu8Ei4ci7GF7t75szrcQ\",
+                \"startTime\": \"1648312635\",
+                \"endTime\": \"1679843235\",
+                \"stakeAmount\": \"100000000000000000\",
+                \"nodeID\": \"NodeID-5wVq6KkSK3p4wQFmiVHCDq2zdg8unchaE\",
+                \"rewardOwner\": {
+                    \"locktime\": \"0\",
+                    \"threshold\": \"1\",
+                    \"addresses\": [
+                        \"P-custom1vkzy5p2qtumx9svjs9pvds48s0hcw80f962vrs\"
+                    ]
+                },
+                \"potentialReward\": \"79984390135364555\",
+                \"delegationFee\": \"6.2500\",
+                \"uptime\": \"1.0000\",
+                \"connected\": true,
+                \"delegators\": null
+            },
+            {
+                \"txID\": \"EjKZm5eEajWu151cfPms7PvMjyaQk36qTSz1MfnZRU5x5bNxz\",
+                \"startTime\": \"1648312635\",
+                \"endTime\": \"1679848635\",
+                \"stakeAmount\": \"100000000000000000\",
+                \"nodeID\": \"NodeID-JLR7d6z9cwCbkoPcPsnjkm6gq4xz7c4oT\",
+                \"rewardOwner\": {
+                    \"locktime\": \"0\",
+                    \"threshold\": \"1\",
+                    \"addresses\": [
+                        \"P-custom1vkzy5p2qtumx9svjs9pvds48s0hcw80f962vrs\"
+                    ]
+                },
+                \"potentialReward\": \"77148186230865960\",
+                \"delegationFee\": \"6.2500\",
+                \"uptime\": \"1.0000\",
+                \"connected\": true,
+                \"delegators\": null
+            }
+        ]
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    println!("{:?}", parsed);
+
+    let expected = GetCurrentValidatorsResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetCurrentValidatorsResult {
+            validators: Some(<Vec<ApiPrimaryValidator>>::from([
+                ApiPrimaryValidator {
+                    tx_id: Some(String::from(
+                        "KPkPo9EerKZhSwrA8NfLTVWsgr16Ntu8Ei4ci7GF7t75szrcQ",
+                    )),
+                    start_time: Some(1648312635),
+                    end_time: Some(1679843235),
+                    weight: Some(0),
+                    stake_amount: Some(100000000000000000),
+                    node_id: Some("NodeID-5wVq6KkSK3p4wQFmiVHCDq2zdg8unchaE".to_string()),
+                    reward_owner: Some(ApiOwner {
+                        locktime: 0,
+                        threshold: 1,
+                        addresses: vec![
+                            "P-custom1vkzy5p2qtumx9svjs9pvds48s0hcw80f962vrs".to_string()
+                        ],
+                    }),
+                    potential_reward: Some(79984390135364555),
+                    delegation_fee: Some(6.25),
+                    uptime: Some(1.0),
+                    connected: Some(true),
+                    ..ApiPrimaryValidator::default()
+                },
+                ApiPrimaryValidator {
+                    tx_id: Some(String::from(
+                        "EjKZm5eEajWu151cfPms7PvMjyaQk36qTSz1MfnZRU5x5bNxz",
+                    )),
+                    start_time: Some(1648312635),
+                    end_time: Some(1679848635),
+                    weight: Some(0),
+                    stake_amount: Some(100000000000000000),
+                    node_id: Some("NodeID-JLR7d6z9cwCbkoPcPsnjkm6gq4xz7c4oT".to_string()),
+                    reward_owner: Some(ApiOwner {
+                        locktime: 0,
+                        threshold: 1,
+                        addresses: vec![
+                            "P-custom1vkzy5p2qtumx9svjs9pvds48s0hcw80f962vrs".to_string()
+                        ],
+                    }),
+                    potential_reward: Some(77148186230865960),
+                    delegation_fee: Some(6.25),
+                    uptime: Some(1.0),
+                    connected: Some(true),
+                    ..ApiPrimaryValidator::default()
+                },
+            ])),
         }),
     };
     assert_eq!(parsed, expected);
