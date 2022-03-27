@@ -35,4 +35,14 @@ fn main() {
         .block_on(platform::get_utxos(&url, "/ext/bc/P", &paddr))
         .expect("failed to get UTXOs");
     info!("get_utxos response: {:?}", resp);
+
+    let resp = rt
+        .block_on(platform::get_height(&url, "/ext/bc/P"))
+        .expect("failed to get height");
+    info!("get_height response: {:?}", resp);
+
+    let resp = rt
+        .block_on(platform::get_current_validators(&url, "/ext/bc/P"))
+        .expect("failed to get current validators");
+    info!("get_current_validators response: {:?}", resp);
 }
