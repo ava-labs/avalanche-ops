@@ -6,12 +6,12 @@ if ! [[ "$0" =~ scripts/build.release.sh ]]; then
   exit 255
 fi
 
-# "--bin" can be specified multiple times for each directory in "bin/*"
+# "--bin" can be specified multiple times for each directory in "bin/*" or workspaces
 cargo build \
 --release \
 --bin avalanche-ops-aws \
 --bin avalanched-aws \
---bin dev-machine \
+--bin dev-machine-aws \
 --bin subnetctl
 
 ./target/release/avalanche-ops-aws --help

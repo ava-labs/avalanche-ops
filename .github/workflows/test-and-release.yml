@@ -79,7 +79,7 @@ jobs:
         with:
           cache-on-failure: true
       - name: Run compatibility tests
-        run: scripts/tests.compatibility.sh
+        run: pushd ./avalanche-types && scripts/tests.compatibility.sh && popd
 
   release:
     name: Release ${{ matrix.job.target }} (${{ matrix.job.os }})
@@ -141,7 +141,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin avalanche-ops-aws --bin avalanched-aws --bin dev-machine --bin subnetctl --target ${{ matrix.job.target }}
+          args: --release --bin avalanche-ops-aws --bin avalanched-aws --bin dev-machine-aws --bin subnetctl --target ${{ matrix.job.target }}
 
       - name: Compress binaries
         id: release_artifacts
@@ -154,21 +154,21 @@ jobs:
 
             ./target/${TARGET}/release/avalanche-ops-aws --help
             cp ./target/${TARGET}/release/avalanche-ops-aws avalanche-ops-aws.${TARGET}
-            echo "::set-output name=file_name_avalanche_ops::avalanche-ops-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanche_ops_aws::avalanche-ops-aws.${TARGET}"
             tar -czvf avalanche-ops-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-ops-aws
-            echo "::set-output name=file_name_avalanche_ops_tar_gz::avalanche-ops-aws_${TARGET}.tar.gz"
+            echo "::set-output name=file_name_avalanche_ops_aws_tar_gz::avalanche-ops-aws_${TARGET}.tar.gz"
 
             ./target/${TARGET}/release/avalanched-aws --help
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name_avalanched::avalanched-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
             tar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "::set-output name=file_name_avalanched_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
 
-            ./target/${TARGET}/release/dev-machine --help
-            cp ./target/${TARGET}/release/dev-machine dev-machine.${TARGET}
-            echo "::set-output name=file_name_dev_machine::dev-machine.${TARGET}"
-            tar -czvf dev-machine_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine
-            echo "::set-output name=file_name_dev_machine_tar_gz::dev-machine_${TARGET}.tar.gz"
+            ./target/${TARGET}/release/dev-machine-aws --help
+            cp ./target/${TARGET}/release/dev-machine-aws dev-machine-aws.${TARGET}
+            echo "::set-output name=file_name_dev_machine_aws::dev-machine-aws.${TARGET}"
+            tar -czvf dev-machine-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine-aws
+            echo "::set-output name=file_name_dev_machine_aws_tar_gz::dev-machine-aws_${TARGET}.tar.gz"
 
             ./target/${TARGET}/release/subnetctl --help
             cp ./target/${TARGET}/release/subnetctl subnetctl.${TARGET}
@@ -179,19 +179,19 @@ jobs:
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
             cp ./target/${TARGET}/release/avalanche-ops-aws avalanche-ops-aws.${TARGET}
-            echo "::set-output name=file_name_avalanche_ops::avalanche-ops-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanche_ops_aws::avalanche-ops-aws.${TARGET}"
             gtar -czvf avalanche-ops-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-ops-aws
-            echo "::set-output name=file_name_avalanche_ops_tar_gz::avalanche-ops-aws_${TARGET}.tar.gz"
+            echo "::set-output name=file_name_avalanche_ops_aws_tar_gz::avalanche-ops-aws_${TARGET}.tar.gz"
 
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name_avalanched::avalanched-aws.${TARGET}"
+            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
             gtar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "::set-output name=file_name_avalanched_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
 
-            cp ./target/${TARGET}/release/dev-machine dev-machine.${TARGET}
-            echo "::set-output name=file_name_dev_machine::dev-machine.${TARGET}"
-            gtar -czvf dev-machine_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine
-            echo "::set-output name=file_name_dev_machine_tar_gz::dev-machine_${TARGET}.tar.gz"
+            cp ./target/${TARGET}/release/dev-machine-aws dev-machine-aws.${TARGET}
+            echo "::set-output name=file_name_dev_machine_aws::dev-machine-aws.${TARGET}"
+            gtar -czvf dev-machine-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine-aws
+            echo "::set-output name=file_name_dev_machine_aws_tar_gz::dev-machine-aws_${TARGET}.tar.gz"
 
             cp ./target/${TARGET}/release/subnetctl subnetctl.${TARGET}
             echo "::set-output name=file_name_subnetctl::subnetctl.${TARGET}"
@@ -216,14 +216,14 @@ jobs:
           prerelease: true
           body: Latest builds from the last commit.
           files: |
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanched }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_subnetctl }}
             ${{ steps.release_artifacts.outputs.file_name_subnetctl_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_dev_machine }}
-            ${{ steps.release_artifacts.outputs.file_name_dev_machine_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws_tar_gz }}
 
       # release only for tags
       # https://github.com/softprops/action-gh-release
@@ -238,11 +238,11 @@ jobs:
           prerelease: true
           body: Release builds for ${{ github.ref_name }}.
           files: |
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanched }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanched_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_subnetctl }}
             ${{ steps.release_artifacts.outputs.file_name_subnetctl_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_dev_machine }}
-            ${{ steps.release_artifacts.outputs.file_name_dev_machine_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws_tar_gz }}

@@ -1,0 +1,20 @@
+[package]
+name = "avalanched-aws"
+version = "0.0.6-pre"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+avalanche-api = { path = "../avalanche-api" }
+avalanche-ops-aws = { path = "../avalanche-ops-aws" }
+avalanche-types = { path = "../avalanche-types" }
+avalanchego = { path = "../avalanchego" }
+aws = { path = "../aws" }
+aws-sdk-s3 = "0.9.0"
+clap = { version = "3.1.6", features = ["derive"] }
+env_logger = "0.9.0"
+log = "0.4.14"
+tempfile = "3.3.0"
+tokio = { version = "1.17.0", features = ["full"] }
+utils = { path = "../utils" }
