@@ -33,7 +33,7 @@ for arch in ${ARCHS}; do
       mkdir -p ./target/${arch}.${os}
       docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/avalanche-ops-aws ./target/${arch}.${os}/
       docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/avalanched-aws ./target/${arch}.${os}/
-      docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/dev-machine ./target/${arch}.${os}/
+      docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/dev-machine-aws ./target/${arch}.${os}/
       docker cp $(docker create --rm avalanche-ops.${arch}.${os}:latest):/avalanche-ops/target/release/subnetctl ./target/${arch}.${os}/
       find ./target/${arch}.${os}
     fi
@@ -52,6 +52,7 @@ done
 # --release \
 # --bin avalanche-ops-aws \
 # --bin avalanched-aws \
+# --bin dev-machine-aws \
 # --target x86_64-unknown-linux-gnu
 
 # rustup target add x86_64-unknown-linux-musl
@@ -59,6 +60,7 @@ done
 # --release \
 # --bin avalanche-ops-aws \
 # --bin avalanched-aws \
+# --bin dev-machine-aws \
 # --target x86_64-unknown-linux-musl
 
 # TODO: not working
@@ -70,4 +72,5 @@ done
 # --release \
 # --bin avalanche-ops-aws \
 # --bin avalanched-aws \
+# --bin dev-machine-aws \
 # --target x86_64-unknown-linux-gnu

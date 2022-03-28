@@ -36,15 +36,15 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 
 To set up a custom network, provide **`avalanche-ops`** with executable binaries to run in remote machines. Which then generates a genesis file with pre-funded keys and provisions remote machines to install the user-provided artifacts. A custom network requires two groups of machines: (1) anchor node (beacon node, only required for custom network), and (2) non-anchor node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-anchor nodes list the storage to discover anchor nodes.
 
-![avalanche-ops.drawio.png](./img/avalanche-ops.drawio.png)
+![avalanche-ops.drawio.png](./avalanche-ops-aws/img/avalanche-ops.drawio.png)
 
 ## `avalanche-ops` and `avalanched` on AWS
 
-See [`recipes-aws.md`](./recipes-aws.md) and [`example-aws.md`](./example-aws.md).
+See [`recipes-aws.md`](./avalanche-ops-aws/recipes-aws.md) and [`example-aws.md`](./avalanche-ops-aws/example-aws.md).
 
-![example-aws/32](./img/example-aws/32.png)
+![example-aws/32](./avalanche-ops-aws/img/example-aws/32.png)
 
-![example-aws/43](./img/example-aws/43.png)
+![example-aws/43](./avalanche-ops-aws/img/example-aws/43.png)
 
 ## Installation
 

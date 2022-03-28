@@ -1,0 +1,21 @@
+[package]
+name = "avalanche-api"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aws-sdk-cloudwatch = "0.9.0"
+aws-smithy-types = "0.39.0"
+chrono = "0.4.19"
+log = "0.4.14"
+num-bigint = "0.4.3"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0.79"
+tokio = { version = "1.17.0", features = ["full"] }
+utils = { path = "../utils" }
+
+[dev-dependencies]
+env_logger = "0.9.0"
+rust-embed = "6.3.0"

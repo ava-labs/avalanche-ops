@@ -1,0 +1,42 @@
+[package]
+name = "utils"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bs58 = "0.4.0"
+chrono = "0.4.19"
+clap = { version = "3.1.6", features = ["derive"] }
+crossterm = "0.23.1"
+dirs = "4.0.0"
+env_logger = "0.9.0"
+flate2 = "1.0.22"
+fs_extra = "1.2.0"
+hyper = { version = "0.14.18", features = ["full"] }
+hyper-tls = "0.5.0"
+lazy_static = "1.4.0"
+log = "0.4.14"
+num-bigint = "0.4.3"
+path-clean = "0.1.0"
+regex = "1.5.5"
+ring = "0.16.20"
+ripemd = "0.1.1"
+secp256k1 = { version = "0.22.1", features = ["global-context", "rand-std", "recovery"] }
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0.79"
+serde_yaml = "0.8.23"
+tar = "0.4.38"
+tempfile = "3.3.0"
+tokio = { version = "1.17.0", features = ["full"] }
+tokio-stream = "0.1.8"
+url = "2.2.2"
+walkdir = "2.3.2"
+whoami = "1.2.1"
+zip = "0.6"
+# don't update until https://github.com/gyscos/zstd-rs/issues/147 is addressed
+zstd = "0.10"
+
+[dev-dependencies]
+tokio-test = "0.4.2"

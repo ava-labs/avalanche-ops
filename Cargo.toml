@@ -1,82 +1,14 @@
-[package]
-name = "avalanche-ops"
-version = "0.0.6-pre"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-# https://github.com/awslabs/aws-sdk-rust/releases
-aws-config = "0.9.0"
-aws-sdk-cloudformation = "0.9.0"
-aws-sdk-cloudwatch = "0.9.0"
-aws-sdk-cloudwatchlogs = "0.9.0"
-aws-sdk-ec2 = "0.9.0"
-aws-sdk-kms = "0.9.0"
-aws-sdk-s3 = "0.9.0"
-aws-sdk-sts = "0.9.0"
-aws-smithy-types = "0.39.0"
-aws-types = "0.9.0"
-bech32 = "0.8.1"
-bitcoin = "0.27.1"
-bs58 = "0.4.0"
-byteorder = "1.4.3"
-bytes = "1.1.0"
-chrono = "0.4.19"
-clap = { version = "3.1.6", features = ["derive"] }
-crossterm = "0.23.1"
-dialoguer = "0.10.0"
-dirs = "4.0.0"
-env_logger = "0.9.0"
-ethereum-types = "0.13.1"
-flate2 = "1.0.22"
-fs_extra = "1.2.0"
-hex = "0.4.3"
-hyper = { version = "0.14.18", features = ["full"] }
-hyper-tls = "0.5.0"
-lazy_static = "1.4.0"
-log = "0.4.14"
-num-bigint = "0.4.3"
-openssl = "0.10.38"
-path-clean = "0.1.0"
-regex = "1.5.5"
-ring = "0.16.20"
-ripemd = "0.1.1"
-rust-embed = "6.3.0"
-secp256k1 = { version = "0.22.1", features = ["global-context", "rand-std", "recovery"] }
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = "1.0.79"
-serde_yaml = "0.8.23"
-sha3 = "0.10.1"
-tar = "0.4.38"
-tempfile = "3.3.0"
-thiserror = "1.0.30"
-tokio = { version = "1.17.0", features = ["full"] }
-tokio-stream = "0.1.8"
-url = "2.2.2"
-walkdir = "2.3.2"
-whoami = "1.2.1"
-zip = "0.6"
-
-# don't update until https://github.com/gyscos/zstd-rs/issues/147 is addressed
-zstd = "0.10"
-
-[dev-dependencies]
-tokio-test = "0.4.2"
-
-# ref. https://doc.rust-lang.org/cargo/reference/cargo-targets.html#binaries
-[[bin]]
-name = "avalanche-ops-aws"
-path = "src/bin/avalanche-ops-aws/main.rs"
-
-[[bin]]
-name = "avalanched-aws"
-path = "src/bin/avalanched-aws/main.rs"
-
-[[bin]]
-name = "dev-machine"
-path = "src/bin/dev-machine/main.rs"
-
-[[bin]]
-name = "subnetctl"
-path = "src/bin/subnetctl/main.rs"
+[workspace]
+members = [
+    "avalanche-api",
+    "avalanche-ops-aws",
+    "avalanche-types",
+    "avalanched-aws",
+    "avalanchego",
+    "aws",
+    "coreth",
+    "dev-machine-aws",
+    "subnet-evm",
+    "subnetctl",
+    "utils"
+]
