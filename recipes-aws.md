@@ -21,7 +21,7 @@ curl -sSf https://sh.rustup.rs | sh -s -- -y \
 
 ```bash
 # to build binaries
-./script/build.release.sh
+./scripts/build.release.sh
 ```
 
 Make sure you have access to the following CLI:
