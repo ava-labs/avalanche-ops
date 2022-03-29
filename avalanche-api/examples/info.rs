@@ -37,4 +37,14 @@ fn main() {
 
     let resp = rt.block_on(info::get_vms(&url)).expect("failed get_vms");
     info!("get_vms response: {:?}", resp);
+
+    let resp = rt
+        .block_on(info::get_bootstrapped(&url))
+        .expect("failed get_bootstrapped");
+    info!("get_bootstrapped response: {:?}", resp);
+
+    let resp = rt
+        .block_on(info::get_tx_fee(&url))
+        .expect("failed get_tx_fee");
+    info!("get_tx_fee response: {:?}", resp);
 }

@@ -640,3 +640,272 @@ pub async fn get_vms(url: &str) -> io::Result<GetVmsResponse> {
     };
     Ok(resp)
 }
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infoisbootstrapped
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct GetBootstrappedResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<GetBootstrappedResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infoisbootstrapped
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetBootstrappedResult {
+    #[serde(rename = "isBootstrapped")]
+    pub bootstrapped: bool,
+}
+
+impl Default for GetBootstrappedResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetBootstrappedResult {
+    pub fn default() -> Self {
+        Self {
+            bootstrapped: false,
+        }
+    }
+}
+
+/// e.g., "info.isBootstrapped".
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infoisbootstrapped
+pub async fn get_bootstrapped(url: &str) -> io::Result<GetBootstrappedResponse> {
+    info!("getting bootstrapped for {}", url);
+
+    let mut data = jsonrpc::DataWithParamsArray::default();
+    data.method = String::from("info.isBootstrapped");
+
+    let d = data.encode_json()?;
+
+    let resp: GetBootstrappedResponse = {
+        if url.starts_with("https") {
+            let joined = http::join_uri(url, "ext/info")?;
+
+            // TODO: implement this with native Rust
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg("-X POST");
+            cmd.arg("--header 'content-type:application/json;'");
+            cmd.arg(format!("--data '{}'", d));
+            cmd.arg(joined.as_str());
+
+            let output = cmd.output()?;
+            match serde_json::from_slice(&output.stdout) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        } else {
+            let req = http::create_json_post(url, "ext/info", &d)?;
+            let buf = match http::read_bytes(
+                req,
+                Duration::from_secs(5),
+                url.starts_with("https"),
+                false,
+            )
+            .await
+            {
+                Ok(u) => u,
+                Err(e) => return Err(e),
+            };
+            match serde_json::from_slice(&buf) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        }
+    };
+    Ok(resp)
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogettxfee
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct GetTxFeeResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    pub result: Option<GetTxFeeResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogettxfee
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct GetTxFeeResult {
+    pub creation_tx_fee: u64,
+    pub tx_fee: u64,
+}
+
+impl Default for GetTxFeeResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetTxFeeResult {
+    pub fn default() -> Self {
+        Self {
+            creation_tx_fee: 0,
+            tx_fee: 0,
+        }
+    }
+}
+
+/// e.g., "info.getTxFee".
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogettxfee
+pub async fn get_tx_fee(url: &str) -> io::Result<GetTxFeeResponse> {
+    info!("getting node ID for {}", url);
+
+    let mut data = jsonrpc::DataWithParamsArray::default();
+    data.method = String::from("info.getTxFee");
+
+    let d = data.encode_json()?;
+
+    let resp: _GetTxFeeResponse = {
+        if url.starts_with("https") {
+            let joined = http::join_uri(url, "ext/info")?;
+
+            // TODO: implement this with native Rust
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg("-X POST");
+            cmd.arg("--header 'content-type:application/json;'");
+            cmd.arg(format!("--data '{}'", d));
+            cmd.arg(joined.as_str());
+
+            let output = cmd.output()?;
+            match serde_json::from_slice(&output.stdout) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        } else {
+            let req = http::create_json_post(url, "ext/info", &d)?;
+            let buf = match http::read_bytes(
+                req,
+                Duration::from_secs(5),
+                url.starts_with("https"),
+                false,
+            )
+            .await
+            {
+                Ok(u) => u,
+                Err(e) => return Err(e),
+            };
+            match serde_json::from_slice(&buf) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        }
+    };
+
+    let converted = resp.convert()?;
+    Ok(converted)
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogettxfee
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetTxFeeResponse {
+    jsonrpc: String,
+    id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    result: Option<_GetTxFeeResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogettxfee
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetTxFeeResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    balance: Option<String>,
+    #[serde(rename = "creationTxFee")]
+    creation_tx_fee: String,
+    #[serde(rename = "txFee")]
+    tx_fee: String,
+}
+
+impl _GetTxFeeResponse {
+    fn convert(&self) -> io::Result<GetTxFeeResponse> {
+        let mut result = GetTxFeeResult::default();
+        if self.result.is_some() {
+            let creation_tx_fee = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .creation_tx_fee;
+            result.creation_tx_fee = {
+                if creation_tx_fee.is_empty() {
+                    0_u64
+                } else {
+                    creation_tx_fee.parse::<u64>().unwrap()
+                }
+            };
+
+            let tx_fee = self.result.clone().expect("unexpected None result").tx_fee;
+            result.tx_fee = {
+                if tx_fee.is_empty() {
+                    0_u64
+                } else {
+                    tx_fee.parse::<u64>().unwrap()
+                }
+            };
+        }
+
+        Ok(GetTxFeeResponse {
+            jsonrpc: self.jsonrpc.clone(),
+            id: self.id,
+            result: Some(result),
+        })
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-api --lib -- info::test_get_tx_fee_response_convert --exact --show-output
+#[test]
+fn test_get_tx_fee_response_convert() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/info/#infogettxfee
+    let resp: _GetTxFeeResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"creationTxFee\": \"10000000\",
+        \"txFee\": \"1000000\"
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetTxFeeResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetTxFeeResult {
+            creation_tx_fee: 10000000_u64,
+            tx_fee: 1000000_u64,
+        }),
+    };
+    assert_eq!(parsed, expected);
+}
