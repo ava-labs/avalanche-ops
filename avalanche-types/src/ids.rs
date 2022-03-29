@@ -20,6 +20,7 @@ pub const NODE_ID_ENCODE_PREFIX: &str = "NodeID-";
 lazy_static! {
     static ref EMPTY: Vec<u8> = vec![0; ID_LEN];
     static ref SHORT_EMPTY: Vec<u8> = vec![0; SHORT_ID_LEN];
+    static ref NODE_ID_EMPTY: Vec<u8> = vec![0; NODE_ID_LEN];
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ID
@@ -194,13 +195,13 @@ impl Eq for NodeId {}
 impl NodeId {
     pub fn default() -> Self {
         Self {
-            d: SHORT_EMPTY.to_vec(),
+            d: NODE_ID_EMPTY.to_vec(),
         }
     }
 
     pub fn empty() -> Self {
         Self {
-            d: SHORT_EMPTY.to_vec(),
+            d: NODE_ID_EMPTY.to_vec(),
         }
     }
 
@@ -212,6 +213,12 @@ impl NodeId {
         assert_eq!(d.len(), SHORT_ID_LEN);
         let d = Vec::from(d);
         Self { d }
+    }
+
+    pub fn from_str(s: &str) -> io::Result<Self> {
+        let processed = strip_node_id_prefix(s);
+        let decoded = formatting::decode_cb58_with_checksum(processed)?;
+        Ok(Self::new(&decoded))
     }
 
     /// Loads a node ID from the PEM-encoded X509 certificate.
@@ -265,30 +272,98 @@ impl NodeId {
 fn test_from_cert_file() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let id = NodeId::new(&<Vec<u8>>::from([
+    let node_id = NodeId::new(&<Vec<u8>>::from([
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));
-    assert_eq!(id.string(), "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
-    assert_eq!(id.string_short_id(), "6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
+    assert_eq!(node_id.string(), "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
+    assert_eq!(
+        node_id.string_short_id(),
+        "6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx"
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
+    );
 
     // copied from "avalanchego/staking/local/staking1.key,crt"
     // verified by "avalanchego-compatibility/node-id" for compatibility with Go
     let node_id = NodeId::from_cert_file("./artifacts/staker1.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg");
+    assert_eq!(
+        node_id,
+        NodeId::from_str("7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
+    );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker2.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ");
+    assert_eq!(
+        node_id,
+        NodeId::from_str("MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
+    );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker3.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN");
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
+    );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker4.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu");
+    assert_eq!(
+        node_id,
+        NodeId::from_str("GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
+    );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker5.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5");
+    assert_eq!(
+        node_id,
+        NodeId::from_str("P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
+    );
 
     let node_id = NodeId::from_cert_file("./artifacts/test.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG");
+    assert_eq!(
+        node_id,
+        NodeId::from_str("29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
+    );
+}
+
+fn strip_node_id_prefix(addr: &str) -> &str {
+    let n = NODE_ID_ENCODE_PREFIX.len();
+    if &addr[0..n] == NODE_ID_ENCODE_PREFIX {
+        &addr[n..]
+    } else {
+        addr
+    }
 }
