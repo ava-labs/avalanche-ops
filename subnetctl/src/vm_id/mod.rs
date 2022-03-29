@@ -13,6 +13,18 @@ pub const NAME: &str = "vm-id";
 pub fn command() -> Command<'static> {
     Command::new(NAME)
         .about("Generates the VM ID based on its name")
+        .long_about(
+            "
+
+e.g.,
+
+$ subnetctl vm-id --name subnetevm
+
+See https://github.com/ava-labs/subnet-cli.
+
+
+",
+        )
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
