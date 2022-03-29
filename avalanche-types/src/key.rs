@@ -1357,6 +1357,94 @@ fn test_key() {
         random_key.eth_address,
         "0x2bf91d42766c80Cb56fF482031b247EeC3792cCd"
     );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-CrRUUNvaKMeVPLiBi3CtiRFUmhxiNyoxHDSXn49kHpwamVa33")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "1ae961d78f0aa9cff24b05a6f0c29e819657a70185f1d45c0925729d369434b4"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "EFrUyQGU9ha4ffGK8eKZQCGmNvvRbe589"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1j95v8t4d7w2zetq6pcve0734tlyk9sv90dl0xq"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1j95v8t4d7w2zetq6pcve0734tlyk9sv90dl0xq"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1j95v8t4d7w2zetq6pcve0734tlyk9sv90dl0xq"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1j95v8t4d7w2zetq6pcve0734tlyk9sv9uhd4p4"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1j95v8t4d7w2zetq6pcve0734tlyk9sv9uhd4p4"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1j95v8t4d7w2zetq6pcve0734tlyk9sv9uhd4p4"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x4c25b4981bbA2E3b0b69d4d4996E187bd19642f3"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-293XmTLSSwGHAWc28dj6ueRzuVPgmTrWtDRM52sgHHVZET22vP")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "95f5cb99b2c1b642fcd3e0aed7f3e052611b653cea1ea37502433b64d31f0413"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "ER4mQAk2wJHWyyB6DKBE7fCY6qduoxPw1"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1jvnv9av3ul5v9l6kjfntntaw8dquy0yaudp2rz"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1jvnv9av3ul5v9l6kjfntntaw8dquy0yaudp2rz"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1jvnv9av3ul5v9l6kjfntntaw8dquy0yaudp2rz"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1jvnv9av3ul5v9l6kjfntntaw8dquy0ya0hnsyh"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1jvnv9av3ul5v9l6kjfntntaw8dquy0ya0hnsyh"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1jvnv9av3ul5v9l6kjfntntaw8dquy0ya0hnsyh"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0xcCBC5eefcf31684BC474c59D0F9Ba26af5174D99"
+    );
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
