@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -19,7 +20,6 @@ use crate::{constants, formatting};
 use utils::{hash, prefix};
 
 pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
-pub const EWOQ_KEY: &str = "PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN";
 
 lazy_static! {
     pub static ref TEST_KEYS: Vec<Key> = {
@@ -33,15 +33,30 @@ lazy_static! {
 
         let mut lines = text.lines();
         let mut keys: Vec<Key> = Vec::new();
+        let mut added = HashMap::new();
         loop {
             if let Some(s) = lines.next() {
+                if added.get(s).is_some() {
+                    panic!("test key '{}' added before (redundant!)", s)
+                }
                 keys.push(Key::from_private_key(s).unwrap());
+                added.insert(s, true);
                 continue;
             }
             break;
         }
         keys
     };
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_keys --exact --show-output
+#[test]
+fn test_keys() {
+    let _ = env_logger::builder().is_test(true).try_init();
+    for k in TEST_KEYS.iter() {
+        info!("test key eth address {:?}", k.eth_address);
+    }
+    info!("total {} test keys are found", TEST_KEYS.len());
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -229,7 +244,7 @@ fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<String> {
 
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
+pub fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
     let digest_sha256 = hash::compute_sha256(d);
 
     // "hashing.PubkeyBytesToAddress"
@@ -344,45 +359,47 @@ fn test_key() {
         parsed_key.address("X", 9999).unwrap()
     );
 
-    let ewoq_key = Key::from_private_key(&EWOQ_KEY).unwrap();
+    let random_key =
+        Key::from_private_key("PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN")
+            .unwrap();
     assert_eq!(
-        ewoq_key.private_key_hex.clone(),
+        random_key.private_key_hex.clone(),
         "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
     );
     assert_eq!(
-        ewoq_key,
-        Key::from_private_key_eth(&ewoq_key.private_key_hex.clone()).unwrap(),
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
-        ewoq_key.short_address.clone(),
+        random_key.short_address.clone(),
         "6Y3kysjF9jnHnYkdS9yGAuoHyae2eNmeV"
     );
     assert_eq!(
-        ewoq_key.address("X", 1).unwrap(),
+        random_key.address("X", 1).unwrap(),
         "X-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5"
     );
     assert_eq!(
-        ewoq_key.address("P", 1).unwrap(),
+        random_key.address("P", 1).unwrap(),
         "P-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5"
     );
     assert_eq!(
-        ewoq_key.address("C", 1).unwrap(),
+        random_key.address("C", 1).unwrap(),
         "C-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5"
     );
     assert_eq!(
-        ewoq_key.address("X", 9999).unwrap(),
+        random_key.address("X", 9999).unwrap(),
         "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
     );
     assert_eq!(
-        ewoq_key.address("P", 9999).unwrap(),
+        random_key.address("P", 9999).unwrap(),
         "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
     );
     assert_eq!(
-        ewoq_key.address("C", 9999).unwrap(),
+        random_key.address("C", 9999).unwrap(),
         "C-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
     );
     assert_eq!(
-        ewoq_key.eth_address,
+        random_key.eth_address,
         "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
     );
 
@@ -1356,6 +1373,94 @@ fn test_key() {
     assert_eq!(
         random_key.eth_address,
         "0x2bf91d42766c80Cb56fF482031b247EeC3792cCd"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-CrRUUNvaKMeVPLiBi3CtiRFUmhxiNyoxHDSXn49kHpwamVa33")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "1ae961d78f0aa9cff24b05a6f0c29e819657a70185f1d45c0925729d369434b4"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "EFrUyQGU9ha4ffGK8eKZQCGmNvvRbe589"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1j95v8t4d7w2zetq6pcve0734tlyk9sv90dl0xq"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1j95v8t4d7w2zetq6pcve0734tlyk9sv90dl0xq"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1j95v8t4d7w2zetq6pcve0734tlyk9sv90dl0xq"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1j95v8t4d7w2zetq6pcve0734tlyk9sv9uhd4p4"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1j95v8t4d7w2zetq6pcve0734tlyk9sv9uhd4p4"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1j95v8t4d7w2zetq6pcve0734tlyk9sv9uhd4p4"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0x4c25b4981bbA2E3b0b69d4d4996E187bd19642f3"
+    );
+
+    let random_key =
+        Key::from_private_key("PrivateKey-293XmTLSSwGHAWc28dj6ueRzuVPgmTrWtDRM52sgHHVZET22vP")
+            .unwrap();
+    assert_eq!(
+        random_key.private_key_hex.clone(),
+        "95f5cb99b2c1b642fcd3e0aed7f3e052611b653cea1ea37502433b64d31f0413"
+    );
+    assert_eq!(
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
+    );
+    assert_eq!(
+        random_key.short_address.clone(),
+        "ER4mQAk2wJHWyyB6DKBE7fCY6qduoxPw1"
+    );
+    assert_eq!(
+        random_key.address("X", 1).unwrap(),
+        "X-avax1jvnv9av3ul5v9l6kjfntntaw8dquy0yaudp2rz"
+    );
+    assert_eq!(
+        random_key.address("P", 1).unwrap(),
+        "P-avax1jvnv9av3ul5v9l6kjfntntaw8dquy0yaudp2rz"
+    );
+    assert_eq!(
+        random_key.address("C", 1).unwrap(),
+        "C-avax1jvnv9av3ul5v9l6kjfntntaw8dquy0yaudp2rz"
+    );
+    assert_eq!(
+        random_key.address("X", 9999).unwrap(),
+        "X-custom1jvnv9av3ul5v9l6kjfntntaw8dquy0ya0hnsyh"
+    );
+    assert_eq!(
+        random_key.address("P", 9999).unwrap(),
+        "P-custom1jvnv9av3ul5v9l6kjfntntaw8dquy0ya0hnsyh"
+    );
+    assert_eq!(
+        random_key.address("C", 9999).unwrap(),
+        "C-custom1jvnv9av3ul5v9l6kjfntntaw8dquy0ya0hnsyh"
+    );
+    assert_eq!(
+        random_key.eth_address,
+        "0xcCBC5eefcf31684BC474c59D0F9Ba26af5174D99"
     );
 }
 

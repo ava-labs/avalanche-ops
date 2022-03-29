@@ -14,7 +14,7 @@ use tokio::time::sleep;
 
 use avalanche_api::{health, metrics};
 use avalanche_ops_aws;
-use avalanche_types::{cert, constants, node};
+use avalanche_types::{cert, constants, ids, node};
 use avalanchego::genesis as avalanchego_genesis;
 use aws::{self, cloudwatch, ec2, envelope, kms, s3};
 use utils::{bash, compress, random};
@@ -386,8 +386,8 @@ pub async fn execute(log_level: &str) {
     }
 
     // loads the node ID from generated/existing certs
-    let node_id = node::load_id(&tls_cert_path).expect("failed to load node ID");
-    info!("loaded node ID {}", node_id);
+    let node_id = ids::NodeId::from_cert_file(&tls_cert_path).expect("failed to load node ID");
+    info!("loaded node ID {}", node_id.string());
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -404,7 +404,7 @@ pub async fn execute(log_level: &str) {
     let local_node = avalanche_ops_aws::Node::new(
         node_kind.clone(),
         &instance_id,
-        &node_id,
+        &node_id.string(),
         &public_ipv4,
         http_scheme,
         spec.avalanchego_config.http_port,

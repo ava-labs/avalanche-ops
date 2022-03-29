@@ -58,6 +58,15 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false)
         )
         .arg(
+            Arg::new("NODE_IDS")
+                .long("node-ids")
+                .short('n')
+                .help("a list of node IDs (comma-separated, must be formatted in ids.Id")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("STAKE_AMOUNT")
                 .long("stake-amount")
                 .short('s')
@@ -92,6 +101,7 @@ pub fn command() -> Command<'static> {
 pub struct Option {
     pub log_level: String,
     pub http_rpc_ep: String,
+    pub node_ids: Vec<String>,
     pub stake_amount: u64,
     pub validate_end: DateTime<Utc>,
     pub valiate_reward_fee_percent: u32,
