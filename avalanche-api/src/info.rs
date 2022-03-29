@@ -266,6 +266,170 @@ fn test_network_id_response_convert() {
     assert_eq!(parsed, expected);
 }
 
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GetBlockchainIdResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    pub result: Option<GetBlockchainIdResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GetBlockchainIdResult {
+    pub blockchain_id: ids::Id,
+}
+
+impl Default for GetBlockchainIdResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetBlockchainIdResult {
+    pub fn default() -> Self {
+        Self {
+            blockchain_id: ids::Id::default(),
+        }
+    }
+}
+
+/// e.g., "info.getBlockchainID".
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
+pub async fn get_blockchain_id(url: &str) -> io::Result<GetBlockchainIdResponse> {
+    info!("getting blockchain ID for {}", url);
+
+    let mut data = jsonrpc::DataWithParamsArray::default();
+    data.method = String::from("info.getBlockchainID");
+
+    let d = data.encode_json()?;
+
+    let resp: _GetBlockchainIdResponse = {
+        if url.starts_with("https") {
+            let joined = http::join_uri(url, "ext/info")?;
+
+            // TODO: implement this with native Rust
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg("-X POST");
+            cmd.arg("--header 'content-type:application/json;'");
+            cmd.arg(format!("--data '{}'", d));
+            cmd.arg(joined.as_str());
+
+            let output = cmd.output()?;
+            match serde_json::from_slice(&output.stdout) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        } else {
+            let req = http::create_json_post(url, "ext/info", &d)?;
+            let buf = match http::read_bytes(
+                req,
+                Duration::from_secs(5),
+                url.starts_with("https"),
+                false,
+            )
+            .await
+            {
+                Ok(u) => u,
+                Err(e) => return Err(e),
+            };
+            match serde_json::from_slice(&buf) {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("failed to decode {}", e),
+                    ));
+                }
+            }
+        }
+    };
+
+    let converted = resp.convert()?;
+    Ok(converted)
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetBlockchainIdResponse {
+    jsonrpc: String,
+    id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    result: Option<_GetBlockchainIdResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetBlockchainIdResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    balance: Option<String>,
+    #[serde(rename = "blockchainID")]
+    blockchain_id: String,
+}
+
+impl _GetBlockchainIdResponse {
+    fn convert(&self) -> io::Result<GetBlockchainIdResponse> {
+        let mut result = GetBlockchainIdResult::default();
+        if self.result.is_some() {
+            let blockchain_id = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .blockchain_id;
+            result.blockchain_id = {
+                if blockchain_id.is_empty() {
+                    ids::Id::empty()
+                } else {
+                    ids::Id::from_str(&blockchain_id).unwrap()
+                }
+            };
+        }
+
+        Ok(GetBlockchainIdResponse {
+            jsonrpc: self.jsonrpc.clone(),
+            id: self.id,
+            result: Some(result),
+        })
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-api --lib -- info::test_blockchain_id_response_convert --exact --show-output
+#[test]
+fn test_blockchain_id_response_convert() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
+    let resp: _GetBlockchainIdResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"blockchainID\": \"sV6o671RtkGBcno1FiaDbVcFv2sG5aVXMZYzKdP4VQAWmJQnM\"
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetBlockchainIdResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetBlockchainIdResult {
+            blockchain_id: ids::Id::from_str("sV6o671RtkGBcno1FiaDbVcFv2sG5aVXMZYzKdP4VQAWmJQnM")
+                .unwrap(),
+        }),
+    };
+    assert_eq!(parsed, expected);
+}
+
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetnodeid
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct GetNodeIdResponse {

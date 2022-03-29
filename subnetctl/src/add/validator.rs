@@ -12,7 +12,9 @@ use crossterm::{
 };
 use lazy_static::lazy_static;
 use log::info;
+use tokio::runtime::Runtime;
 
+use avalanche_api::info;
 use avalanche_types::key;
 use utils::rfc3339;
 
@@ -137,12 +139,11 @@ pub struct CmdOption {
 }
 
 pub fn execute(opt: CmdOption) -> io::Result<()> {
-    assert_eq!(opt.node_id.len(), 1);
-
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
+    let rt = Runtime::new().unwrap();
 
     let keys = {
         if let Some(private_key_path) = opt.private_key_path {
@@ -167,6 +168,15 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     )?;
 
     // TODO: get current network ID
+    let resp = rt
+        .block_on(info::get_network_name(&opt.http_rpc_ep))
+        .expect("failed get_network_name");
+    info!("get_network_name response: {:?}", resp);
+
+    let resp = rt
+        .block_on(info::get_network_id(&opt.http_rpc_ep))
+        .expect("failed get_network_id");
+    info!("get_network_id response: {:?}", resp);
 
     // TODO: get P-chain ID
 

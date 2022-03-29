@@ -26,6 +26,11 @@ fn main() {
     info!("get_network_id response: {:?}", resp);
 
     let resp = rt
+        .block_on(info::get_blockchain_id(&url))
+        .expect("failed get_blockchain_id");
+    info!("get_blockchain_id response: {:?}", resp);
+
+    let resp = rt
         .block_on(info::get_node_id(&url))
         .expect("failed get_node_id");
     info!("get_node_id response: {:?}", resp);

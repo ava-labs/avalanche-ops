@@ -66,7 +66,12 @@ impl Id {
         Self { d }
     }
 
-    pub fn create_from_str(s: &str) -> Self {
+    pub fn from_str(s: &str) -> io::Result<Self> {
+        let decoded = formatting::decode_cb58_with_checksum(s)?;
+        Ok(Self::new(&decoded))
+    }
+
+    pub fn encode_str(s: &str) -> Self {
         assert!(s.len() <= ID_LEN);
         let mut d: Vec<u8> = Vec::from(s.as_bytes());
         if d.len() < ID_LEN {
@@ -109,7 +114,7 @@ fn test_id() {
         "TtF4d2QWbk5vzQGTEPrN48x6vwgAoAmKQ9cbp79inpQmcRKES"
     );
 
-    let id = Id::create_from_str("ava labs");
+    let id = Id::encode_str("ava labs");
     assert_eq!(
         id.string(),
         "jvYi6Tn9idMi7BaymUVi9zWjg5tpmW7trfKG1AYJLKZJ2fsU7"
