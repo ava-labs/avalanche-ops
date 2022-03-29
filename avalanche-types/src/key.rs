@@ -244,7 +244,7 @@ fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<String> {
 
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
+pub fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
     let digest_sha256 = hash::compute_sha256(d);
 
     // "hashing.PubkeyBytesToAddress"

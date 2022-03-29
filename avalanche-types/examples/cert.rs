@@ -1,6 +1,6 @@
 use std::{env::args, fs, path::Path};
 
-use avalanche_types::{cert, node};
+use avalanche_types::{cert, ids};
 
 /// cargo run --example cert -- /tmp/test.insecure.key /tmp/test.insecure.cert
 fn main() {
@@ -23,5 +23,6 @@ fn main() {
     // openssl x509 -in artifacts/staker1.insecure.crt -text -noout
     // openssl x509 -in artifacts/test.insecure.crt -text -noout
 
-    println!("Node ID: {}", node::load_id(cert_path.as_str()).unwrap());
+    let node_id = ids::NodeId::from_cert_file(cert_path.as_str()).unwrap();
+    println!("Node ID: {}", node_id.string());
 }

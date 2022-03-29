@@ -45,6 +45,16 @@ See https://github.com/ava-labs/subnet-cli.
 
         Some((add::NAME, sub_matches)) => match sub_matches.subcommand() {
             Some((add::validator::NAME, sub_sub_matches)) => {
+                let node_ids = sub_sub_matches
+                    .value_of("NODE_IDS")
+                    .unwrap_or("")
+                    .to_string();
+                let splits: Vec<&str> = node_ids.split(',').collect();
+                let mut node_ids: Vec<String> = vec![];
+                for s in splits {
+                    node_ids.push(String::from(s));
+                }
+
                 let stake_amount = sub_sub_matches.value_of("STAKE_AMOUNT").unwrap_or("");
                 let stake_amount = stake_amount.parse::<u64>().unwrap();
 
@@ -65,6 +75,7 @@ See https://github.com/ava-labs/subnet-cli.
                         .value_of("HTTP_RPC_ENDPOINT")
                         .unwrap_or("")
                         .to_string(),
+                    node_ids,
                     stake_amount,
                     validate_end,
                     valiate_reward_fee_percent,
