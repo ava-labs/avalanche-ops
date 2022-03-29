@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -19,7 +20,6 @@ use crate::{constants, formatting};
 use utils::{hash, prefix};
 
 pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
-pub const EWOQ_KEY: &str = "PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN";
 
 lazy_static! {
     pub static ref TEST_KEYS: Vec<Key> = {
@@ -33,15 +33,30 @@ lazy_static! {
 
         let mut lines = text.lines();
         let mut keys: Vec<Key> = Vec::new();
+        let mut added = HashMap::new();
         loop {
             if let Some(s) = lines.next() {
+                if added.get(s).is_some() {
+                    panic!("test key '{}' added before (redundant!)", s)
+                }
                 keys.push(Key::from_private_key(s).unwrap());
+                added.insert(s, true);
                 continue;
             }
             break;
         }
         keys
     };
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_keys --exact --show-output
+#[test]
+fn test_keys() {
+    let _ = env_logger::builder().is_test(true).try_init();
+    for k in TEST_KEYS.iter() {
+        info!("test key eth address {:?}", k.eth_address);
+    }
+    info!("total {} test keys are found", TEST_KEYS.len());
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -344,45 +359,47 @@ fn test_key() {
         parsed_key.address("X", 9999).unwrap()
     );
 
-    let ewoq_key = Key::from_private_key(&EWOQ_KEY).unwrap();
+    let random_key =
+        Key::from_private_key("PrivateKey-ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN")
+            .unwrap();
     assert_eq!(
-        ewoq_key.private_key_hex.clone(),
+        random_key.private_key_hex.clone(),
         "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
     );
     assert_eq!(
-        ewoq_key,
-        Key::from_private_key_eth(&ewoq_key.private_key_hex.clone()).unwrap(),
+        random_key,
+        Key::from_private_key_eth(&random_key.private_key_hex.clone()).unwrap(),
     );
     assert_eq!(
-        ewoq_key.short_address.clone(),
+        random_key.short_address.clone(),
         "6Y3kysjF9jnHnYkdS9yGAuoHyae2eNmeV"
     );
     assert_eq!(
-        ewoq_key.address("X", 1).unwrap(),
+        random_key.address("X", 1).unwrap(),
         "X-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5"
     );
     assert_eq!(
-        ewoq_key.address("P", 1).unwrap(),
+        random_key.address("P", 1).unwrap(),
         "P-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5"
     );
     assert_eq!(
-        ewoq_key.address("C", 1).unwrap(),
+        random_key.address("C", 1).unwrap(),
         "C-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5"
     );
     assert_eq!(
-        ewoq_key.address("X", 9999).unwrap(),
+        random_key.address("X", 9999).unwrap(),
         "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
     );
     assert_eq!(
-        ewoq_key.address("P", 9999).unwrap(),
+        random_key.address("P", 9999).unwrap(),
         "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
     );
     assert_eq!(
-        ewoq_key.address("C", 9999).unwrap(),
+        random_key.address("C", 9999).unwrap(),
         "C-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
     );
     assert_eq!(
-        ewoq_key.eth_address,
+        random_key.eth_address,
         "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
     );
 
