@@ -25,5 +25,5 @@ cargo build \
 ./target/release/avalanched-aws --help
 ./target/release/avalanched-aws backup upload --help
 ./target/release/avalanched-aws backup download --help
-./target/release/dev-machine --help
+./target/release/dev-machine-aws --help
 ./target/release/subnetctl --help
