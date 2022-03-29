@@ -56,7 +56,7 @@ impl Tx {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_P_TYPES.get("platformvm.UnsignedCreateSubnetTx") {
+        if let Some(type_id) = codec::P_TYPES.get("platformvm.UnsignedCreateSubnetTx") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(

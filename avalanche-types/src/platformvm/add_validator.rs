@@ -62,7 +62,7 @@ impl Tx {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_P_TYPES.get("platformvm.UnsignedAddValidatorTx") {
+        if let Some(type_id) = codec::P_TYPES.get("platformvm.UnsignedAddValidatorTx") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(

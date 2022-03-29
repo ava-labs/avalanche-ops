@@ -58,7 +58,7 @@ impl Tx {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_X_TYPES.get("avm.ImportTx") {
+        if let Some(type_id) = codec::X_TYPES.get("avm.ImportTx") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(

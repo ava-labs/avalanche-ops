@@ -32,7 +32,7 @@ impl Credential {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_X_TYPES.get("secp256k1fx.Credential") {
+        if let Some(type_id) = codec::X_TYPES.get("secp256k1fx.Credential") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(
@@ -79,7 +79,7 @@ impl OutputOwners {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_P_TYPES.get("secp256k1fx.OutputOwners") {
+        if let Some(type_id) = codec::P_TYPES.get("secp256k1fx.OutputOwners") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(
@@ -125,7 +125,7 @@ impl TransferOutput {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_X_TYPES.get("secp256k1fx.TransferOutput") {
+        if let Some(type_id) = codec::X_TYPES.get("secp256k1fx.TransferOutput") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(
@@ -172,7 +172,7 @@ impl TransferInput {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_X_TYPES.get("secp256k1fx.TransferInput") {
+        if let Some(type_id) = codec::X_TYPES.get("secp256k1fx.TransferInput") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(
@@ -240,7 +240,7 @@ impl Input {
     }
 
     pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::WALLET_P_TYPES.get("secp256k1fx.Input") {
+        if let Some(type_id) = codec::P_TYPES.get("secp256k1fx.Input") {
             Ok((*type_id) as u32)
         } else {
             return Err(Error::new(
