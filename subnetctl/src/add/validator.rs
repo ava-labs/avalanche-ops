@@ -15,7 +15,7 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use avalanche_api::{avm as api_avm, info as api_info, platform as api_platform};
-use avalanche_types::{avax, constants, key, platformvm};
+use avalanche_types::{avax, constants, platformvm, soft_key};
 use utils::rfc3339;
 
 lazy_static! {
@@ -158,7 +158,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
                 ResetColor
             )?;
             let contents = fs::read_to_string(private_key_path).expect("failed to read file");
-            let keys = key::load_keys(contents.as_bytes())?;
+            let keys = soft_key::load_keys(contents.as_bytes())?;
             keys
         } else {
             panic!("unexpected None opt.private_key_path -- hardware wallet not supported yet");
@@ -357,14 +357,12 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         Print("checking inputs and outputs\n".to_string()),
         ResetColor
     )?;
-    // TODO: get "*platformvm.StakeableLockOut"
     let resp = rt
         .block_on(api_platform::get_utxos(&opt.http_rpc_ep, &p_chain_addr))
         .expect("failed to get UTXOs");
     let utxos_raw = resp.result.unwrap().utxos.unwrap();
     let mut utxos: Vec<avax::Utxo> = Vec::new();
     for s in utxos_raw.iter() {
-        // TODO: get "*platformvm.StakeableLockOut"
         let utxo = avax::Utxo::unpack_hex(s).expect("failed to unpack raw utxo");
         utxos.push(utxo);
     }
@@ -378,6 +376,18 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         }
 
         // check "*platformvm.StakeableLockOut"
+        if utxo.stakeable_lock_out.is_none() {
+            // output is not locked, just handle this in the next iteration
+            continue;
+        }
+        let stakeable_lock_out = utxo.stakeable_lock_out.clone().unwrap();
+        if stakeable_lock_out.locktime <= now_unix {
+            // output is no longer locked, just handle in the next iteration
+            continue;
+        }
+
+        let _inner = stakeable_lock_out.out;
+        // TODO
     }
     // TODO: get *avax.TransferableInput for inputs
     // TODO: get *avax.TransferableOutput for returned outs

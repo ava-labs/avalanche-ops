@@ -1,6 +1,6 @@
 use std::io::{self, Error, ErrorKind};
 
-use crate::{avax, avm::fx, codec, ids, key, secp256k1fx};
+use crate::{avax, avm::fx, codec, ids, secp256k1fx, soft_key};
 use utils::{hash, secp256k1r};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/avm#Tx
@@ -66,7 +66,7 @@ impl Tx {
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/avm#Tx.SignSECP256K1Fx
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/crypto#PrivateKeyED25519.SignHash
     /// TODO: support ledger signing
-    pub fn sign(&mut self, signers: Option<Vec<Vec<key::Key>>>) -> io::Result<()> {
+    pub fn sign(&mut self, signers: Option<Vec<Vec<soft_key::Key>>>) -> io::Result<()> {
         // marshal "unsigned tx" with the codec version
         let type_id = Self::type_id()?;
         let packer = self.unsigned_tx.pack(codec::VERSION, type_id)?;
@@ -152,13 +152,13 @@ impl Tx {
 /// ref. "avalanchego/vms/avm.TestBaseTxSerialization"
 #[test]
 fn test_tx_serialization_with_no_signer() {
-    use crate::key;
     use utils::cmp;
 
     // ref. "avalanchego/vms/avm/vm_test.go"
-    let test_key =
-        key::Key::from_private_key("PrivateKey-24jUJ9vZexUM6expyMcT48LBx27k1m7xpraoV62oSQAHdziao5")
-            .expect("failed to load private key");
+    let test_key = soft_key::Key::from_private_key(
+        "PrivateKey-24jUJ9vZexUM6expyMcT48LBx27k1m7xpraoV62oSQAHdziao5",
+    )
+    .expect("failed to load private key");
     let test_key_short_addr = test_key
         .short_address_bytes()
         .expect("failed short_address_bytes");
@@ -304,13 +304,13 @@ fn test_tx_serialization_with_no_signer() {
 /// ref. "avalanchego/vms/avm.TestBaseTxSerialization"
 #[test]
 fn test_tx_serialization_with_two_signers() {
-    use crate::key;
     use utils::cmp;
 
     // ref. "avalanchego/vms/avm/vm_test.go"
-    let test_key =
-        key::Key::from_private_key("PrivateKey-24jUJ9vZexUM6expyMcT48LBx27k1m7xpraoV62oSQAHdziao5")
-            .expect("failed to load private key");
+    let test_key = soft_key::Key::from_private_key(
+        "PrivateKey-24jUJ9vZexUM6expyMcT48LBx27k1m7xpraoV62oSQAHdziao5",
+    )
+    .expect("failed to load private key");
     let test_key_short_addr = test_key
         .short_address_bytes()
         .expect("failed short_address_bytes");
@@ -354,9 +354,9 @@ fn test_tx_serialization_with_two_signers() {
         ..avax::BaseTx::default()
     };
 
-    let keys1: Vec<key::Key> = vec![test_key.clone(), test_key.clone()];
-    let keys2: Vec<key::Key> = vec![test_key.clone(), test_key.clone()];
-    let signers: Vec<Vec<key::Key>> = vec![keys1, keys2];
+    let keys1: Vec<soft_key::Key> = vec![test_key.clone(), test_key.clone()];
+    let keys2: Vec<soft_key::Key> = vec![test_key.clone(), test_key.clone()];
+    let signers: Vec<Vec<soft_key::Key>> = vec![keys1, keys2];
     let mut tx_with_two_signers = Tx::new(unsigned_tx);
     tx_with_two_signers
         .sign(Some(signers))

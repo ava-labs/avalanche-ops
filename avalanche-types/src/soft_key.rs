@@ -17,7 +17,7 @@ use secp256k1::{self, rand::rngs::OsRng, PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use sha3::Keccak256;
 
-use crate::{constants, formatting};
+use crate::{constants, formatting, ids, secp256k1fx};
 use utils::{hash, prefix};
 
 pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
@@ -71,7 +71,7 @@ pub fn load_keys(d: &[u8]) -> io::Result<Vec<Key>> {
     Ok(keys)
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_load_test_keys --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- soft_key::test_load_test_keys --exact --show-output
 #[test]
 fn test_load_test_keys() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -356,7 +356,7 @@ fn checksum_eip55(addr: &str, addr_hash: &str) -> String {
     chksum
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_key --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- soft_key::test_key --exact --show-output
 #[test]
 fn test_key() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -1561,11 +1561,34 @@ impl PrivateKeyInfo {
 /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/wallet/chain/p/builder.go
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Keychain {
-    pub key: Key,
+    pub keys: Vec<Key>,
 }
 
 impl Keychain {
-    pub fn new(key: Key) -> Self {
-        Self { key }
+    pub fn new(keys: Vec<Key>) -> Self {
+        Self { keys }
+    }
+
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Get
+    pub fn get(&self, _addr: ids::ShortId) -> (Key, bool) {
+        (self.keys[0].clone(), true)
+    }
+
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Match
+    pub fn match_threshold(
+        &self,
+        output_owners: secp256k1fx::OutputOwners,
+        time: u64,
+    ) -> io::Result<(Vec<usize>, Vec<Key>, bool)> {
+        if output_owners.locktime > time {
+            // output owners are still locked
+            return Ok((Vec::new(), Vec::new(), false));
+        }
+
+        let mut sigs: Vec<usize> = Vec::new();
+        let mut keys: Vec<Key> = Vec::new();
+        for (pos, addr) in output_owners.addrs.iter().enumerate() {}
+
+        Ok((sigs, keys, false))
     }
 }

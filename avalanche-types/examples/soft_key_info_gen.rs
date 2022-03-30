@@ -1,8 +1,8 @@
 use std::env::args;
 
-use avalanche_types::key;
+use avalanche_types::soft_key;
 
-/// cargo run --example key_info_gen -- 9999 /tmp/key.json
+/// cargo run --example soft_key_info_gen -- 9999 /tmp/key.json
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -14,7 +14,7 @@ fn main() {
 
     let file_path = args().nth(2).expect("no file path given");
 
-    let key = key::Key::generate().expect("unexpected key generate failure");
+    let key = soft_key::Key::generate().expect("unexpected key generate failure");
     let info = key.info(network_id).expect("failed to_info");
     print!("{}", info.to_string().unwrap());
 

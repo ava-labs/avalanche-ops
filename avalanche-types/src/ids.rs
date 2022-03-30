@@ -10,7 +10,7 @@ use log::info;
 use openssl::x509::X509;
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{formatting, key, packer};
+use crate::{formatting, packer, soft_key};
 use utils::{cmp, hash};
 
 pub const ID_LEN: usize = 32;
@@ -278,7 +278,7 @@ impl NodeId {
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ToShortID
     pub fn from_cert_raw(cert_raw: &[u8]) -> io::Result<Self> {
-        let short_address = key::bytes_to_short_address_bytes(cert_raw)?;
+        let short_address = soft_key::bytes_to_short_address_bytes(cert_raw)?;
         let node_id = Self::from_slice(&short_address);
         Ok(node_id)
     }

@@ -543,13 +543,14 @@ impl BaseTx {
 /// ref. "avalanchego/vms/avm.TestBaseTxSerialization"
 #[test]
 fn test_base_tx_serialization() {
-    use crate::key;
+    use crate::soft_key;
     use utils::cmp;
 
     // ref. "avalanchego/vms/avm/vm_test.go"
-    let test_key =
-        key::Key::from_private_key("PrivateKey-24jUJ9vZexUM6expyMcT48LBx27k1m7xpraoV62oSQAHdziao5")
-            .expect("failed to load private key");
+    let test_key = soft_key::Key::from_private_key(
+        "PrivateKey-24jUJ9vZexUM6expyMcT48LBx27k1m7xpraoV62oSQAHdziao5",
+    )
+    .expect("failed to load private key");
     let test_key_short_addr = test_key
         .short_address_bytes()
         .expect("failed short_address_bytes");

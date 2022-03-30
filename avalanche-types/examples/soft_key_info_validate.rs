@@ -2,9 +2,9 @@ use std::env::args;
 
 use log::info;
 
-use avalanche_types::key;
+use avalanche_types::soft_key;
 
-/// cargo run --example key_info_validate -- ./artifacts/ewoq.key.json 9999
+/// cargo run --example soft_key_info_validate -- ./artifacts/ewoq.key.json 9999
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -16,10 +16,10 @@ fn main() {
 
     info!("loading key");
     let key_path = args().nth(1).expect("no key path given");
-    let info = key::PrivateKeyInfo::load(&key_path).unwrap();
+    let info = soft_key::PrivateKeyInfo::load(&key_path).unwrap();
     println!("{}", info.to_string().unwrap());
 
-    let k = key::Key::from_private_key(&info.private_key).unwrap();
+    let k = soft_key::Key::from_private_key(&info.private_key).unwrap();
     assert_eq!(info.private_key, k.private_key);
     assert_eq!(info.x_address, k.address("X", network_id).unwrap());
     assert_eq!(info.p_address, k.address("P", network_id).unwrap());

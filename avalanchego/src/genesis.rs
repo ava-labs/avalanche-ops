@@ -11,7 +11,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 use crate::config as avalanchego_config;
-use avalanche_types::key;
+use avalanche_types::soft_key;
 use coreth::genesis as coreth_genesis;
 use utils::prefix;
 
@@ -122,17 +122,17 @@ impl Genesis {
 
     /// Creates a new Genesis object with "keys" number of generated
     /// pre-funded keys.
-    pub fn new(network_id: u32, keys: usize) -> io::Result<(Self, Vec<key::PrivateKeyInfo>)> {
+    pub fn new(network_id: u32, keys: usize) -> io::Result<(Self, Vec<soft_key::PrivateKeyInfo>)> {
         let mut initial_staked_funds: Vec<String> = Vec::new();
         let mut allocations: Vec<Allocation> = Vec::new();
         let mut c_chain_seed_allocs = BTreeMap::new();
-        let mut seed_priv_keys: Vec<key::PrivateKeyInfo> = Vec::new();
+        let mut seed_priv_keys: Vec<soft_key::PrivateKeyInfo> = Vec::new();
         for i in 0..keys {
             let k = {
-                if i < key::TEST_KEYS.len() {
-                    key::TEST_KEYS[i].clone()
+                if i < soft_key::TEST_KEYS.len() {
+                    soft_key::TEST_KEYS[i].clone()
                 } else {
-                    key::Key::generate().expect("unexpected key generate failure")
+                    soft_key::Key::generate().expect("unexpected key generate failure")
                 }
             };
             let info = k.info(network_id)?;
