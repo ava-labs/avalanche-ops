@@ -1,15 +1,14 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
-    process::Command,
     string::String,
-    time::Duration,
 };
 
 use log::info;
 use serde::{Deserialize, Serialize};
 
 use crate::{avax, jsonrpc};
+use avalanche_types::ids;
 use utils::http;
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
@@ -47,8 +46,8 @@ impl GetBalanceResult {
 
 /// e.g., "avm.getBalance" on "http://[ADDR]:9650" and "/ext/bc/X" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
-pub async fn get_balance(url: &str, path: &str, xaddr: &str) -> io::Result<GetBalanceResponse> {
-    let joined = http::join_uri(url, path)?;
+pub async fn get_balance(url: &str, xaddr: &str) -> io::Result<GetBalanceResponse> {
+    let joined = http::join_uri(url, "/ext/bc/X")?;
     info!("getting balances for {} via {:?}", xaddr, joined);
 
     let mut data = jsonrpc::Data::default();
@@ -60,53 +59,16 @@ pub async fn get_balance(url: &str, path: &str, xaddr: &str) -> io::Result<GetBa
     data.params = Some(params);
 
     let d = data.encode_json()?;
-
-    let resp: _GetBalanceResponse = {
-        if url.starts_with("https") {
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, path, &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "/ext/bc/X", &d).await?;
+    let resp: _GetBalanceResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
     let parsed = resp.convert()?;
     Ok(parsed)
 }
@@ -210,6 +172,188 @@ fn test_convert() {
                 )),
                 output_index: Some(1),
             }]),
+        }),
+    };
+    assert_eq!(parsed, expected);
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GetAssetDescriptionResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    pub result: Option<GetAssetDescriptionResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GetAssetDescriptionResult {
+    /// TODO: implement serializer/deserializer for "ids::Id"
+    /// #[serde(default, deserialize_with = "ids::format_id_de")]
+    pub asset_id: ids::Id,
+    pub name: String,
+    pub symbol: String,
+    pub denomination: usize,
+}
+
+impl Default for GetAssetDescriptionResult {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl GetAssetDescriptionResult {
+    pub fn default() -> Self {
+        Self {
+            asset_id: ids::Id::default(),
+            name: String::new(),
+            symbol: String::new(),
+            denomination: 0,
+        }
+    }
+}
+
+/// e.g., "avm.getAssetDescription".
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
+pub async fn get_asset_description(
+    url: &str,
+    asset_id: &str,
+) -> io::Result<GetAssetDescriptionResponse> {
+    info!("getting asset description from {} for {}", url, asset_id);
+
+    let mut data = jsonrpc::Data::default();
+    data.method = String::from("avm.getAssetDescription");
+
+    let mut params = HashMap::new();
+    params.insert(String::from("assetID"), String::from(asset_id));
+    data.params = Some(params);
+
+    let d = data.encode_json()?;
+    let rb = http::insecure_post(url, "ext/bc/X", &d).await?;
+    let resp: _GetAssetDescriptionResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
+        }
+    };
+    let converted = resp.convert()?;
+    Ok(converted)
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetAssetDescriptionResponse {
+    jsonrpc: String,
+    id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    result: Option<_GetAssetDescriptionResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct _GetAssetDescriptionResult {
+    #[serde(rename = "assetID")]
+    asset_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    symbol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    denomination: Option<String>,
+}
+
+// https://serde.rs/field-attrs.html
+// #[serde(default, deserialize_with = "ids::format_id_de")]
+
+impl _GetAssetDescriptionResponse {
+    fn convert(&self) -> io::Result<GetAssetDescriptionResponse> {
+        let mut result = GetAssetDescriptionResult::default();
+        if self.result.is_some() {
+            let asset_id = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .asset_id;
+            result.asset_id = {
+                if asset_id.is_empty() {
+                    ids::Id::empty()
+                } else {
+                    ids::Id::from_str(&asset_id).unwrap()
+                }
+            };
+
+            let name = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .name
+                .unwrap_or(String::new());
+            result.name = name;
+
+            let symbol = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .symbol
+                .unwrap_or(String::new());
+            result.symbol = symbol;
+
+            let denomination = self
+                .result
+                .clone()
+                .expect("unexpected None result")
+                .denomination;
+            result.denomination = {
+                if denomination.is_none() {
+                    0_usize
+                } else {
+                    denomination.unwrap().parse::<usize>().unwrap()
+                }
+            };
+        }
+
+        Ok(GetAssetDescriptionResponse {
+            jsonrpc: self.jsonrpc.clone(),
+            id: self.id,
+            result: Some(result),
+        })
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-api --lib -- avm::test_asset_description_response_convert --exact --show-output
+#[test]
+fn test_asset_description_response_convert() {
+    // ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
+    let resp: _GetAssetDescriptionResponse = serde_json::from_str(
+        "
+
+{
+    \"jsonrpc\": \"2.0\",
+    \"result\": {
+        \"assetID\": \"2fombhL7aGPwj3KH4bfrmJwW6PVnMobf9Y2fn9GwxiAAJyFDbe\",
+        \"name\": \"Avalanche\",
+        \"symbol\": \"AVAX\",
+        \"denomination\": \"9\"
+    },
+    \"id\": 1
+}
+
+",
+    )
+    .unwrap();
+    let parsed = resp.convert().unwrap();
+    let expected = GetAssetDescriptionResponse {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(GetAssetDescriptionResult {
+            asset_id: ids::Id::from_str("2fombhL7aGPwj3KH4bfrmJwW6PVnMobf9Y2fn9GwxiAAJyFDbe")
+                .unwrap(),
+            name: String::from("Avalanche"),
+            symbol: String::from("AVAX"),
+            denomination: 9,
         }),
     };
     assert_eq!(parsed, expected);

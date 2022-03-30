@@ -12,12 +12,13 @@ fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
-    let url = args().nth(1).expect("no url given");
-    let paddr = args().nth(2).expect("no x-chain address given");
-
     let rt = Runtime::new().unwrap();
+
+    let url = args().nth(1).expect("no url given");
+    let paddr = args().nth(2).expect("no C-chain address given");
+
     let resp = rt
-        .block_on(eth::get_balance(&url, "/ext/bc/C/rpc", &paddr))
+        .block_on(eth::get_balance(&url, &paddr))
         .expect("failed to get balance");
     info!("response: {:?}", resp);
 }

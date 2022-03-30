@@ -3,6 +3,7 @@ use std::{
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
+    str,
     string::String,
 };
 
@@ -29,29 +30,50 @@ lazy_static! {
         struct Asset;
 
         let key_file = Asset::get("artifacts/test.insecure.secp256k1.keys").unwrap();
-        let text = std::str::from_utf8(key_file.data.as_ref()).expect("failed to load key file");
-
-        let mut lines = text.lines();
-        let mut keys: Vec<Key> = Vec::new();
-        let mut added = HashMap::new();
-        loop {
-            if let Some(s) = lines.next() {
-                if added.get(s).is_some() {
-                    panic!("test key '{}' added before (redundant!)", s)
-                }
-                keys.push(Key::from_private_key(s).unwrap());
-                added.insert(s, true);
-                continue;
-            }
-            break;
-        }
-        keys
+        load_keys(key_file.data.as_ref()).expect("failed to load keys")
     };
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_keys --exact --show-output
+/// Loads keys from texts, assuming each key is line-separated.
+pub fn load_keys(d: &[u8]) -> io::Result<Vec<Key>> {
+    let text = match str::from_utf8(d) {
+        Ok(s) => s,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to convert str from_utf8 {}", e),
+            ));
+        }
+    };
+
+    let mut lines = text.lines();
+    let mut line_cnt = 1;
+
+    let mut keys: Vec<Key> = Vec::new();
+    let mut added = HashMap::new();
+    loop {
+        if let Some(s) = lines.next() {
+            if added.get(s).is_some() {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("key at line {} already added before", line_cnt),
+                ));
+            }
+
+            keys.push(Key::from_private_key(s).unwrap());
+
+            added.insert(s, true);
+            line_cnt += 1;
+            continue;
+        }
+        break;
+    }
+    Ok(keys)
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_load_test_keys --exact --show-output
 #[test]
-fn test_keys() {
+fn test_load_test_keys() {
     let _ = env_logger::builder().is_test(true).try_init();
     for k in TEST_KEYS.iter() {
         info!("test key eth address {:?}", k.eth_address);

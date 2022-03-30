@@ -12,9 +12,9 @@ fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
-    let url = args().nth(1).expect("no url given");
-
     let rt = Runtime::new().unwrap();
+
+    let url = args().nth(1).expect("no url given");
 
     let resp = rt
         .block_on(metrics::get(Arc::new(url)))

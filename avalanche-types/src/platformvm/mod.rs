@@ -7,6 +7,11 @@ pub mod import;
 
 use crate::{avax, ids, secp256k1fx};
 
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#pkg-variables
+pub fn chain_id() -> ids::Id {
+    ids::Id::empty()
+}
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#Validator
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Validator {

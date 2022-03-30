@@ -1,12 +1,13 @@
 use std::{
     io,
     io::{Error, ErrorKind},
+    process::Command,
     time::Duration,
 };
 
 use hyper::{body::Bytes, client::HttpConnector, Body, Client, Method, Request, Response};
 use hyper_tls::HttpsConnector;
-use log::warn;
+use log::{info, warn};
 use tokio::time::timeout;
 use url::Url;
 
@@ -218,4 +219,61 @@ fn test_join_uri() {
     assert!(ret.is_ok());
     let t = ret.unwrap();
     assert_eq!(t, expected);
+}
+
+/// TODO: implement this with native Rust
+pub async fn insecure_get(url: &str, url_path: &str) -> io::Result<Vec<u8>> {
+    let joined = join_uri(url, url_path)?;
+    info!("insecure get for {:?}", joined);
+
+    let output = {
+        if url.starts_with("https") {
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg(joined.as_str());
+            let output = cmd.output()?;
+            output.stdout
+        } else {
+            let req = create_get(url, url_path)?;
+            let buf = match read_bytes(req, Duration::from_secs(5), url.starts_with("https"), false)
+                .await
+            {
+                Ok(b) => b,
+                Err(e) => return Err(e),
+            };
+            buf.to_vec()
+        }
+    };
+    Ok(output)
+}
+
+/// TODO: implement this with native Rust
+pub async fn insecure_post(url: &str, url_path: &str, data: &str) -> io::Result<Vec<u8>> {
+    let joined = join_uri(url, url_path)?;
+    info!("insecure post {}-byte data to {:?}", data.len(), joined);
+
+    let output = {
+        if url.starts_with("https") {
+            info!("sending via curl --insecure");
+            let mut cmd = Command::new("curl");
+            cmd.arg("--insecure");
+            cmd.arg("-X POST");
+            cmd.arg("--header 'content-type:application/json;'");
+            cmd.arg(format!("--data '{}'", data));
+            cmd.arg(joined.as_str());
+            let output = cmd.output()?;
+            output.stdout
+        } else {
+            let req = create_json_post(url, url_path, &data)?;
+            let buf = match read_bytes(req, Duration::from_secs(5), url.starts_with("https"), false)
+                .await
+            {
+                Ok(b) => b,
+                Err(e) => return Err(e),
+            };
+            buf.to_vec()
+        }
+    };
+    Ok(output)
 }

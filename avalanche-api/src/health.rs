@@ -1,10 +1,8 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
-    process::Command,
     string::String,
     sync::Arc,
-    time::Duration,
 };
 
 use chrono::{DateTime, Utc};
@@ -61,7 +59,7 @@ fn test_api_health() {
 /// "If a single piece of data must be accessible from more than one task
 /// concurrently, then it must be shared using synchronization primitives such as Arc."
 /// ref. https://tokio.rs/tokio/tutorial/spawning
-pub async fn check(u: Arc<String>, liveness: bool) -> io::Result<Response> {
+pub async fn check(url: Arc<String>, liveness: bool) -> io::Result<Response> {
     let url_path = {
         if liveness {
             "ext/health/liveness"
@@ -69,45 +67,17 @@ pub async fn check(u: Arc<String>, liveness: bool) -> io::Result<Response> {
             "ext/health"
         }
     };
-    let joined = http::join_uri(u.as_str(), url_path)?;
+    let joined = http::join_uri(url.as_str(), url_path)?;
     info!("checking for {:?}", joined);
 
-    let resp = {
-        if u.starts_with("https") {
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_get(u.as_str(), url_path)?;
-            let buf =
-                match http::read_bytes(req, Duration::from_secs(5), u.starts_with("https"), false)
-                    .await
-                {
-                    Ok(u) => u,
-                    Err(e) => return Err(e),
-                };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_get(url.as_str(), url_path).await?;
+    let resp: Response = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
     Ok(resp)

@@ -14,15 +14,6 @@ const APP_NAME: &str = "subnetctl";
 fn main() {
     let matches = Command::new(APP_NAME)
         .about("subnetctl (experimental subnet-cli)")
-        .long_about(
-            "
-e.g.,
-subnetctl vm-id --name subnet-evm
-
-See https://github.com/ava-labs/subnet-cli.
-
-",
-        )
         .subcommands(vec![
             vm_id::command(),
             add::command(),
@@ -45,28 +36,42 @@ See https://github.com/ava-labs/subnet-cli.
 
         Some((add::NAME, sub_matches)) => match sub_matches.subcommand() {
             Some((add::validator::NAME, sub_sub_matches)) => {
-                let node_ids = sub_sub_matches
-                    .value_of("NODE_IDS")
+                // let node_ids = sub_sub_matches
+                //     .value_of("NODE_IDS")
+                //     .unwrap_or("")
+                //     .to_string();
+                // let splits: Vec<&str> = node_ids.split(',').collect();
+                // let mut node_ids: Vec<String> = vec![];
+                // for s in splits {
+                //     node_ids.push(String::from(s));
+                // }
+                let node_id = sub_sub_matches
+                    .value_of("NODE_ID")
                     .unwrap_or("")
                     .to_string();
-                let splits: Vec<&str> = node_ids.split(',').collect();
-                let mut node_ids: Vec<String> = vec![];
-                for s in splits {
-                    node_ids.push(String::from(s));
-                }
+
+                let private_key_path = {
+                    let v = sub_sub_matches.value_of("PRIVATE_KEY_PATH").unwrap_or("");
+                    if v.is_empty() {
+                        None
+                    } else {
+                        Some(String::from(v))
+                    }
+                };
 
                 let stake_amount = sub_sub_matches.value_of("STAKE_AMOUNT").unwrap_or("");
                 let stake_amount = stake_amount.parse::<u64>().unwrap();
 
-                let valiate_reward_fee_percent = sub_sub_matches
+                let validate_reward_fee_percent = sub_sub_matches
                     .value_of("VALIDATE_REWARD_FEE_PERCENT")
                     .unwrap_or("");
-                let valiate_reward_fee_percent = valiate_reward_fee_percent.parse::<u32>().unwrap();
+                let validate_reward_fee_percent =
+                    validate_reward_fee_percent.parse::<u32>().unwrap();
 
                 let validate_end = sub_sub_matches.value_of("VALIDATE_END").unwrap_or("");
                 let validate_end = rfc3339::parse(validate_end).unwrap();
 
-                let opt = add::validator::Option {
+                let opt = add::validator::CmdOption {
                     log_level: sub_sub_matches
                         .value_of("LOG_LEVEL")
                         .unwrap_or("info")
@@ -75,10 +80,11 @@ See https://github.com/ava-labs/subnet-cli.
                         .value_of("HTTP_RPC_ENDPOINT")
                         .unwrap_or("")
                         .to_string(),
-                    node_ids,
+                    private_key_path,
+                    node_id,
                     stake_amount,
                     validate_end,
-                    valiate_reward_fee_percent,
+                    validate_reward_fee_percent,
                 };
                 add::validator::execute(opt).unwrap();
             }

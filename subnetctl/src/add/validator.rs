@@ -1,16 +1,21 @@
 use std::{
-    io::{self, stdout},
+    fs,
+    io::{self, stdout, Error, ErrorKind},
     time::SystemTime,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use clap::{Arg, Command};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use lazy_static::lazy_static;
+use log::info;
+use tokio::runtime::Runtime;
 
+use avalanche_api::{avm as api_avm, info as api_info, platform as api_platform};
+use avalanche_types::{avax, constants, key, platformvm};
 use utils::rfc3339;
 
 lazy_static! {
@@ -36,6 +41,21 @@ pub const NAME: &str = "validator";
 pub fn command() -> Command<'static> {
     Command::new(NAME)
         .about("Adds a validator")
+        .long_about("
+
+e.g.,
+
+$ subnetctl add validator \
+--http-rpc-endpoint=http://localhost:52250 \
+--private-key-path=.insecure.ewoq.key \
+--node-id=\"NodeID-4B4rc5vdD1758JSBYL1xyvE5NHGzz6xzH\" \
+--stake-amount=2000000000000 \
+--validate-reward-fee-percent=2
+
+See https://github.com/ava-labs/subnet-cli.
+
+
+")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -58,10 +78,20 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false)
         )
         .arg(
-            Arg::new("NODE_IDS")
-                .long("node-ids")
+            // TODO: support ledger
+            Arg::new("PRIVATE_KEY_PATH")
+                .long("private-key-path")
+                .short('p')
+                .help("private key file path that contains hex string")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+        )
+        .arg(
+            Arg::new("NODE_ID")
+                .long("node-id")
                 .short('n')
-                .help("a list of node IDs (comma-separated, must be formatted in ids.Id")
+                .help("node ID (must be formatted in ids.Id")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -98,27 +128,295 @@ pub fn command() -> Command<'static> {
         )
 }
 
-pub struct Option {
+pub struct CmdOption {
     pub log_level: String,
     pub http_rpc_ep: String,
-    pub node_ids: Vec<String>,
+    pub private_key_path: Option<String>,
+    pub node_id: String,
     pub stake_amount: u64,
     pub validate_end: DateTime<Utc>,
-    pub valiate_reward_fee_percent: u32,
+    pub validate_reward_fee_percent: u32,
 }
 
-pub fn execute(opt: Option) -> io::Result<()> {
+pub fn execute(opt: CmdOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
+    let rt = Runtime::new().unwrap();
 
+    /////
+    println!();
+    println!();
+    println!();
+    let keys = {
+        if let Some(private_key_path) = opt.private_key_path {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Blue),
+                Print(format!("loading private key file '{}'\n", private_key_path)),
+                ResetColor
+            )?;
+            let contents = fs::read_to_string(private_key_path).expect("failed to read file");
+            let keys = key::load_keys(&contents.as_bytes())?;
+            keys
+        } else {
+            panic!("unexpected None opt.private_key_path -- hardware wallet not supported yet");
+        }
+    };
+    assert_eq!(keys.len(), 1);
+    let key = &keys[0];
+    let reward_short_address = key.short_address.clone();
+    info!(
+        "loaded key at ETH address {} (reward short address {})",
+        key.eth_address, reward_short_address
+    );
+
+    /////
+    println!();
+    println!();
+    println!();
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("Connecting to '{}'\n", opt.http_rpc_ep)),
+        Print(format!(
+            "connecting to '{}' for network information\n",
+            opt.http_rpc_ep
+        )),
         ResetColor
     )?;
+    let resp = rt
+        .block_on(api_info::get_network_id(&opt.http_rpc_ep))
+        .expect("failed get_network_id");
+    let network_id = resp.result.unwrap().network_id;
+    if let Some(name) = constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
+        if *name == "mainnet" {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "mainnet is not supported yet!",
+            ));
+        }
+    }
+    let resp = rt
+        .block_on(api_info::get_network_name(&opt.http_rpc_ep))
+        .expect("failed get_network_name");
+    let network_name = resp.result.unwrap().network_name;
+    if network_name == "mainnet" {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "mainnet is not supported yet!",
+        ));
+    }
+    info!("NETWORK ID: {}", network_id);
+    info!("NETWORK NAME: {}", network_name);
+
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print("getting chain IDs\n"),
+        ResetColor
+    )?;
+    let resp = rt
+        .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "X"))
+        .expect("failed get_blockchain_id for X");
+    let x_chain_id = resp.result.unwrap().blockchain_id;
+    info!("X-chain ID is {}", x_chain_id.string());
+
+    let p_chain_id = platformvm::chain_id();
+    info!("P-chain ID is {}", p_chain_id.string());
+
+    let resp = rt
+        .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "P"))
+        .expect("failed get_blockchain_id for P");
+    let p_chain_id = resp.result.unwrap().blockchain_id;
+    info!("P-chain ID is {}", p_chain_id.string());
+
+    let resp = rt
+        .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "C"))
+        .expect("failed get_blockchain_id for C");
+    let c_chain_id = resp.result.unwrap().blockchain_id;
+    info!("C-chain ID is {}", c_chain_id.string());
+
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print("getting asset ID for AVAX\n"),
+        ResetColor
+    )?;
+    let resp = rt
+        .block_on(api_avm::get_asset_description(&opt.http_rpc_ep, "AVAX"))
+        .expect("failed to get get_asset_description");
+    let result = resp.result.unwrap();
+    let avax_asset_id = result.clone().asset_id;
+    info!("AVAX asset ID: {}", avax_asset_id.string());
+    info!("AVAX asset description: {:?}", result);
+
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!(
+            "getting current validators via '{}' to check node '{}' is already a validator\n",
+            opt.http_rpc_ep, opt.node_id
+        )),
+        ResetColor
+    )?;
+    let resp = rt
+        .block_on(api_platform::get_current_validators(&opt.http_rpc_ep))
+        .expect("failed get_current_validators");
+    let validators = resp.result.unwrap().validators.unwrap();
+    for validator in validators.iter() {
+        let node_id = validator.node_id.clone().unwrap();
+        if node_id == opt.node_id {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("node ID {} is already a validator", node_id),
+            ));
+        }
+        info!("listing current validator {}", node_id);
+    }
+
+    /////
+    println!();
+    println!();
+    println!();
+    let p_chain_addr = key.address("P", network_id)?;
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!("checking the balance for {}\n", p_chain_addr)),
+        ResetColor
+    )?;
+    let resp = rt
+        .block_on(api_platform::get_balance(&opt.http_rpc_ep, &p_chain_addr))
+        .expect("failed to get balance");
+    // On the X-Chain, one AVAX is 10^9  units.
+    // On the P-Chain, one AVAX is 10^9  units.
+    // On the C-Chain, one AVAX is 10^18 units.
+    // ref. https://docs.avax.network/learn/platform-overview/transaction-fees/#fee-schedule
+    let add_validator_fee = 0_u64;
+    let stake_amount = opt.stake_amount;
+    let total_cost = add_validator_fee + stake_amount;
+    let total_cost_avax = (total_cost as f64) / 1000000000_f64;
+    let p_chain_balance = resp.result.unwrap().balance.unwrap();
+    let p_chain_balance_avax = (p_chain_balance as f64) / 1000000000_f64;
+    info!(
+        "P-chain CURRENT BALANCE [{}]: {} nano-AVAX ({} AVAX)",
+        p_chain_addr, p_chain_balance, p_chain_balance_avax
+    );
+    info!(
+        "TOTAL COST: {} nano-AVAX ({} AVAX)",
+        total_cost, total_cost_avax
+    );
+    let reward_shares = opt.validate_reward_fee_percent * 10000;
+    info!(
+        "REWARD SHARES: {} (reward fee percent {}%)",
+        reward_shares, opt.validate_reward_fee_percent
+    );
+
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!("checking the validate duration\n")),
+        ResetColor
+    )?;
+    let now = SystemTime::now();
+    let now_unix = now
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("unexpected None duration_since")
+        .as_secs();
+    let validate_start = now_unix + 30;
+    let native_dt = NaiveDateTime::from_timestamp(validate_start as i64, 0);
+    let validate_start = DateTime::<Utc>::from_utc(native_dt, Utc);
+    info!("VALIDATE START {:?}", validate_start);
+    info!("VALIDATE END {:?}", opt.validate_end);
+
+    /////
+    // ref. "subnet-cli/client/p.stake,AddValidator"
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!("checking inputs and outputs\n")),
+        ResetColor
+    )?;
+    // TODO: get "*platformvm.StakeableLockOut"
+    let resp = rt
+        .block_on(api_platform::get_utxos(&opt.http_rpc_ep, &p_chain_addr))
+        .expect("failed to get UTXOs");
+    let utxos_raw = resp.result.unwrap().utxos.unwrap();
+    let mut utxos: Vec<avax::Utxo> = Vec::new();
+    for s in utxos_raw.iter() {
+        // TODO: get "*platformvm.StakeableLockOut"
+        let utxo = avax::Utxo::unpack_hex(&s).expect("failed to unpack raw utxo");
+        utxos.push(utxo);
+    }
+    let mut staked_amount: u64 = 0_u64;
+    for utxo in utxos.iter() {
+        if staked_amount >= opt.stake_amount {
+            break;
+        }
+        if utxo.asset_id != avax_asset_id {
+            continue;
+        }
+
+        // check "*platformvm.StakeableLockOut"
+    }
+    // TODO: get *avax.TransferableInput for inputs
+    // TODO: get *avax.TransferableOutput for returned outs
+    // TODO: get *avax.TransferableOutput for staked outs
+
+    /////
+    println!();
+    println!();
+    println!();
+    // TODO: prompt for confirmation
+
+    /////
+    println!();
+    println!();
+    println!();
+    // TODO: sign transaction
+
+    /////
+    println!();
+    println!();
+    println!();
+    // TODO: send transaction
+
+    /////
+    println!();
+    println!();
+    println!();
+    // TODO: poll to confirm transaction
+
+    /////
+    println!();
+    println!();
+    println!();
+    // TODO: check current validators
+
+    /////
+    println!();
+    println!();
+    println!();
 
     Ok(())
 }
