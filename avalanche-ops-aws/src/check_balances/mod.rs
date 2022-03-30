@@ -105,7 +105,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
             let x = x.balance.expect("unexpected None x result balance");
 
             let p = rt
-                .block_on(platform::get_balance(&http_rpc, "/ext/bc/P", &paddr))
+                .block_on(platform::get_balance(&http_rpc, &paddr))
                 .expect("failed platform::get_balance");
             let p = p.result.expect("unexpected None p result");
             let p = p.balance.expect("unexpected None p result balance");

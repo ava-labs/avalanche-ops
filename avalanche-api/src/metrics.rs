@@ -1,4 +1,4 @@
-use std::{io, process::Command, sync::Arc, time::Duration};
+use std::{io, sync::Arc};
 
 use aws_sdk_cloudwatch::model::{MetricDatum, StandardUnit};
 use aws_smithy_types::DateTime as SmithyDateTime;

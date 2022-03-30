@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{self, stdout},
+    io::{self, stdout, Error, ErrorKind},
     time::SystemTime,
 };
 
@@ -14,8 +14,8 @@ use lazy_static::lazy_static;
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_api::info;
-use avalanche_types::key;
+use avalanche_api::{info as api_info, platform as api_platform};
+use avalanche_types::{constants, key, platformvm};
 use utils::rfc3339;
 
 lazy_static! {
@@ -145,8 +145,18 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     );
     let rt = Runtime::new().unwrap();
 
+    /////
+    println!();
+    println!();
+    println!();
     let keys = {
         if let Some(private_key_path) = opt.private_key_path {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Blue),
+                Print(format!("loading private key file '{}'\n", private_key_path)),
+                ResetColor
+            )?;
             let contents = fs::read_to_string(private_key_path).expect("failed to read file");
             let keys = key::load_keys(&contents.as_bytes())?;
             keys
@@ -163,28 +173,83 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         key.eth_address, reward_short_address
     );
 
+    /////
+    println!();
+    println!();
+    println!();
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("Connecting to '{}'\n", opt.http_rpc_ep)),
+        Print(format!(
+            "connecting to '{}' for network information\n",
+            opt.http_rpc_ep
+        )),
         ResetColor
     )?;
-
-    // TODO: get current network ID
     let resp = rt
-        .block_on(info::get_network_name(&opt.http_rpc_ep))
-        .expect("failed get_network_name");
-    info!("get_network_name response: {:?}", resp);
-
-    let resp = rt
-        .block_on(info::get_network_id(&opt.http_rpc_ep))
+        .block_on(api_info::get_network_id(&opt.http_rpc_ep))
         .expect("failed get_network_id");
-    info!("get_network_id response: {:?}", resp);
+    let network_id = resp.result.unwrap().network_id;
+    if let Some(name) = constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
+        if *name == "mainnet" {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "mainnet is not supported yet!",
+            ));
+        }
+    }
+    let resp = rt
+        .block_on(api_info::get_network_name(&opt.http_rpc_ep))
+        .expect("failed get_network_name");
+    let network_name = resp.result.unwrap().network_name;
+    if network_name == "mainnet" {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "mainnet is not supported yet!",
+        ));
+    }
+    info!("network id {} and name {}", network_id, network_name);
 
-    // TODO: get P-chain ID
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print("getting P-chain ID\n"),
+        ResetColor
+    )?;
+    let p_chain_id = platformvm::chain_id();
+    info!("P-chain ID is {}", p_chain_id.string());
 
-    info!("getting current validators...");
-    // TODO: error if a nodeID is already a validator
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!(
+            "getting current validators via '{}' to check node '{}' is already a validator\n",
+            opt.http_rpc_ep, opt.node_id
+        )),
+        ResetColor
+    )?;
+    let resp = rt
+        .block_on(api_platform::get_current_validators(&opt.http_rpc_ep))
+        .expect("failed get_current_validators");
+    let validators = resp.result.unwrap().validators.unwrap();
+    for validator in validators.iter() {
+        let node_id = validator.node_id.clone().unwrap();
+        if node_id == opt.node_id {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("node ID {} is already a validator", node_id),
+            ));
+        }
+        info!("listing current validator {}", node_id);
+    }
 
     // TODO: check current balance and required spending
     // ref. https://docs.avax.network/learn/platform-overview/transaction-fees/#fee-schedule

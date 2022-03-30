@@ -58,11 +58,7 @@ pub fn execute(opt: Option) -> io::Result<()> {
     let rt = Runtime::new().unwrap();
 
     let resp = rt
-        .block_on(platform::get_utxos(
-            &opt.http_rpc_ep,
-            "/ext/bc/P",
-            &opt.paddr,
-        ))
+        .block_on(platform::get_utxos(&opt.http_rpc_ep, &opt.paddr))
         .expect("failed to get UTXOs");
     info!("get_utxos response: {:?}", resp);
 

@@ -40,8 +40,8 @@ impl GetHeightResult {
 
 /// e.g., "platform.getHeight" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
-pub async fn get_height(url: &str, url_path: &str) -> io::Result<GetHeightResponse> {
-    let joined = http::join_uri(url, url_path)?;
+pub async fn get_height(url: &str) -> io::Result<GetHeightResponse> {
+    let joined = http::join_uri(url, "/ext/bc/P")?;
     info!("getting height for {:?}", joined);
 
     let mut data = jsonrpc::Data::default();
@@ -51,7 +51,7 @@ pub async fn get_height(url: &str, url_path: &str) -> io::Result<GetHeightRespon
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, url_path, &d).await?;
+    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
     let resp: _GetHeightResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -192,8 +192,8 @@ impl GetBalanceResult {
 
 /// e.g., "platform.getBalance" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
-pub async fn get_balance(url: &str, url_path: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
-    let joined = http::join_uri(url, url_path)?;
+pub async fn get_balance(url: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
+    let joined = http::join_uri(url, "/ext/bc/P")?;
     info!("getting balances for {} via {:?}", paddr, joined);
 
     let mut data = jsonrpc::Data::default();
@@ -204,7 +204,7 @@ pub async fn get_balance(url: &str, url_path: &str, paddr: &str) -> io::Result<G
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, url_path, &d).await?;
+    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
     let resp: _GetBalanceResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -476,8 +476,8 @@ pub struct _GetUtxosResult {
 
 /// e.g., "platform.getUTXOs" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
-pub async fn get_utxos(url: &str, url_path: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
-    let joined = http::join_uri(url, url_path)?;
+pub async fn get_utxos(url: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
+    let joined = http::join_uri(url, "/ext/bc/P")?;
     info!("getting UTXOs for {} via {:?}", paddr, joined);
 
     let mut data = DataForGetUtxos::default();
@@ -491,7 +491,7 @@ pub async fn get_utxos(url: &str, url_path: &str, paddr: &str) -> io::Result<Get
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, url_path, &d).await?;
+    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
     let resp: _GetUtxosResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -871,11 +871,8 @@ impl ApiPrimaryDelegator {
 /// e.g., "platform.getBalance" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
-pub async fn get_current_validators(
-    url: &str,
-    url_path: &str,
-) -> io::Result<GetCurrentValidatorsResponse> {
-    let joined = http::join_uri(url, url_path)?;
+pub async fn get_current_validators(url: &str) -> io::Result<GetCurrentValidatorsResponse> {
+    let joined = http::join_uri(url, "/ext/bc/P")?;
     info!("getting current validators via {:?}", joined);
 
     let mut data = jsonrpc::Data::default();
@@ -885,7 +882,7 @@ pub async fn get_current_validators(
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, url_path, &d).await?;
+    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
     let resp: _GetCurrentValidatorsResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
