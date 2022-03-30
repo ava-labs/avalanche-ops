@@ -1246,16 +1246,18 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             all_node_ids.push(node.clone().node_id);
         }
 
-        println!();
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print(format!(
-                "subnet-cli add validator \\\n--enable-prompt \\\n--private-key-path=/tmp/test.key \\\n--public-uri={} \\\n--stake-amount=2000000000000 \\\n--validate-reward-fee-percent=2 \\\n--node-ids=\"{}\"\n",
-                http_rpc, all_node_ids.join(",")
-            )),
-            ResetColor
-        )?;
+        for node_id in all_node_ids.iter() {
+            println!();
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "subnet-cli add validator \\\n--enable-prompt \\\n--private-key-path=/tmp/test.key \\\n--public-uri={} \\\n--stake-amount=2000000000000 \\\n--validate-reward-fee-percent=2 \\\n--node-ids=\"{}\"\n",
+                    http_rpc, *node_id
+                )),
+                ResetColor
+            )?;
+        }
 
         println!();
         execute!(
