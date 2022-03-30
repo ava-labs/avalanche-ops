@@ -595,6 +595,9 @@ impl Packer {
 
     /// Unpacks str from the offset.
     /// ref. "avalanchego/utils/wrappers.Packer.UnpackStr"
+    /// TODO: Go "UnpackStr" does deep-copy of bytes to "string" cast
+    ///       Can we bypass deep-copy by passing around bytes?
+    ///       ref. https://github.com/golang/go/issues/25484
     pub fn unpack_str(&self) -> io::Result<Option<String>> {
         let n = self.unpack_u16();
         let d = self.unpack_bytes(n as usize);
