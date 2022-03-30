@@ -184,7 +184,7 @@ impl Tx {
         // ref. "avalanchego/vms/platformvm.Tx.Sign"
         // ref. "avalanchego/vms/components/avax.BaseTx.Metadata.Initialize"
         self.unsigned_tx.metadata = Some(avax::Metadata {
-            id: ids::Id::new(&tx_id),
+            id: ids::Id::from_slice(&tx_id),
             unsigned_bytes: unsigned_tx_bytes.to_vec(),
             bytes: signed_tx_bytes.to_vec(),
         });
@@ -200,7 +200,7 @@ fn test_export_tx_serialization_with_no_signer() {
     use utils::cmp;
 
     // ref. "avalanchego/vms/platformvm/vm_test.go"
-    let target_short_addr = ids::ShortId::new(&<Vec<u8>>::from([
+    let target_short_addr = ids::ShortId::from_slice(&<Vec<u8>>::from([
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));
@@ -210,7 +210,7 @@ fn test_export_tx_serialization_with_no_signer() {
             network_id: 10,
             ins: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
-                    id: ids::Id::new(&<Vec<u8>>::from([
+                    id: ids::Id::from_slice(&<Vec<u8>>::from([
                         0x2c, 0x34, 0xce, 0x1d, 0xf2, 0x3b, 0x83, 0x8c, 0x5a, 0xbf, //
                         0x2a, 0x7f, 0x64, 0x37, 0xcc, 0xa3, 0xd3, 0x06, 0x7e, 0xd5, //
                         0x09, 0xff, 0x25, 0xf1, 0x1d, 0xf6, 0xb1, 0x1b, 0x58, 0x2b, //
@@ -218,7 +218,7 @@ fn test_export_tx_serialization_with_no_signer() {
                     ])),
                     ..avax::UtxoId::default()
                 },
-                asset_id: ids::Id::new(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
                 input: secp256k1fx::TransferInput {
                     amount: 500000000,
                     sig_indices: vec![0],
@@ -227,14 +227,14 @@ fn test_export_tx_serialization_with_no_signer() {
             }]),
             ..avax::BaseTx::default()
         },
-        destination_chain: ids::Id::new(&<Vec<u8>>::from([
+        destination_chain: ids::Id::from_slice(&<Vec<u8>>::from([
             0x2c, 0x34, 0xce, 0x1d, 0xf2, 0x3b, 0x83, 0x8c, //
             0x5a, 0xbf, 0x2a, 0x7f, 0x64, 0x37, 0xcc, 0xa3, //
             0xd3, 0x06, 0x7e, 0xd5, 0x09, 0xff, 0x25, 0xf1, //
             0x1d, 0xf6, 0xb1, 0x1b, 0x58, 0x2b, 0x51, 0xeb, //
         ])),
         destination_chain_outs: Some(vec![avax::TransferableOutput {
-            asset_id: ids::Id::new(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
             out: secp256k1fx::TransferOutput {
                 amount: 499999900,
                 output_owners: secp256k1fx::OutputOwners {
@@ -363,7 +363,7 @@ fn test_export_tx_serialization_with_one_signer() {
     use utils::cmp;
 
     // ref. "avalanchego/vms/platformvm/vm_test.go"
-    let target_short_addr = ids::ShortId::new(&<Vec<u8>>::from([
+    let target_short_addr = ids::ShortId::from_slice(&<Vec<u8>>::from([
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));
@@ -373,7 +373,7 @@ fn test_export_tx_serialization_with_one_signer() {
             network_id: 10,
             ins: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
-                    id: ids::Id::new(&<Vec<u8>>::from([
+                    id: ids::Id::from_slice(&<Vec<u8>>::from([
                         0x2c, 0x34, 0xce, 0x1d, 0xf2, 0x3b, 0x83, 0x8c, 0x5a, 0xbf, //
                         0x2a, 0x7f, 0x64, 0x37, 0xcc, 0xa3, 0xd3, 0x06, 0x7e, 0xd5, //
                         0x09, 0xff, 0x25, 0xf1, 0x1d, 0xf6, 0xb1, 0x1b, 0x58, 0x2b, //
@@ -381,7 +381,7 @@ fn test_export_tx_serialization_with_one_signer() {
                     ])),
                     ..avax::UtxoId::default()
                 },
-                asset_id: ids::Id::new(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
                 input: secp256k1fx::TransferInput {
                     amount: 500000000,
                     sig_indices: vec![0],
@@ -390,14 +390,14 @@ fn test_export_tx_serialization_with_one_signer() {
             }]),
             ..avax::BaseTx::default()
         },
-        destination_chain: ids::Id::new(&<Vec<u8>>::from([
+        destination_chain: ids::Id::from_slice(&<Vec<u8>>::from([
             0x2c, 0x34, 0xce, 0x1d, 0xf2, 0x3b, 0x83, 0x8c, //
             0x5a, 0xbf, 0x2a, 0x7f, 0x64, 0x37, 0xcc, 0xa3, //
             0xd3, 0x06, 0x7e, 0xd5, 0x09, 0xff, 0x25, 0xf1, //
             0x1d, 0xf6, 0xb1, 0x1b, 0x58, 0x2b, 0x51, 0xeb, //
         ])),
         destination_chain_outs: Some(vec![avax::TransferableOutput {
-            asset_id: ids::Id::new(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([0x79, 0x65, 0x65, 0x74])),
             out: secp256k1fx::TransferOutput {
                 amount: 499999900,
                 output_owners: secp256k1fx::OutputOwners {

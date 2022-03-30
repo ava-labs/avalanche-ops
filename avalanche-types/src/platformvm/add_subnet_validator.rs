@@ -180,7 +180,7 @@ impl Tx {
         // ref. "avalanchego/vms/platformvm.Tx.Sign"
         // ref. "avalanchego/vms/components/avax.BaseTx.Metadata.Initialize"
         self.unsigned_tx.metadata = Some(avax::Metadata {
-            id: ids::Id::new(&tx_id),
+            id: ids::Id::from_slice(&tx_id),
             unsigned_bytes: unsigned_tx_bytes.to_vec(),
             bytes: signed_tx_bytes.to_vec(),
         });
@@ -198,7 +198,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
         unsigned_tx: avax::BaseTx {
             network_id: 1000000,
             outs: Some(vec![avax::TransferableOutput {
-                asset_id: ids::Id::new(&<Vec<u8>>::from([
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x88, 0xee, 0xc2, 0xe0, 0x99, 0xc6, 0xa5, 0x28, //
                     0xe6, 0x89, 0x61, 0x8e, 0x87, 0x21, 0xe0, 0x4a, //
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
@@ -209,7 +209,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
                     output_owners: secp256k1fx::OutputOwners {
                         locktime: 0x00,
                         threshold: 0x01,
-                        addrs: vec![ids::ShortId::new(&<Vec<u8>>::from([
+                        addrs: vec![ids::ShortId::from_slice(&<Vec<u8>>::from([
                             0x65, 0x84, 0x4a, 0x05, 0x40, 0x5f, 0x36, 0x62, 0xc1, 0x92, //
                             0x81, 0x42, 0xc6, 0xc2, 0xa7, 0x83, 0xef, 0x87, 0x1d, 0xe9, //
                         ]))],
@@ -220,7 +220,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
             ins: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
                     output_index: 0,
-                    tx_id: ids::Id::new(&<Vec<u8>>::from([
+                    tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                         0xdd, 0x91, 0x70, 0x54, 0x1a, 0xf4, 0x4b, 0x08, //
                         0x54, 0x4d, 0xae, 0x2c, 0x5e, 0x6f, 0x2b, 0xd9, //
                         0x1e, 0xd4, 0x1e, 0x72, 0x22, 0x44, 0x73, 0x56, //
@@ -228,7 +228,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
                     ])),
                     ..avax::UtxoId::default()
                 },
-                asset_id: ids::Id::new(&<Vec<u8>>::from([
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x88, 0xee, 0xc2, 0xe0, 0x99, 0xc6, 0xa5, 0x28, //
                     0xe6, 0x89, 0x61, 0x8e, 0x87, 0x21, 0xe0, 0x4a, //
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
@@ -244,7 +244,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
         },
         validator: Validator {
             validator: platformvm::Validator {
-                node_id: ids::ShortId::new(&<Vec<u8>>::from([
+                node_id: ids::ShortId::from_slice(&<Vec<u8>>::from([
                     0xca, 0xc3, 0x1b, 0x23, 0x7f, 0x96, 0x40, 0xd5, 0x01, 0x11, //
                     0xbe, 0x86, 0xb9, 0x58, 0x73, 0x0a, 0xfb, 0x70, 0x5e, 0x0f, //
                 ])),
@@ -252,7 +252,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
                 end: 0x641e6651,
                 weight: 0x3e8,
             },
-            subnet_id: ids::Id::new(&<Vec<u8>>::from([
+            subnet_id: ids::Id::from_slice(&<Vec<u8>>::from([
                 0xdd, 0x91, 0x70, 0x54, 0x1a, 0xf4, 0x4b, 0x08, 0x54, 0x4d, //
                 0xae, 0x2c, 0x5e, 0x6f, 0x2b, 0xd9, 0x1e, 0xd4, 0x1e, 0x72, //
                 0x22, 0x44, 0x73, 0x56, 0x1f, 0x50, 0xe8, 0xeb, 0xfc, 0xba, //

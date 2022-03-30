@@ -20,10 +20,10 @@ fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
+    let rt = Runtime::new().unwrap();
+
     let url = args().nth(1).expect("no url given");
     let paddr = args().nth(2).expect("no x-chain address given");
-
-    let rt = Runtime::new().unwrap();
 
     let resp = rt
         .block_on(platform::get_balance(&url, &paddr))

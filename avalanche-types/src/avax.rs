@@ -55,7 +55,7 @@ impl UtxoId {
     }
 
     pub fn new(tx_id: &[u8], output_index: u32, symbol: bool) -> Self {
-        let tx_id = ids::Id::new(tx_id);
+        let tx_id = ids::Id::from_slice(tx_id);
         let prefixes: Vec<u64> = vec![output_index as u64];
         let id = tx_id.prefix(&prefixes);
         Self {
@@ -82,7 +82,7 @@ fn test_utxo_id() {
         42, 202, 101, 108, 44, 18, 156, 140, 88, 220, 97, 33, 177, 172, 79, 57, 207, 131, 41, 102,
         29, 103, 184, 89, 239, 38, 187, 183, 167, 216, 160, 212,
     ];
-    let expected_id = ids::Id::new(&expected_id);
+    let expected_id = ids::Id::from_slice(&expected_id);
     assert_eq!(utxo_id.id, expected_id);
 }
 
@@ -93,6 +93,7 @@ pub struct Utxo {
     pub tx_id: ids::Id,
     pub output_index: u32,
     pub asset_id: ids::Id,
+    /// ref. avax.TransferableOut
     pub out: secp256k1fx::TransferOutput,
 }
 
@@ -138,7 +139,7 @@ impl Utxo {
                 ));
             }
         };
-        let tx_id = ids::Id::new(&tx_id_bytes);
+        let tx_id = ids::Id::from_slice(&tx_id_bytes);
 
         let output_index = packer.unpack_u32();
 
@@ -151,7 +152,7 @@ impl Utxo {
                 ));
             }
         };
-        let asset_id = ids::Id::new(&asset_id_bytes);
+        let asset_id = ids::Id::from_slice(&asset_id_bytes);
 
         let type_id_secp256k1fx_transfer_output = packer.unpack_u32();
         assert_eq!(type_id_secp256k1fx_transfer_output, 7);
@@ -165,7 +166,7 @@ impl Utxo {
         let mut addrs: Vec<ids::ShortId> = Vec::new();
         for _ in 0..addr_len {
             let addr = match packer.unpack_bytes(ids::SHORT_ID_LEN) {
-                Some(b) => ids::ShortId::new(&b),
+                Some(b) => ids::ShortId::from_slice(&b),
                 None => {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
@@ -197,14 +198,14 @@ impl Utxo {
 #[test]
 fn test_utxo_unpack_hex() {
     let d = "0x000000000000000000000000000000000000000000000000000000000000000000000000000088eec2e099c6a528e689618e8721e04ae85ea574c7a15a7968644d14d54780140000000702c68af0bb1400000000000000000000000000010000000165844a05405f3662c1928142c6c2a783ef871de939b564db";
-    let addr = ids::ShortId::new(&<Vec<u8>>::from([
+    let addr = ids::ShortId::from_slice(&<Vec<u8>>::from([
         101, 132, 74, 5, 64, 95, 54, 98, 193, 146, 129, 66, 198, 194, 167, 131, 239, 135, 29, 233,
     ]));
     let utxo = Utxo::unpack_hex(d).unwrap();
     let expected = Utxo {
         tx_id: ids::Id::empty(),
         output_index: 0,
-        asset_id: ids::Id::new(&<Vec<u8>>::from([
+        asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
             136, 238, 194, 224, 153, 198, 165, 40, 230, 137, 97, 142, 135, 33, 224, 74, 232, 94,
             165, 116, 199, 161, 90, 121, 104, 100, 77, 20, 213, 71, 128, 20,
         ])),
@@ -274,7 +275,7 @@ impl Metadata {
 
     pub fn new(unsigned_bytes: &[u8], bytes: &[u8]) -> Self {
         let id = hash::compute_sha256(bytes);
-        let id = ids::Id::new(&id);
+        let id = ids::Id::from_slice(&id);
         Self {
             id,
             unsigned_bytes: Vec::from(unsigned_bytes),
@@ -487,13 +488,13 @@ fn test_base_tx_serialization() {
     let test_key_short_addr = test_key
         .short_address_bytes()
         .expect("failed short_address_bytes");
-    let test_key_short_addr = ids::ShortId::new(&test_key_short_addr);
+    let test_key_short_addr = ids::ShortId::from_slice(&test_key_short_addr);
 
     let unsigned_tx = BaseTx {
         network_id: 10,
-        blockchain_id: ids::Id::new(&<Vec<u8>>::from([5, 4, 3, 2, 1])),
+        blockchain_id: ids::Id::from_slice(&<Vec<u8>>::from([5, 4, 3, 2, 1])),
         outs: Some(vec![TransferableOutput {
-            asset_id: ids::Id::new(&<Vec<u8>>::from([1, 2, 3])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
             out: secp256k1fx::TransferOutput {
                 amount: 12345,
                 output_owners: secp256k1fx::OutputOwners {
@@ -506,7 +507,7 @@ fn test_base_tx_serialization() {
         }]),
         ins: Some(vec![TransferableInput {
             utxo_id: UtxoId {
-                tx_id: ids::Id::new(&<Vec<u8>>::from([
+                tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, //
                     0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0, //
                     0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8, //
@@ -515,7 +516,7 @@ fn test_base_tx_serialization() {
                 output_index: 1,
                 ..UtxoId::default()
             },
-            asset_id: ids::Id::new(&<Vec<u8>>::from([1, 2, 3])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
             input: secp256k1fx::TransferInput {
                 amount: 54321,
                 sig_indices: vec![2],

@@ -21,12 +21,8 @@ pub struct GetBalanceResponse {
 
 /// e.g., "eth_getBalance" on "http://[ADDR]:9650" and "/ext/bc/C/rpc" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance
-pub async fn get_balance(
-    url: &str,
-    url_path: &str,
-    eth_addr: &str,
-) -> io::Result<GetBalanceResponse> {
-    let joined = http::join_uri(url, url_path)?;
+pub async fn get_balance(url: &str, eth_addr: &str) -> io::Result<GetBalanceResponse> {
+    let joined = http::join_uri(url, "/ext/bc/C/rpc")?;
     info!("getting balances for {} via {:?}", eth_addr, joined);
 
     let mut data = jsonrpc::DataWithParamsArray::default();
@@ -36,7 +32,7 @@ pub async fn get_balance(
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, url_path, &d).await?;
+    let rb = http::insecure_post(url, "/ext/bc/C/rpc", &d).await?;
     let resp: GetBalanceResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {

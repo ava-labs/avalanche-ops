@@ -205,7 +205,7 @@ impl Tx {
         // ref. "avalanchego/vms/platformvm.Tx.Sign"
         // ref. "avalanchego/vms/components/avax.BaseTx.Metadata.Initialize"
         self.unsigned_tx.metadata = Some(avax::Metadata {
-            id: ids::Id::new(&tx_id),
+            id: ids::Id::from_slice(&tx_id),
             unsigned_bytes: unsigned_tx_bytes.to_vec(),
             bytes: signed_tx_bytes.to_vec(),
         });
@@ -223,7 +223,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
         unsigned_tx: avax::BaseTx {
             network_id: 1000000,
             outs: Some(vec![avax::TransferableOutput {
-                asset_id: ids::Id::new(&<Vec<u8>>::from([
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x88, 0xee, 0xc2, 0xe0, 0x99, 0xc6, 0xa5, 0x28, //
                     0xe6, 0x89, 0x61, 0x8e, 0x87, 0x21, 0xe0, 0x4a, //
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
@@ -234,7 +234,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
                     output_owners: secp256k1fx::OutputOwners {
                         locktime: 0x00,
                         threshold: 0x01,
-                        addrs: vec![ids::ShortId::new(&<Vec<u8>>::from([
+                        addrs: vec![ids::ShortId::from_slice(&<Vec<u8>>::from([
                             0x65, 0x84, 0x4a, 0x05, 0x40, 0x5f, 0x36, 0x62, 0xc1, 0x92, //
                             0x81, 0x42, 0xc6, 0xc2, 0xa7, 0x83, 0xef, 0x87, 0x1d, 0xe9, //
                         ]))],
@@ -244,7 +244,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
             }]),
             ins: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
-                    tx_id: ids::Id::new(&<Vec<u8>>::from([
+                    tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                         0x78, 0x3b, 0x22, 0xc6, 0xa8, 0xd6, 0x83, 0x4c, 0x89, 0x30, //
                         0xae, 0xac, 0x3d, 0xb6, 0x02, 0x63, 0xc1, 0x2e, 0x98, 0x16, //
                         0x0e, 0xf7, 0x22, 0x1b, 0x4d, 0x5e, 0x62, 0x2e, 0x87, 0x0f, //
@@ -253,7 +253,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
                     output_index: 0,
                     ..avax::UtxoId::default()
                 },
-                asset_id: ids::Id::new(&<Vec<u8>>::from([
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x88, 0xee, 0xc2, 0xe0, 0x99, 0xc6, 0xa5, 0x28, //
                     0xe6, 0x89, 0x61, 0x8e, 0x87, 0x21, 0xe0, 0x4a, //
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
@@ -268,7 +268,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
             ..avax::BaseTx::default()
         },
         validator: platformvm::Validator {
-            node_id: ids::ShortId::new(&<Vec<u8>>::from([
+            node_id: ids::ShortId::from_slice(&<Vec<u8>>::from([
                 0x9c, 0xd7, 0xb3, 0xe4, 0x79, 0x04, 0xf6, 0x7c, 0xc4, 0x8e, //
                 0xb5, 0xb9, 0xaf, 0xdb, 0x03, 0xe6, 0xd1, 0x8a, 0xcf, 0x6c, //
             ])),
@@ -277,7 +277,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
             weight: 0x1d1a94a2000,
         },
         stake_outputs: Some(vec![avax::TransferableOutput {
-            asset_id: ids::Id::new(&<Vec<u8>>::from([
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                 0x88, 0xee, 0xc2, 0xe0, 0x99, 0xc6, 0xa5, 0x28, //
                 0xe6, 0x89, 0x61, 0x8e, 0x87, 0x21, 0xe0, 0x4a, //
                 0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
@@ -288,7 +288,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
                 output_owners: secp256k1fx::OutputOwners {
                     locktime: 0x00,
                     threshold: 0x01,
-                    addrs: vec![ids::ShortId::new(&<Vec<u8>>::from([
+                    addrs: vec![ids::ShortId::from_slice(&<Vec<u8>>::from([
                         0x65, 0x84, 0x4a, 0x05, 0x40, 0x5f, 0x36, 0x62, 0xc1, 0x92, //
                         0x81, 0x42, 0xc6, 0xc2, 0xa7, 0x83, 0xef, 0x87, 0x1d, 0xe9, //
                     ]))],
@@ -299,7 +299,7 @@ fn test_add_validator_tx_serialization_with_one_signer() {
         rewards_owner: secp256k1fx::OutputOwners {
             locktime: 0x00,
             threshold: 0x01,
-            addrs: vec![ids::ShortId::new(&<Vec<u8>>::from([
+            addrs: vec![ids::ShortId::from_slice(&<Vec<u8>>::from([
                 0x65, 0x84, 0x4a, 0x05, 0x40, 0x5f, 0x36, 0x62, 0xc1, 0x92, //
                 0x81, 0x42, 0xc6, 0xc2, 0xa7, 0x83, 0xef, 0x87, 0x1d, 0xe9, //
             ]))],

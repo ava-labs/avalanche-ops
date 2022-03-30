@@ -99,7 +99,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
         };
         let (xb, pb, cb) = {
             let x = rt
-                .block_on(avm::get_balance(&http_rpc, "/ext/bc/X", &xaddr))
+                .block_on(avm::get_balance(&http_rpc, &xaddr))
                 .expect("failed avm::get_balance");
             let x = x.result.expect("unexpected None x result");
             let x = x.balance.expect("unexpected None x result balance");
@@ -111,7 +111,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
             let p = p.balance.expect("unexpected None p result balance");
 
             let c = rt
-                .block_on(eth::get_balance(&http_rpc, "/ext/bc/C/rpc", &caddr))
+                .block_on(eth::get_balance(&http_rpc, &caddr))
                 .expect("failed eth::get_balance");
             let c = c.result;
 

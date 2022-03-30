@@ -416,14 +416,6 @@ pub struct GetUtxosResponse {
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct EndIndex {
-    pub address: String,
-    pub utxo: String,
-}
-
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetUtxosResult {
     #[serde(rename = "numFetched", skip_serializing_if = "Option::is_none")]
     pub num_fetched: Option<u32>,
@@ -450,28 +442,6 @@ impl GetUtxosResult {
             encoding: None,
         }
     }
-}
-
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct _GetUtxosResponse {
-    pub jsonrpc: String,
-    pub id: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub result: Option<_GetUtxosResult>,
-}
-
-/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct _GetUtxosResult {
-    #[serde(rename = "numFetched", skip_serializing_if = "Option::is_none")]
-    pub num_fetched: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub utxos: Option<Vec<String>>,
-    #[serde(rename = "endIndex", skip_serializing_if = "Option::is_none")]
-    pub end_index: Option<EndIndex>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub encoding: Option<String>,
 }
 
 /// e.g., "platform.getUTXOs" on "http://[ADDR]:9650" and "/ext/bc/P" path.
@@ -503,6 +473,36 @@ pub async fn get_utxos(url: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
     };
     let converted = resp.convert()?;
     Ok(converted)
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct EndIndex {
+    pub address: String,
+    pub utxo: String,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _GetUtxosResponse {
+    pub jsonrpc: String,
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<_GetUtxosResult>,
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct _GetUtxosResult {
+    #[serde(rename = "numFetched", skip_serializing_if = "Option::is_none")]
+    pub num_fetched: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub utxos: Option<Vec<String>>,
+    #[serde(rename = "endIndex", skip_serializing_if = "Option::is_none")]
+    pub end_index: Option<EndIndex>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub encoding: Option<String>,
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/issuing-api-calls

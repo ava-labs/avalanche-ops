@@ -198,6 +198,8 @@ pub struct GetBlockchainIdResponse {
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct GetBlockchainIdResult {
+    /// TODO: implement serializer/deserializer for "ids::Id"
+    /// #[serde(default, deserialize_with = "ids::format_id_de")]
     pub blockchain_id: ids::Id,
 }
 
@@ -217,11 +219,18 @@ impl GetBlockchainIdResult {
 
 /// e.g., "info.getBlockchainID".
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
-pub async fn get_blockchain_id(url: &str) -> io::Result<GetBlockchainIdResponse> {
-    info!("getting blockchain ID for {}", url);
+pub async fn get_blockchain_id(
+    url: &str,
+    chain_alias: &str,
+) -> io::Result<GetBlockchainIdResponse> {
+    info!("getting blockchain ID for {} and {}", url, chain_alias);
 
-    let mut data = jsonrpc::DataWithParamsArray::default();
+    let mut data = jsonrpc::Data::default();
     data.method = String::from("info.getBlockchainID");
+
+    let mut params = HashMap::new();
+    params.insert(String::from("alias"), String::from(chain_alias));
+    data.params = Some(params);
 
     let d = data.encode_json()?;
     let rb = http::insecure_post(url, "ext/info", &d).await?;
@@ -255,6 +264,9 @@ struct _GetBlockchainIdResult {
     #[serde(rename = "blockchainID")]
     blockchain_id: String,
 }
+
+// https://serde.rs/field-attrs.html
+// #[serde(default, deserialize_with = "ids::format_id_de")]
 
 impl _GetBlockchainIdResponse {
     fn convert(&self) -> io::Result<GetBlockchainIdResponse> {

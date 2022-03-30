@@ -8,6 +8,7 @@ use std::{
 use lazy_static::lazy_static;
 use log::info;
 use openssl::x509::X509;
+use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{formatting, key, packer};
 use utils::{cmp, hash};
@@ -57,7 +58,7 @@ impl Id {
 
     /// If the passed array is shorter than the ID_LEN,
     /// it fills in with zero.
-    pub fn new(d: &[u8]) -> Self {
+    pub fn from_slice(d: &[u8]) -> Self {
         assert!(d.len() <= ID_LEN);
         let mut d: Vec<u8> = Vec::from(d);
         if d.len() < ID_LEN {
@@ -68,16 +69,7 @@ impl Id {
 
     pub fn from_str(s: &str) -> io::Result<Self> {
         let decoded = formatting::decode_cb58_with_checksum(s)?;
-        Ok(Self::new(&decoded))
-    }
-
-    pub fn encode_str(s: &str) -> Self {
-        assert!(s.len() <= ID_LEN);
-        let mut d: Vec<u8> = Vec::from(s.as_bytes());
-        if d.len() < ID_LEN {
-            d.resize(ID_LEN, 0);
-        }
-        Self { d }
+        Ok(Self::from_slice(&decoded))
     }
 
     pub fn string(&self) -> String {
@@ -95,7 +87,7 @@ impl Id {
 
         let b = packer.take_bytes();
         let d = hash::compute_sha256(&b);
-        Self::new(&d)
+        Self::from_slice(&d)
     }
 }
 
@@ -103,7 +95,7 @@ impl Id {
 /// ref. "avalanchego/ids.TestIDMarshalJSON"
 #[test]
 fn test_id() {
-    let id = Id::new(&<Vec<u8>>::from([
+    let id = Id::from_slice(&<Vec<u8>>::from([
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
         0xc3, 0x2b, 0xff, 0x1d, 0x6d, 0xec, 0x47, 0x2b, 0x25, 0xcf, //
@@ -114,11 +106,44 @@ fn test_id() {
         "TtF4d2QWbk5vzQGTEPrN48x6vwgAoAmKQ9cbp79inpQmcRKES"
     );
 
-    let id = Id::encode_str("ava labs");
-    assert_eq!(
-        id.string(),
-        "jvYi6Tn9idMi7BaymUVi9zWjg5tpmW7trfKG1AYJLKZJ2fsU7"
-    );
+    let id = Id::from_slice(&<Vec<u8>>::from([
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
+        0x00, 0x00,
+    ]));
+    assert_eq!(id.string(), "11111111111111111111111111111111LpoYY");
+}
+
+/// ref. https://serde.rs/impl-serialize.html
+impl Serialize for Id {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.string())
+    }
+}
+
+fn idfmt<'de, D>(deserializer: D) -> Result<Id, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    match Id::from_str(&s).map_err(serde::de::Error::custom) {
+        Ok(id) => Ok(id),
+        Err(e) => Err(e),
+    }
+}
+
+pub fn format_id_de<'de, D>(deserializer: D) -> Result<Option<Id>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "idfmt")] Id);
+    let v = Option::deserialize(deserializer)?;
+    Ok(v.map(|Wrapper(a)| a))
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
@@ -157,7 +182,7 @@ impl ShortId {
         (*self) == Self::empty()
     }
 
-    pub fn new(d: &[u8]) -> Self {
+    pub fn from_slice(d: &[u8]) -> Self {
         assert_eq!(d.len(), SHORT_ID_LEN);
         let d = Vec::from(d);
         Self { d }
@@ -171,7 +196,7 @@ impl ShortId {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_short_id --exact --show-output
 #[test]
 fn test_short_id() {
-    let id = ShortId::new(&<Vec<u8>>::from([
+    let id = ShortId::from_slice(&<Vec<u8>>::from([
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));
@@ -214,7 +239,7 @@ impl NodeId {
         (*self) == Self::empty()
     }
 
-    pub fn new(d: &[u8]) -> Self {
+    pub fn from_slice(d: &[u8]) -> Self {
         assert_eq!(d.len(), SHORT_ID_LEN);
         let d = Vec::from(d);
         Self { d }
@@ -223,7 +248,7 @@ impl NodeId {
     pub fn from_str(s: &str) -> io::Result<Self> {
         let processed = strip_node_id_prefix(s);
         let decoded = formatting::decode_cb58_with_checksum(processed)?;
-        Ok(Self::new(&decoded))
+        Ok(Self::from_slice(&decoded))
     }
 
     /// Loads a node ID from the PEM-encoded X509 certificate.
@@ -257,7 +282,7 @@ impl NodeId {
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ToShortID
     pub fn from_cert_raw(cert_raw: &[u8]) -> io::Result<Self> {
         let short_address = key::bytes_to_short_address_bytes(cert_raw)?;
-        let node_id = Self::new(&short_address);
+        let node_id = Self::from_slice(&short_address);
         Ok(node_id)
     }
 
@@ -277,7 +302,7 @@ impl NodeId {
 fn test_from_cert_file() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let node_id = NodeId::new(&<Vec<u8>>::from([
+    let node_id = NodeId::from_slice(&<Vec<u8>>::from([
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));

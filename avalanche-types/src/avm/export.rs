@@ -187,7 +187,7 @@ impl Tx {
         // ref. "avalanchego/vms/avm.Tx.SignSECP256K1Fx"
         // ref. "avalanchego/vms/components/avax.BaseTx.Metadata.Initialize"
         self.unsigned_tx.metadata = Some(avax::Metadata {
-            id: ids::Id::new(&tx_id),
+            id: ids::Id::from_slice(&tx_id),
             unsigned_bytes: unsigned_tx_bytes.to_vec(),
             bytes: signed_tx_bytes.to_vec(),
         });
@@ -205,7 +205,7 @@ fn test_export_tx_serialization_with_no_signer() {
     let mut tx = Tx {
         unsigned_tx: avax::BaseTx {
             network_id: 2,
-            blockchain_id: ids::Id::new(&<Vec<u8>>::from([
+            blockchain_id: ids::Id::from_slice(&<Vec<u8>>::from([
                 0xff, 0xff, 0xff, 0xff, 0xee, 0xee, 0xee, 0xee, //
                 0xdd, 0xdd, 0xdd, 0xdd, 0xcc, 0xcc, 0xcc, 0xcc, //
                 0xbb, 0xbb, 0xbb, 0xbb, 0xaa, 0xaa, 0xaa, 0xaa, //
@@ -213,7 +213,7 @@ fn test_export_tx_serialization_with_no_signer() {
             ])),
             ins: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
-                    tx_id: ids::Id::new(&<Vec<u8>>::from([
+                    tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                         0x0f, 0x2f, 0x4f, 0x6f, 0x8e, 0xae, 0xce, 0xee, //
                         0x0d, 0x2d, 0x4d, 0x6d, 0x8c, 0xac, 0xcc, 0xec, //
                         0x0b, 0x2b, 0x4b, 0x6b, 0x8a, 0xaa, 0xca, 0xea, //
@@ -221,7 +221,7 @@ fn test_export_tx_serialization_with_no_signer() {
                     ])),
                     ..avax::UtxoId::default()
                 },
-                asset_id: ids::Id::new(&<Vec<u8>>::from([
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x1f, 0x3f, 0x5f, 0x7f, 0x9e, 0xbe, 0xde, 0xfe, //
                     0x1d, 0x3d, 0x5d, 0x7d, 0x9c, 0xbc, 0xdc, 0xfc, //
                     0x1b, 0x3b, 0x5b, 0x7b, 0x9a, 0xba, 0xda, 0xfa, //
@@ -236,7 +236,7 @@ fn test_export_tx_serialization_with_no_signer() {
             memo: Some(vec![0x00, 0x01, 0x02, 0x03]),
             ..avax::BaseTx::default()
         },
-        destination_chain: ids::Id::new(&<Vec<u8>>::from([
+        destination_chain: ids::Id::from_slice(&<Vec<u8>>::from([
             0x1f, 0x8f, 0x9f, 0x0f, 0x1e, 0x8e, 0x9e, 0x0e, //
             0x2d, 0x7d, 0xad, 0xfd, 0x2c, 0x7c, 0xac, 0xfc, //
             0x3b, 0x6b, 0xbb, 0xeb, 0x3a, 0x6a, 0xba, 0xea, //
@@ -338,7 +338,7 @@ fn test_export_tx_serialization_with_two_signers() {
     let mut tx = Tx {
         unsigned_tx: avax::BaseTx {
             network_id: 2,
-            blockchain_id: ids::Id::new(&<Vec<u8>>::from([
+            blockchain_id: ids::Id::from_slice(&<Vec<u8>>::from([
                 0xff, 0xff, 0xff, 0xff, 0xee, 0xee, 0xee, 0xee, //
                 0xdd, 0xdd, 0xdd, 0xdd, 0xcc, 0xcc, 0xcc, 0xcc, //
                 0xbb, 0xbb, 0xbb, 0xbb, 0xaa, 0xaa, 0xaa, 0xaa, //
@@ -346,7 +346,7 @@ fn test_export_tx_serialization_with_two_signers() {
             ])),
             ins: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
-                    tx_id: ids::Id::new(&<Vec<u8>>::from([
+                    tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                         0x0f, 0x2f, 0x4f, 0x6f, 0x8e, 0xae, 0xce, 0xee, //
                         0x0d, 0x2d, 0x4d, 0x6d, 0x8c, 0xac, 0xcc, 0xec, //
                         0x0b, 0x2b, 0x4b, 0x6b, 0x8a, 0xaa, 0xca, 0xea, //
@@ -354,7 +354,7 @@ fn test_export_tx_serialization_with_two_signers() {
                     ])),
                     ..avax::UtxoId::default()
                 },
-                asset_id: ids::Id::new(&<Vec<u8>>::from([
+                asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x1f, 0x3f, 0x5f, 0x7f, 0x9e, 0xbe, 0xde, 0xfe, //
                     0x1d, 0x3d, 0x5d, 0x7d, 0x9c, 0xbc, 0xdc, 0xfc, //
                     0x1b, 0x3b, 0x5b, 0x7b, 0x9a, 0xba, 0xda, 0xfa, //
@@ -369,7 +369,7 @@ fn test_export_tx_serialization_with_two_signers() {
             memo: Some(vec![0x00, 0x01, 0x02, 0x03]),
             ..avax::BaseTx::default()
         },
-        destination_chain: ids::Id::new(&<Vec<u8>>::from([
+        destination_chain: ids::Id::from_slice(&<Vec<u8>>::from([
             0x1f, 0x8f, 0x9f, 0x0f, 0x1e, 0x8e, 0x9e, 0x0e, //
             0x2d, 0x7d, 0xad, 0xfd, 0x2c, 0x7c, 0xac, 0xfc, //
             0x3b, 0x6b, 0xbb, 0xeb, 0x3a, 0x6a, 0xba, 0xea, //

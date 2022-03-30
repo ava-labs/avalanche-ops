@@ -14,8 +14,8 @@ use lazy_static::lazy_static;
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_api::{info as api_info, platform as api_platform};
-use avalanche_types::{constants, key, platformvm};
+use avalanche_api::{avm as api_avm, info as api_info, platform as api_platform};
+use avalanche_types::{avax, constants, key, platformvm};
 use utils::rfc3339;
 
 lazy_static! {
@@ -207,7 +207,8 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
             "mainnet is not supported yet!",
         ));
     }
-    info!("network id {} and name {}", network_id, network_name);
+    info!("NETWORK ID: {}", network_id);
+    info!("NETWORK NAME: {}", network_name);
 
     /////
     println!();
@@ -216,11 +217,47 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print("getting P-chain ID\n"),
+        Print("getting chain IDs\n"),
         ResetColor
     )?;
+    let resp = rt
+        .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "X"))
+        .expect("failed get_blockchain_id for X");
+    let x_chain_id = resp.result.unwrap().blockchain_id;
+    info!("X-chain ID is {}", x_chain_id.string());
+
     let p_chain_id = platformvm::chain_id();
     info!("P-chain ID is {}", p_chain_id.string());
+
+    let resp = rt
+        .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "P"))
+        .expect("failed get_blockchain_id for P");
+    let p_chain_id = resp.result.unwrap().blockchain_id;
+    info!("P-chain ID is {}", p_chain_id.string());
+
+    let resp = rt
+        .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "C"))
+        .expect("failed get_blockchain_id for C");
+    let c_chain_id = resp.result.unwrap().blockchain_id;
+    info!("C-chain ID is {}", c_chain_id.string());
+
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print("getting asset ID for AVAX\n"),
+        ResetColor
+    )?;
+    let resp = rt
+        .block_on(api_avm::get_asset_description(&opt.http_rpc_ep, "AVAX"))
+        .expect("failed to get get_asset_description");
+    let result = resp.result.unwrap();
+    let avax_asset_id = result.clone().asset_id;
+    info!("AVAX asset ID: {}", avax_asset_id.string());
+    info!("AVAX asset description: {:?}", result);
 
     /////
     println!();
@@ -292,18 +329,6 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     println!();
     println!();
     println!();
-    // TODO: get inputs
-
-    /////
-    println!();
-    println!();
-    println!();
-    // TODO: get outputs
-
-    /////
-    println!();
-    println!();
-    println!();
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
@@ -318,14 +343,45 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     let validate_start = now_unix + 30;
     let native_dt = NaiveDateTime::from_timestamp(validate_start as i64, 0);
     let validate_start = DateTime::<Utc>::from_utc(native_dt, Utc);
-    info!("validate start {:?}", validate_start);
-    info!("validate end {:?}", opt.validate_end);
+    info!("VALIDATE START {:?}", validate_start);
+    info!("VALIDATE END {:?}", opt.validate_end);
 
     /////
+    // ref. "subnet-cli/client/p.stake,AddValidator"
     println!();
     println!();
     println!();
-    let _reward_shares = opt.validate_reward_fee_percent * 10000;
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!("checking inputs and outputs\n")),
+        ResetColor
+    )?;
+    // TODO: get "*platformvm.StakeableLockOut"
+    let resp = rt
+        .block_on(api_platform::get_utxos(&opt.http_rpc_ep, &p_chain_addr))
+        .expect("failed to get UTXOs");
+    let utxos_raw = resp.result.unwrap().utxos.unwrap();
+    let mut utxos: Vec<avax::Utxo> = Vec::new();
+    for s in utxos_raw.iter() {
+        // TODO: get "*platformvm.StakeableLockOut"
+        let utxo = avax::Utxo::unpack_hex(&s).expect("failed to unpack raw utxo");
+        utxos.push(utxo);
+    }
+    let mut staked_amount: u64 = 0_u64;
+    for utxo in utxos.iter() {
+        if staked_amount >= opt.stake_amount {
+            break;
+        }
+        if utxo.asset_id != avax_asset_id {
+            continue;
+        }
+
+        // check "*platformvm.StakeableLockOut"
+    }
+    // TODO: get *avax.TransferableInput for inputs
+    // TODO: get *avax.TransferableOutput for returned outs
+    // TODO: get *avax.TransferableOutput for staked outs
 
     /////
     println!();

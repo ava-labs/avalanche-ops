@@ -54,7 +54,6 @@ pub fn execute(opt: Option) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
 
-    println!();
     let rt = Runtime::new().unwrap();
 
     let resp = rt

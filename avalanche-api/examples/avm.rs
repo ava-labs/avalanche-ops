@@ -12,12 +12,18 @@ fn main() {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
+    let rt = Runtime::new().unwrap();
+
     let url = args().nth(1).expect("no url given");
     let xaddr = args().nth(2).expect("no x-chain address given");
 
-    let rt = Runtime::new().unwrap();
     let resp = rt
-        .block_on(avm::get_balance(&url, "/ext/bc/X", &xaddr))
-        .expect("failed to get balance");
-    info!("response: {:?}", resp);
+        .block_on(avm::get_balance(&url, &xaddr))
+        .expect("failed get_balance");
+    info!("get_balance response: {:?}", resp);
+
+    let resp = rt
+        .block_on(avm::get_asset_description(&url, "AVAX"))
+        .expect("failed get_asset_description");
+    info!("get_asset_description response: {:?}", resp);
 }

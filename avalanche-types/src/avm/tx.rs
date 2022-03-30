@@ -139,7 +139,7 @@ impl Tx {
         // ref. "avalanchego/vms/avm.Tx.SignSECP256K1Fx"
         // ref. "avalanchego/vms/components/avax.BaseTx.Metadata.Initialize"
         self.unsigned_tx.metadata = Some(avax::Metadata {
-            id: ids::Id::new(&tx_id),
+            id: ids::Id::from_slice(&tx_id),
             unsigned_bytes: unsigned_tx_bytes.to_vec(),
             bytes: signed_tx_bytes.to_vec(),
         });
@@ -162,13 +162,13 @@ fn test_tx_serialization_with_no_signer() {
     let test_key_short_addr = test_key
         .short_address_bytes()
         .expect("failed short_address_bytes");
-    let test_key_short_addr = ids::ShortId::new(&test_key_short_addr);
+    let test_key_short_addr = ids::ShortId::from_slice(&test_key_short_addr);
 
     let unsigned_tx = avax::BaseTx {
         network_id: 10,
-        blockchain_id: ids::Id::new(&<Vec<u8>>::from([5, 4, 3, 2, 1])),
+        blockchain_id: ids::Id::from_slice(&<Vec<u8>>::from([5, 4, 3, 2, 1])),
         outs: Some(vec![avax::TransferableOutput {
-            asset_id: ids::Id::new(&<Vec<u8>>::from([1, 2, 3])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
             out: secp256k1fx::TransferOutput {
                 amount: 12345,
                 output_owners: secp256k1fx::OutputOwners {
@@ -181,7 +181,7 @@ fn test_tx_serialization_with_no_signer() {
         }]),
         ins: Some(vec![avax::TransferableInput {
             utxo_id: avax::UtxoId {
-                tx_id: ids::Id::new(&<Vec<u8>>::from([
+                tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, //
                     0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0, //
                     0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8, //
@@ -191,7 +191,7 @@ fn test_tx_serialization_with_no_signer() {
                 symbol: false,
                 id: ids::Id::empty(),
             },
-            asset_id: ids::Id::new(&<Vec<u8>>::from([1, 2, 3])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
             fx_id: ids::Id::empty(),
             input: secp256k1fx::TransferInput {
                 amount: 54321,
@@ -314,13 +314,13 @@ fn test_tx_serialization_with_two_signers() {
     let test_key_short_addr = test_key
         .short_address_bytes()
         .expect("failed short_address_bytes");
-    let test_key_short_addr = ids::ShortId::new(&test_key_short_addr);
+    let test_key_short_addr = ids::ShortId::from_slice(&test_key_short_addr);
 
     let unsigned_tx = avax::BaseTx {
         network_id: 10,
-        blockchain_id: ids::Id::new(&<Vec<u8>>::from([5, 4, 3, 2, 1])),
+        blockchain_id: ids::Id::from_slice(&<Vec<u8>>::from([5, 4, 3, 2, 1])),
         outs: Some(vec![avax::TransferableOutput {
-            asset_id: ids::Id::new(&<Vec<u8>>::from([1, 2, 3])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
             out: secp256k1fx::TransferOutput {
                 amount: 12345,
                 output_owners: secp256k1fx::OutputOwners {
@@ -333,7 +333,7 @@ fn test_tx_serialization_with_two_signers() {
         }]),
         ins: Some(vec![avax::TransferableInput {
             utxo_id: avax::UtxoId {
-                tx_id: ids::Id::new(&<Vec<u8>>::from([
+                tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, //
                     0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0, //
                     0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8, //
@@ -343,7 +343,7 @@ fn test_tx_serialization_with_two_signers() {
                 symbol: false,
                 id: ids::Id::empty(),
             },
-            asset_id: ids::Id::new(&<Vec<u8>>::from([1, 2, 3])),
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
             input: secp256k1fx::TransferInput {
                 amount: 54321,
                 sig_indices: vec![2],

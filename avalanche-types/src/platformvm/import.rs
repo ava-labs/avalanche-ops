@@ -190,7 +190,7 @@ impl Tx {
         // ref. "avalanchego/vms/platformvm.Tx.SignSECP256K1Fx"
         // ref. "avalanchego/vms/components/avax.BaseTx.Metadata.Initialize"
         self.unsigned_tx.metadata = Some(avax::Metadata {
-            id: ids::Id::new(&tx_id),
+            id: ids::Id::from_slice(&tx_id),
             unsigned_bytes: unsigned_tx_bytes.to_vec(),
             bytes: signed_tx_bytes.to_vec(),
         });
@@ -210,7 +210,7 @@ fn test_import_tx_serialization_with_no_signer() {
             network_id: 10,
             ..avax::BaseTx::default()
         },
-        source_chain: ids::Id::new(&<Vec<u8>>::from([
+        source_chain: ids::Id::from_slice(&<Vec<u8>>::from([
             0x2c, 0x34, 0xce, 0x1d, 0xf2, 0x3b, 0x83, 0x8c, //
             0x5a, 0xbf, 0x2a, 0x7f, 0x64, 0x37, 0xcc, 0xa3, //
             0xd3, 0x06, 0x7e, 0xd5, 0x09, 0xff, 0x25, 0xf1, //
@@ -218,7 +218,7 @@ fn test_import_tx_serialization_with_no_signer() {
         ])),
         source_chain_ins: Some(vec![avax::TransferableInput {
             utxo_id: avax::UtxoId {
-                tx_id: ids::Id::new(&<Vec<u8>>::from([
+                tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, //
                     0xdf, 0x24, 0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, //
                     0xfb, 0x38, 0x3f, 0x07, 0xc3, 0x2b, 0xff, 0x1d, //
@@ -227,7 +227,7 @@ fn test_import_tx_serialization_with_no_signer() {
                 output_index: 1,
                 ..avax::UtxoId::default()
             },
-            asset_id: ids::Id::new(&<Vec<u8>>::from([
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                 0x79, 0x65, 0x65, 0x74, 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
@@ -334,7 +334,7 @@ fn test_import_tx_serialization_with_one_signer() {
             network_id: 10,
             ..avax::BaseTx::default()
         },
-        source_chain: ids::Id::new(&<Vec<u8>>::from([
+        source_chain: ids::Id::from_slice(&<Vec<u8>>::from([
             0x2c, 0x34, 0xce, 0x1d, 0xf2, 0x3b, 0x83, 0x8c, //
             0x5a, 0xbf, 0x2a, 0x7f, 0x64, 0x37, 0xcc, 0xa3, //
             0xd3, 0x06, 0x7e, 0xd5, 0x09, 0xff, 0x25, 0xf1, //
@@ -342,7 +342,7 @@ fn test_import_tx_serialization_with_one_signer() {
         ])),
         source_chain_ins: Some(vec![avax::TransferableInput {
             utxo_id: avax::UtxoId {
-                tx_id: ids::Id::new(&<Vec<u8>>::from([
+                tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, //
                     0xdf, 0x24, 0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, //
                     0xfb, 0x38, 0x3f, 0x07, 0xc3, 0x2b, 0xff, 0x1d, //
@@ -351,7 +351,7 @@ fn test_import_tx_serialization_with_one_signer() {
                 output_index: 1,
                 ..avax::UtxoId::default()
             },
-            asset_id: ids::Id::new(&<Vec<u8>>::from([
+            asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                 0x79, 0x65, 0x65, 0x74, 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
