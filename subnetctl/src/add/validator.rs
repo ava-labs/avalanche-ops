@@ -4,7 +4,7 @@ use std::{
     time::SystemTime,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -166,7 +166,6 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     };
     assert_eq!(keys.len(), 1);
     let key = &keys[0];
-
     let reward_short_address = key.short_address.clone();
     info!(
         "loaded key at ETH address {} (reward short address {})",
@@ -251,31 +250,117 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         info!("listing current validator {}", node_id);
     }
 
-    // TODO: check current balance and required spending
+    /////
+    println!();
+    println!();
+    println!();
+    let p_chain_addr = key.address("P", network_id)?;
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!("checking the balance for {}\n", p_chain_addr)),
+        ResetColor
+    )?;
+    let resp = rt
+        .block_on(api_platform::get_balance(&opt.http_rpc_ep, &p_chain_addr))
+        .expect("failed to get balance");
+    // On the X-Chain, one AVAX is 10^9  units.
+    // On the P-Chain, one AVAX is 10^9  units.
+    // On the C-Chain, one AVAX is 10^18 units.
     // ref. https://docs.avax.network/learn/platform-overview/transaction-fees/#fee-schedule
+    let add_validator_fee = 0_u64;
+    let stake_amount = opt.stake_amount;
+    let total_cost = add_validator_fee + stake_amount;
+    let total_cost_avax = (total_cost as f64) / 1000000000_f64;
+    let p_chain_balance = resp.result.unwrap().balance.unwrap();
+    let p_chain_balance_avax = (p_chain_balance as f64) / 1000000000_f64;
+    info!(
+        "P-chain CURRENT BALANCE [{}]: {} nano-AVAX ({} AVAX)",
+        p_chain_addr, p_chain_balance, p_chain_balance_avax
+    );
+    info!(
+        "TOTAL COST: {} nano-AVAX ({} AVAX)",
+        total_cost, total_cost_avax
+    );
+    let reward_shares = opt.validate_reward_fee_percent * 10000;
+    info!(
+        "REWARD SHARES: {} (reward fee percent {}%)",
+        reward_shares, opt.validate_reward_fee_percent
+    );
 
+    /////
+    println!();
+    println!();
+    println!();
     // TODO: get inputs
 
+    /////
+    println!();
+    println!();
+    println!();
     // TODO: get outputs
 
+    /////
+    println!();
+    println!();
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!("checking the validate duration\n")),
+        ResetColor
+    )?;
     let now = SystemTime::now();
     let now_unix = now
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("unexpected None duration_since")
         .as_secs();
-    let _validate_start = now_unix + 30;
+    let validate_start = now_unix + 30;
+    let native_dt = NaiveDateTime::from_timestamp(validate_start as i64, 0);
+    let validate_start = DateTime::<Utc>::from_utc(native_dt, Utc);
+    info!("validate start {:?}", validate_start);
+    info!("validate end {:?}", opt.validate_end);
 
+    /////
+    println!();
+    println!();
+    println!();
     let _reward_shares = opt.validate_reward_fee_percent * 10000;
 
+    /////
+    println!();
+    println!();
+    println!();
     // TODO: prompt for confirmation
 
+    /////
+    println!();
+    println!();
+    println!();
     // TODO: sign transaction
 
+    /////
+    println!();
+    println!();
+    println!();
     // TODO: send transaction
 
+    /////
+    println!();
+    println!();
+    println!();
     // TODO: poll to confirm transaction
 
+    /////
+    println!();
+    println!();
+    println!();
     // TODO: check current validators
+
+    /////
+    println!();
+    println!();
+    println!();
 
     Ok(())
 }
