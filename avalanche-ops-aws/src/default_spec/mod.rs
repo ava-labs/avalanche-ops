@@ -6,7 +6,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 
-use avalanche_ops_aws;
 use avalanchego::config as avalanchego_config;
 use utils::home_dir;
 

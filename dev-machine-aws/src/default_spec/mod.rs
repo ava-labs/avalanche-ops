@@ -6,8 +6,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 
-use dev_machine_aws;
-
 pub const NAME: &str = "default-spec";
 
 pub fn command() -> Command<'static> {

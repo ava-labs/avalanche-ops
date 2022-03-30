@@ -158,7 +158,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
                 ResetColor
             )?;
             let contents = fs::read_to_string(private_key_path).expect("failed to read file");
-            let keys = key::load_keys(&contents.as_bytes())?;
+            let keys = key::load_keys(contents.as_bytes())?;
             keys
         } else {
             panic!("unexpected None opt.private_key_path -- hardware wallet not supported yet");
@@ -332,7 +332,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("checking the validate duration\n")),
+        Print("checking the validate duration\n".to_string()),
         ResetColor
     )?;
     let now = SystemTime::now();
@@ -354,7 +354,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("checking inputs and outputs\n")),
+        Print("checking inputs and outputs\n".to_string()),
         ResetColor
     )?;
     // TODO: get "*platformvm.StakeableLockOut"
@@ -365,10 +365,10 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     let mut utxos: Vec<avax::Utxo> = Vec::new();
     for s in utxos_raw.iter() {
         // TODO: get "*platformvm.StakeableLockOut"
-        let utxo = avax::Utxo::unpack_hex(&s).expect("failed to unpack raw utxo");
+        let utxo = avax::Utxo::unpack_hex(s).expect("failed to unpack raw utxo");
         utxos.push(utxo);
     }
-    let mut staked_amount: u64 = 0_u64;
+    let staked_amount: u64 = 0_u64;
     for utxo in utxos.iter() {
         if staked_amount >= opt.stake_amount {
             break;

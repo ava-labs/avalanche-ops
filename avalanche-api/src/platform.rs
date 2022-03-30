@@ -954,16 +954,19 @@ impl _ApiPrimaryValidator {
     }
 
     pub fn convert(&self) -> ApiPrimaryValidator {
-        let start_time = self.start_time.clone().unwrap_or(String::from("0"));
+        let start_time = self.start_time.clone().unwrap_or_else(|| String::from("0"));
         let start_time = start_time.parse::<u64>().unwrap();
 
-        let end_time = self.end_time.clone().unwrap_or(String::from("0"));
+        let end_time = self.end_time.clone().unwrap_or_else(|| String::from("0"));
         let end_time = end_time.parse::<u64>().unwrap();
 
-        let weight = self.weight.clone().unwrap_or(String::from("0"));
+        let weight = self.weight.clone().unwrap_or_else(|| String::from("0"));
         let weight = weight.parse::<u64>().unwrap();
 
-        let stake_amount = self.stake_amount.clone().unwrap_or(String::from("0"));
+        let stake_amount = self
+            .stake_amount
+            .clone()
+            .unwrap_or_else(|| String::from("0"));
         let stake_amount = stake_amount.parse::<u64>().unwrap();
 
         let reward_owner = {
@@ -976,13 +979,19 @@ impl _ApiPrimaryValidator {
             }
         };
 
-        let potential_reward = self.potential_reward.clone().unwrap_or(String::from("0"));
+        let potential_reward = self
+            .potential_reward
+            .clone()
+            .unwrap_or_else(|| String::from("0"));
         let potential_reward = potential_reward.parse::<u64>().unwrap();
 
-        let delegation_fee = self.delegation_fee.clone().unwrap_or(String::from("0"));
+        let delegation_fee = self
+            .delegation_fee
+            .clone()
+            .unwrap_or_else(|| String::from("0"));
         let delegation_fee = delegation_fee.parse::<f32>().unwrap();
 
-        let uptime = self.uptime.clone().unwrap_or(String::from("0"));
+        let uptime = self.uptime.clone().unwrap_or_else(|| String::from("0"));
         let uptime = uptime.parse::<f32>().unwrap();
 
         let staked = {
@@ -1024,7 +1033,7 @@ impl _ApiPrimaryValidator {
             potential_reward: Some(potential_reward),
             delegation_fee: Some(delegation_fee),
             uptime: Some(uptime),
-            connected: self.connected.clone(),
+            connected: self.connected,
             staked,
             delegators,
         }
@@ -1086,16 +1095,19 @@ impl _ApiPrimaryDelegator {
     }
 
     pub fn convert(&self) -> ApiPrimaryDelegator {
-        let start_time = self.start_time.clone().unwrap_or(String::from("0"));
+        let start_time = self.start_time.clone().unwrap_or_else(|| String::from("0"));
         let start_time = start_time.parse::<u64>().unwrap();
 
-        let end_time = self.end_time.clone().unwrap_or(String::from("0"));
+        let end_time = self.end_time.clone().unwrap_or_else(|| String::from("0"));
         let end_time = end_time.parse::<u64>().unwrap();
 
-        let weight = self.weight.clone().unwrap_or(String::from("0"));
+        let weight = self.weight.clone().unwrap_or_else(|| String::from("0"));
         let weight = weight.parse::<u64>().unwrap();
 
-        let stake_amount = self.stake_amount.clone().unwrap_or(String::from("0"));
+        let stake_amount = self
+            .stake_amount
+            .clone()
+            .unwrap_or_else(|| String::from("0"));
         let stake_amount = stake_amount.parse::<u64>().unwrap();
 
         let reward_owner = {
@@ -1108,13 +1120,19 @@ impl _ApiPrimaryDelegator {
             }
         };
 
-        let potential_reward = self.potential_reward.clone().unwrap_or(String::from("0"));
+        let potential_reward = self
+            .potential_reward
+            .clone()
+            .unwrap_or_else(|| String::from("0"));
         let potential_reward = potential_reward.parse::<u64>().unwrap();
 
-        let delegation_fee = self.delegation_fee.clone().unwrap_or(String::from("0"));
+        let delegation_fee = self
+            .delegation_fee
+            .clone()
+            .unwrap_or_else(|| String::from("0"));
         let delegation_fee = delegation_fee.parse::<f32>().unwrap();
 
-        let uptime = self.uptime.clone().unwrap_or(String::from("0"));
+        let uptime = self.uptime.clone().unwrap_or_else(|| String::from("0"));
         let uptime = uptime.parse::<f32>().unwrap();
 
         let staked = {
@@ -1142,7 +1160,7 @@ impl _ApiPrimaryDelegator {
             potential_reward: Some(potential_reward),
             delegation_fee: Some(delegation_fee),
             uptime: Some(uptime),
-            connected: self.connected.clone(),
+            connected: self.connected,
             staked,
         }
     }
@@ -1239,19 +1257,17 @@ impl _ApiUtxo {
         let locktime = {
             if self.locktime.is_some() {
                 let locktime = self.locktime.clone().unwrap();
-                let locktime = locktime.parse::<u64>().unwrap();
-                locktime
+                locktime.parse::<u64>().unwrap()
             } else {
-                0
+                0_u64
             }
         };
         let amount = {
             if self.amount.is_some() {
                 let amount = self.amount.clone().unwrap();
-                let amount = amount.parse::<u64>().unwrap();
-                amount
+                amount.parse::<u64>().unwrap()
             } else {
-                0
+                0_u64
             }
         };
         let address = self.address.clone().unwrap();

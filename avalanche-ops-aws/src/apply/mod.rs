@@ -21,7 +21,6 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use avalanche_api::health;
-use avalanche_ops_aws;
 use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use utils::{compress, home_dir, random};
 

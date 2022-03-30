@@ -1,6 +1,6 @@
 use std::io::{self, Error, ErrorKind};
 
-use crate::{codec, formatting, ids, packer, secp256k1fx};
+use crate::{codec, formatting, ids, packer, platformvm, secp256k1fx};
 use utils::{hash, prefix};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
@@ -93,8 +93,21 @@ pub struct Utxo {
     pub tx_id: ids::Id,
     pub output_index: u32,
     pub asset_id: ids::Id,
-    /// ref. avax.TransferableOut
-    pub out: secp256k1fx::TransferOutput,
+
+    /// AvalancheGo loads "avax.UTXO" object from the db and
+    /// defines the "out" field as an interface "Out verify.State".
+    ///
+    /// The underlying type is one of the following:
+    ///
+    /// "*secp256k1fx.TransferOutput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+    ///
+    /// "*platformvm.StakeableLockOut" which embeds "*secp256k1fx.TransferOutput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
+    ///
+    /// MUST: only one of the following can be "Some".
+    pub transfer_output: Option<secp256k1fx::TransferOutput>,
+    pub stakeable_lock_out: Option<platformvm::StakeableLockOut>,
 }
 
 impl Default for Utxo {
@@ -109,7 +122,8 @@ impl Utxo {
             tx_id: ids::Id::empty(),
             output_index: 0,
             asset_id: ids::Id::empty(),
-            out: secp256k1fx::TransferOutput::default(),
+            transfer_output: None,
+            stakeable_lock_out: None,
         }
     }
 
@@ -154,14 +168,48 @@ impl Utxo {
         };
         let asset_id = ids::Id::from_slice(&asset_id_bytes);
 
-        let type_id_secp256k1fx_transfer_output = packer.unpack_u32();
-        assert_eq!(type_id_secp256k1fx_transfer_output, 7);
+        // "Out verify.State" is an interface
+        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
+        //
+        // "*secp256k1fx.TransferOutput" -- type ID 7
+        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+        //
+        // "*platformvm.StakeableLockOut" which embeds "*secp256k1fx.TransferOutput"-- type ID 22
+        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
+        let type_id_verify_state = packer.unpack_u32();
+        match type_id_verify_state {
+            7 => {}
+            22 => {}
+            _ => {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("unknown type ID for verify.State {}", type_id_verify_state),
+                ));
+            }
+        }
 
-        let output_amount = packer.unpack_u64();
+        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
+        let stakeable_lock_out = {
+            if type_id_verify_state == 22 {
+                let stakeable_lock_out_locktime = packer.unpack_u64();
+
+                // "*secp256k1fx.TransferOutput" -- type ID 7
+                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+                let _type_id_secp256k1fx_transfer_output = packer.unpack_u32();
+
+                let mut so = platformvm::StakeableLockOut::default();
+                so.locktime = stakeable_lock_out_locktime;
+
+                Some(so)
+            } else {
+                None
+            }
+        };
+
+        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+        let amount = packer.unpack_u64();
         let locktime = packer.unpack_u64();
         let threshold = packer.unpack_u32();
-
-        // parse output owners for address lists
         let addr_len = packer.unpack_u32();
         let mut addrs: Vec<ids::ShortId> = Vec::new();
         for _ in 0..addr_len {
@@ -181,14 +229,30 @@ impl Utxo {
             threshold,
             addrs,
         };
-        let utxo = Utxo {
-            tx_id,
-            output_index,
-            asset_id,
-            out: secp256k1fx::TransferOutput {
-                amount: output_amount,
-                output_owners,
-            },
+        let transfer_output = secp256k1fx::TransferOutput {
+            amount,
+            output_owners,
+        };
+
+        let utxo = {
+            if let Some(mut stakeable_lock_out) = stakeable_lock_out {
+                stakeable_lock_out.out = transfer_output;
+                Utxo {
+                    tx_id,
+                    output_index,
+                    asset_id,
+                    stakeable_lock_out: Some(stakeable_lock_out),
+                    ..Utxo::default()
+                }
+            } else {
+                Utxo {
+                    tx_id,
+                    output_index,
+                    asset_id,
+                    transfer_output: Some(transfer_output),
+                    ..Utxo::default()
+                }
+            }
         };
         Ok(utxo)
     }
@@ -209,14 +273,15 @@ fn test_utxo_unpack_hex() {
             136, 238, 194, 224, 153, 198, 165, 40, 230, 137, 97, 142, 135, 33, 224, 74, 232, 94,
             165, 116, 199, 161, 90, 121, 104, 100, 77, 20, 213, 71, 128, 20,
         ])),
-        out: secp256k1fx::TransferOutput {
+        transfer_output: Some(secp256k1fx::TransferOutput {
             amount: 200000000000000000,
             output_owners: secp256k1fx::OutputOwners {
                 locktime: 0,
                 threshold: 1,
                 addrs: vec![addr],
             },
-        },
+        }),
+        ..Utxo::default()
     };
     assert_eq!(utxo, expected);
     println!("{:?}", utxo);

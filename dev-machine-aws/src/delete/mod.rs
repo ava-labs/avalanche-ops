@@ -18,7 +18,6 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use aws::{self, cloudformation, ec2, kms, s3, sts};
-use dev_machine_aws;
 
 pub const NAME: &str = "delete";
 

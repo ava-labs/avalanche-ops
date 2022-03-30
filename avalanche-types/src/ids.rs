@@ -67,7 +67,7 @@ impl Id {
         Self { d }
     }
 
-    pub fn from_str(s: &str) -> io::Result<Self> {
+    pub fn from_string(s: &str) -> io::Result<Self> {
         let decoded = formatting::decode_cb58_with_checksum(s)?;
         Ok(Self::from_slice(&decoded))
     }
@@ -130,10 +130,7 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    match Id::from_str(&s).map_err(serde::de::Error::custom) {
-        Ok(id) => Ok(id),
-        Err(e) => Err(e),
-    }
+    Id::from_string(&s).map_err(serde::de::Error::custom)
 }
 
 pub fn format_id_de<'de, D>(deserializer: D) -> Result<Option<Id>, D::Error>
@@ -245,7 +242,7 @@ impl NodeId {
         Self { d }
     }
 
-    pub fn from_str(s: &str) -> io::Result<Self> {
+    pub fn from_string(s: &str) -> io::Result<Self> {
         let processed = strip_node_id_prefix(s);
         let decoded = formatting::decode_cb58_with_checksum(processed)?;
         Ok(Self::from_slice(&decoded))
@@ -313,11 +310,11 @@ fn test_from_cert_file() {
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
+        NodeId::from_string("6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
+        NodeId::from_string("NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
     );
 
     // copied from "avalanchego/staking/local/staking1.key,crt"
@@ -326,66 +323,66 @@ fn test_from_cert_file() {
     assert_eq!(node_id.string(), "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg");
     assert_eq!(
         node_id,
-        NodeId::from_str("7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
+        NodeId::from_string("7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
+        NodeId::from_string("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker2.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ");
     assert_eq!(
         node_id,
-        NodeId::from_str("MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
+        NodeId::from_string("MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
+        NodeId::from_string("NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker3.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN");
     assert_eq!(
         node_id,
-        NodeId::from_str("NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
+        NodeId::from_string("NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
+        NodeId::from_string("NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker4.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu");
     assert_eq!(
         node_id,
-        NodeId::from_str("GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
+        NodeId::from_string("GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
+        NodeId::from_string("NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker5.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5");
     assert_eq!(
         node_id,
-        NodeId::from_str("P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
+        NodeId::from_string("P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
+        NodeId::from_string("NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/test.insecure.crt").unwrap();
     assert_eq!(node_id.string(), "NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG");
     assert_eq!(
         node_id,
-        NodeId::from_str("29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
+        NodeId::from_string("29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_str("NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
+        NodeId::from_string("NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
     );
 }
 

@@ -281,7 +281,7 @@ impl _GetAssetDescriptionResponse {
                 if asset_id.is_empty() {
                     ids::Id::empty()
                 } else {
-                    ids::Id::from_str(&asset_id).unwrap()
+                    ids::Id::from_string(&asset_id).unwrap()
                 }
             };
 
@@ -290,7 +290,7 @@ impl _GetAssetDescriptionResponse {
                 .clone()
                 .expect("unexpected None result")
                 .name
-                .unwrap_or(String::new());
+                .unwrap_or_default();
             result.name = name;
 
             let symbol = self
@@ -298,7 +298,7 @@ impl _GetAssetDescriptionResponse {
                 .clone()
                 .expect("unexpected None result")
                 .symbol
-                .unwrap_or(String::new());
+                .unwrap_or_default();
             result.symbol = symbol;
 
             let denomination = self
@@ -307,10 +307,10 @@ impl _GetAssetDescriptionResponse {
                 .expect("unexpected None result")
                 .denomination;
             result.denomination = {
-                if denomination.is_none() {
-                    0_usize
+                if let Some(d) = denomination {
+                    d.parse::<usize>().unwrap()
                 } else {
-                    denomination.unwrap().parse::<usize>().unwrap()
+                    0_usize
                 }
             };
         }
@@ -349,7 +349,7 @@ fn test_asset_description_response_convert() {
         jsonrpc: "2.0".to_string(),
         id: 1,
         result: Some(GetAssetDescriptionResult {
-            asset_id: ids::Id::from_str("2fombhL7aGPwj3KH4bfrmJwW6PVnMobf9Y2fn9GwxiAAJyFDbe")
+            asset_id: ids::Id::from_string("2fombhL7aGPwj3KH4bfrmJwW6PVnMobf9Y2fn9GwxiAAJyFDbe")
                 .unwrap(),
             name: String::from("Avalanche"),
             symbol: String::from("AVAX"),

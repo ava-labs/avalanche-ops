@@ -265,7 +265,7 @@ pub async fn insecure_post(url: &str, url_path: &str, data: &str) -> io::Result<
             let output = cmd.output()?;
             output.stdout
         } else {
-            let req = create_json_post(url, url_path, &data)?;
+            let req = create_json_post(url, url_path, data)?;
             let buf = match read_bytes(req, Duration::from_secs(5), url.starts_with("https"), false)
                 .await
             {

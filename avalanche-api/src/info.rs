@@ -281,7 +281,7 @@ impl _GetBlockchainIdResponse {
                 if blockchain_id.is_empty() {
                     ids::Id::empty()
                 } else {
-                    ids::Id::from_str(&blockchain_id).unwrap()
+                    ids::Id::from_string(&blockchain_id).unwrap()
                 }
             };
         }
@@ -317,8 +317,10 @@ fn test_blockchain_id_response_convert() {
         jsonrpc: "2.0".to_string(),
         id: 1,
         result: Some(GetBlockchainIdResult {
-            blockchain_id: ids::Id::from_str("sV6o671RtkGBcno1FiaDbVcFv2sG5aVXMZYzKdP4VQAWmJQnM")
-                .unwrap(),
+            blockchain_id: ids::Id::from_string(
+                "sV6o671RtkGBcno1FiaDbVcFv2sG5aVXMZYzKdP4VQAWmJQnM",
+            )
+            .unwrap(),
         }),
     };
     assert_eq!(parsed, expected);
@@ -402,7 +404,7 @@ impl _GetNodeIdResponse {
                 if node_id.is_empty() {
                     ids::NodeId::empty()
                 } else {
-                    ids::NodeId::from_str(&node_id).unwrap()
+                    ids::NodeId::from_string(&node_id).unwrap()
                 }
             };
         }
@@ -438,7 +440,7 @@ fn test_node_id_response_convert() {
         jsonrpc: "2.0".to_string(),
         id: 1,
         result: Some(GetNodeIdResult {
-            node_id: ids::NodeId::from_str("NodeID-5mb46qkSBj81k9g9e4VFjGGSbaaSLFRzD").unwrap(),
+            node_id: ids::NodeId::from_string("NodeID-5mb46qkSBj81k9g9e4VFjGGSbaaSLFRzD").unwrap(),
         }),
     };
     assert_eq!(parsed, expected);

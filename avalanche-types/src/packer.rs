@@ -316,6 +316,7 @@ impl Packer {
     }
 
     /// Writes the "u32" value at the offset and increments the offset afterwards.
+    /// This is also used for encoding the type IDs from codec.
     /// ref. "avalanchego/utils/wrappers.Packer.PackInt"
     pub fn pack_u32(&self, v: u32) {
         self.expand(U32_LEN);

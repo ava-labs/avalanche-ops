@@ -13,7 +13,6 @@ use log::{info, warn};
 use tokio::time::sleep;
 
 use avalanche_api::{health, metrics};
-use avalanche_ops_aws;
 use avalanche_types::{cert, constants, ids, node};
 use avalanchego::genesis as avalanchego_genesis;
 use aws::{self, cloudwatch, ec2, envelope, kms, s3};
