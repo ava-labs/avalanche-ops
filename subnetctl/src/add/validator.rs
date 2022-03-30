@@ -156,9 +156,12 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     };
     assert_eq!(keys.len(), 1);
     let key = &keys[0];
-    info!("loaded key at ETH address {}", key.eth_address);
 
-    // TODO: get reward address
+    let reward_short_address = key.short_address.clone();
+    info!(
+        "loaded key at ETH address {} (reward short address {})",
+        key.eth_address, reward_short_address
+    );
 
     execute!(
         stdout(),

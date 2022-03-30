@@ -1283,37 +1283,14 @@ impl Metrics {
 /// "If a single piece of data must be accessible from more than one task
 /// concurrently, then it must be shared using synchronization primitives such as Arc."
 /// ref. https://tokio.rs/tokio/tutorial/spawning
-pub async fn get(u: Arc<String>) -> io::Result<Metrics> {
+pub async fn get(url: Arc<String>) -> io::Result<Metrics> {
     let ts = Utc::now();
-    let url_path = "ext/metrics";
-    info!("checking {}/{}", u, url_path);
 
-    let output = {
-        if u.starts_with("https") {
-            let joined = http::join_uri(u.as_str(), url_path)?;
+    let joined = http::join_uri(url.as_str(), "ext/metrics")?;
+    info!("checking for {:?}", joined);
 
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            output.stdout
-        } else {
-            let req = http::create_get(u.as_str(), url_path)?;
-            let buf =
-                match http::read_bytes(req, Duration::from_secs(30), u.starts_with("https"), false)
-                    .await
-                {
-                    Ok(u) => u,
-                    Err(e) => return Err(e),
-                };
-            buf.to_vec()
-        }
-    };
-
-    let s = prometheus::Scrape::from_bytes(&output)?;
+    let rb = http::insecure_get(url.as_str(), "ext/metrics").await?;
+    let s = prometheus::Scrape::from_bytes(&rb)?;
 
     Ok(Metrics {
         ts,

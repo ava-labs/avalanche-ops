@@ -1,9 +1,7 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
-    process::Command,
     string::String,
-    time::Duration,
 };
 
 use log::info;
@@ -42,8 +40,8 @@ impl GetHeightResult {
 
 /// e.g., "platform.getHeight" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
-pub async fn get_height(url: &str, path: &str) -> io::Result<GetHeightResponse> {
-    let joined = http::join_uri(url, path)?;
+pub async fn get_height(url: &str, url_path: &str) -> io::Result<GetHeightResponse> {
+    let joined = http::join_uri(url, url_path)?;
     info!("getting height for {:?}", joined);
 
     let mut data = jsonrpc::Data::default();
@@ -53,53 +51,16 @@ pub async fn get_height(url: &str, path: &str) -> io::Result<GetHeightResponse> 
     data.params = Some(params);
 
     let d = data.encode_json()?;
-
-    let resp: _GetHeightResponse = {
-        if url.starts_with("https") {
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, path, &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, url_path, &d).await?;
+    let resp: _GetHeightResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
     let converted = resp.convert();
     Ok(converted)
 }
@@ -231,8 +192,8 @@ impl GetBalanceResult {
 
 /// e.g., "platform.getBalance" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
-pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
-    let joined = http::join_uri(url, path)?;
+pub async fn get_balance(url: &str, url_path: &str, paddr: &str) -> io::Result<GetBalanceResponse> {
+    let joined = http::join_uri(url, url_path)?;
     info!("getting balances for {} via {:?}", paddr, joined);
 
     let mut data = jsonrpc::Data::default();
@@ -243,55 +204,18 @@ pub async fn get_balance(url: &str, path: &str, paddr: &str) -> io::Result<GetBa
     data.params = Some(params);
 
     let d = data.encode_json()?;
-
-    let resp: _GetBalanceResponse = {
-        if url.starts_with("https") {
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, path, &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, url_path, &d).await?;
+    let resp: _GetBalanceResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
-    let parsed = resp.convert()?;
-    Ok(parsed)
+    let converted = resp.convert()?;
+    Ok(converted)
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
@@ -552,8 +476,8 @@ pub struct _GetUtxosResult {
 
 /// e.g., "platform.getUTXOs" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetutxos
-pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
-    let joined = http::join_uri(url, path)?;
+pub async fn get_utxos(url: &str, url_path: &str, paddr: &str) -> io::Result<GetUtxosResponse> {
+    let joined = http::join_uri(url, url_path)?;
     info!("getting UTXOs for {} via {:?}", paddr, joined);
 
     let mut data = DataForGetUtxos::default();
@@ -567,55 +491,18 @@ pub async fn get_utxos(url: &str, path: &str, paddr: &str) -> io::Result<GetUtxo
     data.params = Some(params);
 
     let d = data.encode_json()?;
-
-    let resp: _GetUtxosResponse = {
-        if url.starts_with("https") {
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, path, &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, url_path, &d).await?;
+    let resp: _GetUtxosResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
-    let parsed = resp.convert()?;
-    Ok(parsed)
+    let converted = resp.convert()?;
+    Ok(converted)
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/issuing-api-calls
@@ -986,9 +873,9 @@ impl ApiPrimaryDelegator {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIPrimaryValidator
 pub async fn get_current_validators(
     url: &str,
-    path: &str,
+    url_path: &str,
 ) -> io::Result<GetCurrentValidatorsResponse> {
-    let joined = http::join_uri(url, path)?;
+    let joined = http::join_uri(url, url_path)?;
     info!("getting current validators via {:?}", joined);
 
     let mut data = jsonrpc::Data::default();
@@ -998,55 +885,18 @@ pub async fn get_current_validators(
     data.params = Some(params);
 
     let d = data.encode_json()?;
-
-    let resp: _GetCurrentValidatorsResponse = {
-        if url.starts_with("https") {
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, path, &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, url_path, &d).await?;
+    let resp: _GetCurrentValidatorsResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
-    let parsed = resp.convert()?;
-    Ok(parsed)
+    let converted = resp.convert()?;
+    Ok(converted)
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators

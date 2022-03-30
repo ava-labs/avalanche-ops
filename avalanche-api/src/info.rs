@@ -1,9 +1,7 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
-    process::Command,
     string::String,
-    time::Duration,
 };
 
 use log::info;
@@ -52,52 +50,14 @@ pub async fn get_network_name(url: &str) -> io::Result<GetNetworkNameResponse> {
     data.method = String::from("info.getNetworkName");
 
     let d = data.encode_json()?;
-
-    let resp: GetNetworkNameResponse = {
-        if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: GetNetworkNameResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
     Ok(resp)
@@ -140,55 +100,16 @@ pub async fn get_network_id(url: &str) -> io::Result<GetNetworkIdResponse> {
     data.method = String::from("info.getNetworkID");
 
     let d = data.encode_json()?;
-
-    let resp: _GetNetworkIdResponse = {
-        if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: _GetNetworkIdResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
     let converted = resp.convert()?;
     Ok(converted)
 }
@@ -303,55 +224,16 @@ pub async fn get_blockchain_id(url: &str) -> io::Result<GetBlockchainIdResponse>
     data.method = String::from("info.getBlockchainID");
 
     let d = data.encode_json()?;
-
-    let resp: _GetBlockchainIdResponse = {
-        if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: _GetBlockchainIdResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
     let converted = resp.convert()?;
     Ok(converted)
 }
@@ -467,55 +349,16 @@ pub async fn get_node_id(url: &str) -> io::Result<GetNodeIdResponse> {
     data.method = String::from("info.getNodeID");
 
     let d = data.encode_json()?;
-
-    let resp: _GetNodeIdResponse = {
-        if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: _GetNodeIdResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
     let converted = resp.convert()?;
     Ok(converted)
 }
@@ -667,50 +510,14 @@ pub async fn get_node_version(url: &str) -> io::Result<GetNodeVersionResponse> {
     data.method = String::from("info.getNodeVersion");
 
     let d = data.encode_json()?;
-
-    let resp: GetNodeVersionResponse = {
-        if url.starts_with("https") {
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: GetNodeVersionResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
     Ok(resp)
@@ -754,52 +561,14 @@ pub async fn get_vms(url: &str) -> io::Result<GetVmsResponse> {
     data.method = String::from("info.getVMs");
 
     let d = data.encode_json()?;
-
-    let resp: GetVmsResponse = {
-        if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: GetVmsResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
     Ok(resp)
@@ -845,52 +614,14 @@ pub async fn get_bootstrapped(url: &str) -> io::Result<GetBootstrappedResponse> 
     data.method = String::from("info.isBootstrapped");
 
     let d = data.encode_json()?;
-
-    let resp: GetBootstrappedResponse = {
-        if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: GetBootstrappedResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
     Ok(resp)
@@ -935,55 +666,16 @@ pub async fn get_tx_fee(url: &str) -> io::Result<GetTxFeeResponse> {
     data.method = String::from("info.getTxFee");
 
     let d = data.encode_json()?;
-
-    let resp: _GetTxFeeResponse = {
-        if url.starts_with("https") {
-            let joined = http::join_uri(url, "ext/info")?;
-
-            // TODO: implement this with native Rust
-            info!("sending via curl --insecure");
-            let mut cmd = Command::new("curl");
-            cmd.arg("--insecure");
-            cmd.arg("-X POST");
-            cmd.arg("--header 'content-type:application/json;'");
-            cmd.arg(format!("--data '{}'", d));
-            cmd.arg(joined.as_str());
-
-            let output = cmd.output()?;
-            match serde_json::from_slice(&output.stdout) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
-        } else {
-            let req = http::create_json_post(url, "ext/info", &d)?;
-            let buf = match http::read_bytes(
-                req,
-                Duration::from_secs(5),
-                url.starts_with("https"),
-                false,
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => return Err(e),
-            };
-            match serde_json::from_slice(&buf) {
-                Ok(p) => p,
-                Err(e) => {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("failed to decode {}", e),
-                    ));
-                }
-            }
+    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let resp: _GetTxFeeResponse = match serde_json::from_slice(&rb) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to decode {}", e),
+            ));
         }
     };
-
     let converted = resp.convert()?;
     Ok(converted)
 }
