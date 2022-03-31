@@ -317,8 +317,8 @@ pub async fn execute(log_level: &str) {
         .sync(&cloudwatch_config_file_path)
         .unwrap();
 
-    info!("checking TLS certs for node ID");
     // TODO: reuse TLS certs for static node IDs
+    info!("checking TLS certs for node ID");
     let tls_key_path = spec
         .avalanchego_config
         .clone()
@@ -826,7 +826,12 @@ WantedBy=multi-user.target",
             "health/liveness check failed for {} ({:?}, {:?})",
             instance_id, res, err
         );
+
         sleep(Duration::from_secs(30)).await;
+        let out = bash::run("sudo tail -10 /var/log/avalanche/avalanche.log")
+            .expect("failed tail /var/log/avalanche/avalanche.log command");
+        println!("'/var/log/avalanche/avalanche.log' stdout:\n\n{}\n", out.0);
+        println!("'/var/log/avalanche/avalanche.log' stderr:\n\n{}\n", out.1);
     }
 
     info!("spawning async routines...");
@@ -846,17 +851,7 @@ WantedBy=multi-user.target",
         }
     };
     let mut handles = vec![
-        tokio::spawn(fetch_metrics(
-            cw_manager.clone(),
-            Arc::new(
-                aws_resources
-                    .clone()
-                    .cloudwatch_avalanche_metrics_namespace
-                    .unwrap(),
-            ),
-            Arc::new(local_node.http_endpoint.clone()),
-        )),
-        tokio::spawn(publish_node_info_ready(
+        tokio::spawn(publish_node_info_ready_loop(
             s3_manager.clone(),
             Arc::new(s3_bucket.clone()),
             Arc::new(node_info_ready_s3_key),
@@ -866,7 +861,17 @@ WantedBy=multi-user.target",
                 spec.coreth_config.clone(),
             )),
         )),
-        tokio::spawn(check_node_update(
+        tokio::spawn(fetch_metrics_loop(
+            cw_manager.clone(),
+            Arc::new(
+                aws_resources
+                    .clone()
+                    .cloudwatch_avalanche_metrics_namespace
+                    .unwrap(),
+            ),
+            Arc::new(local_node.http_endpoint.clone()),
+        )),
+        tokio::spawn(check_node_update_loop(
             s3_manager.clone(),
             Arc::new(s3_bucket.clone()),
             Arc::new(id.clone()),
@@ -889,12 +894,47 @@ WantedBy=multi-user.target",
     }
 }
 
-async fn fetch_metrics(
+/// if run in anchor nodes, the uploaded file will be downloaded
+/// in bootstrapping non-anchor nodes for custom networks
+async fn publish_node_info_ready_loop(
+    s3_manager: s3::Manager,
+    s3_bucket: Arc<String>,
+    s3_key: Arc<String>,
+    node_info: Arc<avalanche_ops_aws::NodeInfo>,
+) {
+    info!("STEP: starting 'publish_node_info_ready_loop'");
+
+    loop {
+        info!(
+            "STEP: posting node info ready for {}",
+            node_info.local_node.kind
+        );
+
+        let tmp_path = random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+        node_info.sync(tmp_path.clone()).unwrap();
+
+        s3::spawn_put_object(
+            s3_manager.clone(),
+            &tmp_path,
+            s3_bucket.as_str(),
+            s3_key.as_str(),
+        )
+        .await
+        .expect("failed s3::spawn_put_object");
+
+        fs::remove_file(&tmp_path).expect("failed fs::remove_file");
+
+        info!("sleeping 10-min for next 'publish_node_info_ready_loop'");
+        sleep(Duration::from_secs(600)).await;
+    }
+}
+
+async fn fetch_metrics_loop(
     cw_manager: cloudwatch::Manager,
     cw_namespace: Arc<String>,
     metrics_ep: Arc<String>,
 ) {
-    info!("STEP: starting 'fetch_metrics' in 2-minute");
+    info!("STEP: starting 'fetch_metrics_loop' with initial 2-minute wait");
     sleep(Duration::from_secs(120)).await;
 
     let mut prev_raw_metrics: Option<metrics::RawMetrics> = None;
@@ -924,54 +964,21 @@ async fn fetch_metrics(
                 continue;
             }
         }
+
         prev_raw_metrics = Some(cur_metrics.clone());
     }
 }
 
-/// if run in anchor nodes, the uploaded file will be downloaded
-/// in bootstrapping non-anchor nodes for custom networks
-async fn publish_node_info_ready(
-    s3_manager: s3::Manager,
-    s3_bucket: Arc<String>,
-    s3_key: Arc<String>,
-    node_info: Arc<avalanche_ops_aws::NodeInfo>,
-) {
-    info!("STEP: starting 'publish_node_info_ready'");
-
-    loop {
-        info!(
-            "STEP: posting node info ready for {}",
-            node_info.local_node.kind
-        );
-        let tmp_path = random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
-        node_info.sync(tmp_path.clone()).unwrap();
-
-        s3::spawn_put_object(
-            s3_manager.clone(),
-            &tmp_path,
-            s3_bucket.as_str(),
-            s3_key.as_str(),
-        )
-        .await
-        .expect("failed s3::spawn_put_object");
-
-        fs::remove_file(&tmp_path).expect("failed fs::remove_file");
-
-        info!("sleeping 10-min for 'publish_node_info_ready'");
-        sleep(Duration::from_secs(600)).await;
-    }
-}
-
-async fn check_node_update(
+async fn check_node_update_loop(
     s3_manager: s3::Manager,
     s3_bucket: Arc<String>,
     id: Arc<String>,
     avalanche_bin_path: Arc<String>,
 ) {
-    info!("STEP: starting 'check_node_update'");
+    info!("STEP: starting 'check_node_update_loop'");
 
     loop {
-        info!("sleeping 3-min for 'check_node_update'");
+        info!("sleeping 3-min for 'check_node_update_loop'");
         sleep(Duration::from_secs(180)).await;
 
         info!("STEP: checking update artifacts event key");
