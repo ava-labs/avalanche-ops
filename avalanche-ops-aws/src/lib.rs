@@ -453,10 +453,10 @@ lazy_static! {
     /// t3.xlarge:  4 vCPU + 16 GiB RAM
     /// t3.2xlarge: 8 vCPU + 32 GiB RAM
     pub static ref DEFAULT_EC2_INSTANCE_TYPES_AMD64: Vec<String> = vec![
-        String::from("c6a.large"),
-        String::from("m6a.large"),
-        String::from("m5.large"),
-        String::from("c5.large"),
+        String::from("c6a.2xlarge"),
+        String::from("m6a.2xlarge"),
+        String::from("m5.2xlarge"),
+        String::from("c5.2xlarge"),
     ];
 
     /// Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
