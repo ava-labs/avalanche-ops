@@ -11,10 +11,10 @@ pushd ./compatibility
 go run ./key-info-gen/main.go 9999 /tmp/test.key.json
 go run ./key-info-validate/main.go /tmp/test.key.json 9999
 popd
-cargo run --example key_info_validate -- /tmp/test.key.json 9999
+cargo run --example soft_key_info_validate -- /tmp/test.key.json 9999
 
 ###
-cargo run --example key_info_gen -- 9999 /tmp/test.key.json
+cargo run --example soft_key_info_gen -- 9999 /tmp/test.key.json
 pushd ./compatibility
 go run ./key-info-validate/main.go /tmp/test.key.json 9999
 popd

@@ -17,7 +17,7 @@ use secp256k1::{self, rand::rngs::OsRng, PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use sha3::Keccak256;
 
-use crate::{constants, formatting};
+use crate::{constants, formatting, ids, secp256k1fx};
 use utils::{hash, prefix};
 
 pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
@@ -71,7 +71,7 @@ pub fn load_keys(d: &[u8]) -> io::Result<Vec<Key>> {
     Ok(keys)
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_load_test_keys --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- soft_key::test_load_test_keys --exact --show-output
 #[test]
 fn test_load_test_keys() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -244,6 +244,47 @@ impl Key {
             eth_address: self.eth_address.clone(),
         })
     }
+
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Match
+    pub fn match_threshold(
+        &self,
+        output_owners: &secp256k1fx::OutputOwners,
+        time: u64,
+    ) -> io::Result<(Vec<u32>, bool)> {
+        if output_owners.locktime > time {
+            // output owners are still locked
+            return Ok((Vec::new(), false));
+        }
+        let mut sigs: Vec<u32> = Vec::new();
+        for (pos, short_addr) in output_owners.addrs.iter().enumerate() {
+            if self.short_address != short_addr.string() {
+                continue;
+            }
+            sigs.push(pos as u32);
+        }
+        let n = sigs.len();
+        Ok((sigs, (n as u32) == output_owners.threshold))
+    }
+
+    /// TODO: support "secp256k1fx::MintOutput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
+    pub fn spend(
+        &self,
+        output: &secp256k1fx::TransferOutput,
+        time: u64,
+    ) -> io::Result<secp256k1fx::TransferInput> {
+        let (sigs, threshold_met) = self.match_threshold(&output.output_owners, time)?;
+        if !threshold_met {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "unable to spend this UTXO (threshold not met)",
+            ));
+        }
+        Ok(secp256k1fx::TransferInput {
+            amount: output.amount,
+            sig_indices: sigs,
+        })
+    }
 }
 
 /// "hashing.PubkeyBytesToAddress"
@@ -356,7 +397,7 @@ fn checksum_eip55(addr: &str, addr_hash: &str) -> String {
     chksum
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- key::test_key --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- soft_key::test_key --exact --show-output
 #[test]
 fn test_key() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -1557,15 +1598,81 @@ impl PrivateKeyInfo {
     }
 }
 
+/// TODO: support this for multiple keys
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain
 /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/wallet/chain/p/builder.go
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Keychain {
-    pub key: Key,
+    pub keys: Vec<Key>,
+    pub short_addr_to_key_index: HashMap<String, u32>,
 }
 
 impl Keychain {
-    pub fn new(key: Key) -> Self {
-        Self { key }
+    pub fn new(keys: Vec<Key>) -> Self {
+        let mut short_addr_to_key_index = HashMap::new();
+        for (pos, k) in keys.iter().enumerate() {
+            short_addr_to_key_index.insert(k.short_address.to_owned(), pos as u32);
+        }
+        Self {
+            keys,
+            short_addr_to_key_index,
+        }
+    }
+
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Get
+    pub fn get(&self, short_addr: &ids::ShortId) -> Option<Key> {
+        let short_addr = short_addr.string();
+        self.short_addr_to_key_index
+            .get(&short_addr)
+            .map(|k| self.keys[(*k) as usize].clone())
+    }
+
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Match
+    pub fn match_threshold(
+        &self,
+        output_owners: &secp256k1fx::OutputOwners,
+        time: u64,
+    ) -> io::Result<(Vec<u32>, Vec<Key>, bool)> {
+        if output_owners.locktime > time {
+            // output owners are still locked
+            return Ok((Vec::new(), Vec::new(), false));
+        }
+
+        let mut sigs: Vec<u32> = Vec::new();
+        let mut keys: Vec<Key> = Vec::new();
+        for (pos, addr) in output_owners.addrs.iter().enumerate() {
+            let key = self.get(addr);
+            if key.is_none() {
+                continue;
+            }
+            sigs.push(pos as u32);
+            keys.push(key.unwrap());
+        }
+        let n = keys.len();
+
+        Ok((sigs, keys, (n as u32) == output_owners.threshold))
+    }
+
+    /// TODO: support "secp256k1fx::MintOutput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
+    pub fn spend(
+        &self,
+        output: &secp256k1fx::TransferOutput,
+        time: u64,
+    ) -> io::Result<(secp256k1fx::TransferInput, Vec<Key>)> {
+        let (sigs, keys, threshold_met) = self.match_threshold(&output.output_owners, time)?;
+        if !threshold_met {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "unable to spend this UTXO (threshold not met)",
+            ));
+        }
+        Ok((
+            secp256k1fx::TransferInput {
+                amount: output.amount,
+                sig_indices: sigs,
+            },
+            keys,
+        ))
     }
 }

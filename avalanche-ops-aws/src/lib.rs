@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use avalanche_types::{constants, key, node};
+use avalanche_types::{constants, node, soft_key};
 use avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis};
 use coreth::config as coreth_config;
 use subnet_evm::genesis as subnet_evm_genesis;
@@ -240,11 +240,11 @@ pub struct Spec {
     /// initial stake duration in genesis.
     /// Only valid for custom networks.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_key_with_locked_p_chain_balance: Option<key::PrivateKeyInfo>,
+    pub generated_seed_private_key_with_locked_p_chain_balance: Option<soft_key::PrivateKeyInfo>,
     /// Generated key infos with immediately unlocked P-chain balance.
     /// Only pre-funded for custom networks with a custom genesis file.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_keys: Option<Vec<key::PrivateKeyInfo>>,
+    pub generated_seed_private_keys: Option<Vec<soft_key::PrivateKeyInfo>>,
 
     /// Current all nodes. May be stale.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -588,13 +588,13 @@ impl Spec {
                 (Some(g), seed_keys)
             } else {
                 // existing network has only 1 pre-funded key "ewoq"
-                let mut seed_keys: Vec<key::PrivateKeyInfo> = Vec::new();
+                let mut seed_keys: Vec<soft_key::PrivateKeyInfo> = Vec::new();
                 for i in 0..opt.keys_to_generate {
                     let k = {
-                        if i < key::TEST_KEYS.len() {
-                            key::TEST_KEYS[i].clone()
+                        if i < soft_key::TEST_KEYS.len() {
+                            soft_key::TEST_KEYS[i].clone()
                         } else {
-                            key::Key::generate().expect("unexpected key generate failure")
+                            soft_key::Key::generate().expect("unexpected key generate failure")
                         }
                     };
                     let info = k.info(network_id).expect("unexpected to_info failure");
