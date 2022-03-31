@@ -180,8 +180,11 @@ impl ShortId {
     }
 
     pub fn from_slice(d: &[u8]) -> Self {
-        assert_eq!(d.len(), SHORT_ID_LEN);
-        let d = Vec::from(d);
+        assert!(d.len() <= SHORT_ID_LEN);
+        let mut d: Vec<u8> = Vec::from(d);
+        if d.len() < SHORT_ID_LEN {
+            d.resize(SHORT_ID_LEN, 0);
+        }
         Self { d }
     }
 

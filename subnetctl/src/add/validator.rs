@@ -366,6 +366,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         let utxo = avax::Utxo::unpack_hex(s).expect("failed to unpack raw utxo");
         utxos.push(utxo);
     }
+
     let staked_amount: u64 = 0_u64;
     for utxo in utxos.iter() {
         if staked_amount >= opt.stake_amount {
@@ -386,7 +387,14 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
             continue;
         }
 
-        let _inner = stakeable_lock_out.out;
+        let transfer_output = stakeable_lock_out.out;
+        let input = key.spend(&transfer_output, now_unix)?;
+        let _transfer_input = avax::TransferableInput {
+            utxo_id: utxo.utxo_id.clone(),
+            asset_id: utxo.asset_id.clone(),
+            input,
+            ..avax::TransferableInput::default()
+        };
         // TODO
     }
     // TODO: get *avax.TransferableInput for inputs

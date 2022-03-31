@@ -90,8 +90,7 @@ fn test_utxo_id() {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Utxo {
-    pub tx_id: ids::Id,
-    pub output_index: u32,
+    pub utxo_id: UtxoId,
     pub asset_id: ids::Id,
 
     /// AvalancheGo loads "avax.UTXO" object from the db and
@@ -119,8 +118,7 @@ impl Default for Utxo {
 impl Utxo {
     pub fn default() -> Self {
         Self {
-            tx_id: ids::Id::empty(),
-            output_index: 0,
+            utxo_id: UtxoId::default(),
             asset_id: ids::Id::empty(),
             transfer_output: None,
             stakeable_lock_out: None,
@@ -238,16 +236,22 @@ impl Utxo {
             if let Some(mut stakeable_lock_out) = stakeable_lock_out {
                 stakeable_lock_out.out = transfer_output;
                 Utxo {
-                    tx_id,
-                    output_index,
+                    utxo_id: UtxoId {
+                        tx_id,
+                        output_index,
+                        ..UtxoId::default()
+                    },
                     asset_id,
                     stakeable_lock_out: Some(stakeable_lock_out),
                     ..Utxo::default()
                 }
             } else {
                 Utxo {
-                    tx_id,
-                    output_index,
+                    utxo_id: UtxoId {
+                        tx_id,
+                        output_index,
+                        ..UtxoId::default()
+                    },
                     asset_id,
                     transfer_output: Some(transfer_output),
                     ..Utxo::default()
@@ -267,8 +271,7 @@ fn test_utxo_unpack_hex() {
     ]));
     let utxo = Utxo::unpack_hex(d).unwrap();
     let expected = Utxo {
-        tx_id: ids::Id::empty(),
-        output_index: 0,
+        utxo_id: UtxoId::default(),
         asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
             136, 238, 194, 224, 153, 198, 165, 40, 230, 137, 97, 142, 135, 33, 224, 74, 232, 94,
             165, 116, 199, 161, 90, 121, 104, 100, 77, 20, 213, 71, 128, 20,
