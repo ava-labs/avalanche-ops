@@ -1,6 +1,6 @@
 use std::{io, sync::Arc};
 
-use aws_sdk_cloudwatch::model::{MetricDatum, StandardUnit};
+use aws_sdk_cloudwatch::model::{Dimension, MetricDatum, StandardUnit};
 use aws_smithy_types::DateTime as SmithyDateTime;
 use chrono::{DateTime, Utc};
 use log::info;
@@ -9,7 +9,7 @@ use serde::Serialize;
 use utils::{http, prometheus, rfc3339};
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
-pub struct Metrics {
+pub struct RawMetrics {
     /// Represents the data format in RFC3339.
     /// ref. https://serde.rs/custom-date-format.html
     #[serde(with = "rfc3339::serde_format")]
@@ -278,13 +278,13 @@ pub struct Metrics {
     pub avalanche_c_benchlist_benched_num: Option<f64>,
 }
 
-impl Default for Metrics {
+impl Default for RawMetrics {
     fn default() -> Self {
         Self::default()
     }
 }
 
-impl Metrics {
+impl RawMetrics {
     pub fn default() -> Self {
         Self {
             ts: Utc::now(),
@@ -460,7 +460,7 @@ impl Metrics {
         }
     }
 
-    pub fn c_blks_accepted_per_second(&self, prev: Metrics) -> f64 {
+    pub fn c_blks_accepted_per_second(&self, prev: RawMetrics) -> f64 {
         let elapsed = (self.ts.timestamp_millis() - prev.ts.timestamp_millis()) as f64;
         let elapsed_seconds = elapsed / 1000.0;
 
@@ -475,7 +475,7 @@ impl Metrics {
         }
     }
 
-    pub fn to_cw_metric_data(&self, prev: Option<Metrics>) -> Vec<MetricDatum> {
+    pub fn to_cw_metric_data(&self, prev: Option<RawMetrics>) -> Vec<MetricDatum> {
         let ts = SmithyDateTime::from_nanos(self.ts.timestamp_nanos() as i128)
             .expect("failed to convert DateTime<Utc>");
         let mut data = vec![
@@ -485,24 +485,48 @@ impl Metrics {
                 .value(self.avalanche_network_peers.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_pull_query_sent")
                 .value(self.avalanche_network_pull_query_sent.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_push_query_sent")
                 .value(self.avalanche_network_push_query_sent.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_msgs_failed_to_parse")
                 .value(self.avalanche_network_msgs_failed_to_parse.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_inbound_conn_throttler_allowed")
@@ -512,6 +536,12 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_byte_throttler_inbound_awaiting_release")
@@ -521,6 +551,12 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_throttler_outbound_acquire_failures")
@@ -530,6 +566,12 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_throttler_outbound_awaiting_release")
@@ -539,12 +581,24 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_requests_average_latency_seconds")
                 .value(self.avalanche_requests_average_latency.unwrap() / 1000000000.0)
                 .unit(StandardUnit::Seconds)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             // Handshake messages.
             MetricDatum::builder()
@@ -552,48 +606,96 @@ impl Metrics {
                 .value(self.avalanche_network_version_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_version_received_bytes")
                 .value(self.avalanche_network_version_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_peerlist_sent_bytes")
                 .value(self.avalanche_network_peerlist_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_peerlist_received_bytes")
                 .value(self.avalanche_network_peerlist_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_ping_sent_bytes")
                 .value(self.avalanche_network_ping_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_ping_received_bytes")
                 .value(self.avalanche_network_ping_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_pong_sent_bytes")
                 .value(self.avalanche_network_pong_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_pong_received_bytes")
                 .value(self.avalanche_network_pong_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             // Consensus messages.
             MetricDatum::builder()
@@ -601,60 +703,120 @@ impl Metrics {
                 .value(self.avalanche_network_chits_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_chits_received_bytes")
                 .value(self.avalanche_network_chits_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_sent_bytes")
                 .value(self.avalanche_network_get_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_received_bytes")
                 .value(self.avalanche_network_get_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_put_sent_bytes")
                 .value(self.avalanche_network_put_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_put_received_bytes")
                 .value(self.avalanche_network_put_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_pull_query_sent_bytes")
                 .value(self.avalanche_network_pull_query_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_pull_query_received_bytes")
                 .value(self.avalanche_network_pull_query_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_push_query_sent_bytes")
                 .value(self.avalanche_network_push_query_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_push_query_received_bytes")
                 .value(self.avalanche_network_push_query_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             // Bootstrap messages.
             MetricDatum::builder()
@@ -665,6 +827,12 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_accepted_frontier_received_bytes")
@@ -674,12 +842,24 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_accepted_frontier_sent_bytes")
                 .value(self.avalanche_network_accepted_frontier_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_accepted_frontier_received_bytes")
@@ -689,54 +869,108 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_accepted_sent_bytes")
                 .value(self.avalanche_network_get_accepted_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_accepted_received_bytes")
                 .value(self.avalanche_network_get_accepted_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_accepted_sent_bytes")
                 .value(self.avalanche_network_accepted_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_accepted_received_bytes")
                 .value(self.avalanche_network_accepted_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_ancestors_sent_bytes")
                 .value(self.avalanche_network_get_ancestors_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_get_ancestors_received_bytes")
                 .value(self.avalanche_network_get_ancestors_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_ancestors_sent_bytes")
                 .value(self.avalanche_network_ancestors_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_ancestors_received_bytes")
                 .value(self.avalanche_network_ancestors_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             // App messages.
             MetricDatum::builder()
@@ -744,36 +978,72 @@ impl Metrics {
                 .value(self.avalanche_network_app_gossip_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_app_gossip_received_bytes")
                 .value(self.avalanche_network_app_gossip_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_app_request_sent_bytes")
                 .value(self.avalanche_network_app_request_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_app_request_received_bytes")
                 .value(self.avalanche_network_app_request_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_app_response_sent_bytes")
                 .value(self.avalanche_network_app_response_sent_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_network_app_response_received_bytes")
                 .value(self.avalanche_network_app_response_received_bytes.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             // X-chain metrics.
             MetricDatum::builder()
@@ -781,161 +1051,323 @@ impl Metrics {
                 .value(self.avalanche_x_db_get_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_db_write_size_sum")
                 .value(self.avalanche_x_db_write_size_sum.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_db_read_size_sum")
                 .value(self.avalanche_x_db_read_size_sum.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_vtx_processing")
                 .value(self.avalanche_x_vtx_processing.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_txs_accepted_count")
                 .value(self.avalanche_x_txs_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_txs_accepted_sum")
                 .value(self.avalanche_x_txs_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_txs_rejected_count")
                 .value(self.avalanche_x_txs_rejected_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_txs_rejected_sum")
                 .value(self.avalanche_x_txs_rejected_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_txs_polls_accepted_count")
                 .value(self.avalanche_x_txs_polls_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_txs_polls_accepted_sum")
                 .value(self.avalanche_x_txs_polls_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_polls_successful")
                 .value(self.avalanche_x_polls_successful.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_polls_failed")
                 .value(self.avalanche_x_polls_failed.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_polls_success_rate")
                 .value(self.x_polls_success_rate())
                 .unit(StandardUnit::Percent)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_handler_chits_count")
                 .value(self.avalanche_x_handler_chits_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_handler_query_failed_count")
                 .value(self.avalanche_x_handler_query_failed_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_accepted_count")
                 .value(self.avalanche_x_whitelist_tx_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_accepted_sum")
                 .value(self.avalanche_x_whitelist_tx_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_polls_accepted_count")
                 .value(self.avalanche_x_whitelist_tx_polls_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_polls_accepted_sum")
                 .value(self.avalanche_x_whitelist_tx_polls_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_polls_rejected_count")
                 .value(self.avalanche_x_whitelist_tx_polls_rejected_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_polls_rejected_sum")
                 .value(self.avalanche_x_whitelist_tx_polls_rejected_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_processing")
                 .value(self.avalanche_x_whitelist_tx_processing.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_rejected_count")
                 .value(self.avalanche_x_whitelist_tx_rejected_count.unwrap())
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_tx_rejected_sum")
                 .value(self.avalanche_x_whitelist_tx_rejected_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_vtx_issue_failure")
                 .value(self.avalanche_x_whitelist_vtx_issue_failure.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_whitelist_vtx_issue_success")
                 .value(self.avalanche_x_whitelist_vtx_issue_success.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_X_benchlist_benched_num")
                 .value(self.avalanche_x_benchlist_benched_num.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             // P-chain metrics.
             MetricDatum::builder()
@@ -943,96 +1375,192 @@ impl Metrics {
                 .value(self.avalanche_p_vm_total_staked.unwrap() / 1000000000.0) // On the P-Chain, one AVAX is 10^9  units.
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_db_get_count")
                 .value(self.avalanche_p_db_get_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_db_write_size_sum")
                 .value(self.avalanche_p_db_write_size_sum.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_db_read_size_sum")
                 .value(self.avalanche_p_db_read_size_sum.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_blks_accepted_count")
                 .value(self.avalanche_p_blks_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_blks_accepted_sum")
                 .value(self.avalanche_p_blks_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_blks_rejected_count")
                 .value(self.avalanche_p_blks_rejected_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_blks_rejected_sum")
                 .value(self.avalanche_p_blks_rejected_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_blks_polls_accepted_count")
                 .value(self.avalanche_p_blks_polls_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_blks_polls_accepted_sum")
                 .value(self.avalanche_p_blks_polls_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_polls_successful")
                 .value(self.avalanche_p_polls_successful.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_polls_failed")
                 .value(self.avalanche_p_polls_failed.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_polls_success_rate")
                 .value(self.p_polls_success_rate())
                 .unit(StandardUnit::Percent)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_handler_chits_count")
                 .value(self.avalanche_p_handler_chits_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_handler_query_failed_count")
                 .value(self.avalanche_p_handler_query_failed_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_P_benchlist_benched_num")
                 .value(self.avalanche_p_benchlist_benched_num.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             // C-chain metrics.
             MetricDatum::builder()
@@ -1040,114 +1568,228 @@ impl Metrics {
                 .value(self.avalanche_c_db_get_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_db_write_size_sum")
                 .value(self.avalanche_c_db_write_size_sum.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_db_read_size_sum")
                 .value(self.avalanche_c_db_read_size_sum.unwrap())
                 .unit(StandardUnit::Bytes)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_processing")
                 .value(self.avalanche_c_blks_processing.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_accepted_count")
                 .value(self.avalanche_c_blks_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_accepted_sum")
                 .value(self.avalanche_c_blks_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_rejected_count")
                 .value(self.avalanche_c_blks_rejected_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_rejected_sum")
                 .value(self.avalanche_c_blks_rejected_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_polls_accepted_count")
                 .value(self.avalanche_c_blks_polls_accepted_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_blks_polls_accepted_sum")
                 .value(self.avalanche_c_blks_polls_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_polls_successful")
                 .value(self.avalanche_c_polls_successful.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_polls_failed")
                 .value(self.avalanche_c_polls_failed.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_polls_success_rate")
                 .value(self.c_polls_success_rate())
                 .unit(StandardUnit::Percent)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_chits_count")
                 .value(self.avalanche_c_handler_chits_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_query_failed_count")
                 .value(self.avalanche_c_handler_query_failed_count.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_accepted_frontier_sum")
                 .value(self.avalanche_c_handler_get_accepted_frontier_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_app_gossip_sum")
                 .value(self.avalanche_c_handler_app_gossip_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_app_request_sum")
                 .value(self.avalanche_c_handler_app_request_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_app_request_failed_sum")
                 .value(self.avalanche_c_handler_app_request_failed_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_app_response_sum")
@@ -1159,6 +1801,12 @@ impl Metrics {
                 .value(self.avalanche_c_handler_accepted_frontier_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_accepted_frontier_failed_sum")
@@ -1168,102 +1816,204 @@ impl Metrics {
                 )
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_accepted_sum")
                 .value(self.avalanche_c_handler_get_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_accepted_sum")
                 .value(self.avalanche_c_handler_accepted_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_accepted_failed_sum")
                 .value(self.avalanche_c_handler_get_accepted_failed_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_ancestors_sum")
                 .value(self.avalanche_c_handler_get_ancestors_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_ancestors_sum")
                 .value(self.avalanche_c_handler_ancestors_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_ancestors_failed_sum")
                 .value(self.avalanche_c_handler_get_ancestors_failed_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_sum")
                 .value(self.avalanche_c_handler_get_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_put_sum")
                 .value(self.avalanche_c_handler_put_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_get_failed_sum")
                 .value(self.avalanche_c_handler_get_failed_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_push_query_sum")
                 .value(self.avalanche_c_handler_push_query_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_pull_query_sum")
                 .value(self.avalanche_c_handler_pull_query_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_chits_sum")
                 .value(self.avalanche_c_handler_chits_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_query_failed_sum")
                 .value(self.avalanche_c_handler_query_failed_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_connected_sum")
                 .value(self.avalanche_c_handler_connected_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_handler_disconnected_sum")
                 .value(self.avalanche_c_handler_disconnected_sum.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
             MetricDatum::builder()
                 .metric_name("avalanche_C_benchlist_benched_num")
                 .value(self.avalanche_c_benchlist_benched_num.unwrap())
                 .unit(StandardUnit::Count)
                 .timestamp(ts)
+                .dimensions(
+                    Dimension::builder()
+                        .name("avalanche-metrics")
+                        .value("raw")
+                        .build(),
+                )
                 .build(),
         ];
         if let Some(prev_datum) = prev {
@@ -1273,6 +2023,12 @@ impl Metrics {
                     .value(self.c_blks_accepted_per_second(prev_datum))
                     .unit(StandardUnit::Count)
                     .timestamp(ts)
+                    .dimensions(
+                        Dimension::builder()
+                            .name("avalanche-metrics")
+                            .value("raw")
+                            .build(),
+                    )
                     .build(),
             );
         }
@@ -1283,7 +2039,7 @@ impl Metrics {
 /// "If a single piece of data must be accessible from more than one task
 /// concurrently, then it must be shared using synchronization primitives such as Arc."
 /// ref. https://tokio.rs/tokio/tutorial/spawning
-pub async fn get(url: Arc<String>) -> io::Result<Metrics> {
+pub async fn get(url: Arc<String>) -> io::Result<RawMetrics> {
     let ts = Utc::now();
 
     let joined = http::join_uri(url.as_str(), "ext/metrics")?;
@@ -1292,7 +2048,7 @@ pub async fn get(url: Arc<String>) -> io::Result<Metrics> {
     let rb = http::insecure_get(url.as_str(), "ext/metrics").await?;
     let s = prometheus::Scrape::from_bytes(&rb)?;
 
-    Ok(Metrics {
+    Ok(RawMetrics {
         ts,
 
         // Network metrics.
@@ -2114,7 +2870,7 @@ pub async fn get(url: Arc<String>) -> io::Result<Metrics> {
     })
 }
 
-pub async fn spawn_get(u: &str) -> io::Result<Metrics> {
+pub async fn spawn_get(u: &str) -> io::Result<RawMetrics> {
     let ep_arc = Arc::new(u.to_string());
     tokio::spawn(async move { get(ep_arc).await })
         .await

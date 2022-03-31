@@ -897,7 +897,7 @@ async fn fetch_metrics(
     info!("STEP: starting 'fetch_metrics' in 2-minute");
     sleep(Duration::from_secs(120)).await;
 
-    let mut prev_metrics: Option<metrics::Metrics> = None;
+    let mut prev_raw_metrics: Option<metrics::RawMetrics> = None;
     loop {
         info!("STEP: fetching metrics in 1-min");
         sleep(Duration::from_secs(60)).await;
@@ -913,18 +913,18 @@ async fn fetch_metrics(
         match cloudwatch::spawn_put_metric_data(
             cw_manager.clone(),
             cw_namespace.as_str(),
-            cur_metrics.to_cw_metric_data(prev_metrics.clone()),
+            cur_metrics.to_cw_metric_data(prev_raw_metrics.clone()),
         )
         .await
         {
             Ok(_) => {}
             Err(e) => {
                 warn!("failed to put metric data {}, retrying...", e);
-                prev_metrics = Some(cur_metrics.clone());
+                prev_raw_metrics = Some(cur_metrics.clone());
                 continue;
             }
         }
-        prev_metrics = Some(cur_metrics.clone());
+        prev_raw_metrics = Some(cur_metrics.clone());
     }
 }
 
