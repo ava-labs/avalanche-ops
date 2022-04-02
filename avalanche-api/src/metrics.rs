@@ -1328,6 +1328,12 @@ pub fn to_cw_metric_data(cur: &RawMetrics, prev: Option<RawMetrics>) -> Vec<Metr
             .metric_name("avalanche_C_handler_app_response_sum")
             .value(cur.avalanche_c_handler_app_response_sum.unwrap())
             .unit(StandardUnit::Count)
+            .dimensions(
+                Dimension::builder()
+                    .name("avalanche-metrics")
+                    .value("raw")
+                    .build(),
+            )
             .build(),
         MetricDatum::builder()
             .metric_name("avalanche_C_handler_accepted_frontier_sum")
@@ -1559,7 +1565,7 @@ pub fn to_cw_metric_data(cur: &RawMetrics, prev: Option<RawMetrics>) -> Vec<Metr
                 .dimensions(
                     Dimension::builder()
                         .name("avalanche-metrics")
-                        .value("raw")
+                        .value("processed")
                         .build(),
                 )
                 .build(),
