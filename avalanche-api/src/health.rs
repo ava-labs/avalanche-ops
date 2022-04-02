@@ -23,7 +23,7 @@ pub async fn check(url: Arc<String>, liveness: bool) -> io::Result<health::Respo
     let joined = http::join_uri(url.as_str(), url_path)?;
     info!("checking for {:?}", joined);
 
-    let rb = http::insecure_get(url.as_str(), url_path).await?;
+    let rb = http::get_non_tls(url.as_str(), url_path).await?;
     let resp: health::Response = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {

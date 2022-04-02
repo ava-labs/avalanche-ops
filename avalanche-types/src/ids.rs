@@ -108,6 +108,34 @@ impl FromStr for Id {
     }
 }
 
+/// ref. https://serde.rs/impl-serialize.html
+impl Serialize for Id {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+fn fmt_id<'de, D>(deserializer: D) -> Result<Id, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Id::from_str(&s).map_err(serde::de::Error::custom)
+}
+
+pub fn deserialize_id<'de, D>(deserializer: D) -> Result<Option<Id>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "fmt_id")] Id);
+    let v = Option::deserialize(deserializer)?;
+    Ok(v.map(|Wrapper(a)| a))
+}
+
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_id --exact --show-output
 /// ref. "avalanchego/ids.TestIDMarshalJSON"
 #[test]
@@ -122,6 +150,8 @@ fn test_id() {
         id.to_string(),
         "TtF4d2QWbk5vzQGTEPrN48x6vwgAoAmKQ9cbp79inpQmcRKES"
     );
+    let id_from_str = Id::from_str("TtF4d2QWbk5vzQGTEPrN48x6vwgAoAmKQ9cbp79inpQmcRKES").unwrap();
+    assert_eq!(id, id_from_str);
 
     let id = Id::from_slice(&<Vec<u8>>::from([
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
@@ -130,34 +160,8 @@ fn test_id() {
         0x00, 0x00,
     ]));
     assert_eq!(id.to_string(), "11111111111111111111111111111111LpoYY");
-}
-
-/// ref. https://serde.rs/impl-serialize.html
-impl Serialize for Id {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-fn idfmt<'de, D>(deserializer: D) -> Result<Id, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    Id::from_str(&s).map_err(serde::de::Error::custom)
-}
-
-pub fn format_id_de<'de, D>(deserializer: D) -> Result<Option<Id>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper(#[serde(deserialize_with = "idfmt")] Id);
-    let v = Option::deserialize(deserializer)?;
-    Ok(v.map(|Wrapper(a)| a))
+    let id_from_str = Id::from_str("11111111111111111111111111111111LpoYY").unwrap();
+    assert_eq!(id, id_from_str);
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
@@ -216,6 +220,48 @@ impl fmt::Display for ShortId {
     }
 }
 
+/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
+impl FromStr for ShortId {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let decoded = formatting::decode_cb58_with_checksum(s).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed decode_cb58_with_checksum '{}'", e),
+            )
+        })?;
+        Ok(Self::from_slice(&decoded))
+    }
+}
+
+/// ref. https://serde.rs/impl-serialize.html
+impl Serialize for ShortId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+fn fmt_short_id<'de, D>(deserializer: D) -> Result<ShortId, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    ShortId::from_str(&s).map_err(serde::de::Error::custom)
+}
+
+pub fn deserialize_short_id<'de, D>(deserializer: D) -> Result<Option<ShortId>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "fmt_short_id")] ShortId);
+    let v = Option::deserialize(deserializer)?;
+    Ok(v.map(|Wrapper(a)| a))
+}
+
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_short_id --exact --show-output
 #[test]
 fn test_short_id() {
@@ -224,6 +270,8 @@ fn test_short_id() {
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));
     assert_eq!(id.to_string(), "6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
+    let id_from_str = ShortId::from_str("6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap();
+    assert_eq!(id, id_from_str);
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
@@ -333,6 +381,34 @@ impl FromStr for NodeId {
         })?;
         Ok(Self::from_slice(&decoded))
     }
+}
+
+/// ref. https://serde.rs/impl-serialize.html
+impl Serialize for NodeId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+fn fmt_node_id<'de, D>(deserializer: D) -> Result<NodeId, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    NodeId::from_str(&s).map_err(serde::de::Error::custom)
+}
+
+pub fn deserialize_node_id<'de, D>(deserializer: D) -> Result<Option<NodeId>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "fmt_node_id")] NodeId);
+    let v = Option::deserialize(deserializer)?;
+    Ok(v.map(|Wrapper(a)| a))
 }
 
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_from_cert_file --exact --show-output

@@ -33,7 +33,7 @@ pub mod serde_format {
     }
 }
 
-fn datefmt<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+fn fmt_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -45,12 +45,12 @@ where
     }
 }
 
-pub fn format_date<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
+pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     #[derive(Deserialize)]
-    struct Wrapper(#[serde(deserialize_with = "datefmt")] DateTime<Utc>);
+    struct Wrapper(#[serde(deserialize_with = "fmt_date")] DateTime<Utc>);
     let v = Option::deserialize(deserializer)?;
     Ok(v.map(|Wrapper(a)| a))
 }

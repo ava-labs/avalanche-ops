@@ -33,7 +33,7 @@ pub struct CheckResult {
     pub duration: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub contiguous_failures: Option<i64>,
-    #[serde(default, deserialize_with = "rfc3339::format_date")]
+    #[serde(default, deserialize_with = "rfc3339::deserialize")]
     pub time_of_first_failure: Option<DateTime<Utc>>,
 }
 

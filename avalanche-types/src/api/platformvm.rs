@@ -1,11 +1,12 @@
 use std::{
     io::{self, Error, ErrorKind},
+    str::FromStr,
     string::String,
 };
 
 use serde::{Deserialize, Serialize};
 
-use crate::{api::jsonrpc, avax};
+use crate::{api::jsonrpc, avax, ids};
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -674,8 +675,12 @@ impl GetCurrentValidatorsResult {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#APIStaker
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ApiPrimaryValidator {
-    #[serde(rename = "txID", skip_serializing_if = "Option::is_none")]
-    pub tx_id: Option<String>,
+    #[serde(
+        rename = "txID",
+        deserialize_with = "ids::deserialize_id",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tx_id: Option<ids::Id>,
     #[serde(rename = "startTime", skip_serializing_if = "Option::is_none")]
     pub start_time: Option<u64>,
     #[serde(rename = "endTime", skip_serializing_if = "Option::is_none")]
@@ -841,6 +846,14 @@ impl RawApiPrimaryValidator {
     }
 
     pub fn convert(&self) -> ApiPrimaryValidator {
+        let tx_id = {
+            if self.tx_id.is_some() {
+                Some(ids::Id::from_str(&self.tx_id.clone().unwrap()).unwrap())
+            } else {
+                None
+            }
+        };
+
         let start_time = self.start_time.clone().unwrap_or_else(|| String::from("0"));
         let start_time = start_time.parse::<u64>().unwrap();
 
@@ -910,7 +923,7 @@ impl RawApiPrimaryValidator {
         };
 
         ApiPrimaryValidator {
-            tx_id: self.tx_id.clone(),
+            tx_id,
             start_time: Some(start_time),
             end_time: Some(end_time),
             weight: Some(weight),
@@ -1302,9 +1315,10 @@ fn test_convert_get_current_validators() {
         result: Some(GetCurrentValidatorsResult {
             validators: Some(<Vec<ApiPrimaryValidator>>::from([
                 ApiPrimaryValidator {
-                    tx_id: Some(String::from(
-                        "KPkPo9EerKZhSwrA8NfLTVWsgr16Ntu8Ei4ci7GF7t75szrcQ",
-                    )),
+                    tx_id: Some(
+                        ids::Id::from_str("KPkPo9EerKZhSwrA8NfLTVWsgr16Ntu8Ei4ci7GF7t75szrcQ")
+                            .unwrap(),
+                    ),
                     start_time: Some(1648312635),
                     end_time: Some(1679843235),
                     weight: Some(0),
@@ -1324,9 +1338,10 @@ fn test_convert_get_current_validators() {
                     ..ApiPrimaryValidator::default()
                 },
                 ApiPrimaryValidator {
-                    tx_id: Some(String::from(
-                        "EjKZm5eEajWu151cfPms7PvMjyaQk36qTSz1MfnZRU5x5bNxz",
-                    )),
+                    tx_id: Some(
+                        ids::Id::from_str("EjKZm5eEajWu151cfPms7PvMjyaQk36qTSz1MfnZRU5x5bNxz")
+                            .unwrap(),
+                    ),
                     start_time: Some(1648312635),
                     end_time: Some(1679848635),
                     weight: Some(0),

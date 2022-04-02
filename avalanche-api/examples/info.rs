@@ -29,16 +29,28 @@ fn main() {
         .block_on(info::get_blockchain_id(&url, "X"))
         .expect("failed get_blockchain_id");
     info!("get_blockchain_id for X response: {:?}", resp);
+    info!(
+        "blockchain_id for X: {}",
+        resp.result.unwrap().blockchain_id
+    );
 
     let resp = rt
         .block_on(info::get_blockchain_id(&url, "P"))
         .expect("failed get_blockchain_id");
     info!("get_blockchain_id for P response: {:?}", resp);
+    info!(
+        "blockchain_id for P: {}",
+        resp.result.unwrap().blockchain_id
+    );
 
     let resp = rt
         .block_on(info::get_blockchain_id(&url, "C"))
         .expect("failed get_blockchain_id");
     info!("get_blockchain_id for C response: {:?}", resp);
+    info!(
+        "blockchain_id for C: {}",
+        resp.result.unwrap().blockchain_id
+    );
 
     let resp = rt
         .block_on(info::get_node_id(&url))

@@ -222,9 +222,9 @@ fn test_join_uri() {
 }
 
 /// TODO: implement this with native Rust
-pub async fn insecure_get(url: &str, url_path: &str) -> io::Result<Vec<u8>> {
+pub async fn get_non_tls(url: &str, url_path: &str) -> io::Result<Vec<u8>> {
     let joined = join_uri(url, url_path)?;
-    info!("insecure get for {:?}", joined);
+    info!("non-TLS HTTP get for {:?}", joined);
 
     let output = {
         if url.starts_with("https") {
@@ -249,9 +249,9 @@ pub async fn insecure_get(url: &str, url_path: &str) -> io::Result<Vec<u8>> {
 }
 
 /// TODO: implement this with native Rust
-pub async fn insecure_post(url: &str, url_path: &str, data: &str) -> io::Result<Vec<u8>> {
+pub async fn post_non_tls(url: &str, url_path: &str, data: &str) -> io::Result<Vec<u8>> {
     let joined = join_uri(url, url_path)?;
-    info!("insecure post {}-byte data to {:?}", data.len(), joined);
+    info!("non-TLS HTTP post {}-byte data to {:?}", data.len(), joined);
 
     let output = {
         if url.starts_with("https") {

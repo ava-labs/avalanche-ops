@@ -155,7 +155,7 @@ pub struct GetAssetDescriptionResponse {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct GetAssetDescriptionResult {
     /// TODO: implement serializer/deserializer for "ids::Id"
-    /// #[serde(default, deserialize_with = "ids::format_id_de")]
+    /// #[serde(default, deserialize_with = "ids::deserialize_id")]
     pub asset_id: ids::Id,
     pub name: String,
     pub symbol: String,

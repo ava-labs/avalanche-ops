@@ -32,7 +32,7 @@ pub async fn get_balance(url: &str, eth_addr: &str) -> io::Result<GetBalanceResp
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "/ext/bc/C/rpc", &d).await?;
+    let rb = http::post_non_tls(url, "/ext/bc/C/rpc", &d).await?;
     let resp: GetBalanceResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {

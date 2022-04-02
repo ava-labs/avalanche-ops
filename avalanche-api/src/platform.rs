@@ -22,7 +22,7 @@ pub async fn get_height(url: &str) -> io::Result<platformvm::GetHeightResponse> 
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
+    let rb = http::post_non_tls(url, "/ext/bc/P", &d).await?;
     let resp: platformvm::RawGetHeightResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -50,7 +50,7 @@ pub async fn get_balance(url: &str, paddr: &str) -> io::Result<platformvm::GetBa
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
+    let rb = http::post_non_tls(url, "/ext/bc/P", &d).await?;
     let resp: platformvm::RawGetBalanceResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -81,7 +81,7 @@ pub async fn get_utxos(url: &str, paddr: &str) -> io::Result<platformvm::GetUtxo
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
+    let rb = http::post_non_tls(url, "/ext/bc/P", &d).await?;
     let resp: platformvm::RawGetUtxosResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -111,7 +111,7 @@ pub async fn get_current_validators(
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "/ext/bc/P", &d).await?;
+    let rb = http::post_non_tls(url, "/ext/bc/P", &d).await?;
     let resp: platformvm::RawGetCurrentValidatorsResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
