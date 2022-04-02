@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{avax, ids};
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBalanceResponse {
     pub jsonrpc: String,
     pub id: u32,
@@ -13,7 +13,7 @@ pub struct GetBalanceResponse {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBalanceResult {
     pub balance: u64,
     pub utxo_ids: Option<Vec<avax::UtxoId>>,
@@ -144,7 +144,7 @@ fn test_get_balance_response_convert() {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetAssetDescriptionResponse {
     pub jsonrpc: String,
     pub id: u32,
@@ -152,10 +152,10 @@ pub struct GetAssetDescriptionResponse {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetAssetDescriptionResult {
     /// TODO: implement serializer/deserializer for "ids::Id"
-    /// #[serde(default, deserialize_with = "ids::format_id_de")]
+    /// #[serde(default, deserialize_with = "ids::deserialize_id")]
     pub asset_id: ids::Id,
     pub name: String,
     pub symbol: String,

@@ -1583,7 +1583,7 @@ pub async fn get(url: Arc<String>) -> io::Result<RawMetrics> {
     let joined = http::join_uri(url.as_str(), "ext/metrics")?;
     info!("checking for {:?}", joined);
 
-    let rb = http::insecure_get(url.as_str(), "ext/metrics").await?;
+    let rb = http::get_non_tls(url.as_str(), "ext/metrics").await?;
     let s = prometheus::Scrape::from_bytes(&rb)?;
 
     Ok(RawMetrics {

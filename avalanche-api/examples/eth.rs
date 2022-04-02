@@ -5,7 +5,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_api::eth;
 
-/// cargo run --example eth -- [HTTP RPC ENDPOINT] 0xc41Cc85E565aBd1Ecdd6d32C72F16E4a4B530157
+/// cargo run --example eth -- [HTTP RPC ENDPOINT] 0x613040a239BDfCF110969fecB41c6f92EA3515C0
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(

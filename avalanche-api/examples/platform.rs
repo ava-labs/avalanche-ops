@@ -5,13 +5,13 @@ use tokio::runtime::Runtime;
 
 use avalanche_api::platform;
 
-/// cargo run --example platform -- [HTTP RPC ENDPOINT] P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
+/// cargo run --example platform -- [HTTP RPC ENDPOINT] P-custom1qwmslrrqdv4slxvynhy9csq069l0u8mqwjzmcd
 ///
 /// ```
 /// # or run this
 /// subnetctl get-utxos \
 /// --http-rpc-endpoint [HTTP RPC ENDPOINT] \
-/// --p-chain-address P-custom152qlr6zunz7nw2kc4lfej3cn3wk46u3002k4w5
+/// --p-chain-address P-custom1qwmslrrqdv4slxvynhy9csq069l0u8mqwjzmcd
 /// ```
 ///
 fn main() {
@@ -23,8 +23,10 @@ fn main() {
     let rt = Runtime::new().unwrap();
 
     let url = args().nth(1).expect("no url given");
-    let paddr = args().nth(2).expect("no x-chain address given");
+    let paddr = args().nth(2).expect("no p-chain address given");
 
+    println!("{}", url);
+    println!("{}", paddr);
     let resp = rt
         .block_on(platform::get_balance(&url, &paddr))
         .expect("failed to get balance");

@@ -18,7 +18,7 @@ pub async fn get_network_name(url: &str) -> io::Result<info::GetNetworkNameRespo
     data.method = String::from("info.getNetworkName");
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::GetNetworkNameResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -40,7 +40,7 @@ pub async fn get_network_id(url: &str) -> io::Result<info::GetNetworkIdResponse>
     data.method = String::from("info.getNetworkID");
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::RawGetNetworkIdResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -70,7 +70,7 @@ pub async fn get_blockchain_id(
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::RawGetBlockchainIdResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -93,7 +93,7 @@ pub async fn get_node_id(url: &str) -> io::Result<info::GetNodeIdResponse> {
     data.method = String::from("info.getNodeID");
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::RawGetNodeIdResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -117,7 +117,7 @@ pub async fn get_node_version(url: &str) -> io::Result<info::GetNodeVersionRespo
     data.method = String::from("info.getNodeVersion");
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::GetNodeVersionResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -139,7 +139,7 @@ pub async fn get_vms(url: &str) -> io::Result<info::GetVmsResponse> {
     data.method = String::from("info.getVMs");
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::GetVmsResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -161,7 +161,7 @@ pub async fn get_bootstrapped(url: &str) -> io::Result<info::GetBootstrappedResp
     data.method = String::from("info.isBootstrapped");
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::GetBootstrappedResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -183,7 +183,7 @@ pub async fn get_tx_fee(url: &str) -> io::Result<info::GetTxFeeResponse> {
     data.method = String::from("info.getTxFee");
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/info", &d).await?;
+    let rb = http::post_non_tls(url, "ext/info", &d).await?;
     let resp: info::RawGetTxFeeResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {

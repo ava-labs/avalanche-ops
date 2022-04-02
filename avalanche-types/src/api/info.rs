@@ -136,7 +136,7 @@ fn test_network_id_response_convert() {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBlockchainIdResponse {
     pub jsonrpc: String,
     pub id: u32,
@@ -144,10 +144,10 @@ pub struct GetBlockchainIdResponse {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBlockchainIdResult {
     /// TODO: implement serializer/deserializer for "ids::Id"
-    /// #[serde(default, deserialize_with = "ids::format_id_de")]
+    /// #[serde(default, deserialize_with = "ids::deserialize_id")]
     pub blockchain_id: ids::Id,
 }
 
@@ -240,7 +240,7 @@ fn test_blockchain_id_response_convert() {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetnodeid
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetNodeIdResponse {
     pub jsonrpc: String,
     pub id: u32,
@@ -248,7 +248,7 @@ pub struct GetNodeIdResponse {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetnodeid
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetNodeIdResult {
     pub node_id: ids::NodeId,
 }

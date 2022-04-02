@@ -24,7 +24,7 @@ pub async fn get_balance(url: &str, xaddr: &str) -> io::Result<avm::GetBalanceRe
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "/ext/bc/X", &d).await?;
+    let rb = http::post_non_tls(url, "/ext/bc/X", &d).await?;
     let resp: avm::RawGetBalanceResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
@@ -54,7 +54,7 @@ pub async fn get_asset_description(
     data.params = Some(params);
 
     let d = data.encode_json()?;
-    let rb = http::insecure_post(url, "ext/bc/X", &d).await?;
+    let rb = http::post_non_tls(url, "ext/bc/X", &d).await?;
     let resp: avm::RawGetAssetDescriptionResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
