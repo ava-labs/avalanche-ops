@@ -9,7 +9,7 @@ edition = "2021"
 avalanche-ops-aws = { path = "../avalanche-ops-aws" }
 aws = { path = "../aws" }
 aws-sdk-cloudformation = "0.9.0"
-clap = { version = "3.1.6", features = ["derive"] }
+clap = { version = "3.1.8", features = ["derive"] }
 crossterm = "0.23.1"
 dialoguer = "0.10.0"
 env_logger = "0.9.0"

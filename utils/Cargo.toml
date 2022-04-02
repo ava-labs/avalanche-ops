@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 bs58 = "0.4.0"
 chrono = "0.4.19"
-clap = { version = "3.1.6", features = ["derive"] }
 crossterm = "0.23.1"
 dirs = "4.0.0"
 env_logger = "0.9.0"
@@ -34,7 +33,7 @@ tokio-stream = "0.1.8"
 url = "2.2.2"
 walkdir = "2.3.2"
 whoami = "1.2.1"
-zip = "0.6"
+zip = "0.6.1"
 # don't update until https://github.com/gyscos/zstd-rs/issues/147 is addressed
 zstd = "0.10"
 

@@ -15,6 +15,7 @@ use utils::{cmp, hash};
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
+
 pub const NODE_ID_LEN: usize = 20;
 pub const NODE_ID_ENCODE_PREFIX: &str = "NodeID-";
 

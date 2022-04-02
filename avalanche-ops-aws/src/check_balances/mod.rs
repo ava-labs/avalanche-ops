@@ -102,7 +102,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
                 .block_on(avm::get_balance(&http_rpc, &xaddr))
                 .expect("failed avm::get_balance");
             let x = x.result.expect("unexpected None x result");
-            let x = x.balance.expect("unexpected None x result balance");
+            let x = x.balance;
 
             let p = rt
                 .block_on(platform::get_balance(&http_rpc, &paddr))

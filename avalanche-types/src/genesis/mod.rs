@@ -1,3 +1,5 @@
+pub mod coreth;
+
 use std::{
     collections::BTreeMap,
     fs::{self, File},
@@ -10,9 +12,7 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::config as avalanchego_config;
-use avalanche_types::soft_key;
-use coreth::genesis as coreth_genesis;
+use crate::{constants, genesis::coreth as coreth_genesis, soft_key};
 use utils::prefix;
 
 /// Represents Avalanche network genesis configuration.
@@ -81,8 +81,10 @@ struct GenesisFile {
     initial_staked_funds: Option<Vec<String>>,
     #[serde(rename = "initialStakers", skip_serializing_if = "Option::is_none")]
     initial_stakers: Option<Vec<Staker>>,
+
     #[serde(rename = "cChainGenesis")]
     c_chain_genesis: String,
+
     #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
     message: Option<String>,
 }
@@ -108,7 +110,7 @@ impl Genesis {
         let start_time = now_unix;
 
         Self {
-            network_id: avalanchego_config::DEFAULT_CUSTOM_NETWORK_ID, // mainnet
+            network_id: constants::DEFAULT_CUSTOM_NETWORK_ID,
             allocations: Some(Vec::new()),
             start_time: Some(start_time),
             initial_stake_duration: Some(DEFAULT_INITIAL_STAKE_DURATION),

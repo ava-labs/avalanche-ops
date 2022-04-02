@@ -7,7 +7,7 @@ use log::info;
 use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 
-use crate::jsonrpc;
+use avalanche_types::api::jsonrpc;
 use utils::{big_int, http};
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance

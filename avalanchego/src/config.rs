@@ -8,7 +8,7 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::genesis;
+use avalanche_types::{constants, genesis};
 
 /// Represents AvalancheGo configuration.
 /// All file paths must be valid on the remote machines.
@@ -174,8 +174,6 @@ pub const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/avalanche.config.json";
 /// MUST BE a valid path in remote host machine.
 pub const DEFAULT_GENESIS_PATH: &str = "/etc/avalanche.genesis.json";
 
-pub const DEFAULT_CUSTOM_NETWORK_ID: u32 = 1000000;
-
 pub const DEFAULT_DB_TYPE: &str = "leveldb";
 /// Default "db-dir" directory path for remote linux machines.
 /// MUST BE matched with the attached physical storage volume path.
@@ -244,7 +242,7 @@ impl Config {
             config_file: Some(String::from(DEFAULT_CONFIG_FILE_PATH)),
             genesis: Some(String::from(DEFAULT_GENESIS_PATH)),
 
-            network_id: DEFAULT_CUSTOM_NETWORK_ID,
+            network_id: constants::DEFAULT_CUSTOM_NETWORK_ID,
 
             db_type: String::from(DEFAULT_DB_TYPE),
             db_dir: String::from(DEFAULT_DB_DIR),
