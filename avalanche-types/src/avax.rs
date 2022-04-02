@@ -1,4 +1,7 @@
-use std::io::{self, Error, ErrorKind};
+use std::{
+    io::{self, Error, ErrorKind},
+    str::FromStr,
+};
 
 use crate::{codec, formatting, ids, packer, platformvm, secp256k1fx};
 use serde::{Deserialize, Serialize};
@@ -126,7 +129,7 @@ pub struct RawUtxoId {
 
 impl RawUtxoId {
     pub fn convert(&self) -> io::Result<UtxoId> {
-        let tx_id = ids::Id::from_string(&self.tx_id)?;
+        let tx_id = ids::Id::from_str(&self.tx_id)?;
         Ok(UtxoId {
             tx_id,
             output_index: self.output_index,

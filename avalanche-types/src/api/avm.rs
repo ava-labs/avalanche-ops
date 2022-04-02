@@ -1,4 +1,4 @@
-use std::{io, string::String};
+use std::{io, str::FromStr, string::String};
 
 use serde::{Deserialize, Serialize};
 
@@ -133,7 +133,7 @@ fn test_get_balance_response_convert() {
         result: Some(GetBalanceResult {
             balance: 299999999999900,
             utxo_ids: Some(vec![avax::UtxoId {
-                tx_id: ids::Id::from_string("WPQdyLNqHfiEKp4zcCpayRHYDVYuh1hqs9c1RqgZXS4VPgdvo")
+                tx_id: ids::Id::from_str("WPQdyLNqHfiEKp4zcCpayRHYDVYuh1hqs9c1RqgZXS4VPgdvo")
                     .unwrap(),
                 output_index: 1,
                 ..avax::UtxoId::default()
@@ -214,7 +214,7 @@ impl RawGetAssetDescriptionResponse {
                 if asset_id.is_empty() {
                     ids::Id::empty()
                 } else {
-                    ids::Id::from_string(&asset_id).unwrap()
+                    ids::Id::from_str(&asset_id).unwrap()
                 }
             };
 
@@ -282,7 +282,7 @@ fn test_get_asset_description_response_convert() {
         jsonrpc: "2.0".to_string(),
         id: 1,
         result: Some(GetAssetDescriptionResult {
-            asset_id: ids::Id::from_string("2fombhL7aGPwj3KH4bfrmJwW6PVnMobf9Y2fn9GwxiAAJyFDbe")
+            asset_id: ids::Id::from_str("2fombhL7aGPwj3KH4bfrmJwW6PVnMobf9Y2fn9GwxiAAJyFDbe")
                 .unwrap(),
             name: String::from("Avalanche"),
             symbol: String::from("AVAX"),

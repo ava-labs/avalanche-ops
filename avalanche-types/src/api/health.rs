@@ -1,4 +1,9 @@
-use std::{collections::HashMap, str::FromStr, string::String};
+use std::{
+    collections::HashMap,
+    io::{Error, ErrorKind},
+    str::FromStr,
+    string::String,
+};
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -34,10 +39,14 @@ pub struct CheckResult {
 
 /// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
 impl FromStr for Response {
-    type Err = serde_json::Error;
-
+    type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_str(s)
+        serde_json::from_str(s).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed serde_json::from_str '{}'", e),
+            )
+        })
     }
 }
 

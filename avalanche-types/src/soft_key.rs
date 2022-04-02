@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -257,7 +258,7 @@ impl Key {
         }
         let mut sigs: Vec<u32> = Vec::new();
         for (pos, short_addr) in output_owners.addrs.iter().enumerate() {
-            if self.short_address != short_addr.string() {
+            if self.short_address != short_addr.to_string() {
                 continue;
             }
             sigs.push(pos as u32);
@@ -1541,19 +1542,6 @@ pub struct PrivateKeyInfo {
 }
 
 impl PrivateKeyInfo {
-    /// Converts to string.
-    pub fn to_string(&self) -> io::Result<String> {
-        match serde_yaml::to_string(&self) {
-            Ok(s) => Ok(s),
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize PrivateKeyInfo to YAML {}", e),
-                ));
-            }
-        }
-    }
-
     pub fn load(file_path: &str) -> io::Result<Self> {
         info!("loading PrivateKeyInfo from {}", file_path);
 
@@ -1598,6 +1586,16 @@ impl PrivateKeyInfo {
     }
 }
 
+/// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
+/// ref. https://doc.rust-lang.org/std/fmt/trait.Display.html
+/// Use "Self.to_string()" to directly invoke this
+impl fmt::Display for PrivateKeyInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = serde_yaml::to_string(&self).unwrap();
+        write!(f, "{}", s)
+    }
+}
+
 /// TODO: support this for multiple keys
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain
 /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/wallet/chain/p/builder.go
@@ -1621,7 +1619,7 @@ impl Keychain {
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Get
     pub fn get(&self, short_addr: &ids::ShortId) -> Option<Key> {
-        let short_addr = short_addr.string();
+        let short_addr = short_addr.to_string();
         self.short_addr_to_key_index
             .get(&short_addr)
             .map(|k| self.keys[(*k) as usize].clone())

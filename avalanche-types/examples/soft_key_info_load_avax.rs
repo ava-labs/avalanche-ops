@@ -29,5 +29,5 @@ fn main() {
     assert_eq!(info.short_address, k.short_address);
     assert_eq!(info.eth_address, k.eth_address);
 
-    print!("{}", info.to_string().unwrap());
+    print!("{}", info);
 }

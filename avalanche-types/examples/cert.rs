@@ -24,5 +24,5 @@ fn main() {
     // openssl x509 -in artifacts/test.insecure.crt -text -noout
 
     let node_id = ids::NodeId::from_cert_file(cert_path.as_str()).unwrap();
-    println!("Node ID: {}", node_id.string());
+    println!("Node ID: {}", node_id);
 }

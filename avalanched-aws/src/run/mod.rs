@@ -388,7 +388,7 @@ pub async fn execute(log_level: &str) {
 
     // loads the node ID from generated/existing certs
     let node_id = ids::NodeId::from_cert_file(&tls_cert_path).expect("failed to load node ID");
-    info!("loaded node ID {}", node_id.string());
+    info!("loaded node ID {}", node_id);
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -405,7 +405,7 @@ pub async fn execute(log_level: &str) {
     let local_node = avalanche_ops_aws::Node::new(
         node_kind.clone(),
         &instance_id,
-        &node_id.string(),
+        &node_id.to_string(),
         &public_ipv4,
         http_scheme,
         spec.avalanchego_config.http_port,

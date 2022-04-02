@@ -276,7 +276,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
     let tx_metadata = tx.unsigned_tx.metadata.clone().unwrap();
     let signed_bytes = tx_metadata.bytes;
     assert_eq!(
-        tx.tx_id().string(),
+        tx.tx_id().to_string(),
         "2bAuXK8TGqehHQCSaFkg4tSf7BX91aXM4qP3vX2Y62d4hg22T5"
     );
 

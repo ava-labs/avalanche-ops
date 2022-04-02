@@ -230,7 +230,7 @@ fn test_create_subnet_tx_serialization_with_one_signer() {
     let tx_metadata = tx.unsigned_tx.metadata.clone().unwrap();
     let signed_bytes = tx_metadata.bytes;
     assert_eq!(
-        tx.tx_id().string(),
+        tx.tx_id().to_string(),
         "24tZhrm8j8GCJRE9PomW8FaeqbgGS4UAQjJnqqn8pq5NwYSYV1"
     );
 
@@ -430,7 +430,7 @@ fn test_create_subnet_tx_serialization_with_custom_network() {
     let tx_metadata = tx.unsigned_tx.metadata.clone().unwrap();
     let signed_bytes = tx_metadata.bytes;
     assert_eq!(
-        tx.tx_id().string(),
+        tx.tx_id().to_string(),
         "2gafJ6qhw4dastVU3XZmte5C2SsooL4avkPr1qMfc3rhJgBkty"
     );
 

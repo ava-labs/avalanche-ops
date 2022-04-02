@@ -17,7 +17,7 @@ fn main() {
     info!("loading key");
     let key_path = args().nth(1).expect("no key path given");
     let info = soft_key::PrivateKeyInfo::load(&key_path).unwrap();
-    println!("{}", info.to_string().unwrap());
+    println!("{}", info);
 
     let k = soft_key::Key::from_private_key(&info.private_key).unwrap();
     assert_eq!(info.private_key, k.private_key);

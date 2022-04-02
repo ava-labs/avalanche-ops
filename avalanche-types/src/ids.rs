@@ -1,7 +1,8 @@
 use std::{
-    fs,
+    fmt, fs,
     io::{self, Error, ErrorKind},
     path::Path,
+    str::FromStr,
     string::String,
 };
 
@@ -68,15 +69,6 @@ impl Id {
         Self { d }
     }
 
-    pub fn from_string(s: &str) -> io::Result<Self> {
-        let decoded = formatting::decode_cb58_with_checksum(s)?;
-        Ok(Self::from_slice(&decoded))
-    }
-
-    pub fn string(&self) -> String {
-        formatting::encode_cb58_with_checksum(&self.d)
-    }
-
     /// ref. "ids.ID.Prefix(output_index)"
     pub fn prefix(&self, prefixes: &[u64]) -> Self {
         let n = prefixes.len() + packer::U64_LEN + 32;
@@ -92,6 +84,30 @@ impl Id {
     }
 }
 
+/// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
+/// ref. https://doc.rust-lang.org/std/fmt/trait.Display.html
+/// Use "Self.to_string()" to directly invoke this
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = formatting::encode_cb58_with_checksum(&self.d);
+        write!(f, "{}", s)
+    }
+}
+
+/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
+impl FromStr for Id {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let decoded = formatting::decode_cb58_with_checksum(s).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed decode_cb58_with_checksum '{}'", e),
+            )
+        })?;
+        Ok(Self::from_slice(&decoded))
+    }
+}
+
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_id --exact --show-output
 /// ref. "avalanchego/ids.TestIDMarshalJSON"
 #[test]
@@ -103,7 +119,7 @@ fn test_id() {
         0x59, 0xa7,
     ]));
     assert_eq!(
-        id.string(),
+        id.to_string(),
         "TtF4d2QWbk5vzQGTEPrN48x6vwgAoAmKQ9cbp79inpQmcRKES"
     );
 
@@ -113,7 +129,7 @@ fn test_id() {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //
         0x00, 0x00,
     ]));
-    assert_eq!(id.string(), "11111111111111111111111111111111LpoYY");
+    assert_eq!(id.to_string(), "11111111111111111111111111111111LpoYY");
 }
 
 /// ref. https://serde.rs/impl-serialize.html
@@ -122,7 +138,7 @@ impl Serialize for Id {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.string())
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -131,7 +147,7 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    Id::from_string(&s).map_err(serde::de::Error::custom)
+    Id::from_str(&s).map_err(serde::de::Error::custom)
 }
 
 pub fn format_id_de<'de, D>(deserializer: D) -> Result<Option<Id>, D::Error>
@@ -188,9 +204,15 @@ impl ShortId {
         }
         Self { d }
     }
+}
 
-    pub fn string(&self) -> String {
-        formatting::encode_cb58_with_checksum(&self.d)
+/// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
+/// ref. https://doc.rust-lang.org/std/fmt/trait.Display.html
+/// Use "Self.to_string()" to directly invoke this
+impl fmt::Display for ShortId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = formatting::encode_cb58_with_checksum(&self.d);
+        write!(f, "{}", s)
     }
 }
 
@@ -201,7 +223,7 @@ fn test_short_id() {
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));
-    assert_eq!(id.string(), "6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
+    assert_eq!(id.to_string(), "6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
@@ -246,12 +268,6 @@ impl NodeId {
         Self { d }
     }
 
-    pub fn from_string(s: &str) -> io::Result<Self> {
-        let processed = strip_node_id_prefix(s);
-        let decoded = formatting::decode_cb58_with_checksum(processed)?;
-        Ok(Self::from_slice(&decoded))
-    }
-
     /// Loads a node ID from the PEM-encoded X509 certificate.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/node#Node.Initialize
     pub fn from_cert_file(cert_file_path: &str) -> io::Result<Self> {
@@ -287,14 +303,35 @@ impl NodeId {
         Ok(node_id)
     }
 
-    pub fn string_short_id(&self) -> String {
-        formatting::encode_cb58_with_checksum(&self.d)
+    pub fn short_id(&self) -> ShortId {
+        ShortId::from_slice(&self.d)
     }
+}
 
-    pub fn string(&self) -> String {
+/// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
+/// ref. https://doc.rust-lang.org/std/fmt/trait.Display.html
+/// Use "Self.to_string()" to directly invoke this
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut node_id = String::from(NODE_ID_ENCODE_PREFIX);
-        node_id.push_str(&self.string_short_id());
-        node_id
+        let short_id = formatting::encode_cb58_with_checksum(&self.d);
+        node_id.push_str(&short_id);
+        write!(f, "{}", node_id)
+    }
+}
+
+/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
+impl FromStr for NodeId {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let processed = strip_node_id_prefix(s);
+        let decoded = formatting::decode_cb58_with_checksum(processed).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed decode_cb58_with_checksum '{}'", e),
+            )
+        })?;
+        Ok(Self::from_slice(&decoded))
     }
 }
 
@@ -307,90 +344,139 @@ fn test_from_cert_file() {
         0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
         0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
     ]));
-    assert_eq!(node_id.string(), "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
     assert_eq!(
-        node_id.string_short_id(),
+        format!("{}", node_id),
+        "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx"
+    );
+    assert_eq!(
+        node_id.to_string(),
+        "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx"
+    );
+    assert_eq!(
+        node_id.short_id().to_string(),
         "6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx"
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
+        NodeId::from_str("6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
+        NodeId::from_str("NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx").unwrap()
     );
 
     // copied from "avalanchego/staking/local/staking1.key,crt"
     // verified by "avalanchego-compatibility/node-id" for compatibility with Go
     let node_id = NodeId::from_cert_file("./artifacts/staker1.insecure.crt").unwrap();
-    assert_eq!(node_id.string(), "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg");
     assert_eq!(
-        node_id,
-        NodeId::from_string("7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
+        format!("{}", node_id),
+        "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"
+    );
+    assert_eq!(
+        node_id.to_string(),
+        "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
+        NodeId::from_str("7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker2.insecure.crt").unwrap();
-    assert_eq!(node_id.string(), "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ");
     assert_eq!(
-        node_id,
-        NodeId::from_string("MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
+        format!("{}", node_id),
+        "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ"
+    );
+    assert_eq!(
+        node_id.to_string(),
+        "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ"
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
+        NodeId::from_str("MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker3.insecure.crt").unwrap();
-    assert_eq!(node_id.string(), "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN");
     assert_eq!(
-        node_id,
-        NodeId::from_string("NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
+        format!("{}", node_id),
+        "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN"
+    );
+    assert_eq!(
+        node_id.to_string(),
+        "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN"
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
+        NodeId::from_str("NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker4.insecure.crt").unwrap();
-    assert_eq!(node_id.string(), "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu");
     assert_eq!(
-        node_id,
-        NodeId::from_string("GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
+        format!("{}", node_id),
+        "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu"
+    );
+    assert_eq!(
+        node_id.to_string(),
+        "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu"
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
+        NodeId::from_str("GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/staker5.insecure.crt").unwrap();
-    assert_eq!(node_id.string(), "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5");
     assert_eq!(
-        node_id,
-        NodeId::from_string("P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
+        format!("{}", node_id),
+        "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"
+    );
+    assert_eq!(
+        node_id.to_string(),
+        "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
+        NodeId::from_str("P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5").unwrap()
     );
 
     let node_id = NodeId::from_cert_file("./artifacts/test.insecure.crt").unwrap();
-    assert_eq!(node_id.string(), "NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG");
     assert_eq!(
-        node_id,
-        NodeId::from_string("29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
+        format!("{}", node_id),
+        "NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG"
+    );
+    assert_eq!(
+        node_id.to_string(),
+        "NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG"
     );
     assert_eq!(
         node_id,
-        NodeId::from_string("NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
+        NodeId::from_str("29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
+    );
+    assert_eq!(
+        node_id,
+        NodeId::from_str("NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
     );
 }
 
-fn strip_node_id_prefix(addr: &str) -> &str {
+pub fn strip_node_id_prefix(addr: &str) -> &str {
     let n = NODE_ID_ENCODE_PREFIX.len();
     if &addr[0..n] == NODE_ID_ENCODE_PREFIX {
         &addr[n..]

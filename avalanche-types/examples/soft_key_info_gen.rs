@@ -16,7 +16,7 @@ fn main() {
 
     let key = soft_key::Key::generate().expect("unexpected key generate failure");
     let info = key.info(network_id).expect("failed to_info");
-    print!("{}", info.to_string().unwrap());
+    print!("{}", info);
 
     info.sync(file_path).unwrap();
 }

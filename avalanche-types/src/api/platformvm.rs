@@ -286,6 +286,7 @@ impl RawGetBalanceResponse {
 #[test]
 fn test_convert_get_balance() {
     use crate::ids;
+    use std::str::FromStr;
 
     // ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
     let resp: RawGetBalanceResponse = serde_json::from_str(
@@ -326,12 +327,12 @@ fn test_convert_get_balance() {
             locked_not_stakeable: Some(0),
             utxo_ids: Some(vec![
                 avax::UtxoId {
-                    tx_id: ids::Id::from_string("11111111111111111111111111111111LpoYY").unwrap(),
+                    tx_id: ids::Id::from_str("11111111111111111111111111111111LpoYY").unwrap(),
                     output_index: 1,
                     ..avax::UtxoId::default()
                 },
                 avax::UtxoId {
-                    tx_id: ids::Id::from_string("11111111111111111111111111111111LpoYY").unwrap(),
+                    tx_id: ids::Id::from_str("11111111111111111111111111111111LpoYY").unwrap(),
                     output_index: 0,
                     ..avax::UtxoId::default()
                 },
