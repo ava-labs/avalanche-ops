@@ -27,7 +27,7 @@ lazy_static! {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ID
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Id {
     pub d: Vec<u8>,
 }
@@ -165,7 +165,7 @@ fn test_id() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ShortId {
     pub d: Vec<u8>,
 }
@@ -275,7 +275,7 @@ fn test_short_id() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct NodeId {
     pub d: Vec<u8>,
 }

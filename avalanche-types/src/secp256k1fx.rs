@@ -1,11 +1,13 @@
 use std::io::{self, Error, ErrorKind};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{codec, ids};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/avm#FxCredential
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/verify#Verifiable
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Credential
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Credential {
     /// Signatures, each must be length of 65.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/crypto#SECP256K1RSigLen
@@ -44,7 +46,7 @@ impl Credential {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#OutputOwners
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct OutputOwners {
     pub locktime: u64,
     pub threshold: u32,
@@ -93,7 +95,7 @@ impl OutputOwners {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOut
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct TransferOutput {
     pub amount: u64,
     pub output_owners: OutputOwners,
@@ -140,7 +142,7 @@ impl TransferOutput {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableIn
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Input
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct TransferInput {
     pub amount: u64,
     pub sig_indices: Vec<u32>,
@@ -213,7 +215,7 @@ where
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Input
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Input {
     pub sig_indices: Vec<u32>,
 }

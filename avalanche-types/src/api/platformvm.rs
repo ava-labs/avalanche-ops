@@ -120,7 +120,7 @@ fn test_get_height() {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBalanceResponse {
     pub jsonrpc: String,
     pub id: u32,
@@ -128,7 +128,7 @@ pub struct GetBalanceResponse {
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBalanceResult {
     pub balance: Option<u64>,
     pub unlocked: Option<u64>,

@@ -246,7 +246,7 @@ pub struct SummaryCount {
     pub count: f64,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Labels(HashMap<String, String>);
 
 impl Labels {

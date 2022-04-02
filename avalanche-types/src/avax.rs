@@ -10,7 +10,7 @@ use utils::{hash, prefix};
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOut
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct TransferableOutput {
     pub asset_id: ids::Id,
     pub fx_id: ids::Id, // skip serialization due to serialize:"false"
@@ -45,7 +45,7 @@ fn test_sort_transferable_outputs() {}
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableIn
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct TransferableInput {
     pub utxo_id: UtxoId,
     pub asset_id: ids::Id,
@@ -80,7 +80,7 @@ pub fn sort_transferable_inputs(_outputs: &mut [TransferableOutput]) -> io::Resu
 fn test_sort_transferable_inputs() {}
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXOID
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct UtxoId {
     pub tx_id: ids::Id,
     pub output_index: u32,
@@ -159,7 +159,7 @@ fn test_utxo_id() {
 
 /// Do not parse the internal tests.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Utxo {
     pub utxo_id: UtxoId,
     pub asset_id: ids::Id,
@@ -362,7 +362,7 @@ fn test_utxo_unpack_hex() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#Metadata
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Metadata {
     pub id: ids::Id,
     pub unsigned_bytes: Vec<u8>,
@@ -408,7 +408,7 @@ impl Metadata {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/avm#BaseTx
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#BaseTx
 /// TODO: use serde custom serializer
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct BaseTx {
     pub metadata: Option<Metadata>, // skip serialization due to serialize:"false"
     pub network_id: u32,

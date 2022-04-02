@@ -1,12 +1,14 @@
 use std::io::{self, Error, ErrorKind};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{avax, codec, ids, platformvm, secp256k1fx, soft_key};
 use utils::{hash, secp256k1r};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#Tx
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#UnsignedAddValidatorTx
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#UnsignedTx
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Tx {
     /// The transaction ID is empty for unsigned tx
     /// as long as "avax.BaseTx.Metadata" is "None".

@@ -5,6 +5,8 @@ pub mod create_subnet;
 pub mod export;
 pub mod import;
 
+use serde::{Deserialize, Serialize};
+
 use crate::{avax, ids, secp256k1fx};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#pkg-variables
@@ -13,7 +15,7 @@ pub fn chain_id() -> ids::Id {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#Validator
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Validator {
     pub node_id: ids::ShortId,
     pub start: u64,
@@ -38,7 +40,7 @@ impl Validator {
     }
 }
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct StakeableLockOut {
     pub locktime: u64,
     pub out: secp256k1fx::TransferOutput,
@@ -60,7 +62,7 @@ impl StakeableLockOut {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Utxo {
     pub utxo_id: avax::UtxoId,
     pub asset_id: ids::Id,
