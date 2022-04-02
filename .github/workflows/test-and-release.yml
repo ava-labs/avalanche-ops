@@ -151,24 +151,21 @@ jobs:
           cache-on-failure: true
 
       # TODO: add M1 builds/tests
-      # ref. https://github.com/gakonst/foundry/blob/708f48f8681fea3a42a34a0eed52090b3e37563e/.github/workflows/release.yml#L109
+      # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/release.yml
       - name: Apple M1 setup
         if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
         run: |
           echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
 
-      # https://github.com/briansmith/ring/blob/main/mk/install-build-tools.sh
+      # ref. https://github.com/briansmith/ring/blob/main/mk/install-build-tools.sh
+      # ref, https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
       - name: Linux ARM64 setup
         if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
         run: |
           sudo apt-get update -y
           sudo apt-get -yq --no-install-suggests --no-install-recommends install qemu-user gcc-aarch64-linux-gnu libc6-dev-arm64-cross
-          llvm_version=14
-          sudo apt-key add mk/llvm-snapshot.gpg.key
-          sudo add-apt-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-$llvm_version main"
-          sudo apt-get update -y
-          sudo apt-get -yq --no-install-suggests --no-install-recommends install clang-$llvm_version llvm-$llvm_version
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Compile binaries
         env:
