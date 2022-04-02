@@ -35,6 +35,28 @@ jobs:
         shell: bash
         run: scripts/static-analysis.sh
 
+  check_cargo_unused:
+    name: Check Cargo unused
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          components: rustfmt, clippy
+          override: true
+      - name: Check Rust version
+        run: rustc --version
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+      - name: Check unused Cargo dependencies
+        shell: bash
+        run: scripts/cargo.unused.sh
+
   unit_tests:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -84,7 +106,8 @@ jobs:
   release:
     name: Release ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
-    needs: [static_analysis, unit_tests, compatibility_tests]
+    needs:
+      [static_analysis, check_cargo_unused, unit_tests, compatibility_tests]
     strategy:
       matrix:
         job:

@@ -4,24 +4,13 @@ use std::{
 };
 
 use log::info;
-use num_bigint::BigInt;
-use serde::{Deserialize, Serialize};
 
-use avalanche_types::api::jsonrpc;
-use utils::{big_int, http};
-
-/// ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct GetBalanceResponse {
-    pub jsonrpc: String,
-    pub id: u32,
-    #[serde(with = "big_int::serde_hex_format")]
-    pub result: BigInt,
-}
+use avalanche_types::api::{eth, jsonrpc};
+use utils::http;
 
 /// e.g., "eth_getBalance" on "http://[ADDR]:9650" and "/ext/bc/C/rpc" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance
-pub async fn get_balance(url: &str, eth_addr: &str) -> io::Result<GetBalanceResponse> {
+pub async fn get_balance(url: &str, eth_addr: &str) -> io::Result<eth::GetBalanceResponse> {
     let joined = http::join_uri(url, "/ext/bc/C/rpc")?;
     info!("getting balances for {} via {:?}", eth_addr, joined);
 
@@ -33,7 +22,7 @@ pub async fn get_balance(url: &str, eth_addr: &str) -> io::Result<GetBalanceResp
 
     let d = data.encode_json()?;
     let rb = http::post_non_tls(url, "/ext/bc/C/rpc", &d).await?;
-    let resp: GetBalanceResponse = match serde_json::from_slice(&rb) {
+    let resp: eth::GetBalanceResponse = match serde_json::from_slice(&rb) {
         Ok(p) => p,
         Err(e) => {
             return Err(Error::new(
