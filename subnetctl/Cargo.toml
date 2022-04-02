@@ -9,7 +9,7 @@ edition = "2021"
 avalanche-api = { path = "../avalanche-api" }
 avalanche-types = { path = "../avalanche-types" }
 chrono = "0.4.19"
-clap = { version = "3.1.6", features = ["derive"] }
+clap = { version = "3.1.8", features = ["derive"] }
 crossterm = "0.23.1"
 env_logger = "0.9.0"
 lazy_static = "1.4.0"

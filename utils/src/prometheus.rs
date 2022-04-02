@@ -1,7 +1,8 @@
 use std::{
     collections::HashMap,
-    io::{self, BufRead, BufReader},
+    io::{self, BufRead, BufReader, Error},
     ops::Deref,
+    str::FromStr,
 };
 
 use chrono::{DateTime, TimeZone, Utc};
@@ -51,15 +52,18 @@ pub enum MetricKind {
     Untyped,
 }
 
-impl MetricKind {
-    pub fn parse_from_str(s: &str) -> MetricKind {
-        match s {
+/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
+impl FromStr for MetricKind {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let decoded = match s {
             "counter" => MetricKind::Counter,
             "gauge" => MetricKind::Gauge,
             "histogram" => MetricKind::Histogram,
             "summary" => MetricKind::Summary,
             _ => MetricKind::Untyped,
-        }
+        };
+        Ok(decoded)
     }
 }
 
@@ -87,7 +91,7 @@ impl<'a> Entry<'a> {
             Some(ref caps) => {
                 return match (caps.get(1), caps.get(2)) {
                     (Some(ref metric_name), Some(ref sample_type)) => {
-                        let sample_type = MetricKind::parse_from_str(sample_type.as_str());
+                        let sample_type = MetricKind::from_str(sample_type.as_str()).unwrap();
                         Entry::Type {
                             metric_name: match sample_type {
                                 MetricKind::Histogram => format!("{}_bucket", metric_name.as_str()),

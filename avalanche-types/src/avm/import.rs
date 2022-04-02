@@ -255,7 +255,7 @@ fn test_import_tx_serialization_with_no_signer() {
     let tx_metadata = tx.unsigned_tx.metadata.clone().unwrap();
     let signed_bytes = tx_metadata.bytes;
     assert_eq!(
-        tx.tx_id().string(),
+        tx.tx_id().to_string(),
         "9wdPb5rsThXYLX4WxkNeyYrNMfDE5cuWLgifSjxKiA2dCmgCZ"
     );
 
@@ -396,7 +396,7 @@ fn test_import_tx_serialization_with_two_signers() {
     let tx_metadata = tx.unsigned_tx.metadata.clone().unwrap();
     let signed_bytes = tx_metadata.bytes;
     assert_eq!(
-        tx.tx_id().string(),
+        tx.tx_id().to_string(),
         "pCW7sVBytzdZ1WrqzGY1DvA2S9UaMr72xpUMxVyx1QHBARNYx"
     );
 

@@ -1,10 +1,13 @@
+pub mod api;
 pub mod avax;
 pub mod avm;
 pub mod cert;
 pub mod codec;
 pub mod constants;
 pub mod formatting;
+pub mod genesis;
 pub mod ids;
+pub mod metrics;
 pub mod node;
 pub mod packer;
 pub mod platformvm;

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 
+pub const DEFAULT_CUSTOM_NETWORK_ID: u32 = 1000000;
+
 pub const FALLBACK_HRP: &str = "custom";
 
 lazy_static! {

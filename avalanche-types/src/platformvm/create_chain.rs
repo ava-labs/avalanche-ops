@@ -392,7 +392,7 @@ fn test_create_chain_tx_serialization_with_one_signer() {
     let tx_metadata = tx.unsigned_tx.metadata.clone().unwrap();
     let signed_bytes = tx_metadata.bytes;
     assert_eq!(
-        tx.tx_id().string(),
+        tx.tx_id().to_string(),
         "2nWs4EB5gmBz99pn4Vck3dBjnPysv44HRiXvNQNpQUonfTNsTf"
     );
 

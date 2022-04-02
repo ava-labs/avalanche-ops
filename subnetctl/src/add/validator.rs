@@ -224,22 +224,22 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "X"))
         .expect("failed get_blockchain_id for X");
     let x_chain_id = resp.result.unwrap().blockchain_id;
-    info!("X-chain ID is {}", x_chain_id.string());
+    info!("X-chain ID is {}", x_chain_id);
 
     let p_chain_id = platformvm::chain_id();
-    info!("P-chain ID is {}", p_chain_id.string());
+    info!("P-chain ID is {}", p_chain_id);
 
     let resp = rt
         .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "P"))
         .expect("failed get_blockchain_id for P");
     let p_chain_id = resp.result.unwrap().blockchain_id;
-    info!("P-chain ID is {}", p_chain_id.string());
+    info!("P-chain ID is {}", p_chain_id);
 
     let resp = rt
         .block_on(api_info::get_blockchain_id(&opt.http_rpc_ep, "C"))
         .expect("failed get_blockchain_id for C");
     let c_chain_id = resp.result.unwrap().blockchain_id;
-    info!("C-chain ID is {}", c_chain_id.string());
+    info!("C-chain ID is {}", c_chain_id);
 
     /////
     println!();
@@ -256,7 +256,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         .expect("failed to get get_asset_description");
     let result = resp.result.unwrap();
     let avax_asset_id = result.clone().asset_id;
-    info!("AVAX asset ID: {}", avax_asset_id.string());
+    info!("AVAX asset ID: {}", avax_asset_id);
     info!("AVAX asset description: {:?}", result);
 
     /////

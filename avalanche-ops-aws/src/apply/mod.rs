@@ -20,7 +20,8 @@ use log::{info, warn};
 use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
-use avalanche_api::health;
+use avalanche_api::health as api_health;
+use avalanche_types::api::health as api_health_types;
 use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use utils::{compress, home_dir, random};
 
@@ -1064,11 +1065,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let mut success = false;
     for _ in 0..10_u8 {
-        let ret = rt.block_on(health::check(Arc::new(http_rpc.clone()), true));
+        let ret = rt.block_on(api_health::check(Arc::new(http_rpc.clone()), true));
         let (res, err) = match ret {
             Ok(res) => (res, None),
             Err(e) => (
-                health::Response {
+                api_health_types::Response {
                     checks: None,
                     healthy: Some(false),
                 },
@@ -1104,11 +1105,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     for node in current_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(health::check(Arc::new(node.http_endpoint.clone()), true));
+            let ret = rt.block_on(api_health::check(
+                Arc::new(node.http_endpoint.clone()),
+                true,
+            ));
             let (res, err) = match ret {
                 Ok(res) => (res, None),
                 Err(e) => (
-                    health::Response {
+                    api_health_types::Response {
                         checks: None,
                         healthy: Some(false),
                     },

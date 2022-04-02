@@ -10,8 +10,8 @@ use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use avalanche_types::{constants, node, soft_key};
-use avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis};
+use avalanche_types::{constants, genesis as avalanchego_genesis, node, soft_key};
+use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
 use subnet_evm::genesis as subnet_evm_genesis;
 use utils::{compress, id, prefix, time};
@@ -508,7 +508,7 @@ impl Spec {
         let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opt.network_name.as_str())
         {
             Some(v) => *v,
-            None => avalanchego_config::DEFAULT_CUSTOM_NETWORK_ID,
+            None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
         let mut avalanchego_config = avalanchego_config::Config::default();

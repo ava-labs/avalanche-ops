@@ -12,9 +12,11 @@ use clap::{Arg, Command};
 use log::{info, warn};
 use tokio::time::sleep;
 
-use avalanche_api::{health, metrics};
-use avalanche_types::{cert, constants, ids, node};
-use avalanchego::genesis as avalanchego_genesis;
+use avalanche_api::{health as api_health, metrics as api_metrics};
+use avalanche_types::{
+    api::health as api_health_types, cert, constants, genesis as avalanchego_genesis, ids,
+    metrics::avalanchego as avalanchego_metrics, node,
+};
 use aws::{self, cloudwatch, ec2, envelope, kms, s3};
 use utils::{bash, compress, random};
 
@@ -386,7 +388,7 @@ pub async fn execute(log_level: &str) {
 
     // loads the node ID from generated/existing certs
     let node_id = ids::NodeId::from_cert_file(&tls_cert_path).expect("failed to load node ID");
-    info!("loaded node ID {}", node_id.string());
+    info!("loaded node ID {}", node_id);
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -403,7 +405,7 @@ pub async fn execute(log_level: &str) {
     let local_node = avalanche_ops_aws::Node::new(
         node_kind.clone(),
         &instance_id,
-        &node_id.string(),
+        &node_id.to_string(),
         &public_ipv4,
         http_scheme,
         spec.avalanchego_config.http_port,
@@ -807,11 +809,11 @@ WantedBy=multi-user.target",
     // this can take awhile if loaded from backups or syncing from peers
     info!("'avalanched run' all success -- now waiting for local node liveness check");
     loop {
-        let ret = health::spawn_check(&local_node.http_endpoint, true).await;
+        let ret = api_health::spawn_check(&local_node.http_endpoint, true).await;
         let (res, err) = match ret {
             Ok(res) => (res, None),
             Err(e) => (
-                health::Response {
+                api_health_types::Response {
                     checks: None,
                     healthy: Some(false),
                 },
@@ -937,12 +939,12 @@ async fn fetch_metrics_loop(
     info!("STEP: starting 'fetch_metrics_loop' with initial 2-minute wait");
     sleep(Duration::from_secs(120)).await;
 
-    let mut prev_raw_metrics: Option<metrics::RawMetrics> = None;
+    let mut prev_raw_metrics: Option<avalanchego_metrics::RawMetrics> = None;
     loop {
         info!("STEP: fetching metrics in 1-min");
         sleep(Duration::from_secs(60)).await;
 
-        let cur_metrics = match metrics::spawn_get(metrics_ep.as_str()).await {
+        let cur_metrics = match api_metrics::spawn_get(metrics_ep.as_str()).await {
             Ok(v) => v,
             Err(e) => {
                 warn!("failed to fetch metrics {}, retrying...", e);
@@ -953,7 +955,7 @@ async fn fetch_metrics_loop(
         match cloudwatch::spawn_put_metric_data(
             cw_manager.clone(),
             cw_namespace.as_str(),
-            cur_metrics.to_cw_metric_data(prev_raw_metrics.clone()),
+            api_metrics::to_cw_metric_data(&cur_metrics, prev_raw_metrics.clone()),
         )
         .await
         {

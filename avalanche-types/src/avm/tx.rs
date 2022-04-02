@@ -207,7 +207,7 @@ fn test_tx_serialization_with_no_signer() {
     let tx_metadata = tx.unsigned_tx.metadata.clone().unwrap();
     let signed_bytes = tx_metadata.bytes;
     assert_eq!(
-        tx.tx_id().string(),
+        tx.tx_id().to_string(),
         "zeqT8FTnRAxes7QQQYkaWhNkHavd9d6aCdH8TQu2Mx5KEydEz"
     );
 
@@ -367,7 +367,7 @@ fn test_tx_serialization_with_two_signers() {
     //     println!("{:#02x},", *c);
     // }
     assert_eq!(
-        tx_with_two_signers.tx_id().string(),
+        tx_with_two_signers.tx_id().to_string(),
         "QnTUuie2qe6BKyYrC2jqd73bJ828QNhYnZbdA2HWsnVRPjBfV"
     );
 

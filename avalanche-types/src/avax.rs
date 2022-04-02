@@ -1,6 +1,10 @@
-use std::io::{self, Error, ErrorKind};
+use std::{
+    io::{self, Error, ErrorKind},
+    str::FromStr,
+};
 
 use crate::{codec, formatting, ids, packer, platformvm, secp256k1fx};
+use serde::{Deserialize, Serialize};
 use utils::{hash, prefix};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
@@ -28,6 +32,52 @@ impl TransferableOutput {
         }
     }
 }
+
+pub fn sort_transferable_outputs(_outputs: &mut [TransferableOutput]) -> io::Result<()> {
+    Ok(())
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::create_subnet::test_sort_transferable_outputs --exact --show-output
+/// ref. "avalanchego/vms/components/avax.TestTransferableOutputSorting"
+#[test]
+fn test_sort_transferable_outputs() {}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableIn
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct TransferableInput {
+    pub utxo_id: UtxoId,
+    pub asset_id: ids::Id,
+    pub fx_id: ids::Id, // skip serialization due to serialize:"false"
+    pub input: secp256k1fx::TransferInput,
+}
+
+impl Default for TransferableInput {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl TransferableInput {
+    pub fn default() -> Self {
+        Self {
+            utxo_id: UtxoId::default(),
+            asset_id: ids::Id::empty(),
+            fx_id: ids::Id::empty(),
+            input: secp256k1fx::TransferInput::default(),
+        }
+    }
+}
+
+pub fn sort_transferable_inputs(_outputs: &mut [TransferableOutput]) -> io::Result<()> {
+    Ok(())
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::create_subnet::test_sort_transferable_inputs --exact --show-output
+/// ref. "avalanchego/vms/components/avax.TestTransferableInputSorting"
+#[test]
+fn test_sort_transferable_inputs() {}
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXOID
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -64,6 +114,27 @@ impl UtxoId {
             symbol,
             id,
         }
+    }
+}
+
+/// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
+/// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetbalance
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct RawUtxoId {
+    #[serde(rename = "txID")]
+    pub tx_id: String,
+    #[serde(rename = "outputIndex")]
+    pub output_index: u32,
+}
+
+impl RawUtxoId {
+    pub fn convert(&self) -> io::Result<UtxoId> {
+        let tx_id = ids::Id::from_str(&self.tx_id)?;
+        Ok(UtxoId {
+            tx_id,
+            output_index: self.output_index,
+            ..UtxoId::default()
+        })
     }
 }
 
@@ -288,34 +359,6 @@ fn test_utxo_unpack_hex() {
     };
     assert_eq!(utxo, expected);
     println!("{:?}", utxo);
-}
-
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableIn
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub struct TransferableInput {
-    pub utxo_id: UtxoId,
-    pub asset_id: ids::Id,
-    pub fx_id: ids::Id, // skip serialization due to serialize:"false"
-    pub input: secp256k1fx::TransferInput,
-}
-
-impl Default for TransferableInput {
-    fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl TransferableInput {
-    pub fn default() -> Self {
-        Self {
-            utxo_id: UtxoId::default(),
-            asset_id: ids::Id::empty(),
-            fx_id: ids::Id::empty(),
-            input: secp256k1fx::TransferInput::default(),
-        }
-    }
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#Metadata
