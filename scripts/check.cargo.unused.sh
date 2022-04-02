@@ -8,7 +8,6 @@ fi
 
 # cargo install cargo-udeps --locked
 # https://github.com/est31/cargo-udeps
-# cargo udeps
 cargo +nightly udeps
 
 echo "ALL SUCCESS!"

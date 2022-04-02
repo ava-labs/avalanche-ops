@@ -34,6 +34,9 @@ jobs:
       - name: Run static analysis tests
         shell: bash
         run: scripts/static-analysis.sh
+      - name: Check unused cargo imports
+        shell: bash
+        run: scripts/check.cargo.unused.sh
 
   unit_tests:
     name: Unit tests
