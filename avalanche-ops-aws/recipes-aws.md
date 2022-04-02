@@ -696,6 +696,7 @@ sudo systemctl status avalanched.service
 sudo systemctl stop avalanched.service
 sudo systemctl disable avalanched.service
 sudo journalctl -f -u avalanched.service
+sudo journalctl -u avalanched.service --lines=10 --no-pager
 sudo tail -f /var/log/avalanched/avalanched.log
 
 sudo systemctl cat avalanche.service
@@ -703,5 +704,6 @@ sudo systemctl status avalanche.service
 sudo systemctl stop avalanche.service
 sudo systemctl disable avalanche.service
 sudo journalctl -f -u avalanche.service
+sudo journalctl -u avalanche.service --lines=10 --no-pager
 sudo tail -f /var/log/avalanche/avalanche.log
 ```

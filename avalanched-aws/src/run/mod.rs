@@ -830,10 +830,20 @@ WantedBy=multi-user.target",
         );
 
         sleep(Duration::from_secs(30)).await;
+
         let out = bash::run("sudo tail -10 /var/log/avalanche/avalanche.log")
-            .expect("failed tail /var/log/avalanche/avalanche.log command");
-        println!("'/var/log/avalanche/avalanche.log' stdout:\n\n{}\n", out.0);
+            .expect("failed 'tail -10 /var/log/avalanche/avalanche.log'");
+        println!(
+            "\n'/var/log/avalanche/avalanche.log' stdout:\n\n{}\n",
+            out.0
+        );
         println!("'/var/log/avalanche/avalanche.log' stderr:\n\n{}\n", out.1);
+
+        println!();
+        let out = bash::run("sudo journalctl -u avalanche.service --lines=10 --no-pager")
+            .expect("failed 'journalctl -u avalanche.service --lines=10 --no-pager'");
+        println!("\n'avalanche.service' stdout:\n\n{}\n", out.0);
+        println!("'avalanche.service' stderr:\n\n{}\n", out.1);
     }
 
     info!("spawning async routines...");
