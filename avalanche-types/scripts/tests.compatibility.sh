@@ -21,6 +21,11 @@ popd
 
 ###
 pushd ./compatibility
+go run ./key-infos-validate/main.go ../artifacts/test.insecure.secp256k1.key.infos.json
+popd
+
+###
+pushd ./compatibility
 # copied from "avalanchego/staking/local/staking1.key,crt"
 go run ./node-id-load/main.go ../artifacts/staker1.insecure.key ../artifacts/staker1.insecure.crt
 go run ./node-id-load/main.go ../artifacts/staker2.insecure.key ../artifacts/staker2.insecure.crt

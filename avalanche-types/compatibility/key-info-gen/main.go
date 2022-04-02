@@ -129,6 +129,11 @@ func decodePrivateKey(enc string) (*crypto.PrivateKeySECP256K1R, error) {
 	return privKey, nil
 }
 
+func encodeAddr(pk *crypto.PrivateKeySECP256K1R, chainIDAlias string, hrp string) (string, error) {
+	pubBytes := pk.PublicKey().Address().Bytes()
+	return formatting.FormatAddress(chainIDAlias, hrp, pubBytes)
+}
+
 func encodeShortAddr1(pk *crypto.PrivateKeySECP256K1R) string {
 	pubBytes := pk.PublicKey().Address().Bytes()
 	str, _ := formatting.EncodeWithChecksum(formatting.CB58, pubBytes)
@@ -138,11 +143,6 @@ func encodeShortAddr1(pk *crypto.PrivateKeySECP256K1R) string {
 func encodeShortAddr2(pk *crypto.PrivateKeySECP256K1R) string {
 	pubAddr := pk.PublicKey().Address()
 	return pubAddr.String()
-}
-
-func encodeAddr(pk *crypto.PrivateKeySECP256K1R, chainIDAlias string, hrp string) (string, error) {
-	pubBytes := pk.PublicKey().Address().Bytes()
-	return formatting.FormatAddress(chainIDAlias, hrp, pubBytes)
 }
 
 func encodeEthAddr(pk *crypto.PrivateKeySECP256K1R) string {
