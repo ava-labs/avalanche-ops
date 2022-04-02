@@ -120,9 +120,9 @@ jobs:
             target: x86_64-apple-darwin
 
           # TODO: NOT WORKING "aesv8-armx-linux64.S": No such file or directory"
-          # - os: ubuntu-latest
-          #   platform: linux
-          #   target: aarch64-unknown-linux-gnu
+          - os: ubuntu-latest
+            platform: linux
+            target: aarch64-unknown-linux-gnu
 
           # TODO: NOT WORKING "openssl-sys-0.9.72/build/find_normal.rs:180:5"
           # - os: macos-latest
@@ -157,6 +157,18 @@ jobs:
         run: |
           echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+
+      # https://github.com/briansmith/ring/blob/main/mk/install-build-tools.sh
+      - name: Linux ARM64 setup
+        if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install qemu-user gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          llvm_version=14
+          sudo apt-key add mk/llvm-snapshot.gpg.key
+          sudo add-apt-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-$llvm_version main"
+          sudo apt-get update -y
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install clang-$llvm_version llvm-$llvm_version
 
       - name: Compile binaries
         env:
