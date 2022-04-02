@@ -23,7 +23,6 @@ ripemd = "0.1.1"
 secp256k1 = { version = "0.22.1", features = ["global-context", "rand-std", "recovery"] }
 serde = { version = "1.0.136", features = ["derive"] }
 tar = "0.4.38"
-tempfile = "3.3.0"
 tokio = { version = "1.17.0", features = ["full"] }
 url = "2.2.2"
 walkdir = "2.3.2"
@@ -34,4 +33,5 @@ zstd = "0.10"
 
 [dev-dependencies]
 env_logger = "0.9.0"
+tempfile = "3.3.0"
 tokio-test = "0.4.2"
