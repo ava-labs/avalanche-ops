@@ -1,9 +1,13 @@
 use std::{
+    env,
     fs::{self, File},
     io::{self, stdout, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
     path::Path,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread,
     time::Duration,
 };
@@ -165,11 +169,17 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
     }
 
+    let exec_path = env::current_exe().expect("unexpected None current_exe");
+
     info!("creating resources (with spec path {})", spec_file_path);
     let s3_manager = s3::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let ec2_manager = ec2::Manager::new(&shared_config);
     let cloudformation_manager = cloudformation::Manager::new(&shared_config);
+
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))
+        .expect("failed to register os signal");
 
     execute!(
         stdout(),
@@ -742,6 +752,22 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             if objects.len() as u32 >= target_nodes {
                 break;
             }
+
+            if term.load(Ordering::Relaxed) {
+                warn!("received signal {}", signal_hook::consts::SIGINT);
+                println!();
+                println!("# run the following to delete resources");
+                execute!(
+                        stdout(),
+                        SetForegroundColor(Color::Green),
+                        Print(format!(
+                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                            exec_path.display(),
+                            spec_file_path
+                        )),
+                        ResetColor
+                    )?;
+            };
         }
 
         for obj in objects.iter() {
@@ -963,7 +989,24 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             if objects.len() as u32 >= target_nodes {
                 break;
             }
+
+            if term.load(Ordering::Relaxed) {
+                warn!("received signal {}", signal_hook::consts::SIGINT);
+                println!();
+                println!("# run the following to delete resources");
+                execute!(
+                        stdout(),
+                        SetForegroundColor(Color::Green),
+                        Print(format!(
+                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                            exec_path.display(),
+                            spec_file_path
+                        )),
+                        ResetColor
+                    )?;
+            };
         }
+
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let non_anchor_node =
@@ -1152,7 +1195,6 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     println!();
     info!("apply all success!");
-    let exec_path = std::env::current_exe().expect("unexpected None current_exe");
 
     println!();
     println!("# run the following to check balances");
