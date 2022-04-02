@@ -38,7 +38,7 @@ For instance, to download the latest `avalanchego` release:
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.7
+VERSION=1.7.9
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
@@ -696,6 +696,7 @@ sudo systemctl status avalanched.service
 sudo systemctl stop avalanched.service
 sudo systemctl disable avalanched.service
 sudo journalctl -f -u avalanched.service
+sudo journalctl -u avalanched.service --lines=10 --no-pager
 sudo tail -f /var/log/avalanched/avalanched.log
 
 sudo systemctl cat avalanche.service
@@ -703,5 +704,6 @@ sudo systemctl status avalanche.service
 sudo systemctl stop avalanche.service
 sudo systemctl disable avalanche.service
 sudo journalctl -f -u avalanche.service
+sudo journalctl -u avalanche.service --lines=10 --no-pager
 sudo tail -f /var/log/avalanche/avalanche.log
 ```

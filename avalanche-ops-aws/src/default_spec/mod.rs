@@ -285,15 +285,26 @@ pub fn execute(opt: avalanche_ops_aws::DefaultSpecOption) -> io::Result<()> {
         Print(format!("cat {}\n", spec_file_path)),
         ResetColor
     )?;
+    let exec_path = std::env::current_exe().expect("unexpected None current_exe");
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
             "{} apply \\\n--spec-file-path {}\n",
-            std::env::current_exe()
-                .expect("unexpected None current_exe")
-                .display(),
+            exec_path.display(),
             spec_file_path
+        )),
+        ResetColor
+    )?;
+    println!();
+    println!("# run the following to delete resources");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                    exec_path.display(),
+                    spec_file_path
         )),
         ResetColor
     )?;
