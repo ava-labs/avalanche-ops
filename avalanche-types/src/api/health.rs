@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    io::{self, Error, ErrorKind},
-    string::String,
-};
+use std::{collections::HashMap, str::FromStr, string::String};
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -36,11 +32,12 @@ pub struct CheckResult {
     pub time_of_first_failure: Option<DateTime<Utc>>,
 }
 
-impl Response {
-    pub fn parse_from_str(s: &str) -> io::Result<Self> {
-        serde_json::from_str(s).map_err(|e| {
-            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
-        })
+/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
+impl FromStr for Response {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_str(s)
     }
 }
 
@@ -119,7 +116,7 @@ fn test_parse() {
 }
 
 ";
-    let parsed = Response::parse_from_str(data).unwrap();
+    let parsed = Response::from_str(data).unwrap();
     info!("parsed: {:?}", parsed);
     assert!(parsed.healthy.unwrap());
 }
