@@ -3,9 +3,9 @@ use std::env::args;
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_api::platform;
+use avalanche_api::p;
 
-/// cargo run --example platform -- [HTTP RPC ENDPOINT] P-custom1qwmslrrqdv4slxvynhy9csq069l0u8mqwjzmcd
+/// cargo run --example p -- [HTTP RPC ENDPOINT] P-custom1qwmslrrqdv4slxvynhy9csq069l0u8mqwjzmcd
 ///
 /// ```
 /// # or run this
@@ -28,22 +28,22 @@ fn main() {
     println!("{}", url);
     println!("{}", paddr);
     let resp = rt
-        .block_on(platform::get_balance(&url, &paddr))
+        .block_on(p::get_balance(&url, &paddr))
         .expect("failed to get balance");
     info!("get_balance response: {:?}", resp);
 
     let resp = rt
-        .block_on(platform::get_utxos(&url, &paddr))
+        .block_on(p::get_utxos(&url, &paddr))
         .expect("failed to get UTXOs");
     info!("get_utxos response: {:?}", resp);
 
     let resp = rt
-        .block_on(platform::get_height(&url))
+        .block_on(p::get_height(&url))
         .expect("failed to get height");
     info!("get_height response: {:?}", resp);
 
     let resp = rt
-        .block_on(platform::get_current_validators(&url))
+        .block_on(p::get_current_validators(&url))
         .expect("failed to get current validators");
     info!("get_current_validators response: {:?}", resp);
 }

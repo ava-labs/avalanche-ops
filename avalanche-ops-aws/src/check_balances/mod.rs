@@ -3,7 +3,7 @@ use std::io;
 use clap::{Arg, Command};
 use tokio::runtime::Runtime;
 
-use avalanche_api::{avm, eth, platform};
+use avalanche_api::{c, p, x};
 
 pub const NAME: &str = "check-balances";
 
@@ -99,20 +99,20 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
         };
         let (xb, pb, cb) = {
             let x = rt
-                .block_on(avm::get_balance(&http_rpc, &xaddr))
-                .expect("failed avm::get_balance");
+                .block_on(x::get_balance(&http_rpc, &xaddr))
+                .expect("failed x::get_balance");
             let x = x.result.expect("unexpected None x result");
             let x = x.balance;
 
             let p = rt
-                .block_on(platform::get_balance(&http_rpc, &paddr))
-                .expect("failed platform::get_balance");
+                .block_on(p::get_balance(&http_rpc, &paddr))
+                .expect("failed p::get_balance");
             let p = p.result.expect("unexpected None p result");
             let p = p.balance.expect("unexpected None p result balance");
 
             let c = rt
-                .block_on(eth::get_balance(&http_rpc, &caddr))
-                .expect("failed eth::get_balance");
+                .block_on(c::get_balance(&http_rpc, &caddr))
+                .expect("failed c::get_balance");
             let c = c.result;
 
             (x, p, c)
