@@ -120,9 +120,9 @@ jobs:
             target: x86_64-apple-darwin
           # ref. https://github.com/clux/muslrust
           # ref. https://github.com/sfackler/rust-openssl/issues/1405
-          - os: ubuntu-latest
-            platform: linux
-            target: aarch64-unknown-linux-musl
+          # - os: ubuntu-latest
+          #   platform: linux
+          #   target: aarch64-unknown-linux-musl
           - os: macos-latest
             platform: darwin
             target: aarch64-apple-darwin
