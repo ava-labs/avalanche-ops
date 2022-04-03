@@ -414,7 +414,7 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name custom \
---avalanchego-log-level INFO \
+--avalanchego-log-level DEBUG \
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
 --enable-subnet-evm
 

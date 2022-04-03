@@ -9,6 +9,9 @@ use rcgen::{date_time_ymd, Certificate, CertificateParams, DistinguishedName, Dn
 
 /// Generates a X509 certificate pair.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/staking#NewCertAndKeyBytes
+///
+/// See https://github.com/ava-labs/avalanche-ops/blob/ad1730ed193cf1cd5056f23d130c3defc897cab5/avalanche-types/src/cert.rs
+/// to use "openssl" crate.
 pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
     info!(
         "creating certs with key path {} and cert path {}",
@@ -28,7 +31,17 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
     }
 
     let mut cert_params: CertificateParams = Default::default();
-    cert_params.alg = &rcgen::PKCS_ECDSA_P384_SHA384;
+
+    // this fails peer IP verification (e.g., incorrect signature)
+    // cert_params.alg = &rcgen::PKCS_ECDSA_P384_SHA384;
+    //
+    // currently, "avalanchego" only signs the IP with "crypto.SHA256"
+    // ref. "avalanchego/network/ip_signer.go.newIPSigner"
+    // ref. "avalanchego/network/peer/ip.go UnsignedIP.Sign" with "crypto.SHA256"
+    //
+    // TODO: support sha384/512 signatures in avalanchego node
+    cert_params.alg = &rcgen::PKCS_ECDSA_P256_SHA256;
+
     cert_params.not_before = date_time_ymd(2022, 01, 01);
     cert_params.not_after = date_time_ymd(5000, 01, 01);
     cert_params.distinguished_name = DistinguishedName::new();
