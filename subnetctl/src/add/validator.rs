@@ -14,7 +14,7 @@ use lazy_static::lazy_static;
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_api::{avm as api_avm, info as api_info, platform as api_platform};
+use avalanche_api::{info as api_info, p, x};
 use avalanche_types::{avax, constants, platformvm, soft_key};
 use utils::rfc3339;
 
@@ -252,7 +252,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         ResetColor
     )?;
     let resp = rt
-        .block_on(api_avm::get_asset_description(&opt.http_rpc_ep, "AVAX"))
+        .block_on(x::get_asset_description(&opt.http_rpc_ep, "AVAX"))
         .expect("failed to get get_asset_description");
     let result = resp.result.unwrap();
     let avax_asset_id = result.clone().asset_id;
@@ -273,7 +273,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         ResetColor
     )?;
     let resp = rt
-        .block_on(api_platform::get_current_validators(&opt.http_rpc_ep))
+        .block_on(p::get_current_validators(&opt.http_rpc_ep))
         .expect("failed get_current_validators");
     let validators = resp.result.unwrap().validators.unwrap();
     for validator in validators.iter() {
@@ -299,7 +299,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         ResetColor
     )?;
     let resp = rt
-        .block_on(api_platform::get_balance(&opt.http_rpc_ep, &p_chain_addr))
+        .block_on(p::get_balance(&opt.http_rpc_ep, &p_chain_addr))
         .expect("failed to get balance");
     // On the X-Chain, one AVAX is 10^9  units.
     // On the P-Chain, one AVAX is 10^9  units.
@@ -358,7 +358,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         ResetColor
     )?;
     let resp = rt
-        .block_on(api_platform::get_utxos(&opt.http_rpc_ep, &p_chain_addr))
+        .block_on(p::get_utxos(&opt.http_rpc_ep, &p_chain_addr))
         .expect("failed to get UTXOs");
     let utxos_raw = resp.result.unwrap().utxos.unwrap();
     let mut utxos: Vec<avax::Utxo> = Vec::new();
