@@ -1,14 +1,15 @@
 use std::{
-    fmt, fs,
-    io::{self, Error, ErrorKind},
+    fmt,
+    fs::File,
+    io::{self, BufReader, Error, ErrorKind},
     path::Path,
     str::FromStr,
     string::String,
 };
 
 use lazy_static::lazy_static;
-use log::info;
-use openssl::x509::X509;
+use log::{info, warn};
+use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{formatting, packer, soft_key};
@@ -327,18 +328,45 @@ impl NodeId {
             ));
         }
 
-        let pub_key_contents = fs::read(cert_file_path).unwrap();
-        let pub_key = X509::from_pem(&pub_key_contents.to_vec()).unwrap();
-
         // ref. "tls.Certificate.Leaf.Raw" in Go
         // ref. "tls.X509KeyPair"
         // ref. "x509.ParseCertificate/parseCertificate"
         // ref. "x509.Certificate.Leaf"
-        let pub_key_der = pub_key.to_der().unwrap();
+        //
+        // use openssl::x509::X509;
+        // let pub_key_contents = fs::read(cert_file_path)?;
+        // let pub_key = X509::from_pem(&pub_key_contents.to_vec())?;
+        // let pub_key_der = pub_key.to_der()?;
+        //
+        // use pem;
+        // let pub_key_contents = fs::read(cert_file_path)?;
+        // let pub_key = pem::parse(&pub_key_contents.to_vec()).unwrap();
+        // let pub_key_der = pub_key.contents;
+
+        let pub_key_file = File::open(cert_file_path)?;
+        let mut reader = BufReader::new(pub_key_file);
+        let pem_read = read_one(&mut reader)?;
+        let cert = {
+            match pem_read.unwrap() {
+                Item::X509Certificate(cert) => Some(cert),
+                Item::RSAKey(_) | Item::PKCS8Key(_) | Item::ECKey(_) => {
+                    warn!("cert path {} has unexpected private key", cert_file_path);
+                    None
+                }
+                _ => None,
+            }
+        };
+        if cert.is_none() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("cert path {} found no cert", cert_file_path),
+            ));
+        }
+        let pub_key_der = cert.unwrap();
 
         // "ids.ToShortID(hashing.PubkeyBytesToAddress(StakingTLSCert.Leaf.Raw))"
         // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/node#Node.Initialize
-        Self::from_cert_raw(&pub_key_der.to_vec())
+        Self::from_cert_raw(&pub_key_der)
     }
 
     /// Encodes the cert raw bytes to a node ID.
