@@ -14,16 +14,27 @@ cargo build \
 --bin dev-machine-aws \
 --bin subnetctl
 
-./target/release/avalanche-ops-aws --help
-./target/release/avalanche-ops-aws apply --help
-./target/release/avalanche-ops-aws delete --help
-./target/release/avalanche-ops-aws default-spec --help
-./target/release/avalanche-ops-aws read-spec --help
-./target/release/avalanche-ops-aws check-balances --help
-./target/release/avalanche-ops-aws events --help
-./target/release/avalanche-ops-aws events update-artifacts --help
-./target/release/avalanched-aws --help
-./target/release/avalanched-aws backup upload --help
-./target/release/avalanched-aws backup download --help
-./target/release/dev-machine-aws --help
-./target/release/subnetctl --help
+BIN_PATH=./target/release
+${BIN_PATH}/avalanche-ops-aws --help
+${BIN_PATH}/avalanche-ops-aws default-spec --help
+${BIN_PATH}/avalanche-ops-aws apply --help
+${BIN_PATH}/avalanche-ops-aws delete --help
+${BIN_PATH}/avalanche-ops-aws read-spec --help
+${BIN_PATH}/avalanche-ops-aws check-balances --help
+${BIN_PATH}/avalanche-ops-aws events --help
+${BIN_PATH}/avalanche-ops-aws events update-artifacts --help
+
+${BIN_PATH}/avalanched-aws --help
+${BIN_PATH}/avalanched-aws backup upload --help
+${BIN_PATH}/avalanched-aws backup download --help
+
+${BIN_PATH}/dev-machine-aws --help
+${BIN_PATH}/dev-machine-aws default-spec --help
+${BIN_PATH}/dev-machine-aws apply --help
+${BIN_PATH}/dev-machine-aws delete --help
+
+${BIN_PATH}/subnetctl --help
+${BIN_PATH}/subnetctl add --help
+${BIN_PATH}/subnetctl create --help
+${BIN_PATH}/subnetctl get-utxos --help
+${BIN_PATH}/subnetctl vm-id --help

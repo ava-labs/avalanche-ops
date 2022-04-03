@@ -1,5 +1,5 @@
 
-**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.6**
+**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.7**
 
 # avalanche-ops-recipes
 
@@ -160,10 +160,15 @@ avalanche-ops-aws delete --spec-file-path spec.yaml
 # to set the test ID "my-test-cluster"
 # use "--spec-file-path ~/my-test-cluster.yaml"
 
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name custom \
@@ -192,10 +197,15 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 See https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config for more.
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --coreth-metrics-enabled \
@@ -218,10 +228,15 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ### Custom network with NO initial database state, with new install artifacts (trigger updates)
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name custom \
@@ -254,12 +269,17 @@ TODOs
 
 ```bash
 # REPLACE THIS WITH YOURS
-ACM_CERT_ARN=arn:aws:acm:us-west-2:931867039610:certificate/ab473dd8-09dd-41a3-ab59-df53739bec0d
+ACM_CERT_ARN=arn:aws:acm:...:...:certificate/...
+
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --nlb-acm-certificate-arn $ACM_CERT_ARN \
@@ -286,10 +306,15 @@ cat ${HOME}/test-custom-https-for-nlb.yaml \
 ### Custom network with NO initial database state, with HTTP TLS enabled only for `avalanchego`
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name custom \
@@ -313,10 +338,15 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 See https://pkg.go.dev/github.com/ava-labs/snow-machine for more.
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --install-artifacts-snow-machine-file-path ${HOME}/coreth.json \
@@ -369,13 +399,18 @@ ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins/srEXiWaHuhNyGwPUi44
 ```
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 # TODO: pre-generate subnet ID
 # replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
 # with real subnet ID from subnet-cli wizard
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name custom \
@@ -525,10 +560,15 @@ TODOs
 This will sync from peer (rather than downloading from S3):
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name fuji \
@@ -550,10 +590,15 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 This will fast-sync from peer (rather than downloading from S3):
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name fuji \
@@ -581,13 +626,18 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 # TOOD: make this faster
 aws s3 ls --recursive --human-readable s3://avalanche-db-daily/testnet | sort
 
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
 --db-backup-s3-region us-east-1 \
 --db-backup-s3-bucket avalanche-db-daily \
 --db-backup-s3-key testnet-db-daily-02-26-2022-050001-tar.gz \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name fuji \
@@ -635,10 +685,15 @@ cat $HOME/test-fuji-from-backup-db.yaml \
 This will sync from peer (rather than downloading from S3):
 
 ```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name mainnet \
@@ -663,13 +718,18 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 # TOOD: make this faster
 aws s3 ls --recursive --human-readable s3://avalanche-db-daily/mainnet | sort
 
+# download from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+# or build via "scripts/build.x86_64-linux-musl.sh"
+# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+
 cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ./target/release/avalanche-ops-aws default-spec \
 --region us-west-2 \
 --db-backup-s3-region us-east-1 \
 --db-backup-s3-bucket avalanche-db-daily \
 --db-backup-s3-key mainnet-db-daily-02-25-2022-050003-tar.gz \
---install-artifacts-avalanched-bin ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
 --network-name mainnet \

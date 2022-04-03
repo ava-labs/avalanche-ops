@@ -1,5 +1,5 @@
 
-**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.6**
+**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.7**
 
 ## Example: set up custom network on AWS
 
