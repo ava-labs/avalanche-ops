@@ -159,13 +159,15 @@ jobs:
       # ref. https://github.com/briansmith/ring/blob/main/mk/install-build-tools.sh
       # ref. https://github.com/briansmith/ring/issues/1414
       # ref. https://github.com/zellij-org/zellij/blob/main/.github/workflows/release.yml
+      # ref. https://github.com/sfackler/rust-openssl/issues/621
       - name: Linux ARM64 setup with musl-tools
         if: matrix.job.target == 'aarch64-unknown-linux-musl'
         run: |
-          sudo apt-get install -y --no-install-recommends pkg-config musl-tools clang llvm
+          sudo apt-get install -y --no-install-recommends pkg-config libssl-dev musl-tools clang llvm
           echo "CC_aarch64_unknown_linux_musl=clang" >> $GITHUB_ENV
           echo "AR_aarch64_unknown_linux_musl=llvm-ar" >> $GITHUB_ENV
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS=\"-Clink-self-contained=yes -Clinker=rust-lld\"" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
 
       - name: Compile binaries
         env:
