@@ -118,16 +118,14 @@ jobs:
           - os: macos-latest
             platform: darwin
             target: x86_64-apple-darwin
-
-          # TODO: NOT WORKING "aesv8-armx-linux64.S": No such file or directory"
-          # - os: ubuntu-latest
-          #   platform: linux
-          #   target: aarch64-unknown-linux-gnu
-
-          # TODO: NOT WORKING "openssl-sys-0.9.72/build/find_normal.rs:180:5"
-          # - os: macos-latest
-          #   platform: darwin
-          #   target: aarch64-apple-darwin
+          # ref. https://github.com/clux/muslrust
+          # ref. https://github.com/sfackler/rust-openssl/issues/1405
+          - os: ubuntu-latest
+            platform: linux
+            target: aarch64-unknown-linux-musl
+          - os: macos-latest
+            platform: darwin
+            target: aarch64-apple-darwin
           # - os: windows-latest
           #   platform: win32
           #   target: x86_64-pc-windows-msvc
@@ -150,13 +148,19 @@ jobs:
         with:
           cache-on-failure: true
 
-      # TODO: add M1 builds/tests
-      # ref. https://github.com/gakonst/foundry/blob/708f48f8681fea3a42a34a0eed52090b3e37563e/.github/workflows/release.yml#L109
+      # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
       - name: Apple M1 setup
-        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+        if: matrix.job.target == 'aarch64-apple-darwin'
         run: |
           echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+
+      # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
+      # ref. https://github.com/briansmith/ring/blob/main/mk/install-build-tools.sh
+      # ref. https://github.com/zellij-org/zellij/blob/main/.github/workflows/release.yml
+      - name: Linux ARM64 setup with musl-tools
+        if: matrix.job.target == 'aarch64-unknown-linux-musl'
+        run: sudo apt-get install -y --no-install-recommends musl-tools
 
       - name: Compile binaries
         env:
