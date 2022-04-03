@@ -20,8 +20,8 @@ fn main() {
     }
 
     cert::generate(key_path.as_str(), cert_path.as_str()).expect("failed to generate certs");
+    // openssl x509 -in /tmp/test.insecure.cert -text -noout
     // openssl x509 -in artifacts/staker1.insecure.crt -text -noout
-    // openssl x509 -in artifacts/test.insecure.crt -text -noout
 
     let node_id = ids::NodeId::from_cert_file(cert_path.as_str()).unwrap();
     println!("Node ID: {}", node_id);
