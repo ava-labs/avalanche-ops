@@ -27,7 +27,7 @@ tokio = { version = "1.17.0", features = ["full"] }
 url = "2.2.2"
 walkdir = "2.3.2"
 whoami = "1.2.1"
-zip = "0.6.1"
+zip = "0.6.2"
 # don't update until https://github.com/gyscos/zstd-rs/issues/147 is addressed
 zstd = "0.10"
 
