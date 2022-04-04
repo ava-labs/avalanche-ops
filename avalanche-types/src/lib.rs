@@ -13,4 +13,5 @@ pub mod packer;
 pub mod platformvm;
 pub mod secp256k1fx;
 pub mod soft_key;
+pub mod units;
 pub mod vm;

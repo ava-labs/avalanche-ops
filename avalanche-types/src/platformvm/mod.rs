@@ -1,3 +1,5 @@
+use std::io::{self, Error, ErrorKind};
+
 pub mod add_subnet_validator;
 pub mod add_validator;
 pub mod create_chain;
@@ -7,7 +9,7 @@ pub mod import;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{avax, ids, secp256k1fx};
+use crate::{avax, codec, ids, secp256k1fx};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#pkg-variables
 pub fn chain_id() -> ids::Id {
@@ -39,11 +41,49 @@ impl Validator {
         }
     }
 }
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockIn
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct StakeableLockIn {
+    pub locktime: u64,
+    pub transfer_input: secp256k1fx::TransferInput,
+}
+
+impl Default for StakeableLockIn {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl StakeableLockIn {
+    pub fn default() -> Self {
+        Self {
+            locktime: 0,
+            transfer_input: secp256k1fx::TransferInput::default(),
+        }
+    }
+
+    pub fn type_name() -> String {
+        "platformvm.StakeableLockIn".to_string()
+    }
+
+    pub fn type_id() -> io::Result<u32> {
+        if let Some(type_id) = codec::P_TYPES.get("platformvm.StakeableLockIn") {
+            Ok((*type_id) as u32)
+        } else {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("type_id not found for {}", Self::type_name()),
+            ));
+        }
+    }
+}
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct StakeableLockOut {
     pub locktime: u64,
-    pub out: secp256k1fx::TransferOutput,
+    pub transfer_output: secp256k1fx::TransferOutput,
 }
 
 impl Default for StakeableLockOut {
@@ -56,7 +96,22 @@ impl StakeableLockOut {
     pub fn default() -> Self {
         Self {
             locktime: 0,
-            out: secp256k1fx::TransferOutput::default(),
+            transfer_output: secp256k1fx::TransferOutput::default(),
+        }
+    }
+
+    pub fn type_name() -> String {
+        "platformvm.StakeableLockOut".to_string()
+    }
+
+    pub fn type_id() -> io::Result<u32> {
+        if let Some(type_id) = codec::P_TYPES.get("platformvm.StakeableLockOut") {
+            Ok((*type_id) as u32)
+        } else {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("type_id not found for {}", Self::type_name()),
+            ));
         }
     }
 }

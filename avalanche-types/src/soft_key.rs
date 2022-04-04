@@ -247,25 +247,35 @@ impl Key {
         })
     }
 
+    /// Returns "None" if the output owners are still locked or the threshold is NOT met.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Match
     pub fn match_threshold(
         &self,
         output_owners: &secp256k1fx::OutputOwners,
         time: u64,
-    ) -> io::Result<(Vec<u32>, bool)> {
+    ) -> Option<Vec<u32>> {
         if output_owners.locktime > time {
             // output owners are still locked
-            return Ok((Vec::new(), false));
+            return None;
         }
-        let mut sigs: Vec<u32> = Vec::new();
+        let mut sig_indices: Vec<u32> = Vec::new();
         for (pos, short_addr) in output_owners.addrs.iter().enumerate() {
             if self.short_address != *short_addr {
                 continue;
             }
-            sigs.push(pos as u32);
+            sig_indices.push(pos as u32);
+
+            if (sig_indices.len() as u32) == output_owners.threshold {
+                break;
+            }
         }
-        let n = sigs.len();
-        Ok((sigs, (n as u32) == output_owners.threshold))
+
+        let n = sig_indices.len();
+        if (n as u32) == output_owners.threshold {
+            Some(sig_indices)
+        } else {
+            None
+        }
     }
 
     /// TODO: support "secp256k1fx::MintOutput"
@@ -275,16 +285,19 @@ impl Key {
         output: &secp256k1fx::TransferOutput,
         time: u64,
     ) -> io::Result<secp256k1fx::TransferInput> {
-        let (sigs, threshold_met) = self.match_threshold(&output.output_owners, time)?;
+        let res = self.match_threshold(&output.output_owners, time);
+        let threshold_met = res.is_some();
         if !threshold_met {
             return Err(Error::new(
                 ErrorKind::Other,
                 "unable to spend this UTXO (threshold not met)",
             ));
         }
+
+        let sig_indices = res.unwrap();
         Ok(secp256k1fx::TransferInput {
             amount: output.amount,
-            sig_indices: sigs,
+            sig_indices,
         })
     }
 }
@@ -552,6 +565,7 @@ impl fmt::Display for PrivateKeyInfo {
     }
 }
 
+/// Support multiple keys as a chain.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain
 /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/p/builder.go
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -590,15 +604,16 @@ impl Keychain {
             return None;
         }
 
-        let mut sigs: Vec<u32> = Vec::new();
+        let mut sig_indices: Vec<u32> = Vec::new();
         let mut keys: Vec<Key> = Vec::new();
         for (pos, addr) in output_owners.addrs.iter().enumerate() {
             let key = self.get(addr);
             if key.is_none() {
                 continue;
             }
-            sigs.push(pos as u32);
+            sig_indices.push(pos as u32);
             keys.push(key.unwrap());
+
             if (keys.len() as u32) == output_owners.threshold {
                 break;
             }
@@ -606,7 +621,7 @@ impl Keychain {
 
         let n = keys.len();
         if (n as u32) == output_owners.threshold {
-            Some((sigs, keys))
+            Some((sig_indices, keys))
         } else {
             None
         }
@@ -619,15 +634,16 @@ impl Keychain {
         output: &secp256k1fx::TransferOutput,
         time: u64,
     ) -> io::Result<(secp256k1fx::TransferInput, Vec<Key>)> {
-        let pair = self.match_threshold(&output.output_owners, time);
-        let threshold_met = pair.is_some();
+        let res = self.match_threshold(&output.output_owners, time);
+        let threshold_met = res.is_some();
         if !threshold_met {
             return Err(Error::new(
                 ErrorKind::Other,
                 "unable to spend this UTXO (threshold not met)",
             ));
         }
-        let (sig_indices, keys) = pair.unwrap();
+
+        let (sig_indices, keys) = res.unwrap();
         Ok((
             secp256k1fx::TransferInput {
                 amount: output.amount,

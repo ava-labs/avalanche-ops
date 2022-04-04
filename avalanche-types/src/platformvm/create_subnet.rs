@@ -172,14 +172,14 @@ fn test_create_subnet_tx_serialization_with_one_signer() {
     let mut tx = Tx {
         unsigned_tx: avax::BaseTx {
             network_id: 1337,
-            outs: Some(vec![avax::TransferableOutput {
+            transferable_outputs: Some(vec![avax::TransferableOutput {
                 asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x17, 0xcc, 0x8b, 0x15, 0x78, 0xba, 0x38, 0x35, //
                     0x44, 0xd1, 0x63, 0x95, 0x88, 0x22, 0xd8, 0xab, //
                     0xd3, 0x84, 0x9b, 0xb9, 0xdf, 0xab, 0xe3, 0x9f, //
                     0xcb, 0xc3, 0xe7, 0xee, 0x88, 0x11, 0xfe, 0x2f, //
                 ])),
-                out: secp256k1fx::TransferOutput {
+                transfer_output: Some(secp256k1fx::TransferOutput {
                     amount: 0x2386f269cb1f00,
                     output_owners: secp256k1fx::OutputOwners {
                         locktime: 0x00,
@@ -189,10 +189,10 @@ fn test_create_subnet_tx_serialization_with_one_signer() {
                             0xfe, 0x88, 0x4f, 0x68, 0x61, 0xe1, 0xb2, 0x9c,
                         ]))],
                     },
-                },
+                }),
                 ..avax::TransferableOutput::default()
             }]),
-            ins: Some(vec![avax::TransferableInput {
+            transferable_inputs: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
                     output_index: 1,
                     ..avax::UtxoId::default()
@@ -203,10 +203,10 @@ fn test_create_subnet_tx_serialization_with_one_signer() {
                     0xd3, 0x84, 0x9b, 0xb9, 0xdf, 0xab, 0xe3, 0x9f, //
                     0xcb, 0xc3, 0xe7, 0xee, 0x88, 0x11, 0xfe, 0x2f, //
                 ])),
-                input: secp256k1fx::TransferInput {
+                transfer_input: Some(secp256k1fx::TransferInput {
                     amount: 0x2386f26fc10000,
                     sig_indices: vec![0],
-                },
+                }),
                 ..avax::TransferableInput::default()
             }]),
             ..avax::BaseTx::default()
@@ -366,14 +366,14 @@ fn test_create_subnet_tx_serialization_with_custom_network() {
     let mut tx = Tx {
         unsigned_tx: avax::BaseTx {
             network_id: 1000000,
-            outs: Some(vec![avax::TransferableOutput {
+            transferable_outputs: Some(vec![avax::TransferableOutput {
                 asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x88, 0xee, 0xc2, 0xe0, 0x99, 0xc6, 0xa5, 0x28, //
                     0xe6, 0x89, 0x61, 0x8e, 0x87, 0x21, 0xe0, 0x4a, //
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
                     0x68, 0x64, 0x4d, 0x14, 0xd5, 0x47, 0x80, 0x14, //
                 ])),
-                out: secp256k1fx::TransferOutput {
+                transfer_output: Some(secp256k1fx::TransferOutput {
                     amount: 0x2c6874d5c663740,
                     output_owners: secp256k1fx::OutputOwners {
                         locktime: 0x00,
@@ -383,10 +383,10 @@ fn test_create_subnet_tx_serialization_with_custom_network() {
                             0x81, 0x42, 0xc6, 0xc2, 0xa7, 0x83, 0xef, 0x87, 0x1d, 0xe9, //
                         ]))],
                     },
-                },
+                }),
                 ..avax::TransferableOutput::default()
             }]),
-            ins: Some(vec![avax::TransferableInput {
+            transferable_inputs: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
                     output_index: 0,
                     tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
@@ -403,10 +403,10 @@ fn test_create_subnet_tx_serialization_with_custom_network() {
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
                     0x68, 0x64, 0x4d, 0x14, 0xd5, 0x47, 0x80, 0x14, //
                 ])),
-                input: secp256k1fx::TransferInput {
+                transfer_input: Some(secp256k1fx::TransferInput {
                     amount: 0x2c6874d625c1840,
                     sig_indices: vec![0],
-                },
+                }),
                 ..avax::TransferableInput::default()
             }]),
             ..avax::BaseTx::default()

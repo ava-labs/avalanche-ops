@@ -14,7 +14,18 @@ use utils::{hash, prefix};
 pub struct TransferableOutput {
     pub asset_id: ids::Id,
     pub fx_id: ids::Id, // skip serialization due to serialize:"false"
-    pub out: secp256k1fx::TransferOutput,
+
+    /// The underlying type is one of the following:
+    ///
+    /// "*secp256k1fx.TransferOutput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+    ///
+    /// "*platformvm.StakeableLockOut" which embeds "*secp256k1fx.TransferOutput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
+    ///
+    /// MUST: only one of the following can be "Some".
+    pub transfer_output: Option<secp256k1fx::TransferOutput>,
+    pub stakeable_lock_out: Option<platformvm::StakeableLockOut>,
 }
 
 impl Default for TransferableOutput {
@@ -28,7 +39,8 @@ impl TransferableOutput {
         Self {
             asset_id: ids::Id::empty(),
             fx_id: ids::Id::empty(),
-            out: secp256k1fx::TransferOutput::default(),
+            transfer_output: None,
+            stakeable_lock_out: None,
         }
     }
 }
@@ -50,7 +62,18 @@ pub struct TransferableInput {
     pub utxo_id: UtxoId,
     pub asset_id: ids::Id,
     pub fx_id: ids::Id, // skip serialization due to serialize:"false"
-    pub input: secp256k1fx::TransferInput,
+
+    /// The underlying type is one of the following:
+    ///
+    /// "*secp256k1fx.TransferInput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
+    ///
+    /// "*platformvm.StakeableLockIn" which embeds "*secp256k1fx.TransferInput"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockIn
+    ///
+    /// MUST: only one of the following can be "Some".
+    pub transfer_input: Option<secp256k1fx::TransferInput>,
+    pub stakeable_lock_in: Option<platformvm::StakeableLockIn>,
 }
 
 impl Default for TransferableInput {
@@ -65,7 +88,8 @@ impl TransferableInput {
             utxo_id: UtxoId::default(),
             asset_id: ids::Id::empty(),
             fx_id: ids::Id::empty(),
-            input: secp256k1fx::TransferInput::default(),
+            transfer_input: None,
+            stakeable_lock_in: None,
         }
     }
 }
@@ -305,7 +329,7 @@ impl Utxo {
 
         let utxo = {
             if let Some(mut stakeable_lock_out) = stakeable_lock_out {
-                stakeable_lock_out.out = transfer_output;
+                stakeable_lock_out.transfer_output = transfer_output;
                 Utxo {
                     utxo_id: UtxoId {
                         tx_id,
@@ -413,8 +437,8 @@ pub struct BaseTx {
     pub metadata: Option<Metadata>, // skip serialization due to serialize:"false"
     pub network_id: u32,
     pub blockchain_id: ids::Id,
-    pub outs: Option<Vec<TransferableOutput>>,
-    pub ins: Option<Vec<TransferableInput>>,
+    pub transferable_outputs: Option<Vec<TransferableOutput>>,
+    pub transferable_inputs: Option<Vec<TransferableInput>>,
     pub memo: Option<Vec<u8>>,
 }
 
@@ -430,8 +454,8 @@ impl BaseTx {
             metadata: None,
             network_id: 0,
             blockchain_id: ids::Id::empty(),
-            outs: None,
-            ins: None,
+            transferable_outputs: None,
+            transferable_inputs: None,
             memo: None,
         }
     }
@@ -492,80 +516,209 @@ impl BaseTx {
         packer.pack_u32(self.network_id);
         packer.pack_bytes(&self.blockchain_id.d);
 
-        // "outs" field; pack the number of slice elements
-        if self.outs.is_some() {
-            let outs = self.outs.as_ref().unwrap();
-            packer.pack_u32(outs.len() as u32);
-            let transfer_output_type_id = secp256k1fx::TransferOutput::type_id()?;
-            for o in outs.iter() {
+        // "transferable_outputs" field; pack the number of slice elements
+        if self.transferable_outputs.is_some() {
+            let transferable_outputs = self.transferable_outputs.as_ref().unwrap();
+            packer.pack_u32(transferable_outputs.len() as u32);
+
+            for transferable_output in transferable_outputs.iter() {
                 // "TransferableOutput.Asset" is struct and serialize:"true"
                 // but embedded inline in the struct "TransferableOutput"
                 // so no need to encode type ID
                 // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
                 // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#Asset
-                packer.pack_bytes(&o.asset_id.d);
+                packer.pack_bytes(&transferable_output.asset_id.d);
 
                 // fx_id is serialize:"false" thus skipping serialization
 
-                // marshal type ID for "secp256k1fx.TransferOutput"
-                packer.pack_u32(transfer_output_type_id);
+                // decide the type
+                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
+                if transferable_output.transfer_output.is_none()
+                    && transferable_output.stakeable_lock_out.is_none()
+                {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "unexpected Nones in TransferableOutput transfer_output and stakeable_lock_out",
+                    ));
+                }
+                let type_id_transferable_out = {
+                    if transferable_output.transfer_output.is_some() {
+                        secp256k1fx::TransferOutput::type_id()?
+                    } else {
+                        platformvm::StakeableLockOut::type_id()?
+                    }
+                };
+                // marshal type ID for "secp256k1fx::TransferOutput" or "platformvm::StakeableLockOut"
+                packer.pack_u32(type_id_transferable_out);
 
-                // marshal "secp256k1fx.TransferOutput.Amt" field
-                packer.pack_u64(o.out.amount);
+                match type_id_transferable_out {
+                    7 => {
+                        // "secp256k1fx::TransferOutput"
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+                        let transfer_output = transferable_output.transfer_output.clone().unwrap();
 
-                // "secp256k1fx.TransferOutput.OutputOwners" is struct and serialize:"true"
-                // but embedded inline in the struct "TransferOutput"
-                // so no need to encode type ID
-                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
-                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#OutputOwners
-                packer.pack_u64(o.out.output_owners.locktime);
-                packer.pack_u32(o.out.output_owners.threshold);
-                packer.pack_u32(o.out.output_owners.addrs.len() as u32);
-                for addr in o.out.output_owners.addrs.iter() {
-                    packer.pack_bytes(&addr.d);
+                        // marshal "secp256k1fx.TransferOutput.Amt" field
+                        packer.pack_u64(transfer_output.amount);
+
+                        // "secp256k1fx.TransferOutput.OutputOwners" is struct and serialize:"true"
+                        // but embedded inline in the struct "TransferOutput"
+                        // so no need to encode type ID
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#OutputOwners
+                        packer.pack_u64(transfer_output.output_owners.locktime);
+                        packer.pack_u32(transfer_output.output_owners.threshold);
+                        packer.pack_u32(transfer_output.output_owners.addrs.len() as u32);
+                        for addr in transfer_output.output_owners.addrs.iter() {
+                            packer.pack_bytes(&addr.d);
+                        }
+                    }
+                    22 => {
+                        // "platformvm::StakeableLockOut"
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
+                        let stakeable_lock_out =
+                            transferable_output.stakeable_lock_out.clone().unwrap();
+
+                        // marshal "platformvm::StakeableLockOut.locktime" field
+                        packer.pack_u64(stakeable_lock_out.locktime);
+
+                        // "platformvm.StakeableLockOut.TransferOutput" is struct and serialize:"true"
+                        // but embedded inline in the struct "StakeableLockOut"
+                        // so no need to encode type ID
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#OutputOwners
+                        //
+                        // marshal "secp256k1fx.TransferOutput.Amt" field
+                        packer.pack_u64(stakeable_lock_out.transfer_output.amount);
+                        packer.pack_u64(stakeable_lock_out.transfer_output.output_owners.locktime);
+                        packer.pack_u32(stakeable_lock_out.transfer_output.output_owners.threshold);
+                        packer.pack_u32(
+                            stakeable_lock_out.transfer_output.output_owners.addrs.len() as u32,
+                        );
+                        for addr in stakeable_lock_out
+                            .transfer_output
+                            .output_owners
+                            .addrs
+                            .iter()
+                        {
+                            packer.pack_bytes(&addr.d);
+                        }
+                    }
+                    _ => {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!(
+                                "unexpected type ID {} for TransferableOutput",
+                                type_id_transferable_out
+                            ),
+                        ));
+                    }
                 }
             }
         } else {
             packer.pack_u32(0_u32);
         }
 
-        // "ins" field; pack the number of slice elements
-        if self.ins.is_some() {
-            let ins = self.ins.as_ref().unwrap();
-            packer.pack_u32(ins.len() as u32);
-            let transfer_input_type_id = secp256k1fx::TransferInput::type_id()?;
-            for i in ins.iter() {
+        // "transferable_inputs" field; pack the number of slice elements
+        if self.transferable_inputs.is_some() {
+            let transferable_inputs = self.transferable_inputs.as_ref().unwrap();
+            packer.pack_u32(transferable_inputs.len() as u32);
+
+            for transferable_input in transferable_inputs.iter() {
                 // "TransferableInput.UTXOID" is struct and serialize:"true"
                 // but embedded inline in the struct "TransferableInput"
                 // so no need to encode type ID
                 // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
                 // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXOID
-                packer.pack_bytes(&i.utxo_id.tx_id.d);
-                packer.pack_u32(i.utxo_id.output_index);
+                packer.pack_bytes(&transferable_input.utxo_id.tx_id.d);
+                packer.pack_u32(transferable_input.utxo_id.output_index);
 
                 // "TransferableInput.Asset" is struct and serialize:"true"
                 // but embedded inline in the struct "TransferableInput"
                 // so no need to encode type ID
                 // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
                 // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#Asset
-                packer.pack_bytes(&i.asset_id.d);
+                packer.pack_bytes(&transferable_input.asset_id.d);
 
                 // fx_id is serialize:"false" thus skipping serialization
 
-                // marshal type ID for "secp256k1fx.TransferInput"
-                packer.pack_u32(transfer_input_type_id);
+                // decide the type
+                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
+                if transferable_input.transfer_input.is_none()
+                    && transferable_input.stakeable_lock_in.is_none()
+                {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "unexpected Nones in TransferableInput transfer_input and stakeable_lock_in",
+                    ));
+                }
+                let type_id_transferable_in = {
+                    if transferable_input.transfer_input.is_some() {
+                        secp256k1fx::TransferInput::type_id()?
+                    } else {
+                        platformvm::StakeableLockIn::type_id()?
+                    }
+                };
+                // marshal type ID for "secp256k1fx::TransferInput" or "platformvm::StakeableLockIn"
+                packer.pack_u32(type_id_transferable_in);
 
-                // marshal "secp256k1fx.TransferInput.Amt" field
-                packer.pack_u64(i.input.amount);
+                match type_id_transferable_in {
+                    5 => {
+                        // "secp256k1fx::TransferInput"
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
+                        let transfer_input = transferable_input.transfer_input.clone().unwrap();
 
-                // "secp256k1fx.TransferInput.Input" is struct and serialize:"true"
-                // but embedded inline in the struct "TransferInput"
-                // so no need to encode type ID
-                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
-                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Input
-                packer.pack_u32(i.input.sig_indices.len() as u32);
-                for idx in i.input.sig_indices.iter() {
-                    packer.pack_u32(*idx);
+                        // marshal "secp256k1fx.TransferInput.Amt" field
+                        packer.pack_u64(transfer_input.amount);
+
+                        // "secp256k1fx.TransferInput.Input" is struct and serialize:"true"
+                        // but embedded inline in the struct "TransferInput"
+                        // so no need to encode type ID
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Input
+                        packer.pack_u32(transfer_input.sig_indices.len() as u32);
+                        for idx in transfer_input.sig_indices.iter() {
+                            packer.pack_u32(*idx);
+                        }
+                    }
+                    21 => {
+                        // "platformvm::StakeableLockIn"
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockIn
+                        let stakeable_lock_in =
+                            transferable_input.stakeable_lock_in.clone().unwrap();
+
+                        // marshal "platformvm::StakeableLockIn.locktime" field
+                        packer.pack_u64(stakeable_lock_in.locktime);
+
+                        // "platformvm.StakeableLockIn.TransferableIn" is struct and serialize:"true"
+                        // but embedded inline in the struct "StakeableLockIn"
+                        // so no need to encode type ID
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockIn
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Input
+                        //
+                        // marshal "secp256k1fx.TransferInput.Amt" field
+                        packer.pack_u64(stakeable_lock_in.transfer_input.amount);
+                        //
+                        // "secp256k1fx.TransferInput.Input" is struct and serialize:"true"
+                        // but embedded inline in the struct "TransferInput"
+                        // so no need to encode type ID
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
+                        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Input
+                        packer.pack_u32(stakeable_lock_in.transfer_input.sig_indices.len() as u32);
+                        for idx in stakeable_lock_in.transfer_input.sig_indices.iter() {
+                            packer.pack_u32(*idx);
+                        }
+                    }
+                    _ => {
+                        return Err(Error::new(
+                            ErrorKind::InvalidInput,
+                            format!(
+                                "unexpected type ID {} for TransferableInpu",
+                                type_id_transferable_in
+                            ),
+                        ));
+                    }
                 }
             }
         } else {
@@ -605,19 +758,19 @@ fn test_base_tx_serialization() {
     let unsigned_tx = BaseTx {
         network_id: 10,
         blockchain_id: ids::Id::from_slice(&<Vec<u8>>::from([5, 4, 3, 2, 1])),
-        outs: Some(vec![TransferableOutput {
+        transferable_outputs: Some(vec![TransferableOutput {
             asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
-            out: secp256k1fx::TransferOutput {
+            transfer_output: Some(secp256k1fx::TransferOutput {
                 amount: 12345,
                 output_owners: secp256k1fx::OutputOwners {
                     locktime: 0,
                     threshold: 1,
                     addrs: vec![test_key_short_addr],
                 },
-            },
+            }),
             ..TransferableOutput::default()
         }]),
-        ins: Some(vec![TransferableInput {
+        transferable_inputs: Some(vec![TransferableInput {
             utxo_id: UtxoId {
                 tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, //
@@ -629,10 +782,10 @@ fn test_base_tx_serialization() {
                 ..UtxoId::default()
             },
             asset_id: ids::Id::from_slice(&<Vec<u8>>::from([1, 2, 3])),
-            input: secp256k1fx::TransferInput {
+            transfer_input: Some(secp256k1fx::TransferInput {
                 amount: 54321,
                 sig_indices: vec![2],
-            },
+            }),
             ..TransferableInput::default()
         }]),
         memo: Some(vec![0x00, 0x01, 0x02, 0x03]),

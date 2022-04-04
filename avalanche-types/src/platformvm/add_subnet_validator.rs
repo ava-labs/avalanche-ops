@@ -37,7 +37,7 @@ pub struct Tx {
     /// Tx.ID() is non-empty.
     pub unsigned_tx: avax::BaseTx,
     pub validator: Validator,
-    pub subnet_auth: secp256k1fx::Input,
+    pub subnet_auth_input: secp256k1fx::Input,
     pub creds: Vec<secp256k1fx::Credential>,
 }
 
@@ -52,7 +52,7 @@ impl Tx {
         Self {
             unsigned_tx: avax::BaseTx::default(),
             validator: Validator::default(),
-            subnet_auth: secp256k1fx::Input::default(),
+            subnet_auth_input: secp256k1fx::Input::default(),
             creds: Vec::new(),
         }
     }
@@ -121,8 +121,8 @@ impl Tx {
         // pack the third field "subnet_auth" in the struct
         let subnet_auth_type_id = secp256k1fx::Input::type_id()?;
         packer.pack_u32(subnet_auth_type_id);
-        packer.pack_u32(self.subnet_auth.sig_indices.len() as u32);
-        for sig_idx in self.subnet_auth.sig_indices.iter() {
+        packer.pack_u32(self.subnet_auth_input.sig_indices.len() as u32);
+        for sig_idx in self.subnet_auth_input.sig_indices.iter() {
             packer.pack_u32(*sig_idx);
         }
 
@@ -199,14 +199,14 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
     let mut tx = Tx {
         unsigned_tx: avax::BaseTx {
             network_id: 1000000,
-            outs: Some(vec![avax::TransferableOutput {
+            transferable_outputs: Some(vec![avax::TransferableOutput {
                 asset_id: ids::Id::from_slice(&<Vec<u8>>::from([
                     0x88, 0xee, 0xc2, 0xe0, 0x99, 0xc6, 0xa5, 0x28, //
                     0xe6, 0x89, 0x61, 0x8e, 0x87, 0x21, 0xe0, 0x4a, //
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
                     0x68, 0x64, 0x4d, 0x14, 0xd5, 0x47, 0x80, 0x14, //
                 ])),
-                out: secp256k1fx::TransferOutput {
+                transfer_output: Some(secp256k1fx::TransferOutput {
                     amount: 0x2c6874d5c56f500,
                     output_owners: secp256k1fx::OutputOwners {
                         locktime: 0x00,
@@ -216,10 +216,10 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
                             0x81, 0x42, 0xc6, 0xc2, 0xa7, 0x83, 0xef, 0x87, 0x1d, 0xe9, //
                         ]))],
                     },
-                },
+                }),
                 ..avax::TransferableOutput::default()
             }]),
-            ins: Some(vec![avax::TransferableInput {
+            transferable_inputs: Some(vec![avax::TransferableInput {
                 utxo_id: avax::UtxoId {
                     output_index: 0,
                     tx_id: ids::Id::from_slice(&<Vec<u8>>::from([
@@ -236,10 +236,10 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
                     0xe8, 0x5e, 0xa5, 0x74, 0xc7, 0xa1, 0x5a, 0x79, //
                     0x68, 0x64, 0x4d, 0x14, 0xd5, 0x47, 0x80, 0x14, //
                 ])),
-                input: secp256k1fx::TransferInput {
+                transfer_input: Some(secp256k1fx::TransferInput {
                     amount: 0x2c6874d5c663740,
                     sig_indices: vec![0],
-                },
+                }),
                 ..avax::TransferableInput::default()
             }]),
             ..avax::BaseTx::default()
@@ -261,7 +261,7 @@ fn test_add_subnet_validator_tx_serialization_with_one_signer() {
                 0x59, 0xb9,
             ])),
         },
-        subnet_auth: secp256k1fx::Input {
+        subnet_auth_input: secp256k1fx::Input {
             sig_indices: vec![0_u32],
         },
         ..Tx::default()
