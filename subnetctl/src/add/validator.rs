@@ -15,10 +15,17 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use avalanche_api::{info as api_info, p, x};
-use avalanche_types::{avax, constants, ids, platformvm, soft_key};
+use avalanche_types::{avax, constants, ids, platformvm, secp256k1fx, soft_key, units};
 use utils::rfc3339;
 
 lazy_static! {
+    pub static ref DEFAULT_STAKE_AMOUNT: &'static str = {
+        let default_stake_amount = 2*units::KILO_AVAX;
+        let default_stake_amount = format!("{}",default_stake_amount);
+
+        // leak... find a better way!
+        Box::leak(default_stake_amount.into_boxed_str())
+    };
     pub static ref DEFAULT_VALIATE_END: &'static str = {
         let now = SystemTime::now();
         let now_unix = now
@@ -29,8 +36,7 @@ lazy_static! {
         let default_validate_end =
             rfc3339::to_str(default_validate_end).expect("failed to convert rfc3339");
 
-        // leak...
-        // TODO: find a better way
+        // leak... find a better way!
         Box::leak(default_validate_end.into_boxed_str())
     };
 }
@@ -48,7 +54,7 @@ $ subnetctl add validator \
 --http-rpc-endpoint=http://localhost:52250 \
 --private-key-path=.insecure.ewoq.key \
 --node-id=\"NodeID-4B4rc5vdD1758JSBYL1xyvE5NHGzz6xzH\" \
---stake-amount=2000000000000 \
+--stake-amount-in-nano-avax=2000000000000 \
 --validate-reward-fee-percent=2
 
 See https://github.com/ava-labs/subnet-cli.
@@ -96,14 +102,14 @@ See https://github.com/ava-labs/subnet-cli.
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("STAKE_AMOUNT")
-                .long("stake-amount")
+            Arg::new("STAKE_AMOUNT_IN_NANO_AVAX")
+                .long("stake-amount-in-nano-avax")
                 .short('s')
-                .help("stake amount denominated in nano AVAX (minimum amount that a validator must stake is 2,000 AVAX)")
+                .help("stake amount denominated in nano AVAX -- minimum amount that a mainnet validator must stake is 2,000 AVAX or 2000000000000 in nano-AVAX, fuji only requires 1 AVAX or 1000000000 nano-AVAX")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .default_value("2000000000000")
+                .default_value(*DEFAULT_STAKE_AMOUNT)
         )
         .arg(
             Arg::new("VALIDATE_END")
@@ -132,7 +138,7 @@ pub struct CmdOption {
     pub http_rpc_ep: String,
     pub private_key_path: Option<String>,
     pub node_id: ids::NodeId,
-    pub stake_amount: u64,
+    pub stake_amount_in_nano_avax: u64,
     pub validate_end: DateTime<Utc>,
     pub validate_reward_fee_percent: u32,
 }
@@ -163,12 +169,16 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
             panic!("unexpected None opt.private_key_path -- hardware wallet not supported yet");
         }
     };
+
+    // TODO: support multiple keys for multi-sig
+    // TODO: support ledger
     assert_eq!(keys.len(), 1);
-    let key = &keys[0];
-    let reward_short_address = key.short_address.clone();
+
+    let loaded_soft_priv_key = &keys[0];
+    let reward_short_address = loaded_soft_priv_key.short_address.clone();
     info!(
         "loaded key at ETH address {} (reward short address {})",
-        key.eth_address, reward_short_address
+        loaded_soft_priv_key.eth_address, reward_short_address
     );
 
     /////
@@ -259,6 +269,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     info!("AVAX asset description: {:?}", result);
 
     /////
+    // ref. https://github.com/ava-labs/subnet-cli/blob/6bbe9f4aff353b812822af99c08133af35dbc6bd/client/p.go "AddValidator"
     println!();
     println!();
     println!();
@@ -290,7 +301,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     println!();
     println!();
     println!();
-    let p_chain_addr = key.address("P", network_id)?;
+    let p_chain_addr = loaded_soft_priv_key.address("P", network_id)?;
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
@@ -300,16 +311,13 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     let resp = rt
         .block_on(p::get_balance(&opt.http_rpc_ep, &p_chain_addr))
         .expect("failed to get balance");
-    // On the X-Chain, one AVAX is 10^9  units.
-    // On the P-Chain, one AVAX is 10^9  units.
-    // On the C-Chain, one AVAX is 10^18 units.
     // ref. https://docs.avax.network/learn/platform-overview/transaction-fees/#fee-schedule
     let add_validator_fee = 0_u64;
-    let stake_amount = opt.stake_amount;
-    let total_cost = add_validator_fee + stake_amount;
-    let total_cost_avax = (total_cost as f64) / 1000000000_f64;
+    let stake_amount_in_nano_avax = opt.stake_amount_in_nano_avax;
+    let total_cost = add_validator_fee + stake_amount_in_nano_avax;
+    let total_cost_avax = (total_cost as f64) / units::AVAX as f64;
     let p_chain_balance = resp.result.unwrap().balance.unwrap();
-    let p_chain_balance_avax = (p_chain_balance as f64) / 1000000000_f64;
+    let p_chain_balance_avax = (p_chain_balance as f64) / units::AVAX as f64;
     info!(
         "P-chain CURRENT BALANCE [{}]: {} nano-AVAX ({} AVAX)",
         p_chain_addr, p_chain_balance, p_chain_balance_avax
@@ -346,16 +354,21 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     info!("VALIDATE END {:?}", opt.validate_end);
 
     /////
-    // ref. "subnet-cli/client/p.stake"
-    // ref. "platformvm.VM.stake".
     // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/p/builder.go
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/add_validator_tx.go#L263
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L39 "stake"
+    // ref. https://github.com/ava-labs/subnet-cli/blob/6bbe9f4aff353b812822af99c08133af35dbc6bd/client/p.go#L355 "AddValidator"
+    // ref. https://github.com/ava-labs/subnet-cli/blob/6bbe9f4aff353b812822af99c08133af35dbc6bd/client/p.go#L614 "stake"
     println!();
     println!();
     println!();
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print("checking inputs and outputs\n".to_string()),
+        Print(format!(
+            "checking inputs and outputs for the address '{}'\n",
+            p_chain_addr
+        )),
         ResetColor
     )?;
     let resp = rt
@@ -368,39 +381,98 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         utxos.push(utxo);
     }
 
-    let staked_amount: u64 = 0_u64;
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L60
+    let soft_key_chain = soft_key::Keychain::new(vec![loaded_soft_priv_key.clone()]);
+
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L65
+    let mut transferable_inputs: Vec<avax::TransferableInput> = Vec::new();
+    let mut staked_transferable_outputs: Vec<avax::TransferableOutput> = Vec::new();
+    let mut returned_transferable_outputs: Vec<avax::TransferableOutput> = Vec::new();
+    let mut signer: Vec<Vec<soft_key::Key>> = Vec::new();
+
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L71
+    // ref. https://github.com/ava-labs/subnet-cli/blob/6bbe9f4aff353b812822af99c08133af35dbc6bd/client/p.go#L650
+    let staked_amount_in_nano_avax: u64 = 0_u64;
     for utxo in utxos.iter() {
-        if staked_amount >= opt.stake_amount {
+        // no need to consume more locked AVAX
+        // because it already has consumed more than the target stake amount
+        if staked_amount_in_nano_avax >= opt.stake_amount_in_nano_avax {
             break;
         }
+        // ignore other assets
         if utxo.asset_id != avax_asset_id {
             continue;
         }
 
         // check "*platformvm.StakeableLockOut"
         if utxo.stakeable_lock_out.is_none() {
-            // output is not locked, just handle this in the next iteration
-            continue;
-        }
-        let stakeable_lock_out = utxo.stakeable_lock_out.clone().unwrap();
-        if stakeable_lock_out.locktime <= now_unix {
-            // output is no longer locked, just handle in the next iteration
+            // output is not locked, thus handle this in the next iteration
             continue;
         }
 
-        let transfer_output = stakeable_lock_out.out;
-        let input = key.spend(&transfer_output, now_unix)?;
-        let _transfer_input = avax::TransferableInput {
+        // check locktime
+        let stakeable_lock_out = utxo.stakeable_lock_out.clone().unwrap();
+        if stakeable_lock_out.locktime <= now_unix {
+            // output is no longer locked, thus handle in the next iteration
+            continue;
+        }
+
+        // check "*secp256k1fx.TransferOutpu"
+        let transfer_output = stakeable_lock_out.clone().transfer_output;
+        let (transfer_input, input_signers) = soft_key_chain.spend(&transfer_output, now_unix)?;
+
+        // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L117
+        let remaining_value = transfer_input.amount;
+        let amount_to_stake = (opt.stake_amount_in_nano_avax - stake_amount_in_nano_avax) // amount we still need to stake
+            .min(
+                remaining_value, // amount available to stake
+            );
+
+        // add input to the consumed inputs
+        transferable_inputs.push(avax::TransferableInput {
             utxo_id: utxo.utxo_id.clone(),
             asset_id: utxo.asset_id.clone(),
-            input,
+            stakeable_lock_in: Some(platformvm::StakeableLockIn {
+                locktime: stakeable_lock_out.locktime,
+                transfer_input,
+            }),
             ..avax::TransferableInput::default()
-        };
-        // TODO
+        });
+
+        // add output to the staked outputs
+        staked_transferable_outputs.push(avax::TransferableOutput {
+            asset_id: utxo.asset_id.clone(),
+            stakeable_lock_out: Some(platformvm::StakeableLockOut {
+                locktime: stakeable_lock_out.clone().locktime,
+                transfer_output: secp256k1fx::TransferOutput {
+                    amount: amount_to_stake,
+                    output_owners: stakeable_lock_out.clone().transfer_output.output_owners,
+                },
+            }),
+            ..avax::TransferableOutput::default()
+        });
+
+        if remaining_value > 0 {
+            // this input provided more value than was needed to be locked
+            // some must be returned
+            returned_transferable_outputs.push(avax::TransferableOutput {
+                asset_id: utxo.asset_id.clone(),
+                stakeable_lock_out: Some(platformvm::StakeableLockOut {
+                    locktime: stakeable_lock_out.clone().locktime,
+                    transfer_output: secp256k1fx::TransferOutput {
+                        amount: remaining_value,
+                        output_owners: stakeable_lock_out.clone().transfer_output.output_owners,
+                    },
+                }),
+                ..avax::TransferableOutput::default()
+            });
+        }
+
+        signer.push(input_signers);
     }
-    // TODO: get *avax.TransferableInput for inputs
-    // TODO: get *avax.TransferableOutput for returned outs
-    // TODO: get *avax.TransferableOutput for staked outs
+
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L166
+    // TODO
 
     /////
     println!();

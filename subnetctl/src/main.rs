@@ -54,8 +54,10 @@ fn main() {
                     }
                 };
 
-                let stake_amount = sub_sub_matches.value_of("STAKE_AMOUNT").unwrap_or("");
-                let stake_amount = stake_amount.parse::<u64>().unwrap();
+                let stake_amount_in_nano_avax = sub_sub_matches
+                    .value_of("STAKE_AMOUNT_IN_NANO_AVAX")
+                    .unwrap_or("");
+                let stake_amount_in_nano_avax = stake_amount_in_nano_avax.parse::<u64>().unwrap();
 
                 let validate_reward_fee_percent = sub_sub_matches
                     .value_of("VALIDATE_REWARD_FEE_PERCENT")
@@ -77,7 +79,7 @@ fn main() {
                         .to_string(),
                     private_key_path,
                     node_id,
-                    stake_amount,
+                    stake_amount_in_nano_avax,
                     validate_end,
                     validate_reward_fee_percent,
                 };
