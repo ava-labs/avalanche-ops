@@ -690,7 +690,7 @@ pub struct ApiPrimaryValidator {
     #[serde(rename = "stakeAmount", skip_serializing_if = "Option::is_none")]
     pub stake_amount: Option<u64>,
     #[serde(rename = "nodeID", skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
+    pub node_id: Option<ids::NodeId>,
     #[serde(rename = "rewardOwner", skip_serializing_if = "Option::is_none")]
     pub reward_owner: Option<ApiOwner>,
     #[serde(rename = "potentialReward", skip_serializing_if = "Option::is_none")]
@@ -748,7 +748,7 @@ pub struct ApiPrimaryDelegator {
     #[serde(rename = "stakeAmount", skip_serializing_if = "Option::is_none")]
     pub stake_amount: Option<u64>,
     #[serde(rename = "nodeID", skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
+    pub node_id: Option<ids::NodeId>,
     #[serde(rename = "rewardOwner", skip_serializing_if = "Option::is_none")]
     pub reward_owner: Option<ApiOwner>,
     #[serde(rename = "potentialReward", skip_serializing_if = "Option::is_none")]
@@ -879,6 +879,8 @@ impl RawApiPrimaryValidator {
             }
         };
 
+        let node_id = ids::NodeId::from_str(&self.node_id.clone().unwrap()).unwrap();
+
         let potential_reward = self
             .potential_reward
             .clone()
@@ -928,7 +930,7 @@ impl RawApiPrimaryValidator {
             end_time: Some(end_time),
             weight: Some(weight),
             stake_amount: Some(stake_amount),
-            node_id: self.node_id.clone(),
+            node_id: Some(node_id),
             reward_owner,
             potential_reward: Some(potential_reward),
             delegation_fee: Some(delegation_fee),
@@ -1020,6 +1022,8 @@ impl RawApiPrimaryDelegator {
             }
         };
 
+        let node_id = ids::NodeId::from_str(&self.node_id.clone().unwrap()).unwrap();
+
         let potential_reward = self
             .potential_reward
             .clone()
@@ -1055,7 +1059,7 @@ impl RawApiPrimaryDelegator {
             end_time: Some(end_time),
             weight: Some(weight),
             stake_amount: Some(stake_amount),
-            node_id: self.node_id.clone(),
+            node_id: Some(node_id),
             reward_owner,
             potential_reward: Some(potential_reward),
             delegation_fee: Some(delegation_fee),
@@ -1323,7 +1327,9 @@ fn test_convert_get_current_validators() {
                     end_time: Some(1679843235),
                     weight: Some(0),
                     stake_amount: Some(100000000000000000),
-                    node_id: Some("NodeID-5wVq6KkSK3p4wQFmiVHCDq2zdg8unchaE".to_string()),
+                    node_id: Some(
+                        ids::NodeId::from_str("NodeID-5wVq6KkSK3p4wQFmiVHCDq2zdg8unchaE").unwrap(),
+                    ),
                     reward_owner: Some(ApiOwner {
                         locktime: 0,
                         threshold: 1,
@@ -1346,7 +1352,9 @@ fn test_convert_get_current_validators() {
                     end_time: Some(1679848635),
                     weight: Some(0),
                     stake_amount: Some(100000000000000000),
-                    node_id: Some("NodeID-JLR7d6z9cwCbkoPcPsnjkm6gq4xz7c4oT".to_string()),
+                    node_id: Some(
+                        ids::NodeId::from_str("NodeID-JLR7d6z9cwCbkoPcPsnjkm6gq4xz7c4oT").unwrap(),
+                    ),
                     reward_owner: Some(ApiOwner {
                         locktime: 0,
                         threshold: 1,

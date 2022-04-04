@@ -6,6 +6,8 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 
+use avalanche_types::ids;
+
 pub const NAME: &str = "blockchain";
 
 pub fn command() -> Command<'static> {
@@ -73,9 +75,9 @@ pub fn command() -> Command<'static> {
 pub struct Option {
     pub log_level: String,
     pub http_rpc_ep: String,
-    pub subnet_id: String,
+    pub subnet_id: ids::Id,
     pub chain_name: String,
-    pub vm_id: String,
+    pub vm_id: ids::Id,
     pub vm_genesis_path: String,
 }
 

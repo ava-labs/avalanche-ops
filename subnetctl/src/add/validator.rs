@@ -15,7 +15,7 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use avalanche_api::{info as api_info, p, x};
-use avalanche_types::{avax, constants, platformvm, soft_key};
+use avalanche_types::{avax, constants, ids, platformvm, soft_key};
 use utils::rfc3339;
 
 lazy_static! {
@@ -28,12 +28,11 @@ lazy_static! {
         let default_validate_end = now_unix + 365 * 24 * 60 * 60;
         let default_validate_end =
             rfc3339::to_str(default_validate_end).expect("failed to convert rfc3339");
-        leak_string_to_static_str(default_validate_end)
-    };
-}
 
-fn leak_string_to_static_str(s: String) -> &'static str {
-    Box::leak(s.into_boxed_str())
+        // leak...
+        // TODO: find a better way
+        Box::leak(default_validate_end.into_boxed_str())
+    };
 }
 
 pub const NAME: &str = "validator";
@@ -91,7 +90,7 @@ See https://github.com/ava-labs/subnet-cli.
             Arg::new("NODE_ID")
                 .long("node-id")
                 .short('n')
-                .help("node ID (must be formatted in ids.Id")
+                .help("node ID (must be formatted in ids::Id")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -132,7 +131,7 @@ pub struct CmdOption {
     pub log_level: String,
     pub http_rpc_ep: String,
     pub private_key_path: Option<String>,
-    pub node_id: String,
+    pub node_id: ids::NodeId,
     pub stake_amount: u64,
     pub validate_end: DateTime<Utc>,
     pub validate_reward_fee_percent: u32,
@@ -347,7 +346,8 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     info!("VALIDATE END {:?}", opt.validate_end);
 
     /////
-    // ref. "subnet-cli/client/p.stake,AddValidator"
+    // ref. "subnet-cli/client/p.stake"
+    // ref. "platformvm.VM.stake".
     println!();
     println!();
     println!();

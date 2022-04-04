@@ -6,6 +6,8 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 
+use avalanche_types::ids;
+
 pub const NAME: &str = "subnet-validator";
 
 pub fn command() -> Command<'static> {
@@ -36,16 +38,16 @@ pub fn command() -> Command<'static> {
             Arg::new("SUBNET_ID")
                 .long("subnet-id")
                 .short('s')
-                .help("subnet ID (must be formatted in ids.Id)")
+                .help("subnet ID (must be formatted in ids::Id)")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("NODE_IDS")
-                .long("node-ids")
+            Arg::new("NODE_ID")
+                .long("node-id")
                 .short('n')
-                .help("a list of node IDs (comma-separated, must be formatted in ids.Id")
+                .help("a node ID (must be formatted in ids::NodeId")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
@@ -54,7 +56,7 @@ pub fn command() -> Command<'static> {
             Arg::new("VALIDATE_WEIGHT")
                 .long("validate-weight")
                 .short('w')
-                .help("a list of node IDs (comma-separated, must be formatted in ids.Id")
+                .help("validator weight")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
@@ -65,8 +67,8 @@ pub fn command() -> Command<'static> {
 pub struct Option {
     pub log_level: String,
     pub http_rpc_ep: String,
-    pub subnet_id: String,
-    pub node_ids: Vec<String>,
+    pub subnet_id: ids::Id,
+    pub node_id: ids::NodeId,
     pub validate_weight: u64,
 }
 

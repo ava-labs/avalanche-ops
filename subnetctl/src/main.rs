@@ -1,5 +1,8 @@
+use std::str::FromStr;
+
 use clap::Command;
 
+use avalanche_types::ids;
 use utils::rfc3339;
 
 mod add;
@@ -36,19 +39,11 @@ fn main() {
 
         Some((add::NAME, sub_matches)) => match sub_matches.subcommand() {
             Some((add::validator::NAME, sub_sub_matches)) => {
-                // let node_ids = sub_sub_matches
-                //     .value_of("NODE_IDS")
-                //     .unwrap_or("")
-                //     .to_string();
-                // let splits: Vec<&str> = node_ids.split(',').collect();
-                // let mut node_ids: Vec<String> = vec![];
-                // for s in splits {
-                //     node_ids.push(String::from(s));
-                // }
                 let node_id = sub_sub_matches
                     .value_of("NODE_ID")
                     .unwrap_or("")
                     .to_string();
+                let node_id = ids::NodeId::from_str(&node_id).unwrap();
 
                 let private_key_path = {
                     let v = sub_sub_matches.value_of("PRIVATE_KEY_PATH").unwrap_or("");
@@ -89,15 +84,17 @@ fn main() {
                 add::validator::execute(opt).unwrap();
             }
             Some((add::subnet_validator::NAME, sub_sub_matches)) => {
-                let node_ids = sub_sub_matches
-                    .value_of("NODE_IDS")
+                let subnet_id = sub_sub_matches
+                    .value_of("SUBNET_ID")
                     .unwrap_or("")
                     .to_string();
-                let splits: Vec<&str> = node_ids.split(',').collect();
-                let mut node_ids: Vec<String> = vec![];
-                for s in splits {
-                    node_ids.push(String::from(s));
-                }
+                let subnet_id = ids::Id::from_str(&subnet_id).unwrap();
+
+                let node_id = sub_sub_matches
+                    .value_of("NODE_ID")
+                    .unwrap_or("")
+                    .to_string();
+                let node_id = ids::NodeId::from_str(&node_id).unwrap();
 
                 let validate_weight = sub_sub_matches
                     .value_of("VALIDATE_WEIGHT")
@@ -114,11 +111,8 @@ fn main() {
                         .value_of("HTTP_RPC_ENDPOINT")
                         .unwrap_or("")
                         .to_string(),
-                    subnet_id: sub_sub_matches
-                        .value_of("SUBNET_ID")
-                        .unwrap_or("")
-                        .to_string(),
-                    node_ids,
+                    subnet_id,
+                    node_id,
                     validate_weight,
                 };
                 add::subnet_validator::execute(opt).unwrap();
@@ -141,6 +135,15 @@ fn main() {
                 create::subnet::execute(opt).unwrap();
             }
             Some((create::blockchain::NAME, sub_sub_matches)) => {
+                let subnet_id = sub_sub_matches
+                    .value_of("SUBNET_ID")
+                    .unwrap_or("")
+                    .to_string();
+                let subnet_id = ids::Id::from_str(&subnet_id).unwrap();
+
+                let vm_id = sub_sub_matches.value_of("VM_ID").unwrap_or("").to_string();
+                let vm_id = ids::Id::from_str(&vm_id).unwrap();
+
                 let opt = create::blockchain::Option {
                     log_level: sub_sub_matches
                         .value_of("LOG_LEVEL")
@@ -150,15 +153,12 @@ fn main() {
                         .value_of("HTTP_RPC_ENDPOINT")
                         .unwrap_or("")
                         .to_string(),
-                    subnet_id: sub_sub_matches
-                        .value_of("SUBNET_ID")
-                        .unwrap_or("")
-                        .to_string(),
+                    subnet_id,
                     chain_name: sub_sub_matches
                         .value_of("CHAIN_NAME")
                         .unwrap_or("")
                         .to_string(),
-                    vm_id: sub_sub_matches.value_of("VM_ID").unwrap_or("").to_string(),
+                    vm_id,
                     vm_genesis_path: sub_sub_matches
                         .value_of("VM_GENESIS_PATH")
                         .unwrap_or("")
