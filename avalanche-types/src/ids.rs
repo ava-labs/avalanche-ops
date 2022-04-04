@@ -1,6 +1,7 @@
 use std::{
     fmt,
     fs::File,
+    hash::Hash,
     io::{self, BufReader, Error, ErrorKind},
     path::Path,
     str::FromStr,
@@ -13,7 +14,7 @@ use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{formatting, packer, soft_key};
-use utils::{cmp, hash};
+use utils::hash;
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
@@ -28,7 +29,7 @@ lazy_static! {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ID
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct Id {
     pub d: Vec<u8>,
 }
@@ -38,13 +39,6 @@ impl Default for Id {
         Self::default()
     }
 }
-
-impl PartialEq for Id {
-    fn eq(&self, other: &Self) -> bool {
-        cmp::eq_u8_vectors(&self.d, &other.d)
-    }
-}
-impl Eq for Id {}
 
 impl Id {
     pub fn default() -> Self {
@@ -137,6 +131,19 @@ where
     Ok(v.map(|Wrapper(a)| a))
 }
 
+pub fn must_deserialize_id<'de, D>(deserializer: D) -> Result<Id, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "fmt_id")] Id);
+    let v = Option::deserialize(deserializer)?;
+    match v.map(|Wrapper(a)| a) {
+        Some(unwrapped) => Ok(unwrapped),
+        None => Err(serde::de::Error::custom("empty Id from deserialization")),
+    }
+}
+
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_id --exact --show-output
 /// ref. "avalanchego/ids.TestIDMarshalJSON"
 #[test]
@@ -166,7 +173,7 @@ fn test_id() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct ShortId {
     pub d: Vec<u8>,
 }
@@ -176,13 +183,6 @@ impl Default for ShortId {
         Self::default()
     }
 }
-
-impl PartialEq for ShortId {
-    fn eq(&self, other: &Self) -> bool {
-        cmp::eq_u8_vectors(&self.d, &other.d)
-    }
-}
-impl Eq for ShortId {}
 
 impl ShortId {
     pub fn default() -> Self {
@@ -263,6 +263,21 @@ where
     Ok(v.map(|Wrapper(a)| a))
 }
 
+pub fn must_deserialize_short_id<'de, D>(deserializer: D) -> Result<ShortId, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "fmt_short_id")] ShortId);
+    let v = Option::deserialize(deserializer)?;
+    match v.map(|Wrapper(a)| a) {
+        Some(unwrapped) => Ok(unwrapped),
+        None => Err(serde::de::Error::custom(
+            "empty ShortId from deserialization",
+        )),
+    }
+}
+
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_short_id --exact --show-output
 #[test]
 fn test_short_id() {
@@ -276,7 +291,7 @@ fn test_short_id() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct NodeId {
     pub d: Vec<u8>,
 }
@@ -286,13 +301,6 @@ impl Default for NodeId {
         Self::default()
     }
 }
-
-impl PartialEq for NodeId {
-    fn eq(&self, other: &Self) -> bool {
-        cmp::eq_u8_vectors(&self.d, &other.d)
-    }
-}
-impl Eq for NodeId {}
 
 impl NodeId {
     pub fn default() -> Self {
@@ -362,10 +370,10 @@ impl NodeId {
                 format!("cert path {} found no cert", cert_file_path),
             ));
         }
-        let pub_key_der = cert.unwrap();
 
         // "ids.ToShortID(hashing.PubkeyBytesToAddress(StakingTLSCert.Leaf.Raw))"
         // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/node#Node.Initialize
+        let pub_key_der = cert.unwrap();
         Self::from_cert_raw(&pub_key_der)
     }
 
@@ -437,6 +445,21 @@ where
     struct Wrapper(#[serde(deserialize_with = "fmt_node_id")] NodeId);
     let v = Option::deserialize(deserializer)?;
     Ok(v.map(|Wrapper(a)| a))
+}
+
+pub fn must_deserialize_node_id<'de, D>(deserializer: D) -> Result<NodeId, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "fmt_node_id")] NodeId);
+    let v = Option::deserialize(deserializer)?;
+    match v.map(|Wrapper(a)| a) {
+        Some(unwrapped) => Ok(unwrapped),
+        None => Err(serde::de::Error::custom(
+            "empty NodeId from deserialization",
+        )),
+    }
 }
 
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_from_cert_file --exact --show-output

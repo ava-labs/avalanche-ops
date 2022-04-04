@@ -42,8 +42,8 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
     // TODO: support sha384/512 signatures in avalanchego node
     cert_params.alg = &rcgen::PKCS_ECDSA_P256_SHA256;
 
-    cert_params.not_before = date_time_ymd(2022, 01, 01);
-    cert_params.not_after = date_time_ymd(5000, 01, 01);
+    cert_params.not_before = date_time_ymd(2022, 1, 1);
+    cert_params.not_after = date_time_ymd(5000, 1, 1);
     cert_params.distinguished_name = DistinguishedName::new();
     cert_params
         .distinguished_name
@@ -71,11 +71,11 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
     let key_contents = cert.serialize_private_key_pem();
 
     let mut cert_file = File::create(cert_path)?;
-    cert_file.write_all(&cert_contents.as_bytes())?;
+    cert_file.write_all(cert_contents.as_bytes())?;
     info!("saved cert {}", cert_path);
 
     let mut key_file = File::create(key_path)?;
-    key_file.write_all(&key_contents.as_bytes())?;
+    key_file.write_all(key_contents.as_bytes())?;
     info!("saved key {}", key_path);
 
     Ok(())

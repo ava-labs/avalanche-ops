@@ -348,6 +348,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     /////
     // ref. "subnet-cli/client/p.stake"
     // ref. "platformvm.VM.stake".
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/p/builder.go
     println!();
     println!();
     println!();

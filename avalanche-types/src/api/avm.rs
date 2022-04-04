@@ -154,8 +154,7 @@ pub struct GetAssetDescriptionResponse {
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain/#avmgetassetdescription
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetAssetDescriptionResult {
-    /// TODO: implement serializer/deserializer for "ids::Id"
-    /// #[serde(default, deserialize_with = "ids::deserialize_id")]
+    #[serde(deserialize_with = "ids::must_deserialize_id")]
     pub asset_id: ids::Id,
     pub name: String,
     pub symbol: String,
