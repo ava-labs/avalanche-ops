@@ -125,6 +125,8 @@ pub async fn get_current_validators(
     Ok(converted)
 }
 
+// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/p/builder.go
+
 // TODO: create subnet tx
 // TODO: check p-chain tx
 // TODO: add subnet validator tx

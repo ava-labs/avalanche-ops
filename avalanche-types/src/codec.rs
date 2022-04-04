@@ -6,9 +6,9 @@ pub const VERSION: u16 = 0;
 
 lazy_static! {
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/codec#Registry
-    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/wallet/chain/x/codec.go#L31
-    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/vms/avm/codec_registry.go
-    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/codec/reflectcodec/type_codec.go#L128-L131
+    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/x/codec.go#L31
+    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/avm/codec_registry.go
+    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/codec/reflectcodec/type_codec.go#L128-L131
     ///     (used for encoding Go interface type into a "struct")
     pub static ref X_TYPES: HashMap< &'static str, usize> = {
         let mut m = HashMap::new();
@@ -35,8 +35,8 @@ lazy_static! {
         m
     };
 
-    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/vms/platformvm/codec.go
-    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/codec/reflectcodec/type_codec.go#L128-L131
+    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/codec.go
+    /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/codec/reflectcodec/type_codec.go#L128-L131
     ///     (used for encoding Go interface type into a "struct")
     pub static ref P_TYPES: HashMap< &'static str, usize> = {
         let mut m = HashMap::new();

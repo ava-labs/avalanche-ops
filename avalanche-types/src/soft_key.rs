@@ -232,15 +232,15 @@ impl Key {
     }
 
     pub fn info(&self, network_id: u32) -> io::Result<PrivateKeyInfo> {
-        let x = self.address("X", network_id)?;
-        let p = self.address("P", network_id)?;
-        let c = self.address("C", network_id)?;
+        let x_address = self.address("X", network_id)?;
+        let p_address = self.address("P", network_id)?;
+        let c_address = self.address("C", network_id)?;
         Ok(PrivateKeyInfo {
             private_key: self.private_key.clone(),
             private_key_hex: self.private_key_hex.clone(),
-            x_address: x,
-            p_address: p,
-            c_address: c,
+            x_address,
+            p_address,
+            c_address,
             short_address: self.short_address.clone(),
             eth_address: self.eth_address.clone(),
         })
@@ -548,9 +548,8 @@ impl fmt::Display for PrivateKeyInfo {
     }
 }
 
-/// TODO: support this for multiple keys
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain
-/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.8/wallet/chain/p/builder.go
+/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/p/builder.go
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Keychain {
     pub keys: Vec<Key>,
@@ -582,10 +581,10 @@ impl Keychain {
         &self,
         output_owners: &secp256k1fx::OutputOwners,
         time: u64,
-    ) -> io::Result<(Vec<u32>, Vec<Key>, bool)> {
+    ) -> io::Result<(Option<Vec<u32>>, Option<Vec<Key>>, bool)> {
         if output_owners.locktime > time {
             // output owners are still locked
-            return Ok((Vec::new(), Vec::new(), false));
+            return Ok((None, None, false));
         }
 
         let mut sigs: Vec<u32> = Vec::new();
@@ -597,14 +596,21 @@ impl Keychain {
             }
             sigs.push(pos as u32);
             keys.push(key.unwrap());
+            if (keys.len() as u32) == output_owners.threshold {
+                break;
+            }
         }
-        let n = keys.len();
 
-        Ok((sigs, keys, (n as u32) == output_owners.threshold))
+        let n = keys.len();
+        Ok((
+            Some(sigs),
+            Some(keys),
+            (n as u32) == output_owners.threshold,
+        ))
     }
 
-    /// TODO: support "secp256k1fx::MintOutput"
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
+    /// TODO: support spend on "secp256k1fx::MintOutput"
     pub fn spend(
         &self,
         output: &secp256k1fx::TransferOutput,
@@ -620,9 +626,9 @@ impl Keychain {
         Ok((
             secp256k1fx::TransferInput {
                 amount: output.amount,
-                sig_indices: sigs,
+                sig_indices: sigs.unwrap(),
             },
-            keys,
+            keys.unwrap(),
         ))
     }
 }
