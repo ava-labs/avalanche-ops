@@ -4,7 +4,7 @@ use std::{
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
-    str,
+    str::{self, FromStr},
     string::String,
 };
 
@@ -99,7 +99,8 @@ pub struct Key {
     pub private_key_hex: String,
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-    pub short_address: String,
+    #[serde(deserialize_with = "ids::must_deserialize_short_id")]
+    pub short_address: ids::ShortId,
 
     /// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/common#Address
     pub eth_address: String,
@@ -258,7 +259,7 @@ impl Key {
         }
         let mut sigs: Vec<u32> = Vec::new();
         for (pos, short_addr) in output_owners.addrs.iter().enumerate() {
-            if self.short_address != short_addr.to_string() {
+            if self.short_address != *short_addr {
                 continue;
             }
             sigs.push(pos as u32);
@@ -290,18 +291,19 @@ impl Key {
 
 /// "hashing.PubkeyBytesToAddress"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-pub fn bytes_to_short_address(d: &[u8]) -> io::Result<String> {
+pub fn bytes_to_short_address(d: &[u8]) -> io::Result<ids::ShortId> {
     let short_address_bytes = bytes_to_short_address_bytes(d)?;
 
     // "ids.ShortID.String"
     // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID.String
-    Ok(formatting::encode_cb58_with_checksum(&short_address_bytes))
+    let encoded = formatting::encode_cb58_with_checksum(&short_address_bytes);
+    ids::ShortId::from_str(&encoded)
 }
 
 /// "hashing.PubkeyBytesToAddress"
 /// ref. "pk.PublicKey().Address().Bytes()"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<String> {
+fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<ids::ShortId> {
     let public_key_bytes_compressed = public_key.serialize();
     bytes_to_short_address(&public_key_bytes_compressed)
 }
@@ -434,7 +436,8 @@ fn test_soft_key() {
         pub private_key_hex: String,
         pub network1: Address,
         pub network9999: Address,
-        pub short_address: String,
+        #[serde(deserialize_with = "ids::must_deserialize_short_id")]
+        pub short_address: ids::ShortId,
         pub eth_address: String,
     }
 
@@ -489,7 +492,8 @@ pub struct PrivateKeyInfo {
     pub x_address: String,
     pub p_address: String,
     pub c_address: String,
-    pub short_address: String,
+    #[serde(deserialize_with = "ids::must_deserialize_short_id")]
+    pub short_address: ids::ShortId,
     pub eth_address: String,
 }
 
@@ -553,7 +557,7 @@ impl fmt::Display for PrivateKeyInfo {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Keychain {
     pub keys: Vec<Key>,
-    pub short_addr_to_key_index: HashMap<String, u32>,
+    pub short_addr_to_key_index: HashMap<ids::ShortId, u32>,
 }
 
 impl Keychain {
@@ -570,9 +574,8 @@ impl Keychain {
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Get
     pub fn get(&self, short_addr: &ids::ShortId) -> Option<Key> {
-        let short_addr = short_addr.to_string();
         self.short_addr_to_key_index
-            .get(&short_addr)
+            .get(short_addr)
             .map(|k| self.keys[(*k) as usize].clone())
     }
 
@@ -581,10 +584,10 @@ impl Keychain {
         &self,
         output_owners: &secp256k1fx::OutputOwners,
         time: u64,
-    ) -> io::Result<(Option<Vec<u32>>, Option<Vec<Key>>, bool)> {
+    ) -> Option<(Vec<u32>, Vec<Key>)> {
         if output_owners.locktime > time {
             // output owners are still locked
-            return Ok((None, None, false));
+            return None;
         }
 
         let mut sigs: Vec<u32> = Vec::new();
@@ -602,11 +605,11 @@ impl Keychain {
         }
 
         let n = keys.len();
-        Ok((
-            Some(sigs),
-            Some(keys),
-            (n as u32) == output_owners.threshold,
-        ))
+        if (n as u32) == output_owners.threshold {
+            Some((sigs, keys))
+        } else {
+            None
+        }
     }
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
@@ -616,19 +619,21 @@ impl Keychain {
         output: &secp256k1fx::TransferOutput,
         time: u64,
     ) -> io::Result<(secp256k1fx::TransferInput, Vec<Key>)> {
-        let (sigs, keys, threshold_met) = self.match_threshold(&output.output_owners, time)?;
+        let pair = self.match_threshold(&output.output_owners, time);
+        let threshold_met = pair.is_some();
         if !threshold_met {
             return Err(Error::new(
                 ErrorKind::Other,
                 "unable to spend this UTXO (threshold not met)",
             ));
         }
+        let (sig_indices, keys) = pair.unwrap();
         Ok((
             secp256k1fx::TransferInput {
                 amount: output.amount,
-                sig_indices: sigs.unwrap(),
+                sig_indices,
             },
-            keys.unwrap(),
+            keys,
         ))
     }
 }

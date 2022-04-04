@@ -146,8 +146,7 @@ pub struct GetBlockchainIdResponse {
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetblockchainid
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GetBlockchainIdResult {
-    /// TODO: implement serializer/deserializer for "ids::Id"
-    /// #[serde(default, deserialize_with = "ids::deserialize_id")]
+    #[serde(deserialize_with = "ids::must_deserialize_id")]
     pub blockchain_id: ids::Id,
 }
 
