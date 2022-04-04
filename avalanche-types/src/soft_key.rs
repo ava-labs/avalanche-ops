@@ -258,6 +258,7 @@ impl Key {
             // output owners are still locked
             return None;
         }
+
         let mut sig_indices: Vec<u32> = Vec::new();
         for (pos, short_addr) in output_owners.addrs.iter().enumerate() {
             if self.short_address != *short_addr {
@@ -278,24 +279,22 @@ impl Key {
         }
     }
 
-    /// TODO: support "secp256k1fx::MintOutput"
+    /// Returns "None" if the threshold is NOT met.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
+    /// TODO: support "secp256k1fx::MintOutput"
     pub fn spend(
         &self,
         output: &secp256k1fx::TransferOutput,
         time: u64,
-    ) -> io::Result<secp256k1fx::TransferInput> {
+    ) -> Option<secp256k1fx::TransferInput> {
         let res = self.match_threshold(&output.output_owners, time);
         let threshold_met = res.is_some();
         if !threshold_met {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "unable to spend this UTXO (threshold not met)",
-            ));
+            return None;
         }
 
         let sig_indices = res.unwrap();
-        Ok(secp256k1fx::TransferInput {
+        Some(secp256k1fx::TransferInput {
             amount: output.amount,
             sig_indices,
         })
@@ -627,24 +626,22 @@ impl Keychain {
         }
     }
 
+    /// Returns "None" if the threshold is NOT met.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
     /// TODO: support spend on "secp256k1fx::MintOutput"
     pub fn spend(
         &self,
         output: &secp256k1fx::TransferOutput,
         time: u64,
-    ) -> io::Result<(secp256k1fx::TransferInput, Vec<Key>)> {
+    ) -> Option<(secp256k1fx::TransferInput, Vec<Key>)> {
         let res = self.match_threshold(&output.output_owners, time);
         let threshold_met = res.is_some();
         if !threshold_met {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "unable to spend this UTXO (threshold not met)",
-            ));
+            return None;
         }
 
         let (sig_indices, keys) = res.unwrap();
-        Ok((
+        Some((
             secp256k1fx::TransferInput {
                 amount: output.amount,
                 sig_indices,

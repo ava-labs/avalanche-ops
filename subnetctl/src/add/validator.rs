@@ -388,15 +388,15 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     let mut transferable_inputs: Vec<avax::TransferableInput> = Vec::new();
     let mut staked_transferable_outputs: Vec<avax::TransferableOutput> = Vec::new();
     let mut returned_transferable_outputs: Vec<avax::TransferableOutput> = Vec::new();
-    let mut signer: Vec<Vec<soft_key::Key>> = Vec::new();
+    let mut signers: Vec<soft_key::Key> = Vec::new();
 
     // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L71
     // ref. https://github.com/ava-labs/subnet-cli/blob/6bbe9f4aff353b812822af99c08133af35dbc6bd/client/p.go#L650
-    let staked_amount_in_nano_avax: u64 = 0_u64;
+    let amount_staked: u64 = 0_u64;
     for utxo in utxos.iter() {
         // no need to consume more locked AVAX
         // because it already has consumed more than the target stake amount
-        if staked_amount_in_nano_avax >= opt.stake_amount_in_nano_avax {
+        if amount_staked >= opt.stake_amount_in_nano_avax {
             break;
         }
         // ignore other assets
@@ -419,11 +419,16 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
 
         // check "*secp256k1fx.TransferOutpu"
         let transfer_output = stakeable_lock_out.clone().transfer_output;
-        let (transfer_input, input_signers) = soft_key_chain.spend(&transfer_output, now_unix)?;
+        let res = soft_key_chain.spend(&transfer_output, now_unix);
+        if res.is_none() {
+            // cannot spend the output, move onto next
+            continue;
+        }
+        let (transfer_input, input_signers) = res.unwrap();
 
         // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L117
         let remaining_value = transfer_input.amount;
-        let amount_to_stake = (opt.stake_amount_in_nano_avax - stake_amount_in_nano_avax) // amount we still need to stake
+        let amount_to_stake = (opt.stake_amount_in_nano_avax - amount_staked) // amount we still need to stake
             .min(
                 remaining_value, // amount available to stake
             );
@@ -468,11 +473,119 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
             });
         }
 
-        signer.push(input_signers);
+        signers.extend_from_slice(&input_signers);
     }
 
     // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L166
-    // TODO
+    // ref. https://github.com/ava-labs/subnet-cli/blob/6bbe9f4aff353b812822af99c08133af35dbc6bd/client/p.go#L732
+    let mut amount_burned = 0_u64;
+    for utxo in utxos.iter() {
+        // have staked more AVAX then we need to
+        // have burned more AVAX then we need to
+        // no need to consume more AVAX
+        if amount_staked >= opt.stake_amount_in_nano_avax && amount_burned >= add_validator_fee {
+            break;
+        }
+        // ignore other assets
+        if utxo.asset_id != avax_asset_id {
+            continue;
+        }
+
+        if utxo.transfer_output.is_none() && utxo.stakeable_lock_out.is_none() {
+            panic!("Both Utxo.transfer_output and stakeable_lock_out None");
+        }
+        let (skip, transfer_output) = {
+            if utxo.transfer_output.is_some() {
+                let transfer_output = utxo.transfer_output.clone().unwrap();
+                (false, transfer_output)
+            } else {
+                let stakeable_lock_out = utxo.stakeable_lock_out.clone().unwrap();
+                (
+                    stakeable_lock_out.locktime > now_unix,
+                    stakeable_lock_out.transfer_output,
+                )
+            }
+        };
+        // output is currently locked, so this output cannot be burned
+        // or it may have already been consumed
+        if skip {
+            continue;
+        }
+
+        let res = soft_key_chain.spend(&transfer_output, now_unix);
+        if res.is_none() {
+            // cannot spend the output, move onto next
+            continue;
+        }
+        let (transfer_input, input_signers) = res.unwrap();
+
+        // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L205
+        // ref. https://github.com/ava-labs/subnet-cli/blob/6bbe9f4aff353b812822af99c08133af35dbc6bd/client/p.go#L763
+        let mut remaining_value = transfer_input.amount;
+        let amount_to_burn = (add_validator_fee - amount_burned) // amount we still need to burn
+            .min(
+                remaining_value, // amount available to burn
+            );
+        amount_burned += amount_to_burn;
+        remaining_value -= amount_to_burn;
+
+        let amount_to_stake = (opt.stake_amount_in_nano_avax - amount_staked) // amount we still need to stake
+            .min(
+                remaining_value, // amount available to stake
+            );
+        amount_burned += amount_to_stake;
+        remaining_value -= amount_to_stake;
+
+        if amount_to_stake > 0 {
+            staked_transferable_outputs.push(avax::TransferableOutput {
+                asset_id: utxo.asset_id.clone(),
+                transfer_output: Some(secp256k1fx::TransferOutput {
+                    amount: amount_to_stake,
+                    output_owners: secp256k1fx::OutputOwners {
+                        locktime: 0,
+                        threshold: 1,
+                        addrs: vec![loaded_soft_priv_key.clone().short_address],
+                    },
+                }),
+                ..avax::TransferableOutput::default()
+            });
+        }
+
+        if remaining_value > 0 {
+            returned_transferable_outputs.push(avax::TransferableOutput {
+                asset_id: utxo.asset_id.clone(),
+                transfer_output: Some(secp256k1fx::TransferOutput {
+                    amount: remaining_value,
+                    output_owners: secp256k1fx::OutputOwners {
+                        locktime: 0,
+                        threshold: 1,
+                        addrs: vec![loaded_soft_priv_key.clone().short_address],
+                    },
+                }),
+                ..avax::TransferableOutput::default()
+            });
+        }
+
+        transferable_inputs.push(avax::TransferableInput {
+            utxo_id: utxo.utxo_id.clone(),
+            asset_id: utxo.asset_id.clone(),
+            transfer_input: Some(transfer_input),
+            ..avax::TransferableInput::default()
+        });
+        signers.extend_from_slice(&input_signers);
+    }
+
+    if amount_staked > 0 && amount_staked < opt.stake_amount_in_nano_avax {
+        panic!("insufficient balance for stake amount");
+    }
+    if amount_burned > 0 && amount_burned < add_validator_fee {
+        panic!("insufficient balance for gas fee");
+    }
+
+    // TODO: sort "staked_transferable_outputs"
+    // TODO: sort "returned_transferable_outputs"
+    // TODO: sort "transferable_inputs"
+    // TODO: sort "input_signers"
 
     /////
     println!();
