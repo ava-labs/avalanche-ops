@@ -15,7 +15,7 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use avalanche_api::{info as api_info, p, x};
-use avalanche_types::{avax, constants, ids, platformvm, soft_key, units};
+use avalanche_types::{avax, constants, ids, platformvm, secp256k1fx, soft_key, units};
 use utils::rfc3339;
 
 lazy_static! {
@@ -385,9 +385,9 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
     let soft_key_chain = soft_key::Keychain::new(vec![loaded_soft_priv_key.clone()]);
 
     // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L65
-    let mut ins: Vec<avax::TransferableInput> = Vec::new();
-    let _returned_outputs: Vec<avax::TransferableOutput> = Vec::new();
-    let _staked_outputs: Vec<avax::TransferableOutput> = Vec::new();
+    let mut transferable_inputs: Vec<avax::TransferableInput> = Vec::new();
+    let mut staked_transferable_outputs: Vec<avax::TransferableOutput> = Vec::new();
+    let mut returned_transferable_outputs: Vec<avax::TransferableOutput> = Vec::new();
     let mut signer: Vec<Vec<soft_key::Key>> = Vec::new();
 
     // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L71
@@ -418,26 +418,61 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         }
 
         // check "*secp256k1fx.TransferOutpu"
-        let transfer_output = stakeable_lock_out.transfer_output;
-        let (input, input_signers) = soft_key_chain.spend(&transfer_output, now_unix)?;
+        let transfer_output = stakeable_lock_out.clone().transfer_output;
+        let (transfer_input, input_signers) = soft_key_chain.spend(&transfer_output, now_unix)?;
 
         // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L117
-        let remaining_value = input.amount;
-        let _amount_to_stake = (opt.stake_amount_in_nano_avax - stake_amount_in_nano_avax) // amount we still need to stake
+        let remaining_value = transfer_input.amount;
+        let amount_to_stake = (opt.stake_amount_in_nano_avax - stake_amount_in_nano_avax) // amount we still need to stake
             .min(
                 remaining_value, // amount available to stake
             );
-        ins.push(avax::TransferableInput {
+
+        // add input to the consumed inputs
+        transferable_inputs.push(avax::TransferableInput {
             utxo_id: utxo.utxo_id.clone(),
             asset_id: utxo.asset_id.clone(),
+            stakeable_lock_in: Some(platformvm::StakeableLockIn {
+                locktime: stakeable_lock_out.locktime,
+                transfer_input,
+            }),
             ..avax::TransferableInput::default()
         });
 
+        // add output to the staked outputs
+        staked_transferable_outputs.push(avax::TransferableOutput {
+            asset_id: utxo.asset_id.clone(),
+            stakeable_lock_out: Some(platformvm::StakeableLockOut {
+                locktime: stakeable_lock_out.clone().locktime,
+                transfer_output: secp256k1fx::TransferOutput {
+                    amount: amount_to_stake,
+                    output_owners: stakeable_lock_out.clone().transfer_output.output_owners,
+                },
+            }),
+            ..avax::TransferableOutput::default()
+        });
+
+        if remaining_value > 0 {
+            // this input provided more value than was needed to be locked
+            // some must be returned
+            returned_transferable_outputs.push(avax::TransferableOutput {
+                asset_id: utxo.asset_id.clone(),
+                stakeable_lock_out: Some(platformvm::StakeableLockOut {
+                    locktime: stakeable_lock_out.clone().locktime,
+                    transfer_output: secp256k1fx::TransferOutput {
+                        amount: remaining_value,
+                        output_owners: stakeable_lock_out.clone().transfer_output.output_owners,
+                    },
+                }),
+                ..avax::TransferableOutput::default()
+            });
+        }
+
         signer.push(input_signers);
     }
-    // TODO: get *avax.TransferableInput for inputs
-    // TODO: get *avax.TransferableOutput for returned outs
-    // TODO: get *avax.TransferableOutput for staked outs
+
+    // ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/vms/platformvm/spend.go#L166
+    // TODO
 
     /////
     println!();
