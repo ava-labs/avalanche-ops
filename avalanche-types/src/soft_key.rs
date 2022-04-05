@@ -157,8 +157,13 @@ impl Key {
 
     /// Loads the specified Secp256k1 key with CB58 encoding.
     /// Takes the "private_key" field in the "Key" struct.
-    pub fn from_private_key(encoded_priv_key: &str) -> io::Result<Self> {
-        let raw = String::from(encoded_priv_key).replace(PRIVATE_KEY_ENCODE_PREFIX, "");
+    pub fn from_private_key<S>(encoded_priv_key: S) -> io::Result<Self>
+    where
+        S: Into<String>,
+    {
+        let raw = encoded_priv_key
+            .into()
+            .replace(PRIVATE_KEY_ENCODE_PREFIX, "");
 
         let priv_bytes = formatting::decode_cb58_with_checksum(&raw)?;
         if priv_bytes.len() != secp256k1::constants::SECRET_KEY_SIZE {
@@ -314,7 +319,7 @@ impl Key {
 
         let pk = child_xprv.private_key().to_bytes();
 
-        let mut key = Self::from_private_key_raw(&pk.to_vec())?;
+        let mut key = Self::from_private_key_raw(&pk)?;
         key.mnemonic_phrase = Some(String::from(mnemonic.phrase()));
         Ok(key)
     }
@@ -407,6 +412,14 @@ impl Key {
             amount: output.amount,
             sig_indices,
         })
+    }
+}
+
+/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
+impl FromStr for Key {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_private_key(s)
     }
 }
 

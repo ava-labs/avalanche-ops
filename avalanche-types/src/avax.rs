@@ -46,16 +46,6 @@ impl TransferableOutput {
     }
 }
 
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
-pub fn sort_transferable_outputs(_outputs: &mut [TransferableOutput]) -> io::Result<()> {
-    Ok(())
-}
-
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_transferable_outputs --exact --show-output
-/// ref. "avalanchego/vms/components/avax.TestTransferableOutputSorting"
-#[test]
-fn test_sort_transferable_outputs() {}
-
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableIn
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
@@ -589,15 +579,8 @@ impl BaseTx {
         "avm.BaseTx".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::X_TYPES.get("avm.BaseTx") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::X_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 
     /// "Tx.Unsigned" is implemented by "avax.BaseTx"
@@ -668,9 +651,9 @@ impl BaseTx {
                 }
                 let type_id_transferable_out = {
                     if transferable_output.transfer_output.is_some() {
-                        secp256k1fx::TransferOutput::type_id()?
+                        secp256k1fx::TransferOutput::type_id()
                     } else {
-                        platformvm::StakeableLockOut::type_id()?
+                        platformvm::StakeableLockOut::type_id()
                     }
                 };
                 // marshal type ID for "secp256k1fx::TransferOutput" or "platformvm::StakeableLockOut"
@@ -779,9 +762,9 @@ impl BaseTx {
                 }
                 let type_id_transferable_in = {
                     if transferable_input.transfer_input.is_some() {
-                        secp256k1fx::TransferInput::type_id()?
+                        secp256k1fx::TransferInput::type_id()
                     } else {
-                        platformvm::StakeableLockIn::type_id()?
+                        platformvm::StakeableLockIn::type_id()
                     }
                 };
                 // marshal type ID for "secp256k1fx::TransferInput" or "platformvm::StakeableLockIn"
@@ -917,7 +900,7 @@ fn test_base_tx_serialization() {
         ..BaseTx::default()
     };
     let unsigned_tx_packer = unsigned_tx
-        .pack(0, BaseTx::type_id().unwrap())
+        .pack(0, BaseTx::type_id())
         .expect("failed to pack unsigned_tx");
     let unsigned_tx_bytes = unsigned_tx_packer.take_bytes();
 

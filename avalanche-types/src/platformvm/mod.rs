@@ -1,5 +1,3 @@
-use std::io::{self, Error, ErrorKind};
-
 pub mod add_subnet_validator;
 pub mod add_validator;
 pub mod create_chain;
@@ -67,15 +65,8 @@ impl StakeableLockIn {
         "platformvm.StakeableLockIn".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::P_TYPES.get("platformvm.StakeableLockIn") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 }
 
@@ -104,15 +95,8 @@ impl StakeableLockOut {
         "platformvm.StakeableLockOut".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::P_TYPES.get("platformvm.StakeableLockOut") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 }
 

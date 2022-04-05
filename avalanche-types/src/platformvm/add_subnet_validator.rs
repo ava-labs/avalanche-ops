@@ -1,4 +1,4 @@
-use std::io::{self, Error, ErrorKind};
+use std::io;
 
 use serde::{Deserialize, Serialize};
 
@@ -80,15 +80,8 @@ impl Tx {
         "platformvm.UnsignedAddSubnetValidatorTx".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::P_TYPES.get("platformvm.UnsignedAddSubnetValidatorTx") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#Tx.Sign
@@ -96,7 +89,7 @@ impl Tx {
     /// TODO: support ledger signing
     pub fn sign(&mut self, signers: Option<Vec<Vec<soft_key::Key>>>) -> io::Result<()> {
         // marshal "unsigned tx" with the codec version
-        let type_id = Self::type_id()?;
+        let type_id = Self::type_id();
         let packer = self.unsigned_tx.pack(codec::VERSION, type_id)?;
 
         // "avalanchego" marshals the whole struct again for signed bytes
@@ -119,7 +112,7 @@ impl Tx {
         packer.pack_bytes(&self.validator.subnet_id.d);
 
         // pack the third field "subnet_auth" in the struct
-        let subnet_auth_type_id = secp256k1fx::Input::type_id()?;
+        let subnet_auth_type_id = secp256k1fx::Input::type_id();
         packer.pack_u32(subnet_auth_type_id);
         packer.pack_u32(self.subnet_auth_input.sig_indices.len() as u32);
         for sig_idx in self.subnet_auth_input.sig_indices.iter() {
@@ -166,7 +159,7 @@ impl Tx {
         if creds_len > 0 {
             // pack each "cred" which is "secp256k1fx.Credential"
             // marshal type ID for "secp256k1fx.Credential"
-            let cred_type_id = secp256k1fx::Credential::type_id()?;
+            let cred_type_id = secp256k1fx::Credential::type_id();
             for cred in self.creds.iter() {
                 packer.pack_u32(cred_type_id);
                 packer.pack_u32(cred.sigs.len() as u32);

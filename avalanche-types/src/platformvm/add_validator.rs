@@ -63,15 +63,8 @@ impl Tx {
         "platformvm.UnsignedAddValidatorTx".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::P_TYPES.get("platformvm.UnsignedAddValidatorTx") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#Tx.Sign
@@ -79,7 +72,7 @@ impl Tx {
     /// TODO: support ledger signing
     pub fn sign(&mut self, signers: Option<Vec<Vec<soft_key::Key>>>) -> io::Result<()> {
         // marshal "unsigned tx" with the codec version
-        let type_id = Self::type_id()?;
+        let type_id = Self::type_id();
         let packer = self.unsigned_tx.pack(codec::VERSION, type_id)?;
 
         // "avalanchego" marshals the whole struct again for signed bytes
@@ -127,9 +120,9 @@ impl Tx {
                 }
                 let type_id_transferable_out = {
                     if transferable_output.transfer_output.is_some() {
-                        secp256k1fx::TransferOutput::type_id()?
+                        secp256k1fx::TransferOutput::type_id()
                     } else {
-                        platformvm::StakeableLockOut::type_id()?
+                        platformvm::StakeableLockOut::type_id()
                     }
                 };
                 // marshal type ID for "secp256k1fx::TransferOutput" or "platformvm::StakeableLockOut"
@@ -205,7 +198,7 @@ impl Tx {
 
         // pack the fourth field "reward_owner" in the struct
         // not embedded thus encode struct type id
-        let output_owners_type_id = secp256k1fx::OutputOwners::type_id()?;
+        let output_owners_type_id = secp256k1fx::OutputOwners::type_id();
         packer.pack_u32(output_owners_type_id);
         packer.pack_u64(self.rewards_owner.locktime);
         packer.pack_u32(self.rewards_owner.threshold);
@@ -257,7 +250,7 @@ impl Tx {
         if creds_len > 0 {
             // pack each "cred" which is "secp256k1fx.Credential"
             // marshal type ID for "secp256k1fx.Credential"
-            let cred_type_id = secp256k1fx::Credential::type_id()?;
+            let cred_type_id = secp256k1fx::Credential::type_id();
             for cred in self.creds.iter() {
                 packer.pack_u32(cred_type_id);
                 packer.pack_u32(cred.sigs.len() as u32);

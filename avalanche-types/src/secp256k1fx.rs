@@ -3,6 +3,7 @@ use std::io::{self, Error, ErrorKind};
 use serde::{Deserialize, Serialize};
 
 use crate::{codec, ids};
+use utils::cmp;
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/avm#FxCredential
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/verify#Verifiable
@@ -33,15 +34,8 @@ impl Credential {
         "secp256k1fx.Credential".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::X_TYPES.get("secp256k1fx.Credential") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::X_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 }
 
@@ -80,15 +74,8 @@ impl OutputOwners {
         "secp256k1fx.OutputOwners".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::P_TYPES.get("secp256k1fx.OutputOwners") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 }
 
@@ -126,15 +113,8 @@ impl TransferOutput {
         "secp256k1fx.TransferOutput".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::X_TYPES.get("secp256k1fx.TransferOutput") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::X_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 }
 
@@ -173,15 +153,8 @@ impl TransferInput {
         "secp256k1fx.TransferInput".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::X_TYPES.get("secp256k1fx.TransferInput") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::X_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 
     pub fn verify(&self) -> io::Result<()> {
@@ -191,7 +164,7 @@ impl TransferInput {
                 "input has no value", // ref. "errNoValueInput"
             ));
         }
-        if !is_sorted_and_unique(&self.sig_indices) {
+        if !cmp::is_sorted_and_unique(&self.sig_indices) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "signatures not sorted and unique", // ref. "errNotSortedUnique"
@@ -205,13 +178,6 @@ impl TransferInput {
         let sigs = self.sig_indices.len();
         (sigs as u64) * 1000
     }
-}
-
-fn is_sorted_and_unique<T>(data: &[T]) -> bool
-where
-    T: Ord,
-{
-    data.windows(2).all(|w| w[0] < w[1])
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Input
@@ -241,14 +207,7 @@ impl Input {
         "secp256k1fx.Input".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::P_TYPES.get("secp256k1fx.Input") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 }
