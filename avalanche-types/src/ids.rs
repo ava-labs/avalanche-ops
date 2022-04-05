@@ -2,7 +2,7 @@ use std::{
     cmp::Ordering,
     fmt,
     fs::File,
-    hash::Hash,
+    hash::{Hash, Hasher},
     io::{self, BufReader, Error, ErrorKind},
     path::Path,
     str::FromStr,
@@ -15,7 +15,7 @@ use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{formatting, packer, soft_key};
-use utils::hash;
+use utils::{cmp, hash};
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
@@ -30,7 +30,7 @@ lazy_static! {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ID
-#[derive(Debug, Deserialize, Clone, Eq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq)]
 pub struct Id {
     pub d: Vec<u8>,
 }
@@ -191,6 +191,13 @@ impl PartialEq for Id {
     }
 }
 
+/// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
+impl Hash for Id {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.d.hash(state);
+    }
+}
+
 #[derive(Eq)]
 pub struct Ids(Vec<Id>);
 
@@ -219,13 +226,9 @@ impl PartialOrd for Ids {
     }
 }
 
-pub fn eq_id_vectors(va: &[Id], vb: &[Id]) -> bool {
-    (va.len() == vb.len()) && va.iter().zip(vb).all(|(a, b)| *a == *b)
-}
-
 impl PartialEq for Ids {
     fn eq(&self, other: &Ids) -> bool {
-        eq_id_vectors(&self.0, &other.0)
+        cmp::eq_vectors(&self.0, &other.0)
     }
 }
 
@@ -316,7 +319,7 @@ fn test_sort_ids() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone, Eq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq)]
 pub struct ShortId {
     pub d: Vec<u8>,
 }
@@ -451,6 +454,13 @@ impl PartialEq for ShortId {
     }
 }
 
+/// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
+impl Hash for ShortId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.d.hash(state);
+    }
+}
+
 #[derive(Eq)]
 pub struct ShortIds(Vec<ShortId>);
 
@@ -479,13 +489,9 @@ impl PartialOrd for ShortIds {
     }
 }
 
-pub fn eq_short_id_vectors(va: &[ShortId], vb: &[ShortId]) -> bool {
-    (va.len() == vb.len()) && va.iter().zip(vb).all(|(a, b)| *a == *b)
-}
-
 impl PartialEq for ShortIds {
     fn eq(&self, other: &ShortIds) -> bool {
-        eq_short_id_vectors(&self.0, &other.0)
+        cmp::eq_vectors(&self.0, &other.0)
     }
 }
 
@@ -576,7 +582,7 @@ fn test_sort_short_ids() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone, Eq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq)]
 pub struct NodeId {
     pub d: Vec<u8>,
 }
@@ -906,6 +912,13 @@ impl PartialEq for NodeId {
     }
 }
 
+/// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
+impl Hash for NodeId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.d.hash(state);
+    }
+}
+
 #[derive(Eq)]
 pub struct NodeIds(Vec<NodeId>);
 
@@ -934,13 +947,9 @@ impl PartialOrd for NodeIds {
     }
 }
 
-pub fn eq_node_id_vectors(va: &[NodeId], vb: &[NodeId]) -> bool {
-    (va.len() == vb.len()) && va.iter().zip(vb).all(|(a, b)| *a == *b)
-}
-
 impl PartialEq for NodeIds {
     fn eq(&self, other: &NodeIds) -> bool {
-        eq_node_id_vectors(&self.0, &other.0)
+        cmp::eq_vectors(&self.0, &other.0)
     }
 }
 

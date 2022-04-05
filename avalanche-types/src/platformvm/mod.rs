@@ -5,6 +5,8 @@ pub mod create_subnet;
 pub mod export;
 pub mod import;
 
+use std::cmp::Ordering;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{avax, codec, ids, secp256k1fx};
@@ -41,7 +43,7 @@ impl Validator {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockIn
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, Clone)]
 pub struct StakeableLockIn {
     pub locktime: u64,
     pub transfer_input: secp256k1fx::TransferInput,
@@ -70,8 +72,30 @@ impl StakeableLockIn {
     }
 }
 
+impl Ord for StakeableLockIn {
+    fn cmp(&self, other: &StakeableLockIn) -> Ordering {
+        self.locktime
+            .cmp(&(other.locktime)) // returns when "locktime"s are not Equal
+            .then_with(
+                || self.transfer_input.cmp(&other.transfer_input), // if "locktime"s are Equal, compare "transfer_input"
+            )
+    }
+}
+
+impl PartialOrd for StakeableLockIn {
+    fn partial_cmp(&self, other: &StakeableLockIn) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for StakeableLockIn {
+    fn eq(&self, other: &StakeableLockIn) -> bool {
+        (self.locktime == other.locktime) || (self.transfer_input == other.transfer_input)
+    }
+}
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, Clone)]
 pub struct StakeableLockOut {
     pub locktime: u64,
     pub transfer_output: secp256k1fx::TransferOutput,
@@ -97,6 +121,28 @@ impl StakeableLockOut {
 
     pub fn type_id() -> u32 {
         *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
+    }
+}
+
+impl Ord for StakeableLockOut {
+    fn cmp(&self, other: &StakeableLockOut) -> Ordering {
+        self.locktime
+            .cmp(&(other.locktime)) // returns when "locktime"s are not Equal
+            .then_with(
+                || self.transfer_output.cmp(&other.transfer_output), // if "locktime"s are Equal, compare "transfer_output"
+            )
+    }
+}
+
+impl PartialOrd for StakeableLockOut {
+    fn partial_cmp(&self, other: &StakeableLockOut) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for StakeableLockOut {
+    fn eq(&self, other: &StakeableLockOut) -> bool {
+        (self.locktime == other.locktime) || (self.transfer_output == other.transfer_output)
     }
 }
 

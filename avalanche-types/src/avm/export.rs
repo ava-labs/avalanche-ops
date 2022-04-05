@@ -224,7 +224,7 @@ impl Tx {
             }
 
             let mut cred = secp256k1fx::Credential::default();
-            cred.sigs = sigs;
+            cred.signatures = sigs;
 
             let mut fx_cred = fx::Credential::default();
             fx_cred.cred = cred;
@@ -238,8 +238,8 @@ impl Tx {
             let cred_type_id = secp256k1fx::Credential::type_id();
             for fx_cred in self.fx_creds.iter() {
                 packer.pack_u32(cred_type_id);
-                packer.pack_u32(fx_cred.cred.sigs.len() as u32);
-                for sig in fx_cred.cred.sigs.iter() {
+                packer.pack_u32(fx_cred.cred.signatures.len() as u32);
+                for sig in fx_cred.cred.signatures.iter() {
                     packer.pack_bytes(sig);
                 }
             }
@@ -389,7 +389,7 @@ fn test_export_tx_serialization_with_no_signer() {
     // for c in &signed_bytes {
     //     println!("{:#02x},", *c);
     // }
-    assert!(cmp::eq_u8_vectors(&expected_signed_bytes, &signed_bytes));
+    assert!(cmp::eq_vectors(&expected_signed_bytes, &signed_bytes));
 }
 
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- avm::export::test_export_tx_serialization_with_two_signers --exact --show-output
@@ -586,5 +586,5 @@ fn test_export_tx_serialization_with_two_signers() {
     // for c in &signed_bytes {
     //     println!("{:#02x},", *c);
     // }
-    assert!(cmp::eq_u8_vectors(&expected_signed_bytes, &signed_bytes));
+    assert!(cmp::eq_vectors(&expected_signed_bytes, &signed_bytes));
 }

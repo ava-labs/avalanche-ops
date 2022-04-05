@@ -1,11 +1,3 @@
-use std::io;
-
-use aws_config::{self, meta::region::RegionProviderChain};
-use aws_sdk_ec2::Region;
-use aws_types::SdkConfig as AwsSdkConfig;
-use log::info;
-use serde::{Deserialize, Serialize};
-
 pub mod cloudformation;
 pub mod cloudwatch;
 pub mod ec2;
@@ -14,6 +6,14 @@ pub mod errors;
 pub mod kms;
 pub mod s3;
 pub mod sts;
+
+use std::io;
+
+use aws_config::{self, meta::region::RegionProviderChain};
+use aws_sdk_ec2::Region;
+use aws_types::SdkConfig as AwsSdkConfig;
+use log::info;
+use serde::{Deserialize, Serialize};
 
 /// Loads an AWS config from default environments.
 pub async fn load_config(reg: Option<String>) -> io::Result<AwsSdkConfig> {

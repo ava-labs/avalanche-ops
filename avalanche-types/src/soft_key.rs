@@ -216,7 +216,7 @@ impl Key {
     pub fn from_private_key_raw(raw: &[u8]) -> io::Result<Self> {
         let pfx = PRIVATE_KEY_ENCODE_PREFIX.as_bytes();
         let pos = {
-            if cmp::eq_u8_vectors(pfx, &raw[0..pfx.len()]) {
+            if cmp::eq_vectors(pfx, &raw[0..pfx.len()]) {
                 pfx.len()
             } else {
                 0

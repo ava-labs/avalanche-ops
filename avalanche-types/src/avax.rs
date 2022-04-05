@@ -987,7 +987,7 @@ fn test_base_tx_serialization() {
         // memo
         0x00, 0x01, 0x02, 0x03, //
     ];
-    assert!(cmp::eq_u8_vectors(
+    assert!(cmp::eq_vectors(
         &expected_unsigned_tx_bytes,
         &unsigned_tx_bytes
     ));

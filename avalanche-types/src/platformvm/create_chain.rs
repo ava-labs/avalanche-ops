@@ -157,7 +157,7 @@ impl Tx {
             }
 
             let mut cred = secp256k1fx::Credential::default();
-            cred.sigs = sigs;
+            cred.signatures = sigs;
 
             // add a new credential to "Tx"
             self.creds.push(cred);
@@ -167,9 +167,12 @@ impl Tx {
             // marshal type ID for "secp256k1fx.Credential"
             let cred_type_id = secp256k1fx::Credential::type_id();
             for cred in self.creds.iter() {
+                // marshal type ID for "secp256k1fx.Credential"
                 packer.pack_u32(cred_type_id);
-                packer.pack_u32(cred.sigs.len() as u32);
-                for sig in cred.sigs.iter() {
+
+                // marshal fields for "secp256k1fx.Credential"
+                packer.pack_u32(cred.signatures.len() as u32);
+                for sig in cred.signatures.iter() {
                     packer.pack_bytes(sig);
                 }
             }
@@ -644,5 +647,5 @@ fn test_create_chain_tx_serialization_with_one_signer() {
         0xc3, 0x8a, 0x55, 0xbf, 0x0b, 0x30, 0x03, 0xcf, 0xb4, 0x5a, //
         0x43, 0x93, 0xeb, 0xbe, 0x01, //
     ];
-    assert!(cmp::eq_u8_vectors(&expected_signed_bytes, &signed_bytes));
+    assert!(cmp::eq_vectors(&expected_signed_bytes, &signed_bytes));
 }
