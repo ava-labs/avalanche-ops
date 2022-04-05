@@ -15,7 +15,7 @@ use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{formatting, packer, soft_key};
-use utils::{cmp, hash};
+use utils::hash;
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
@@ -187,7 +187,7 @@ impl PartialOrd for Id {
 
 impl PartialEq for Id {
     fn eq(&self, other: &Id) -> bool {
-        self.d == other.d
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -228,7 +228,7 @@ impl PartialOrd for Ids {
 
 impl PartialEq for Ids {
     fn eq(&self, other: &Ids) -> bool {
-        cmp::eq_vectors(&self.0, &other.0)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -450,7 +450,7 @@ impl PartialOrd for ShortId {
 
 impl PartialEq for ShortId {
     fn eq(&self, other: &ShortId) -> bool {
-        self.d == other.d
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -491,7 +491,7 @@ impl PartialOrd for ShortIds {
 
 impl PartialEq for ShortIds {
     fn eq(&self, other: &ShortIds) -> bool {
-        cmp::eq_vectors(&self.0, &other.0)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -908,7 +908,7 @@ impl PartialOrd for NodeId {
 
 impl PartialEq for NodeId {
     fn eq(&self, other: &NodeId) -> bool {
-        self.d == other.d
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -949,7 +949,7 @@ impl PartialOrd for NodeIds {
 
 impl PartialEq for NodeIds {
     fn eq(&self, other: &NodeIds) -> bool {
-        cmp::eq_vectors(&self.0, &other.0)
+        self.cmp(other) == Ordering::Equal
     }
 }
 

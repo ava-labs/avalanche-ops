@@ -1,5 +1,5 @@
 use std::{
-    cmp,
+    cmp::Ordering,
     io::{self, Error, ErrorKind},
     str::FromStr,
 };
@@ -11,7 +11,7 @@ use utils::{hash, prefix};
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOut
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, Clone)]
 pub struct TransferableOutput {
     pub asset_id: ids::Id,
     pub fx_id: ids::Id, // skip serialization due to serialize:"false"
@@ -43,6 +43,83 @@ impl TransferableOutput {
             transfer_output: None,
             stakeable_lock_out: None,
         }
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#SortTransferableOutputs
+impl Ord for TransferableOutput {
+    fn cmp(&self, other: &TransferableOutput) -> Ordering {
+        let asset_id_ord = self.asset_id.d.cmp(&(other.asset_id.d));
+        if asset_id_ord != Ordering::Equal {
+            // no need to compare further
+            return asset_id_ord;
+        }
+        if self.transfer_output.is_none()
+            && self.stakeable_lock_out.is_none()
+            && other.transfer_output.is_none()
+            && other.stakeable_lock_out.is_none()
+        {
+            // should never happen but sorting/ordering shouldn't worry about this...
+            // can't compare anymore, so thus return here...
+            return Ordering::Equal;
+        }
+
+        // unlike "avalanchego", we want ordering without "codec" dependency and marshal-ing
+        // just check type ID header
+        let type_id_self = {
+            if self.transfer_output.is_some() {
+                secp256k1fx::TransferOutput::type_id()
+            } else {
+                platformvm::StakeableLockOut::type_id()
+            }
+        };
+        let type_id_other = {
+            if other.transfer_output.is_some() {
+                secp256k1fx::TransferOutput::type_id()
+            } else {
+                platformvm::StakeableLockOut::type_id()
+            }
+        };
+        let type_id_ord = type_id_self.cmp(&type_id_other);
+        if type_id_ord != Ordering::Equal {
+            // no need to compare further
+            return type_id_ord;
+        }
+
+        // both instances have the same type!!!
+        // just use the ordering of underlying types
+        match type_id_self {
+            7 => {
+                // "secp256k1fx::TransferOutput"
+                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferOutput
+                let transfer_output_self = self.transfer_output.clone().unwrap();
+                let transfer_output_other = other.transfer_output.clone().unwrap();
+                transfer_output_self.cmp(&transfer_output_other)
+            }
+            22 => {
+                // "platformvm::StakeableLockOut"
+                // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
+                let stakeable_lock_out_self = self.stakeable_lock_out.clone().unwrap();
+                let stakeable_lock_out_other = other.stakeable_lock_out.clone().unwrap();
+                stakeable_lock_out_self.cmp(&stakeable_lock_out_other)
+            }
+            _ => {
+                // should never happen
+                panic!("unexpected type ID {} for TransferableOutput", type_id_self);
+            }
+        }
+    }
+}
+
+impl PartialOrd for TransferableOutput {
+    fn partial_cmp(&self, other: &TransferableOutput) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for TransferableOutput {
+    fn eq(&self, other: &TransferableOutput) -> bool {
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -87,7 +164,7 @@ impl TransferableInput {
 }
 
 impl Ord for TransferableInput {
-    fn cmp(&self, other: &TransferableInput) -> cmp::Ordering {
+    fn cmp(&self, other: &TransferableInput) -> Ordering {
         self.utxo_id
             .tx_id
             .d
@@ -99,15 +176,14 @@ impl Ord for TransferableInput {
 }
 
 impl PartialOrd for TransferableInput {
-    fn partial_cmp(&self, other: &TransferableInput) -> Option<cmp::Ordering> {
+    fn partial_cmp(&self, other: &TransferableInput) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl PartialEq for TransferableInput {
     fn eq(&self, other: &TransferableInput) -> bool {
-        (self.utxo_id.tx_id == other.utxo_id.tx_id)
-            || (self.utxo_id.output_index == other.utxo_id.output_index)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -199,7 +275,7 @@ impl UtxoId {
 }
 
 impl Ord for UtxoId {
-    fn cmp(&self, other: &UtxoId) -> cmp::Ordering {
+    fn cmp(&self, other: &UtxoId) -> Ordering {
         self.tx_id
             .d
             .cmp(&(other.tx_id.d)) // returns when "tx_id"s are not Equal
@@ -210,14 +286,14 @@ impl Ord for UtxoId {
 }
 
 impl PartialOrd for UtxoId {
-    fn partial_cmp(&self, other: &UtxoId) -> Option<cmp::Ordering> {
+    fn partial_cmp(&self, other: &UtxoId) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl PartialEq for UtxoId {
     fn eq(&self, other: &UtxoId) -> bool {
-        (self.tx_id == other.tx_id) || (self.output_index == other.output_index)
+        self.cmp(other) == Ordering::Equal
     }
 }
 

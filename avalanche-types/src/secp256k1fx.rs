@@ -58,7 +58,7 @@ impl PartialOrd for Credential {
 
 impl PartialEq for Credential {
     fn eq(&self, other: &Credential) -> bool {
-        Signatures::new(&self.signatures) == Signatures::new(&other.signatures)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -92,7 +92,7 @@ impl PartialOrd for Signatures {
 
 impl PartialEq for Signatures {
     fn eq(&self, other: &Signatures) -> bool {
-        cmp::eq_vectors(&self.0, &other.0)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -223,9 +223,7 @@ impl PartialOrd for OutputOwners {
 
 impl PartialEq for OutputOwners {
     fn eq(&self, other: &OutputOwners) -> bool {
-        (self.locktime == other.locktime)
-            || (self.threshold == other.threshold)
-            || (ids::ShortIds::new(&self.addrs) == ids::ShortIds::new(&other.addrs))
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -235,64 +233,33 @@ fn test_sort_output_owners() {
     let mut owners: Vec<OutputOwners> = Vec::new();
     for i in (0..10).rev() {
         owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: (i + 1) as u32,
+            locktime: i as u64,
+            threshold: i as u32,
             addrs: vec![
-                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
-                ids::ShortId::from_slice(&vec![i as u8, 3, 2, 3, 4, 5]),
+                ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
+                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3]),
             ],
             ..OutputOwners::default()
         });
         owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: (i + 1) as u32,
+            locktime: i as u64,
+            threshold: i as u32,
             addrs: vec![
-                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
-                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
+                ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
+                ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
             ],
             ..OutputOwners::default()
         });
         owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: (i + 1) as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5])],
-            ..OutputOwners::default()
-        });
-        owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5])],
-            ..OutputOwners::default()
-        });
-        owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
-            ..OutputOwners::default()
-        });
-        owners.push(OutputOwners {
             locktime: i as u64,
-            threshold: (i + 1) as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            threshold: i as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3])],
             ..OutputOwners::default()
         });
         owners.push(OutputOwners {
             locktime: i as u64,
             threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![
-                (i + 1) as u8,
-                1,
-                2,
-                3,
-                4,
-                5,
-            ])],
-            ..OutputOwners::default()
-        });
-        owners.push(OutputOwners {
-            locktime: i as u64,
-            threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3])],
             ..OutputOwners::default()
         });
     }
@@ -303,61 +270,30 @@ fn test_sort_output_owners() {
         sorted_owners.push(OutputOwners {
             locktime: i as u64,
             threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3])],
             ..OutputOwners::default()
         });
         sorted_owners.push(OutputOwners {
             locktime: i as u64,
             threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![
-                (i + 1) as u8,
-                1,
-                2,
-                3,
-                4,
-                5,
-            ])],
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3])],
             ..OutputOwners::default()
         });
         sorted_owners.push(OutputOwners {
             locktime: i as u64,
-            threshold: (i + 1) as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
-            ..OutputOwners::default()
-        });
-        sorted_owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
             threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
-            ..OutputOwners::default()
-        });
-        sorted_owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: i as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5])],
-            ..OutputOwners::default()
-        });
-        sorted_owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: (i + 1) as u32,
-            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5])],
-            ..OutputOwners::default()
-        });
-        sorted_owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: (i + 1) as u32,
             addrs: vec![
-                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
-                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
+                ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
+                ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
             ],
             ..OutputOwners::default()
         });
         sorted_owners.push(OutputOwners {
-            locktime: (i + 1) as u64,
-            threshold: (i + 1) as u32,
+            locktime: i as u64,
+            threshold: i as u32,
             addrs: vec![
-                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
-                ids::ShortId::from_slice(&vec![i as u8, 3, 2, 3, 4, 5]),
+                ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
+                ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3]),
             ],
             ..OutputOwners::default()
         });
@@ -422,7 +358,7 @@ impl PartialOrd for TransferOutput {
 
 impl PartialEq for TransferOutput {
     fn eq(&self, other: &TransferOutput) -> bool {
-        (self.amount == other.amount) || (self.output_owners == other.output_owners)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -623,8 +559,7 @@ impl PartialOrd for TransferInput {
 
 impl PartialEq for TransferInput {
     fn eq(&self, other: &TransferInput) -> bool {
-        (self.amount == other.amount)
-            || (SigIndices::new(&self.sig_indices) == SigIndices::new(&other.sig_indices))
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -658,7 +593,7 @@ impl PartialOrd for SigIndices {
 
 impl PartialEq for SigIndices {
     fn eq(&self, other: &SigIndices) -> bool {
-        cmp::eq_vectors(&self.0, &other.0)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -769,7 +704,7 @@ impl PartialOrd for Input {
 
 impl PartialEq for Input {
     fn eq(&self, other: &Input) -> bool {
-        SigIndices::new(&self.sig_indices) == SigIndices::new(&other.sig_indices)
+        self.cmp(other) == Ordering::Equal
     }
 }
 

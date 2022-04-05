@@ -90,7 +90,7 @@ impl PartialOrd for StakeableLockIn {
 
 impl PartialEq for StakeableLockIn {
     fn eq(&self, other: &StakeableLockIn) -> bool {
-        (self.locktime == other.locktime) || (self.transfer_input == other.transfer_input)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -142,7 +142,7 @@ impl PartialOrd for StakeableLockOut {
 
 impl PartialEq for StakeableLockOut {
     fn eq(&self, other: &StakeableLockOut) -> bool {
-        (self.locktime == other.locktime) || (self.transfer_output == other.transfer_output)
+        self.cmp(other) == Ordering::Equal
     }
 }
 
