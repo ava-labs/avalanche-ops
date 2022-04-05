@@ -8,6 +8,7 @@ use std::{
     string::String,
 };
 
+use bip32::{DerivationPath, Language, Mnemonic, XPrv};
 use bitcoin::hashes::hex::ToHex;
 use ethereum_types::{Address, H256};
 use lazy_static::lazy_static;
@@ -19,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use sha3::Keccak256;
 
 use crate::{constants, formatting, ids, secp256k1fx};
-use utils::{hash, prefix};
+use utils::{cmp, hash, prefix};
 
 pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
 
@@ -30,13 +31,27 @@ lazy_static! {
         #[prefix = "artifacts/"]
         struct Asset;
 
-        let key_file = Asset::get("artifacts/test.insecure.secp256k1.keys").unwrap();
-        load_keys(key_file.data.as_ref()).expect("failed to load keys")
+        let key_file = Asset::get("artifacts/test.insecure.secp256k1.key.infos.mnemonic.json").unwrap();
+        let key_file_data = key_file.data;
+        let  key_infos: Vec<PrivateKeyInfoEntry> =
+            serde_json::from_slice(&key_file_data).unwrap();
+
+        let mut keys: Vec<Key> = Vec::new();
+        for ki in key_infos.iter() {
+            let k = Key::from_mnemonic_phrase(ki.mnemonic_phrase.clone().unwrap()).unwrap();
+            keys.push(k);
+        }
+        keys
+    };
+
+    /// ref. https://github.com/ava-labs/avalanche-wallet/blob/v0.3.8/src/js/wallets/MnemonicWallet.ts
+    pub static ref AVAX_ACCOUNT_DERIVIATION_PATH: DerivationPath = {
+        "m/44'/9000'/0'".parse().unwrap()
     };
 }
 
 /// Loads keys from texts, assuming each key is line-separated.
-pub fn load_keys(d: &[u8]) -> io::Result<Vec<Key>> {
+pub fn load_encoded_keys(d: &[u8]) -> io::Result<Vec<Key>> {
     let text = match str::from_utf8(d) {
         Ok(s) => s,
         Err(e) => {
@@ -90,6 +105,10 @@ pub struct Key {
     #[serde(skip_serializing, skip_deserializing)]
     pub public_key: Option<PublicKey>,
 
+    /// Mnemonic phrase (optional).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mnemonic_phrase: Option<String>,
+
     /// AVAX wallet compatible private key.
     /// NEVER save mainnet-funded wallet keys here.
     pub private_key: String,
@@ -126,6 +145,7 @@ impl Key {
         let private_key_hex = hex::encode(&priv_bytes);
 
         Ok(Self {
+            mnemonic_phrase: None,
             secret_key: Some(secret_key),
             public_key: Some(public_key),
             private_key,
@@ -176,6 +196,63 @@ impl Key {
         let private_key_hex = hex::encode(&priv_bytes);
 
         Ok(Self {
+            mnemonic_phrase: None,
+            secret_key: Some(secret_key),
+            public_key: Some(public_key),
+            private_key,
+            private_key_hex,
+            short_address,
+            eth_address,
+        })
+    }
+
+    /// Loads the specified Secp256k1 key with CB58 encoding.
+    /// Takes the "private_key" field in the "Key" struct.
+    pub fn from_private_key_raw(raw: &[u8]) -> io::Result<Self> {
+        let pfx = PRIVATE_KEY_ENCODE_PREFIX.as_bytes();
+        let pos = {
+            if cmp::eq_u8_vectors(pfx, &raw[0..pfx.len()]) {
+                pfx.len()
+            } else {
+                0
+            }
+        };
+
+        if raw[pos..].len() != secp256k1::constants::SECRET_KEY_SIZE {
+            let encoded_priv_key = String::from_utf8(raw[pos..].to_vec()).map_err(|e| {
+                return Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("failed convert {}-byte to string ({})", raw[pos..].len(), e),
+                );
+            })?;
+            return Self::from_private_key(&encoded_priv_key);
+        }
+
+        let secret_key = match SecretKey::from_slice(&raw[pos..]) {
+            Ok(v) => v,
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("failed to load secret key ({})", e),
+                ));
+            }
+        };
+
+        let secp = Secp256k1::new();
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+
+        let short_address = public_key_to_short_address(&public_key)?;
+        let eth_address = public_key_to_eth_address(&public_key)?;
+
+        // ref. https://github.com/rust-bitcoin/rust-secp256k1/pull/396
+        let priv_bytes = secret_key.secret_bytes();
+        let enc = formatting::encode_cb58_with_checksum(&priv_bytes);
+        let mut private_key = String::from(PRIVATE_KEY_ENCODE_PREFIX);
+        private_key.push_str(&enc);
+        let private_key_hex = hex::encode(&priv_bytes);
+
+        Ok(Self {
+            mnemonic_phrase: None,
             secret_key: Some(secret_key),
             public_key: Some(public_key),
             private_key,
@@ -187,7 +264,10 @@ impl Key {
 
     /// Loads the specified Secp256k1 key with hex encoding.
     /// Takes the "private_key" field in the "Key" struct.
-    pub fn from_private_key_eth(encoded_priv_key: &str) -> io::Result<Self> {
+    pub fn from_private_key_eth<S>(encoded_priv_key: S) -> io::Result<Self>
+    where
+        S: AsRef<[u8]>,
+    {
         let priv_bytes = match hex::decode(encoded_priv_key) {
             Ok(b) => b,
             Err(e) => {
@@ -201,7 +281,7 @@ impl Key {
             return Err(Error::new(
                 ErrorKind::Other,
                 format!(
-                    "unexpected secret key size ({}, expected {})",
+                    "unexpected secret key size {} (expected {})",
                     priv_bytes.len(),
                     secp256k1::constants::SECRET_KEY_SIZE
                 ),
@@ -209,6 +289,34 @@ impl Key {
         }
         let enc = formatting::encode_cb58_with_checksum(&priv_bytes);
         Self::from_private_key(&enc)
+    }
+
+    pub fn from_mnemonic_phrase<S>(phrase: S) -> io::Result<Self>
+    where
+        S: AsRef<str>,
+    {
+        let mnemonic = Mnemonic::new(phrase, Language::English).map_err(|e| {
+            return Error::new(
+                ErrorKind::Other,
+                format!("failed to read mnemonic phrase ({})", e),
+            );
+        })?;
+        let seed = mnemonic.to_seed("password");
+
+        // ref. https://github.com/ava-labs/avalanche-wallet/blob/v0.3.8/src/js/wallets/MnemonicWallet.ts
+        let child_xprv =
+            XPrv::derive_from_path(&seed, &AVAX_ACCOUNT_DERIVIATION_PATH).map_err(|e| {
+                return Error::new(
+                    ErrorKind::Other,
+                    format!("failed to derive AVAX account path ({})", e),
+                );
+            })?;
+
+        let pk = child_xprv.private_key().to_bytes();
+
+        let mut key = Self::from_private_key_raw(&pk.to_vec())?;
+        key.mnemonic_phrase = Some(String::from(mnemonic.phrase()));
+        Ok(key)
     }
 
     /// Implements "crypto.PublicKeySECP256K1R.Address()" and "formatting.FormatAddress".
@@ -237,6 +345,7 @@ impl Key {
         let p_address = self.address("P", network_id)?;
         let c_address = self.address("C", network_id)?;
         Ok(PrivateKeyInfo {
+            mnemonic_phrase: self.mnemonic_phrase.clone(),
             private_key: self.private_key.clone(),
             private_key_hex: self.private_key_hex.clone(),
             x_address,
@@ -299,6 +408,18 @@ impl Key {
             sig_indices,
         })
     }
+}
+
+/// Only supports "English" for now.
+/// ref. https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+/// ref. https://github.com/rust-bitcoin/rust-bitcoin/blob/master/src/util/bip32.rs
+/// ref. https://github.com/bitcoin/bips/blob/master/bip-0039/bip-0039-wordlists.md
+/// ref. https://iancoleman.io/bip39/
+pub fn generate_mnemonic_phrase_24_word() -> String {
+    let m = Mnemonic::random(&mut rand_core::OsRng, Language::English);
+    let s = m.phrase();
+    assert_eq!(s.split(' ').count(), 24);
+    String::from(s)
 }
 
 /// "hashing.PubkeyBytesToAddress"
@@ -437,40 +558,24 @@ fn test_soft_key() {
         parsed_key.address("X", 9999).unwrap()
     );
 
-    // test random keys generated by "avalanchego/utils/crypto.FactorySECP256K1R"
-    // and make sure both generate the same addresses
-    // use "avalanche-ops/avalanchego-compatibility/key/main.go"
-    // to generate keys and addresses with "avalanchego"
-    #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-    #[serde(rename_all = "snake_case")]
-    struct PrivateKeyInfoEntry {
-        pub private_key: String,
-        pub private_key_hex: String,
-        pub network1: Address,
-        pub network9999: Address,
-        #[serde(deserialize_with = "ids::must_deserialize_short_id")]
-        pub short_address: ids::ShortId,
-        pub eth_address: String,
-    }
-
-    #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-    #[serde(rename_all = "snake_case")]
-    struct Address {
-        pub x_address: String,
-        pub p_address: String,
-        pub c_address: String,
-    }
-
     #[derive(RustEmbed)]
     #[folder = "artifacts/"]
     #[prefix = "artifacts/"]
     struct Asset;
 
-    let test_keys_file = Asset::get("artifacts/test.insecure.secp256k1.key.infos.json").unwrap();
+    let test_keys_file =
+        Asset::get("artifacts/test.insecure.secp256k1.key.infos.mnemonic.json").unwrap();
     let test_keys_file_contents = std::str::from_utf8(test_keys_file.data.as_ref()).unwrap();
-    let key_infos: Vec<PrivateKeyInfoEntry> =
+    let mut key_infos: Vec<PrivateKeyInfoEntry> =
         serde_json::from_slice(&test_keys_file_contents.as_bytes()).unwrap();
 
+    let test_keys_file =
+        Asset::get("artifacts/test.insecure.secp256k1.key.infos.no.mnemonic.json").unwrap();
+    let test_keys_file_contents = std::str::from_utf8(test_keys_file.data.as_ref()).unwrap();
+    let key_infos_no_mnemonic: Vec<PrivateKeyInfoEntry> =
+        serde_json::from_slice(&test_keys_file_contents.as_bytes()).unwrap();
+
+    key_infos.extend(key_infos_no_mnemonic);
     for (pos, ki) in key_infos.iter().enumerate() {
         info!("checking the key info at {}", pos);
 
@@ -479,16 +584,47 @@ fn test_soft_key() {
             k,
             Key::from_private_key_eth(&k.private_key_hex.clone()).unwrap(),
         );
+        assert_eq!(
+            k,
+            Key::from_private_key_raw(&k.private_key.as_bytes()).unwrap(),
+        );
+
+        if ki.mnemonic_phrase.is_some() {
+            let mut k2 = k.clone();
+            k2.mnemonic_phrase = ki.mnemonic_phrase.clone();
+            assert_eq!(
+                k2,
+                Key::from_mnemonic_phrase(&ki.mnemonic_phrase.clone().unwrap()).unwrap(),
+            );
+        }
 
         assert_eq!(k.private_key_hex.clone(), ki.private_key_hex);
 
-        assert_eq!(k.address("X", 1).unwrap(), ki.network1.x_address);
-        assert_eq!(k.address("P", 1).unwrap(), ki.network1.p_address);
-        assert_eq!(k.address("C", 1).unwrap(), ki.network1.c_address);
+        assert_eq!(
+            k.address("X", 1).unwrap(),
+            ki.addresses.get("1").unwrap().x_address
+        );
+        assert_eq!(
+            k.address("P", 1).unwrap(),
+            ki.addresses.get("1").unwrap().p_address
+        );
+        assert_eq!(
+            k.address("C", 1).unwrap(),
+            ki.addresses.get("1").unwrap().c_address
+        );
 
-        assert_eq!(k.address("X", 9999).unwrap(), ki.network9999.x_address);
-        assert_eq!(k.address("P", 9999).unwrap(), ki.network9999.p_address);
-        assert_eq!(k.address("C", 9999).unwrap(), ki.network9999.c_address);
+        assert_eq!(
+            k.address("X", 9999).unwrap(),
+            ki.addresses.get("9999").unwrap().x_address
+        );
+        assert_eq!(
+            k.address("P", 9999).unwrap(),
+            ki.addresses.get("9999").unwrap().p_address
+        );
+        assert_eq!(
+            k.address("C", 9999).unwrap(),
+            ki.addresses.get("9999").unwrap().c_address
+        );
 
         assert_eq!(k.short_address, ki.short_address);
         assert_eq!(k.eth_address, ki.eth_address);
@@ -498,12 +634,17 @@ fn test_soft_key() {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct PrivateKeyInfo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mnemonic_phrase: Option<String>,
+
     /// CB58-encoded private key with the prefix "PrivateKey-".
     pub private_key: String,
     pub private_key_hex: String,
+
     pub x_address: String,
     pub p_address: String,
     pub c_address: String,
+
     #[serde(deserialize_with = "ids::must_deserialize_short_id")]
     pub short_address: ids::ShortId,
     pub eth_address: String,
@@ -562,6 +703,34 @@ impl fmt::Display for PrivateKeyInfo {
         let s = serde_yaml::to_string(&self).unwrap();
         write!(f, "{}", s)
     }
+}
+
+// test random keys generated by "avalanchego/utils/crypto.FactorySECP256K1R"
+// and make sure both generate the same addresses
+// use "avalanche-ops/avalanchego-compatibility/key/main.go"
+// to generate keys and addresses with "avalanchego"
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct PrivateKeyInfoEntry {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mnemonic_phrase: Option<String>,
+
+    pub private_key: String,
+    pub private_key_hex: String,
+
+    pub addresses: HashMap<String, PrivateKeyInfoEntryAddress>,
+
+    #[serde(deserialize_with = "ids::must_deserialize_short_id")]
+    pub short_address: ids::ShortId,
+    pub eth_address: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct PrivateKeyInfoEntryAddress {
+    pub x_address: String,
+    pub p_address: String,
+    pub c_address: String,
 }
 
 /// Support multiple keys as a chain.

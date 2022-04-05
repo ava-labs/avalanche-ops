@@ -163,7 +163,7 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
                 ResetColor
             )?;
             let contents = fs::read_to_string(private_key_path).expect("failed to read file");
-            let keys = soft_key::load_keys(contents.as_bytes())?;
+            let keys = soft_key::load_encoded_keys(contents.as_bytes())?;
             keys
         } else {
             panic!("unexpected None opt.private_key_path -- hardware wallet not supported yet");

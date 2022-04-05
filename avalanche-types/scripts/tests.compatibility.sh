@@ -21,7 +21,8 @@ popd
 
 ###
 pushd ./compatibility
-go run ./key-infos-validate/main.go ../artifacts/test.insecure.secp256k1.key.infos.json
+go run ./key-infos-validate/main.go ../artifacts/test.insecure.secp256k1.key.infos.mnemonic.json
+go run ./key-infos-validate/main.go ../artifacts/test.insecure.secp256k1.key.infos.no.mnemonic.json
 popd
 
 ###
