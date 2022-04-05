@@ -46,44 +46,44 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		if xAddr != ki.Network1.XAddress {
-			panic(fmt.Errorf("unexpected xAddr %q, expected %q", xAddr, ki.Network1.XAddress))
+		if xAddr != ki.Addresses["1"].XAddress {
+			panic(fmt.Errorf("unexpected xAddr %q, expected %q", xAddr, ki.Addresses["1"].XAddress))
 		}
 		pAddr, err := encodeAddr(k, "P", constants.GetHRP(1))
 		if err != nil {
 			panic(err)
 		}
-		if pAddr != ki.Network1.PAddress {
-			panic(fmt.Errorf("unexpected pAddr %q, expected %q", pAddr, ki.Network1.PAddress))
+		if pAddr != ki.Addresses["1"].PAddress {
+			panic(fmt.Errorf("unexpected pAddr %q, expected %q", pAddr, ki.Addresses["1"].PAddress))
 		}
 		cAddr, err := encodeAddr(k, "C", constants.GetHRP(1))
 		if err != nil {
 			panic(err)
 		}
-		if cAddr != ki.Network1.CAddress {
-			panic(fmt.Errorf("unexpected cAddr %q, expected %q", cAddr, ki.Network1.CAddress))
+		if cAddr != ki.Addresses["1"].CAddress {
+			panic(fmt.Errorf("unexpected cAddr %q, expected %q", cAddr, ki.Addresses["1"].CAddress))
 		}
 
 		xAddr, err = encodeAddr(k, "X", constants.GetHRP(9999))
 		if err != nil {
 			panic(err)
 		}
-		if xAddr != ki.Network9999.XAddress {
-			panic(fmt.Errorf("unexpected xAddr %q, expected %q", xAddr, ki.Network9999.XAddress))
+		if xAddr != ki.Addresses["9999"].XAddress {
+			panic(fmt.Errorf("unexpected xAddr %q, expected %q", xAddr, ki.Addresses["9999"].XAddress))
 		}
 		pAddr, err = encodeAddr(k, "P", constants.GetHRP(9999))
 		if err != nil {
 			panic(err)
 		}
-		if pAddr != ki.Network9999.PAddress {
-			panic(fmt.Errorf("unexpected pAddr %q, expected %q", pAddr, ki.Network9999.PAddress))
+		if pAddr != ki.Addresses["9999"].PAddress {
+			panic(fmt.Errorf("unexpected pAddr %q, expected %q", pAddr, ki.Addresses["9999"].PAddress))
 		}
 		cAddr, err = encodeAddr(k, "C", constants.GetHRP(9999))
 		if err != nil {
 			panic(err)
 		}
-		if cAddr != ki.Network9999.CAddress {
-			panic(fmt.Errorf("unexpected cAddr %q, expected %q", cAddr, ki.Network9999.CAddress))
+		if cAddr != ki.Addresses["9999"].CAddress {
+			panic(fmt.Errorf("unexpected cAddr %q, expected %q", cAddr, ki.Addresses["9999"].CAddress))
 		}
 
 		shortAddr1 := encodeShortAddr1(k)
@@ -107,11 +107,10 @@ func main() {
 type keyInfo struct {
 	PrivateKey string `json:"private_key"`
 	// ref. https://github.com/ava-labs/subnet-cli/blob/5b69345a3fba534fb6969002f41c8d3e69026fed/internal/key/key.go#L238-L258
-	PrivateKeyHex string    `json:"private_key_hex"`
-	Network1      addresses `json:"network1"`
-	Network9999   addresses `json:"network9999"`
-	ShortAddress  string    `json:"short_address"`
-	EthAddress    string    `json:"eth_address"`
+	PrivateKeyHex string               `json:"private_key_hex"`
+	Addresses     map[string]addresses `json:"addresses"`
+	ShortAddress  string               `json:"short_address"`
+	EthAddress    string               `json:"eth_address"`
 }
 
 type addresses struct {
