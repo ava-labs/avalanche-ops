@@ -194,6 +194,12 @@ impl PartialEq for Id {
 #[derive(Eq)]
 pub struct Ids(Vec<Id>);
 
+impl Ids {
+    pub fn new(ids: &[Id]) -> Self {
+        Ids(Vec::from(ids))
+    }
+}
+
 impl Ord for Ids {
     fn cmp(&self, other: &Ids) -> Ordering {
         // packer encodes the array length first
@@ -447,6 +453,12 @@ impl PartialEq for ShortId {
 
 #[derive(Eq)]
 pub struct ShortIds(Vec<ShortId>);
+
+impl ShortIds {
+    pub fn new(ids: &[ShortId]) -> Self {
+        ShortIds(Vec::from(ids))
+    }
+}
 
 impl Ord for ShortIds {
     fn cmp(&self, other: &ShortIds) -> Ordering {
@@ -896,6 +908,12 @@ impl PartialEq for NodeId {
 
 #[derive(Eq)]
 pub struct NodeIds(Vec<NodeId>);
+
+impl NodeIds {
+    pub fn new(ids: &[NodeId]) -> Self {
+        NodeIds(Vec::from(ids))
+    }
+}
 
 impl Ord for NodeIds {
     fn cmp(&self, other: &NodeIds) -> Ordering {

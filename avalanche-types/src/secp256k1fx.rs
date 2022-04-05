@@ -1,4 +1,7 @@
-use std::io::{self, Error, ErrorKind};
+use std::{
+    cmp::Ordering,
+    io::{self, Error, ErrorKind},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -40,7 +43,7 @@ impl Credential {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#OutputOwners
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, Clone)]
 pub struct OutputOwners {
     pub locktime: u64,
     pub threshold: u32,
@@ -77,6 +80,109 @@ impl OutputOwners {
     pub fn type_id() -> u32 {
         *(codec::P_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
+}
+
+impl Ord for OutputOwners {
+    fn cmp(&self, other: &OutputOwners) -> Ordering {
+        self.locktime
+            .cmp(&(other.locktime)) // returns when "locktime"s are not Equal
+            .then_with(
+                || self.threshold.cmp(&other.threshold), // if "locktime"s are Equal, compare "threshold"
+            )
+            .then_with(
+                || ids::ShortIds::new(&self.addrs).cmp(&ids::ShortIds::new(&other.addrs)), // if "locktime"s and "threshold"s are Equal, compare "addrs"
+            )
+    }
+}
+
+impl PartialOrd for OutputOwners {
+    fn partial_cmp(&self, other: &OutputOwners) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for OutputOwners {
+    fn eq(&self, other: &OutputOwners) -> bool {
+        (self.locktime == other.locktime)
+            || (self.threshold == other.threshold)
+            || (ids::ShortIds::new(&self.addrs) == ids::ShortIds::new(&other.addrs))
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_output_owners --exact --show-output
+#[test]
+fn test_sort_output_owners() {
+    let mut owners: Vec<OutputOwners> = Vec::new();
+    for i in (0..10).rev() {
+        owners.push(OutputOwners {
+            locktime: (i + 1) as u64,
+            threshold: i as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            ..OutputOwners::default()
+        });
+        owners.push(OutputOwners {
+            locktime: i as u64,
+            threshold: (i + 1) as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            ..OutputOwners::default()
+        });
+        owners.push(OutputOwners {
+            locktime: i as u64,
+            threshold: i as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![
+                (i + 1) as u8,
+                1,
+                2,
+                3,
+                4,
+                5,
+            ])],
+            ..OutputOwners::default()
+        });
+        owners.push(OutputOwners {
+            locktime: i as u64,
+            threshold: i as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            ..OutputOwners::default()
+        });
+    }
+    owners.sort();
+
+    let mut sorted_owners: Vec<OutputOwners> = Vec::new();
+    for i in 0..10 {
+        sorted_owners.push(OutputOwners {
+            locktime: i as u64,
+            threshold: i as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            ..OutputOwners::default()
+        });
+        sorted_owners.push(OutputOwners {
+            locktime: i as u64,
+            threshold: i as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![
+                (i + 1) as u8,
+                1,
+                2,
+                3,
+                4,
+                5,
+            ])],
+            ..OutputOwners::default()
+        });
+        sorted_owners.push(OutputOwners {
+            locktime: i as u64,
+            threshold: (i + 1) as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            ..OutputOwners::default()
+        });
+        sorted_owners.push(OutputOwners {
+            locktime: (i + 1) as u64,
+            threshold: i as u32,
+            addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+            ..OutputOwners::default()
+        });
+    }
+    assert_eq!(owners, sorted_owners);
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
