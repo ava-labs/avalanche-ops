@@ -59,7 +59,7 @@ fn test_sort_transferable_outputs() {}
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableIn
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, Clone)]
 pub struct TransferableInput {
     pub utxo_id: UtxoId,
     pub asset_id: ids::Id,
@@ -96,15 +96,79 @@ impl TransferableInput {
     }
 }
 
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#SortTransferableInputs
-pub fn sort_transferable_inputs(_outputs: &mut [TransferableOutput]) -> io::Result<()> {
-    Ok(())
+impl Ord for TransferableInput {
+    fn cmp(&self, other: &TransferableInput) -> cmp::Ordering {
+        self.utxo_id
+            .tx_id
+            .d
+            .cmp(&(other.utxo_id.tx_id.d)) // returns when "utxo_id.tx_id"s are not Equal
+            .then_with(
+                || self.utxo_id.output_index.cmp(&other.utxo_id.output_index), // if "utxo_id.tx_id"s are Equal, compare "output_index"
+            )
+    }
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_transferable_inputs --exact --show-output
+impl PartialOrd for TransferableInput {
+    fn partial_cmp(&self, other: &TransferableInput) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for TransferableInput {
+    fn eq(&self, other: &TransferableInput) -> bool {
+        (self.utxo_id.tx_id == other.utxo_id.tx_id)
+            || (self.utxo_id.output_index == other.utxo_id.output_index)
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#SortTransferableInputs
 /// ref. "avalanchego/vms/components/avax.TestTransferableInputSorting"
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_transferable_inputs --exact --show-output
 #[test]
-fn test_sort_transferable_inputs() {}
+fn test_sort_transferable_inputs() {
+    let mut inputs: Vec<TransferableInput> = Vec::new();
+    for i in (0..10).rev() {
+        inputs.push(TransferableInput {
+            utxo_id: UtxoId {
+                tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+                output_index: (i + 1) as u32,
+                ..UtxoId::default()
+            },
+            ..TransferableInput::default()
+        });
+        inputs.push(TransferableInput {
+            utxo_id: UtxoId {
+                tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+                output_index: i as u32,
+                ..UtxoId::default()
+            },
+            ..TransferableInput::default()
+        });
+    }
+    inputs.sort();
+
+    let mut sorted_inputs: Vec<TransferableInput> = Vec::new();
+    for i in 0..10 {
+        sorted_inputs.push(TransferableInput {
+            utxo_id: UtxoId {
+                tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+                output_index: i as u32,
+                ..UtxoId::default()
+            },
+            ..TransferableInput::default()
+        });
+        sorted_inputs.push(TransferableInput {
+            utxo_id: UtxoId {
+                tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+                output_index: (i + 1) as u32,
+                ..UtxoId::default()
+            },
+            ..TransferableInput::default()
+        });
+    }
+
+    assert_eq!(inputs, sorted_inputs);
+}
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXOID
 #[derive(Debug, Serialize, Deserialize, Eq, Clone)]
