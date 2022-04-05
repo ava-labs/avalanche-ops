@@ -1,4 +1,5 @@
 use std::{
+    cmp,
     io::{self, Error, ErrorKind},
     str::FromStr,
 };
@@ -45,11 +46,12 @@ impl TransferableOutput {
     }
 }
 
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableOutput
 pub fn sort_transferable_outputs(_outputs: &mut [TransferableOutput]) -> io::Result<()> {
     Ok(())
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::create_subnet::test_sort_transferable_outputs --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_transferable_outputs --exact --show-output
 /// ref. "avalanchego/vms/components/avax.TestTransferableOutputSorting"
 #[test]
 fn test_sort_transferable_outputs() {}
@@ -94,17 +96,18 @@ impl TransferableInput {
     }
 }
 
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#SortTransferableInputs
 pub fn sort_transferable_inputs(_outputs: &mut [TransferableOutput]) -> io::Result<()> {
     Ok(())
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::create_subnet::test_sort_transferable_inputs --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_transferable_inputs --exact --show-output
 /// ref. "avalanchego/vms/components/avax.TestTransferableInputSorting"
 #[test]
 fn test_sort_transferable_inputs() {}
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXOID
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, Clone)]
 pub struct UtxoId {
     pub tx_id: ids::Id,
     pub output_index: u32,
@@ -139,6 +142,64 @@ impl UtxoId {
             id,
         }
     }
+}
+
+impl Ord for UtxoId {
+    fn cmp(&self, other: &UtxoId) -> cmp::Ordering {
+        self.tx_id
+            .d
+            .cmp(&(other.tx_id.d)) // returns when "tx_id"s are not Equal
+            .then_with(
+                || self.output_index.cmp(&other.output_index), // if "tx_id"s are Equal, compare "output_index"
+            )
+    }
+}
+
+impl PartialOrd for UtxoId {
+    fn partial_cmp(&self, other: &UtxoId) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for UtxoId {
+    fn eq(&self, other: &UtxoId) -> bool {
+        (self.tx_id == other.tx_id) || (self.output_index == other.output_index)
+    }
+}
+
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#SortUTXOIDs
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_utxo_ids --exact --show-output
+#[test]
+fn test_sort_utxo_ids() {
+    let mut utxos: Vec<UtxoId> = Vec::new();
+    for i in (0..10).rev() {
+        utxos.push(UtxoId {
+            tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            output_index: (i + 1) as u32,
+            ..UtxoId::default()
+        });
+        utxos.push(UtxoId {
+            tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            output_index: i as u32,
+            ..UtxoId::default()
+        });
+    }
+    utxos.sort();
+
+    let mut sorted_utxos: Vec<UtxoId> = Vec::new();
+    for i in 0..10 {
+        sorted_utxos.push(UtxoId {
+            tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            output_index: i as u32,
+            ..UtxoId::default()
+        });
+        sorted_utxos.push(UtxoId {
+            tx_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            output_index: (i + 1) as u32,
+            ..UtxoId::default()
+        });
+    }
+    assert_eq!(utxos, sorted_utxos);
 }
 
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance
