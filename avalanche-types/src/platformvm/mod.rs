@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{avax, codec, ids, secp256k1fx};
+use crate::{codec, ids, secp256k1fx};
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#pkg-variables
 pub fn chain_id() -> ids::Id {
@@ -94,6 +94,80 @@ impl PartialEq for StakeableLockIn {
     }
 }
 
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- platformvm::test_sort_stakeable_lock_ins --exact --show-output
+#[test]
+fn test_sort_stakeable_lock_ins() {
+    use utils::cmp;
+
+    let mut ins: Vec<StakeableLockIn> = Vec::new();
+    for i in (0..10).rev() {
+        ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 10,
+                sig_indices: vec![i as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            },
+        });
+        ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 5,
+                sig_indices: vec![i as u32, 2, 2, 3, 4, 5, 6, 7, 8, 9, 9],
+            },
+        });
+        ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 5,
+                sig_indices: vec![i as u32, 2, 2, 3, 4, 5, 6, 7, 8, 9],
+            },
+        });
+        ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 5,
+                sig_indices: vec![i as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            },
+        });
+    }
+    assert!(!cmp::is_sorted_and_unique(&ins));
+    ins.sort();
+
+    let mut sorted_ins: Vec<StakeableLockIn> = Vec::new();
+    for i in 0..10 {
+        sorted_ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 5,
+                sig_indices: vec![i as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            },
+        });
+        sorted_ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 5,
+                sig_indices: vec![i as u32, 2, 2, 3, 4, 5, 6, 7, 8, 9],
+            },
+        });
+        sorted_ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 5,
+                sig_indices: vec![i as u32, 2, 2, 3, 4, 5, 6, 7, 8, 9, 9],
+            },
+        });
+        sorted_ins.push(StakeableLockIn {
+            locktime: i as u64,
+            transfer_input: secp256k1fx::TransferInput {
+                amount: 10,
+                sig_indices: vec![i as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            },
+        });
+    }
+    assert!(cmp::is_sorted_and_unique(&sorted_ins));
+    assert_eq!(ins, sorted_ins);
+}
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/platformvm#StakeableLockOut
 #[derive(Debug, Serialize, Deserialize, Eq, Clone)]
 pub struct StakeableLockOut {
@@ -146,24 +220,176 @@ impl PartialEq for StakeableLockOut {
     }
 }
 
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct Utxo {
-    pub utxo_id: avax::UtxoId,
-    pub asset_id: ids::Id,
-}
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- platformvm::test_sort_stakeable_lock_outs --exact --show-output
+#[test]
+fn test_sort_stakeable_lock_outs() {
+    use utils::cmp;
 
-impl Default for Utxo {
-    fn default() -> Self {
-        Self::default()
+    let mut outs: Vec<StakeableLockOut> = Vec::new();
+    for i in (0..10).rev() {
+        outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: (i + 1) as u32,
+                    addrs: vec![
+                        ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5]),
+                        ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
+                    ],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: (i + 1) as u32,
+                    addrs: vec![
+                        ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5]),
+                        ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5]),
+                    ],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: (i + 1) as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: i as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
     }
-}
+    assert!(!cmp::is_sorted_and_unique(&outs));
+    outs.sort();
 
-impl Utxo {
-    pub fn default() -> Self {
-        Self {
-            utxo_id: avax::UtxoId::default(),
-            asset_id: ids::Id::empty(),
-        }
+    let mut sorted_outs: Vec<StakeableLockOut> = Vec::new();
+    for i in 0..10 {
+        sorted_outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: i as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        sorted_outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        sorted_outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        sorted_outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: (i + 1) as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        sorted_outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: (i + 1) as u32,
+                    addrs: vec![
+                        ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5]),
+                        ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5]),
+                    ],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
+        sorted_outs.push(StakeableLockOut {
+            locktime: i as u64,
+            transfer_output: secp256k1fx::TransferOutput {
+                amount: (i + 1) as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: (i + 1) as u64,
+                    threshold: (i + 1) as u32,
+                    addrs: vec![
+                        ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5]),
+                        ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3, 4, 5]),
+                    ],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            },
+        });
     }
+    assert!(cmp::is_sorted_and_unique(&sorted_outs));
+    assert_eq!(outs, sorted_outs);
 }

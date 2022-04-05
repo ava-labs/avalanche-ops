@@ -96,10 +96,11 @@ impl PartialEq for Signatures {
     }
 }
 
+// NOTE: all signatures are fixed length
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_credentials --exact --show-output
 #[test]
 fn test_sort_credentials() {
-    // NOTE: all signatures are fixed length
+    use utils::cmp;
 
     let mut credentials: Vec<Credential> = Vec::new();
     for i in (0..10).rev() {
@@ -127,6 +128,7 @@ fn test_sort_credentials() {
             signatures: vec![vec![i as u8, 1, 2, 3]],
         });
     }
+    assert!(!cmp::is_sorted_and_unique(&credentials));
     credentials.sort();
 
     let mut sorted_credentials: Vec<Credential> = Vec::new();
@@ -159,6 +161,7 @@ fn test_sort_credentials() {
             ],
         });
     }
+    assert!(cmp::is_sorted_and_unique(&sorted_credentials));
     assert_eq!(credentials, sorted_credentials);
 }
 
@@ -230,6 +233,8 @@ impl PartialEq for OutputOwners {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_output_owners --exact --show-output
 #[test]
 fn test_sort_output_owners() {
+    use utils::cmp;
+
     let mut owners: Vec<OutputOwners> = Vec::new();
     for i in (0..10).rev() {
         owners.push(OutputOwners {
@@ -263,6 +268,7 @@ fn test_sort_output_owners() {
             ..OutputOwners::default()
         });
     }
+    assert!(!cmp::is_sorted_and_unique(&owners));
     owners.sort();
 
     let mut sorted_owners: Vec<OutputOwners> = Vec::new();
@@ -298,6 +304,7 @@ fn test_sort_output_owners() {
             ..OutputOwners::default()
         });
     }
+    assert!(cmp::is_sorted_and_unique(&sorted_owners));
     assert_eq!(owners, sorted_owners);
 }
 
@@ -365,6 +372,8 @@ impl PartialEq for TransferOutput {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_transfer_outputs --exact --show-output
 #[test]
 fn test_sort_transfer_outputs() {
+    use utils::cmp;
+
     let mut outputs: Vec<TransferOutput> = Vec::new();
     for i in (0..10).rev() {
         outputs.push(TransferOutput {
@@ -419,6 +428,7 @@ fn test_sort_transfer_outputs() {
             },
         });
     }
+    assert!(!cmp::is_sorted_and_unique(&outputs));
     outputs.sort();
 
     let mut sorted_outputs: Vec<TransferOutput> = Vec::new();
@@ -475,7 +485,7 @@ fn test_sort_transfer_outputs() {
             },
         });
     }
-
+    assert!(cmp::is_sorted_and_unique(&sorted_outputs));
     assert_eq!(outputs, sorted_outputs);
 }
 
@@ -600,6 +610,8 @@ impl PartialEq for SigIndices {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_transfer_inputs --exact --show-output
 #[test]
 fn test_sort_transfer_inputs() {
+    use utils::cmp;
+
     let mut inputs: Vec<TransferInput> = Vec::new();
     for i in (0..10).rev() {
         inputs.push(TransferInput {
@@ -623,6 +635,7 @@ fn test_sort_transfer_inputs() {
             sig_indices: vec![(i + 100) as u32, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
         });
     }
+    assert!(!cmp::is_sorted_and_unique(&inputs));
     inputs.sort();
 
     let mut sorted_inputs: Vec<TransferInput> = Vec::new();
@@ -654,7 +667,7 @@ fn test_sort_transfer_inputs() {
             sig_indices: vec![i as u32, 1, 2, 3, 4, 5],
         });
     }
-
+    assert!(cmp::is_sorted_and_unique(&sorted_inputs));
     assert_eq!(inputs, sorted_inputs);
 }
 
@@ -711,6 +724,8 @@ impl PartialEq for Input {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_inputs --exact --show-output
 #[test]
 fn test_sort_inputs() {
+    use utils::cmp;
+
     let mut inputs: Vec<Input> = Vec::new();
     for i in (0..10).rev() {
         inputs.push(Input {
@@ -723,6 +738,7 @@ fn test_sort_inputs() {
             sig_indices: vec![i as u32, 1, 2, 3, 4, 5],
         });
     }
+    assert!(!cmp::is_sorted_and_unique(&inputs));
     inputs.sort();
 
     let mut sorted_inputs: Vec<Input> = Vec::new();
@@ -739,6 +755,6 @@ fn test_sort_inputs() {
             sig_indices: vec![i as u32, 2, 2, 3, 4, 5, 6, 7, 8, 9],
         });
     }
-
+    assert!(cmp::is_sorted_and_unique(&sorted_inputs));
     assert_eq!(inputs, sorted_inputs);
 }

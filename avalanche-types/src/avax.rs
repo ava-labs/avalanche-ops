@@ -123,6 +123,98 @@ impl PartialEq for TransferableOutput {
     }
 }
 
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#SortTransferableOutputs
+/// ref. "avalanchego/vms/components/avax.TestTransferableOutputSorting"
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_transferable_outputs --exact --show-output
+#[test]
+fn test_sort_transferable_outputs() {
+    use utils::cmp;
+
+    let mut outputs: Vec<TransferableOutput> = Vec::new();
+    for i in (0..10).rev() {
+        outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 2, 2, 3, 4, 5, 6, 7, 8, 9]),
+            stakeable_lock_out: Some(platformvm::StakeableLockOut::default()),
+            ..TransferableOutput::default()
+        });
+        outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 2, 2, 3, 4, 5, 6, 7, 8, 9]),
+            transfer_output: Some(secp256k1fx::TransferOutput {
+                amount: i as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            }),
+            ..TransferableOutput::default()
+        });
+        outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            stakeable_lock_out: Some(platformvm::StakeableLockOut::default()),
+            ..TransferableOutput::default()
+        });
+        outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            transfer_output: Some(secp256k1fx::TransferOutput {
+                amount: i as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            }),
+            ..TransferableOutput::default()
+        });
+    }
+    assert!(!cmp::is_sorted_and_unique(&outputs));
+    outputs.sort();
+
+    let mut sorted_outputs: Vec<TransferableOutput> = Vec::new();
+    for i in 0..10 {
+        sorted_outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            transfer_output: Some(secp256k1fx::TransferOutput {
+                amount: i as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            }),
+            ..TransferableOutput::default()
+        });
+        sorted_outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            stakeable_lock_out: Some(platformvm::StakeableLockOut::default()),
+            ..TransferableOutput::default()
+        });
+        sorted_outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 2, 2, 3, 4, 5, 6, 7, 8, 9]),
+            transfer_output: Some(secp256k1fx::TransferOutput {
+                amount: i as u64,
+                output_owners: secp256k1fx::OutputOwners {
+                    locktime: i as u64,
+                    threshold: i as u32,
+                    addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3, 4, 5])],
+                    ..secp256k1fx::OutputOwners::default()
+                },
+            }),
+            ..TransferableOutput::default()
+        });
+        sorted_outputs.push(TransferableOutput {
+            asset_id: ids::Id::from_slice(&vec![i as u8, 2, 2, 3, 4, 5, 6, 7, 8, 9]),
+            stakeable_lock_out: Some(platformvm::StakeableLockOut::default()),
+            ..TransferableOutput::default()
+        });
+    }
+    assert!(cmp::is_sorted_and_unique(&outputs));
+    assert_eq!(outputs, sorted_outputs);
+}
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableInput
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#TransferableIn
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#TransferInput
@@ -192,6 +284,8 @@ impl PartialEq for TransferableInput {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_transferable_inputs --exact --show-output
 #[test]
 fn test_sort_transferable_inputs() {
+    use utils::cmp;
+
     let mut inputs: Vec<TransferableInput> = Vec::new();
     for i in (0..10).rev() {
         inputs.push(TransferableInput {
@@ -211,6 +305,7 @@ fn test_sort_transferable_inputs() {
             ..TransferableInput::default()
         });
     }
+    assert!(!cmp::is_sorted_and_unique(&inputs));
     inputs.sort();
 
     let mut sorted_inputs: Vec<TransferableInput> = Vec::new();
@@ -232,7 +327,7 @@ fn test_sort_transferable_inputs() {
             ..TransferableInput::default()
         });
     }
-
+    assert!(cmp::is_sorted_and_unique(&sorted_inputs));
     assert_eq!(inputs, sorted_inputs);
 }
 
@@ -301,6 +396,8 @@ impl PartialEq for UtxoId {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_utxo_ids --exact --show-output
 #[test]
 fn test_sort_utxo_ids() {
+    use utils::cmp;
+
     let mut utxos: Vec<UtxoId> = Vec::new();
     for i in (0..10).rev() {
         utxos.push(UtxoId {
@@ -314,6 +411,7 @@ fn test_sort_utxo_ids() {
             ..UtxoId::default()
         });
     }
+    assert!(!cmp::is_sorted_and_unique(&utxos));
     utxos.sort();
 
     let mut sorted_utxos: Vec<UtxoId> = Vec::new();
@@ -329,6 +427,7 @@ fn test_sort_utxo_ids() {
             ..UtxoId::default()
         });
     }
+    assert!(cmp::is_sorted_and_unique(&sorted_utxos));
     assert_eq!(utxos, sorted_utxos);
 }
 
@@ -374,7 +473,8 @@ fn test_utxo_id() {
 
 /// Do not parse the internal tests.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/avax#UTXO
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+/// TODO: implement ordering?
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Utxo {
     pub utxo_id: UtxoId,
     pub asset_id: ids::Id,
