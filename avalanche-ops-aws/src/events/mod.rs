@@ -1,6 +1,6 @@
-use clap::Command;
-
 pub mod update_artifacts;
+
+use clap::Command;
 
 pub const NAME: &str = "events";
 

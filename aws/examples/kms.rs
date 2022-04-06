@@ -74,7 +74,7 @@ fn main() {
     info!("encrypted_file_contents: {:?}", encrypted_file_contents);
     info!("decrypted_file_contents: {:?}", decrypted_file_contents);
     assert_eq!(&decrypted_file_contents, plaintext.as_bytes());
-    assert!(cmp::eq_u8_vectors(
+    assert!(cmp::eq_vectors(
         &decrypted_file_contents,
         plaintext.as_bytes()
     ));
@@ -111,7 +111,7 @@ fn main() {
         unsealed_aes_256_file_contents
     );
     assert_eq!(&unsealed_aes_256_file_contents, plaintext.as_bytes());
-    assert!(cmp::eq_u8_vectors(
+    assert!(cmp::eq_vectors(
         &unsealed_aes_256_file_contents,
         plaintext.as_bytes()
     ));
@@ -125,7 +125,7 @@ fn main() {
     info!("plaintext_sealed: {:?}", plaintext_sealed);
     info!("plaintext_sealed_unsealed: {:?}", plaintext_sealed_unsealed);
     assert_eq!(&plaintext_sealed_unsealed, plaintext.as_bytes());
-    assert!(cmp::eq_u8_vectors(
+    assert!(cmp::eq_vectors(
         &plaintext_sealed_unsealed,
         plaintext.as_bytes()
     ));

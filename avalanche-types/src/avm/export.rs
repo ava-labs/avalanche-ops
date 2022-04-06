@@ -47,15 +47,8 @@ impl Tx {
         "avm.ExportTx".to_string()
     }
 
-    pub fn type_id() -> io::Result<u32> {
-        if let Some(type_id) = codec::X_TYPES.get("avm.ExportTx") {
-            Ok((*type_id) as u32)
-        } else {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("type_id not found for {}", Self::type_name()),
-            ));
-        }
+    pub fn type_id() -> u32 {
+        *(codec::X_TYPES.get(&Self::type_name()).unwrap()) as u32
     }
 
     /// Returns the transaction ID.
@@ -75,7 +68,7 @@ impl Tx {
     /// TODO: support ledger signing
     pub fn sign(&mut self, signers: Option<Vec<Vec<soft_key::Key>>>) -> io::Result<()> {
         // marshal "unsigned tx" with the codec version
-        let type_id = Self::type_id()?;
+        let type_id = Self::type_id();
         let packer = self.unsigned_tx.pack(codec::VERSION, type_id)?;
 
         // "avalanchego" marshals the whole struct again for signed bytes
@@ -123,9 +116,9 @@ impl Tx {
                 }
                 let type_id_transferable_out = {
                     if transferable_output.transfer_output.is_some() {
-                        secp256k1fx::TransferOutput::type_id()?
+                        secp256k1fx::TransferOutput::type_id()
                     } else {
-                        platformvm::StakeableLockOut::type_id()?
+                        platformvm::StakeableLockOut::type_id()
                     }
                 };
                 // marshal type ID for "secp256k1fx::TransferOutput" or "platformvm::StakeableLockOut"
@@ -231,7 +224,7 @@ impl Tx {
             }
 
             let mut cred = secp256k1fx::Credential::default();
-            cred.sigs = sigs;
+            cred.signatures = sigs;
 
             let mut fx_cred = fx::Credential::default();
             fx_cred.cred = cred;
@@ -242,11 +235,11 @@ impl Tx {
         if fx_creds_len > 0 {
             // pack each "fx_cred" which is "secp256k1fx.Credential"
             // marshal type ID for "secp256k1fx.Credential"
-            let cred_type_id = secp256k1fx::Credential::type_id()?;
+            let cred_type_id = secp256k1fx::Credential::type_id();
             for fx_cred in self.fx_creds.iter() {
                 packer.pack_u32(cred_type_id);
-                packer.pack_u32(fx_cred.cred.sigs.len() as u32);
-                for sig in fx_cred.cred.sigs.iter() {
+                packer.pack_u32(fx_cred.cred.signatures.len() as u32);
+                for sig in fx_cred.cred.signatures.iter() {
                     packer.pack_bytes(sig);
                 }
             }
@@ -396,7 +389,7 @@ fn test_export_tx_serialization_with_no_signer() {
     // for c in &signed_bytes {
     //     println!("{:#02x},", *c);
     // }
-    assert!(cmp::eq_u8_vectors(&expected_signed_bytes, &signed_bytes));
+    assert!(cmp::eq_vectors(&expected_signed_bytes, &signed_bytes));
 }
 
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- avm::export::test_export_tx_serialization_with_two_signers --exact --show-output
@@ -593,5 +586,5 @@ fn test_export_tx_serialization_with_two_signers() {
     // for c in &signed_bytes {
     //     println!("{:#02x},", *c);
     // }
-    assert!(cmp::eq_u8_vectors(&expected_signed_bytes, &signed_bytes));
+    assert!(cmp::eq_vectors(&expected_signed_bytes, &signed_bytes));
 }

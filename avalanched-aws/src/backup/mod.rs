@@ -1,7 +1,7 @@
-use clap::Command;
-
 pub mod download;
 pub mod upload;
+
+use clap::Command;
 
 pub const NAME: &str = "backup";
 

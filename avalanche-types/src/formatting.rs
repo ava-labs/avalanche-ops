@@ -48,7 +48,7 @@ pub fn decode_cb58_with_checksum(d: &str) -> io::Result<Vec<u8>> {
     let orig_checksum = hash::compute_sha256(orig);
     let orig_checksum_length = orig_checksum.len();
     let orig_checksum = &orig_checksum[orig_checksum_length - CHECKSUM_LENGTH..];
-    if !cmp::eq_u8_vectors(checksum, orig_checksum) {
+    if !cmp::eq_vectors(checksum, orig_checksum) {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             format!("invalid checksum {:?} != {:?}", checksum, orig_checksum),
@@ -80,7 +80,7 @@ pub fn decode_hex_with_checksum(d: &[u8]) -> io::Result<Vec<u8>> {
     let orig_checksum = hash::compute_sha256(orig);
     let orig_checksum_length = orig_checksum.len();
     let orig_checksum = &orig_checksum[orig_checksum_length - CHECKSUM_LENGTH..];
-    if !cmp::eq_u8_vectors(checksum, orig_checksum) {
+    if !cmp::eq_vectors(checksum, orig_checksum) {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             format!("invalid checksum {:?} != {:?}", checksum, orig_checksum),

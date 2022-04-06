@@ -1,7 +1,8 @@
 use std::{
+    cmp::Ordering,
     fmt,
     fs::File,
-    hash::Hash,
+    hash::{Hash, Hasher},
     io::{self, BufReader, Error, ErrorKind},
     path::Path,
     str::FromStr,
@@ -29,7 +30,7 @@ lazy_static! {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ID
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq)]
 pub struct Id {
     pub d: Vec<u8>,
 }
@@ -172,8 +173,153 @@ fn test_id() {
     assert_eq!(id, id_from_str);
 }
 
+impl Ord for Id {
+    fn cmp(&self, other: &Id) -> Ordering {
+        self.d.cmp(&(other.d))
+    }
+}
+
+impl PartialOrd for Id {
+    fn partial_cmp(&self, other: &Id) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Id {
+    fn eq(&self, other: &Id) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
+impl Hash for Id {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.d.hash(state);
+    }
+}
+
+#[derive(Eq)]
+pub struct Ids(Vec<Id>);
+
+impl Ids {
+    pub fn new(ids: &[Id]) -> Self {
+        Ids(Vec::from(ids))
+    }
+}
+
+impl Ord for Ids {
+    fn cmp(&self, other: &Ids) -> Ordering {
+        // packer encodes the array length first
+        // so if the lengths differ, the ordering is decided
+        let l1 = self.0.len();
+        let l2 = other.0.len();
+        l1.cmp(&l2) // returns when lengths are not Equal
+            .then_with(
+                || self.0.cmp(&other.0), // if lengths are Equal, compare the ids
+            )
+    }
+}
+
+impl PartialOrd for Ids {
+    fn partial_cmp(&self, other: &Ids) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Ids {
+    fn eq(&self, other: &Ids) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_sort_ids --exact --show-output
+#[test]
+fn test_sort_ids() {
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = Id::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00]));
+    let id2 = Id::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00, 0x00]));
+    assert!(id1 == id2);
+
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = Id::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00, 0x00]));
+    let id2 = Id::from_slice(&<Vec<u8>>::from([0x02]));
+    assert!(id1 < id2);
+
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = Id::from_slice(&<Vec<u8>>::from([0x02, 0x00, 0x00, 0x00, 0x00]));
+    let id2 = Id::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00, 0x00]));
+    assert!(id1 > id2);
+
+    // lengths of Ids matter
+    let ids1 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x03])),
+    ]);
+    let ids2 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x03])),
+    ]);
+    assert!(ids1 == ids2);
+
+    // lengths of Ids matter
+    let ids1 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x05])),
+        Id::from_slice(&<Vec<u8>>::from([0x06])),
+        Id::from_slice(&<Vec<u8>>::from([0x07])),
+    ]);
+    let ids2 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x03])),
+        Id::from_slice(&<Vec<u8>>::from([0x04])),
+    ]);
+    assert!(ids1 < ids2);
+
+    // lengths of Ids matter
+    let ids1 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x03])),
+        Id::from_slice(&<Vec<u8>>::from([0x04])),
+    ]);
+    let ids2 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x09])),
+        Id::from_slice(&<Vec<u8>>::from([0x09])),
+        Id::from_slice(&<Vec<u8>>::from([0x09])),
+    ]);
+    assert!(ids1 > ids2);
+
+    // lengths of Ids matter
+    let ids1 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x03])),
+    ]);
+    let ids2 = Ids(vec![
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x05])),
+    ]);
+    assert!(ids1 < ids2);
+
+    let mut ids1 = vec![
+        Id::from_slice(&<Vec<u8>>::from([0x03])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+    ];
+    ids1.sort();
+    let ids2 = vec![
+        Id::from_slice(&<Vec<u8>>::from([0x01])),
+        Id::from_slice(&<Vec<u8>>::from([0x02])),
+        Id::from_slice(&<Vec<u8>>::from([0x03])),
+    ];
+    assert!(ids1 == ids2);
+}
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq)]
 pub struct ShortId {
     pub d: Vec<u8>,
 }
@@ -290,8 +436,153 @@ fn test_short_id() {
     assert_eq!(id, id_from_str);
 }
 
+impl Ord for ShortId {
+    fn cmp(&self, other: &ShortId) -> Ordering {
+        self.d.cmp(&(other.d))
+    }
+}
+
+impl PartialOrd for ShortId {
+    fn partial_cmp(&self, other: &ShortId) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for ShortId {
+    fn eq(&self, other: &ShortId) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
+impl Hash for ShortId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.d.hash(state);
+    }
+}
+
+#[derive(Eq)]
+pub struct ShortIds(Vec<ShortId>);
+
+impl ShortIds {
+    pub fn new(ids: &[ShortId]) -> Self {
+        ShortIds(Vec::from(ids))
+    }
+}
+
+impl Ord for ShortIds {
+    fn cmp(&self, other: &ShortIds) -> Ordering {
+        // packer encodes the array length first
+        // so if the lengths differ, the ordering is decided
+        let l1 = self.0.len();
+        let l2 = other.0.len();
+        l1.cmp(&l2) // returns when lengths are not Equal
+            .then_with(
+                || self.0.cmp(&other.0), // if lengths are Equal, compare the ids
+            )
+    }
+}
+
+impl PartialOrd for ShortIds {
+    fn partial_cmp(&self, other: &ShortIds) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for ShortIds {
+    fn eq(&self, other: &ShortIds) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_sort_short_ids --exact --show-output
+#[test]
+fn test_sort_short_ids() {
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = ShortId::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00]));
+    let id2 = ShortId::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00, 0x00]));
+    assert!(id1 == id2);
+
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = ShortId::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00, 0x00]));
+    let id2 = ShortId::from_slice(&<Vec<u8>>::from([0x02]));
+    assert!(id1 < id2);
+
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = ShortId::from_slice(&<Vec<u8>>::from([0x02, 0x00, 0x00, 0x00, 0x00]));
+    let id2 = ShortId::from_slice(&<Vec<u8>>::from([0x01, 0x00, 0x00, 0x00, 0x00]));
+    assert!(id1 > id2);
+
+    // lengths of ShortIds matter
+    let ids1 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x03])),
+    ]);
+    let ids2 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x03])),
+    ]);
+    assert!(ids1 == ids2);
+
+    // lengths of ShortIds matter
+    let ids1 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x05])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x06])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x07])),
+    ]);
+    let ids2 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x03])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x04])),
+    ]);
+    assert!(ids1 < ids2);
+
+    // lengths of ShortIds matter
+    let ids1 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x03])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x04])),
+    ]);
+    let ids2 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x09])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x09])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x09])),
+    ]);
+    assert!(ids1 > ids2);
+
+    // lengths of ShortIds matter
+    let ids1 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x03])),
+    ]);
+    let ids2 = ShortIds(vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x05])),
+    ]);
+    assert!(ids1 < ids2);
+
+    let mut ids1 = vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x03])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+    ];
+    ids1.sort();
+    let ids2 = vec![
+        ShortId::from_slice(&<Vec<u8>>::from([0x01])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x02])),
+        ShortId::from_slice(&<Vec<u8>>::from([0x03])),
+    ];
+    assert!(ids1 == ids2);
+}
+
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq)]
 pub struct NodeId {
     pub d: Vec<u8>,
 }
@@ -601,6 +892,265 @@ fn test_from_cert_file() {
         node_id,
         NodeId::from_str("NodeID-29HTAG5cfN2fw79A67Jd5zY9drcT51EBG").unwrap()
     );
+}
+
+impl Ord for NodeId {
+    fn cmp(&self, other: &NodeId) -> Ordering {
+        self.d.cmp(&(other.d))
+    }
+}
+
+impl PartialOrd for NodeId {
+    fn partial_cmp(&self, other: &NodeId) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for NodeId {
+    fn eq(&self, other: &NodeId) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
+impl Hash for NodeId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.d.hash(state);
+    }
+}
+
+#[derive(Eq)]
+pub struct NodeIds(Vec<NodeId>);
+
+impl NodeIds {
+    pub fn new(ids: &[NodeId]) -> Self {
+        NodeIds(Vec::from(ids))
+    }
+}
+
+impl Ord for NodeIds {
+    fn cmp(&self, other: &NodeIds) -> Ordering {
+        // packer encodes the array length first
+        // so if the lengths differ, the ordering is decided
+        let l1 = self.0.len();
+        let l2 = other.0.len();
+        l1.cmp(&l2) // returns when lengths are not Equal
+            .then_with(
+                || self.0.cmp(&other.0), // if lengths are Equal, compare the ids
+            )
+    }
+}
+
+impl PartialOrd for NodeIds {
+    fn partial_cmp(&self, other: &NodeIds) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for NodeIds {
+    fn eq(&self, other: &NodeIds) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_sort_node_ids --exact --show-output
+#[test]
+fn test_sort_node_ids() {
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = NodeId::from_slice(&<Vec<u8>>::from([
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00,
+    ]));
+    let id2 = NodeId::from_slice(&<Vec<u8>>::from([
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00,
+    ]));
+    assert!(id1 == id2);
+
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = NodeId::from_slice(&<Vec<u8>>::from([
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00,
+    ]));
+    let id2 = NodeId::from_slice(&<Vec<u8>>::from([
+        0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00,
+    ]));
+    assert!(id1 < id2);
+
+    // lengths of individual ids do not matter since all are fixed-sized
+    let id1 = NodeId::from_slice(&<Vec<u8>>::from([
+        0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00,
+    ]));
+    let id2 = NodeId::from_slice(&<Vec<u8>>::from([
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00,
+    ]));
+    assert!(id1 > id2);
+
+    // lengths of NodeIds matter
+    let ids1 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    let ids2 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    assert!(ids1 == ids2);
+
+    // lengths of NodeIds matter
+    let ids1 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    let ids2 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    assert!(ids1 < ids2);
+
+    // lengths of NodeIds matter
+    let ids1 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    let ids2 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    assert!(ids1 > ids2);
+
+    // lengths of NodeIds matter
+    let ids1 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    let ids2 = NodeIds(vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ]);
+    assert!(ids1 < ids2);
+
+    let mut ids1 = vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ];
+    ids1.sort();
+    let ids2 = vec![
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+        NodeId::from_slice(&<Vec<u8>>::from([
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ])),
+    ];
+    assert!(ids1 == ids2);
 }
 
 pub fn strip_node_id_prefix(addr: &str) -> &str {
