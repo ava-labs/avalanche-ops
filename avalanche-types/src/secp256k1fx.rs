@@ -244,7 +244,6 @@ fn test_sort_output_owners() {
                 ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
                 ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3]),
             ],
-            ..OutputOwners::default()
         });
         owners.push(OutputOwners {
             locktime: i as u64,
@@ -253,19 +252,16 @@ fn test_sort_output_owners() {
                 ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
                 ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
             ],
-            ..OutputOwners::default()
         });
         owners.push(OutputOwners {
             locktime: i as u64,
             threshold: i as u32,
             addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3])],
-            ..OutputOwners::default()
         });
         owners.push(OutputOwners {
             locktime: i as u64,
             threshold: i as u32,
             addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3])],
-            ..OutputOwners::default()
         });
     }
     assert!(!cmp::is_sorted_and_unique(&owners));
@@ -277,13 +273,11 @@ fn test_sort_output_owners() {
             locktime: i as u64,
             threshold: i as u32,
             addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3])],
-            ..OutputOwners::default()
         });
         sorted_owners.push(OutputOwners {
             locktime: i as u64,
             threshold: i as u32,
             addrs: vec![ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3])],
-            ..OutputOwners::default()
         });
         sorted_owners.push(OutputOwners {
             locktime: i as u64,
@@ -292,7 +286,6 @@ fn test_sort_output_owners() {
                 ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
                 ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
             ],
-            ..OutputOwners::default()
         });
         sorted_owners.push(OutputOwners {
             locktime: i as u64,
@@ -301,7 +294,6 @@ fn test_sort_output_owners() {
                 ids::ShortId::from_slice(&vec![i as u8, 1, 2, 3]),
                 ids::ShortId::from_slice(&vec![i as u8, 2, 2, 3]),
             ],
-            ..OutputOwners::default()
         });
     }
     assert!(cmp::is_sorted_and_unique(&sorted_owners));

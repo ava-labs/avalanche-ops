@@ -582,8 +582,8 @@ pub fn execute(opt: CmdOption) -> io::Result<()> {
         panic!("insufficient balance for gas fee");
     }
 
-    // TODO: sort "staked_transferable_outputs"
-    // TODO: sort "returned_transferable_outputs"
+    staked_transferable_outputs.sort();
+    returned_transferable_outputs.sort();
     // TODO: sort "transferable_inputs"
     // TODO: sort "input_signers"
 
