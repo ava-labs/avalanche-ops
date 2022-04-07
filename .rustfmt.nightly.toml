@@ -29,6 +29,7 @@ imports_indent = "Block"
 imports_layout = "Mixed"
 indent_style = "Block"
 max_width = 100
+normalize_doc_attributes = true
 reorder_imports = true
 trailing_comma = "Vertical"
 trailing_semicolon = true
