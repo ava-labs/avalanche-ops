@@ -14,7 +14,6 @@ cargo build \
 --bin avalanche-ops-aws \
 --bin avalanched-aws \
 --bin dev-machine-aws \
---bin subnetctl \
 --target x86_64-unknown-linux-musl
 
 BIN_PATH=./target/x86_64-unknown-linux-musl/release

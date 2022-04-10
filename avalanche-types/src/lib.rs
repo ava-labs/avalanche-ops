@@ -1,6 +1,5 @@
 pub mod api;
 pub mod avax;
-pub mod avm;
 pub mod cert;
 pub mod codec;
 pub mod constants;
@@ -14,4 +13,3 @@ pub mod platformvm;
 pub mod secp256k1fx;
 pub mod soft_key;
 pub mod units;
-pub mod vm;
