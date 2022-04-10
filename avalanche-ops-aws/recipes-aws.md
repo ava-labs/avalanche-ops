@@ -391,10 +391,6 @@ go install -v .
 subnet-cli create VMID subnetevm
 # srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
-./target/release/subnetctl vm-id --name subnetevm
-# srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
-
 cd ${HOME}/go/src/github.com/ava-labs/subnet-evm
 CC=x86_64-linux-musl-gcc \
 CXX=x86_64-linux-musl-g++ \

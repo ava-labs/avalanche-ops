@@ -9,6 +9,5 @@ members = [
     "coreth",
     "dev-machine-aws",
     "subnet-evm",
-    "subnetctl",
     "utils"
 ]

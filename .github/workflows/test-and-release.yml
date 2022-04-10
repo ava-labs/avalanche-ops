@@ -175,7 +175,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin avalanche-ops-aws --bin avalanched-aws --bin dev-machine-aws --bin subnetctl --target ${{ matrix.job.target }}
+          args: --release --bin avalanche-ops-aws --bin avalanched-aws --bin dev-machine-aws --target ${{ matrix.job.target }}
 
       - name: Compress binaries
         id: release_artifacts
@@ -204,12 +204,6 @@ jobs:
             tar -czvf dev-machine-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine-aws
             echo "::set-output name=file_name_dev_machine_aws_tar_gz::dev-machine-aws_${TARGET}.tar.gz"
 
-            ./target/${TARGET}/release/subnetctl --help
-            cp ./target/${TARGET}/release/subnetctl subnetctl.${TARGET}
-            echo "::set-output name=file_name_subnetctl::subnetctl.${TARGET}"
-            tar -czvf subnetctl_${TARGET}.tar.gz -C ./target/${TARGET}/release subnetctl
-            echo "::set-output name=file_name_subnetctl_tar_gz::subnetctl_${TARGET}.tar.gz"
-
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
             cp ./target/${TARGET}/release/avalanche-ops-aws avalanche-ops-aws.${TARGET}
@@ -226,11 +220,6 @@ jobs:
             echo "::set-output name=file_name_dev_machine_aws::dev-machine-aws.${TARGET}"
             gtar -czvf dev-machine-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release dev-machine-aws
             echo "::set-output name=file_name_dev_machine_aws_tar_gz::dev-machine-aws_${TARGET}.tar.gz"
-
-            cp ./target/${TARGET}/release/subnetctl subnetctl.${TARGET}
-            echo "::set-output name=file_name_subnetctl::subnetctl.${TARGET}"
-            gtar -czvf subnetctl_${TARGET}.tar.gz -C ./target/${TARGET}/release subnetctl
-            echo "::set-output name=file_name_subnetctl_tar_gz::subnetctl_${TARGET}.tar.gz"
 
           else
 
@@ -254,8 +243,6 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_subnetctl }}
-            ${{ steps.release_artifacts.outputs.file_name_subnetctl_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws }}
             ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws_tar_gz }}
 
@@ -276,7 +263,5 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanche_ops_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_subnetctl }}
-            ${{ steps.release_artifacts.outputs.file_name_subnetctl_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws }}
             ${{ steps.release_artifacts.outputs.file_name_dev_machine_aws_tar_gz }}

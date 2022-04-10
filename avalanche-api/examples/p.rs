@@ -6,14 +6,6 @@ use tokio::runtime::Runtime;
 use avalanche_api::p;
 
 /// cargo run --example p -- [HTTP RPC ENDPOINT] P-custom1qwmslrrqdv4slxvynhy9csq069l0u8mqwjzmcd
-///
-/// ```
-/// # or run this
-/// subnetctl get-utxos \
-/// --http-rpc-endpoint [HTTP RPC ENDPOINT] \
-/// --p-chain-address P-custom1qwmslrrqdv4slxvynhy9csq069l0u8mqwjzmcd
-/// ```
-///
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(

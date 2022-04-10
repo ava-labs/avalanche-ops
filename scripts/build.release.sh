@@ -11,8 +11,7 @@ cargo build \
 --release \
 --bin avalanche-ops-aws \
 --bin avalanched-aws \
---bin dev-machine-aws \
---bin subnetctl
+--bin dev-machine-aws
 
 ./target/release/avalanche-ops-aws --help
 ./target/release/avalanche-ops-aws default-spec --help
@@ -31,13 +30,3 @@ cargo build \
 ./target/release/dev-machine-aws default-spec --help
 ./target/release/dev-machine-aws apply --help
 ./target/release/dev-machine-aws delete --help
-
-./target/release/subnetctl --help
-./target/release/subnetctl add --help
-./target/release/subnetctl add validator --help
-./target/release/subnetctl add subnet-validator --help
-./target/release/subnetctl create --help
-./target/release/subnetctl create subnet --help
-./target/release/subnetctl create blockchain --help
-./target/release/subnetctl get-utxos --help
-./target/release/subnetctl vm-id --help
