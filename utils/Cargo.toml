@@ -20,7 +20,6 @@ path-clean = "0.1.0"
 regex = "1.5.5"
 ring = "0.16.20"
 ripemd = "0.1.1"
-secp256k1 = { version = "0.22.1", features = ["global-context", "rand-std", "recovery"] }
 serde = { version = "1.0.136", features = ["derive"] }
 tar = "0.4.38"
 tokio = { version = "1.17.0", features = ["full"] }
