@@ -127,7 +127,7 @@ pub fn sign_ecdsa_recoverable(secret_key: &SecretKey, msg: &[u8]) -> Vec<u8> {
 }
 
 /// ref. https://doc.rust-lang.org/book/ch10-02-traits.html
-impl key::Key for Key {
+impl key::ReadOnly for Key {
     fn get_address(&self, chain_id_alias: &str, network_id: u32) -> io::Result<String> {
         self.address(chain_id_alias, network_id)
     }
@@ -138,14 +138,6 @@ impl key::Key for Key {
 
     fn get_eth_address(&self) -> String {
         self.eth_address.clone()
-    }
-
-    fn check_threshold(
-        &self,
-        output_owners: &secp256k1fx::OutputOwners,
-        time: u64,
-    ) -> Option<Vec<u32>> {
-        self.match_threshold(output_owners, time)
     }
 }
 

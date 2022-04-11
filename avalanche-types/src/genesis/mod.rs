@@ -12,7 +12,7 @@ use std::{
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::{constants, genesis::coreth as coreth_genesis, soft_key};
+use crate::{constants, genesis::coreth as coreth_genesis, key};
 use utils::prefix;
 
 /// Represents Avalanche network genesis configuration.
@@ -124,55 +124,41 @@ impl Genesis {
 
     /// Creates a new Genesis object with "keys" number of generated
     /// pre-funded keys.
-    pub fn new(network_id: u32, keys: usize) -> io::Result<(Self, Vec<soft_key::PrivateKeyInfo>)> {
+    pub fn new<T: key::ReadOnly>(network_id: u32, keys: &[T]) -> io::Result<Self> {
         let mut initial_staked_funds: Vec<String> = Vec::new();
         let mut allocations: Vec<Allocation> = Vec::new();
         let mut c_chain_seed_allocs = BTreeMap::new();
-        let mut seed_priv_keys: Vec<soft_key::PrivateKeyInfo> = Vec::new();
-        for i in 0..keys {
-            let k = {
-                if i < soft_key::TEST_KEYS.len() {
-                    soft_key::TEST_KEYS[i].clone()
-                } else {
-                    soft_key::Key::generate().expect("unexpected key generate failure")
-                }
-            };
-            let info = k.private_key_info(network_id)?;
-
+        for key in keys.iter() {
             // allocation for X/P-chain
             let mut alloc = Allocation::default();
-            alloc.eth_addr = Some(info.eth_address.clone());
-            alloc.avax_addr = Some(info.x_address.clone());
+            alloc.eth_addr = Some(key.get_eth_address());
+            alloc.avax_addr = Some(key.get_address("X", network_id).unwrap());
             allocations.push(alloc);
 
             // allocation for C-chain
             c_chain_seed_allocs.insert(
-                String::from(prefix::strip_0x(&info.eth_address)),
+                String::from(prefix::strip_0x(&key.get_eth_address())),
                 coreth_genesis::AllocAccount::default(),
             );
 
             if initial_staked_funds.is_empty() {
                 // "initial_staked_funds" addresses use all P-chain balance
                 // so keep the remaining balance for other keys than "first" key
-                initial_staked_funds.push(info.x_address.clone());
+                initial_staked_funds.push(key.get_address("X", network_id).unwrap());
             }
-            seed_priv_keys.push(info);
         }
 
         // make sure to use different network ID than "local" network ID
         // ref. https://github.com/ava-labs/avalanche-ops/issues/8
         let mut c_chain_genesis = coreth_genesis::Genesis::default();
         c_chain_genesis.alloc = Some(c_chain_seed_allocs);
-        Ok((
-            Self {
-                network_id,
-                initial_staked_funds: Some(initial_staked_funds),
-                allocations: Some(allocations),
-                c_chain_genesis,
-                ..Default::default()
-            },
-            seed_priv_keys,
-        ))
+        Ok(Self {
+            network_id,
+            initial_staked_funds: Some(initial_staked_funds),
+            allocations: Some(allocations),
+            c_chain_genesis,
+            ..Default::default()
+        })
     }
 
     /// Saves the current configuration to disk

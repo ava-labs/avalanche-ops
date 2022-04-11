@@ -580,40 +580,44 @@ impl Spec {
             instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
         };
 
-        let (avalanchego_genesis_template, generated_seed_keys) = {
-            if avalanchego_config.is_custom_network() {
-                let (g, seed_keys) =
-                    avalanchego_genesis::Genesis::new(network_id, opt.keys_to_generate)
-                        .expect("unexpected None genesis");
-                (Some(g), seed_keys)
-            } else {
-                // existing network has only 1 pre-funded key "ewoq"
-                let mut seed_keys: Vec<soft_key::PrivateKeyInfo> = Vec::new();
-                for i in 0..opt.keys_to_generate {
-                    let k = {
-                        if i < soft_key::TEST_KEYS.len() {
-                            soft_key::TEST_KEYS[i].clone()
-                        } else {
-                            soft_key::Key::generate().expect("unexpected key generate failure")
-                        }
-                    };
-                    let info = k
-                        .private_key_info(network_id)
-                        .expect("unexpected to_info failure");
-                    seed_keys.push(info);
+        // existing network has only 1 pre-funded key "ewoq"
+        let mut generated_seed_key_infos: Vec<soft_key::PrivateKeyInfo> = Vec::new();
+        let mut generated_seed_keys: Vec<soft_key::Key> = Vec::new();
+        for i in 0..opt.keys_to_generate {
+            let k = {
+                if i < soft_key::TEST_KEYS.len() {
+                    soft_key::TEST_KEYS[i].clone()
+                } else {
+                    soft_key::Key::generate().expect("unexpected key generate failure")
                 }
-                (None, seed_keys)
+            };
+
+            let info = k
+                .private_key_info(network_id)
+                .expect("unexpected to_info failure");
+            generated_seed_key_infos.push(info);
+
+            generated_seed_keys.push(k);
+        }
+
+        let avalanchego_genesis_template = {
+            if avalanchego_config.is_custom_network() {
+                let g = avalanchego_genesis::Genesis::new(network_id, &generated_seed_keys)
+                    .expect("unexpected None genesis");
+                Some(g)
+            } else {
+                None
             }
         };
         let generated_seed_private_key_with_locked_p_chain_balance =
-            Some(generated_seed_keys[0].clone());
-        let generated_seed_private_keys = Some(generated_seed_keys[1..].to_vec());
+            Some(generated_seed_key_infos[0].clone());
+        let generated_seed_private_keys = Some(generated_seed_key_infos[1..].to_vec());
 
         let subnet_evm_genesis = {
             if opt.enable_subnet_evm {
                 let mut subnet_evm_seed_allocs = BTreeMap::new();
                 let mut admin_addresses: Vec<String> = Vec::new();
-                for key_info in generated_seed_keys.iter() {
+                for key_info in generated_seed_key_infos.iter() {
                     subnet_evm_seed_allocs.insert(
                         String::from(prefix::strip_0x(&key_info.eth_address)),
                         subnet_evm_genesis::AllocAccount::default(),
