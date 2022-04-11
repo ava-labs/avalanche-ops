@@ -137,7 +137,7 @@ impl Genesis {
                     soft_key::Key::generate().expect("unexpected key generate failure")
                 }
             };
-            let info = k.info(network_id)?;
+            let info = k.private_key_info(network_id)?;
 
             // allocation for X/P-chain
             let mut alloc = Allocation::default();

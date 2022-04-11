@@ -15,7 +15,7 @@ fn main() {
     let file_path = args().nth(2).expect("no file path given");
 
     let key = soft_key::Key::generate().expect("unexpected key generate failure");
-    let info = key.info(network_id).expect("failed to_info");
+    let info = key.private_key_info(network_id).expect("failed to_info");
     print!("{}", info);
 
     info.sync(file_path).unwrap();

@@ -9,20 +9,18 @@ use std::{
 };
 
 use bip32::{DerivationPath, Language, Mnemonic, XPrv};
-use bitcoin::hashes::hex::ToHex;
 use ethereum_types::{Address, H256};
 use lazy_static::lazy_static;
 use log::info;
+use ring::digest::{digest, SHA256};
 use ripemd::{Digest, Ripemd160};
 use rust_embed::RustEmbed;
-use secp256k1::{self, rand::rngs::OsRng, PublicKey, Secp256k1, SecretKey};
+use secp256k1::{self, rand::rngs::OsRng, Message, PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use sha3::Keccak256;
 
-use crate::{constants, formatting, ids, secp256k1fx};
-use utils::{cmp, hash, prefix};
-
-pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
+use crate::{constants, formatting, ids, key, secp256k1fx};
+use utils::{cmp, prefix};
 
 lazy_static! {
     pub static ref TEST_KEYS: Vec<Key> = {
@@ -97,6 +95,68 @@ fn test_load_test_keys() {
     info!("total {} test keys are found", TEST_KEYS.len());
 }
 
+/// "github.com/decred/dcrd/dcrec/secp256k1/v3/ecdsa.SignCompact" outputs
+/// 65-byte signature
+/// with a trailing "0x00" byte -- see "compactSigSize"
+/// ref. "avalanchego/utils/crypto.PrivateKeySECP256K1R.SignHash"
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/crypto#SECP256K1RSigLen
+const SIG_LEN: usize = 65;
+
+/// Signs the message with the ECDSA secret key and appends the recovery code
+/// to the signature.
+/// ref. https://github.com/rust-bitcoin/rust-secp256k1/blob/master/src/ecdsa/recovery.rs
+/// ref. https://docs.rs/secp256k1/latest/secp256k1/struct.SecretKey.html#method.sign_ecdsa
+/// ref. https://docs.rs/secp256k1/latest/secp256k1/struct.Message.html
+/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/crypto#PrivateKeyED25519.SignHash
+pub fn sign_ecdsa_recoverable(secret_key: &SecretKey, msg: &[u8]) -> Vec<u8> {
+    let sk = Secp256k1::new();
+    let m = Message::from_slice(msg).expect("failed to create Message");
+
+    // "github.com/decred/dcrd/dcrec/secp256k1/v3/ecdsa.SignCompact" outputs
+    // 65-byte signature
+    // ref. "avalanchego/utils/crypto.PrivateKeySECP256K1R.SignHash"
+    // ref. https://github.com/rust-bitcoin/rust-secp256k1/blob/master/src/ecdsa/recovery.rs
+    let sig = sk.sign_ecdsa_recoverable(&m, secret_key);
+    let (rec_id, sig) = sig.serialize_compact();
+
+    let mut sig = Vec::from(sig);
+    sig.push(rec_id.to_i32() as u8);
+
+    assert_eq!(sig.len(), SIG_LEN);
+    sig
+}
+
+/// ref. https://doc.rust-lang.org/book/ch10-02-traits.html
+impl key::Key for Key {
+    fn get_address(&self, chain_id_alias: &str, network_id: u32) -> io::Result<String> {
+        self.address(chain_id_alias, network_id)
+    }
+
+    fn get_short_address(&self) -> ids::ShortId {
+        self.short_address.clone()
+    }
+
+    fn get_eth_address(&self) -> String {
+        self.eth_address.clone()
+    }
+
+    fn check_threshold(
+        &self,
+        output_owners: &secp256k1fx::OutputOwners,
+        time: u64,
+    ) -> Option<Vec<u32>> {
+        self.match_threshold(output_owners, time)
+    }
+}
+
+/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
+impl FromStr for Key {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_private_key(s)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Key {
@@ -124,6 +184,8 @@ pub struct Key {
     /// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/common#Address
     pub eth_address: String,
 }
+
+pub const PRIVATE_KEY_ENCODE_PREFIX: &str = "PrivateKey-";
 
 impl Key {
     /// Generates a new Secp256k1 key.
@@ -345,7 +407,7 @@ impl Key {
         public_key_to_short_address_bytes(&self.public_key.expect("unexpected empty public_key"))
     }
 
-    pub fn info(&self, network_id: u32) -> io::Result<PrivateKeyInfo> {
+    pub fn private_key_info(&self, network_id: u32) -> io::Result<PrivateKeyInfo> {
         let x_address = self.address("X", network_id)?;
         let p_address = self.address("P", network_id)?;
         let c_address = self.address("C", network_id)?;
@@ -415,14 +477,6 @@ impl Key {
     }
 }
 
-/// ref. https://doc.rust-lang.org/std/str/trait.FromStr.html
-impl FromStr for Key {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_private_key(s)
-    }
-}
-
 /// Only supports "English" for now.
 /// ref. https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 /// ref. https://github.com/rust-bitcoin/rust-bitcoin/blob/master/src/util/bip32.rs
@@ -438,7 +492,7 @@ pub fn generate_mnemonic_phrase_24_word() -> String {
 /// "hashing.PubkeyBytesToAddress"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
 pub fn bytes_to_short_address(d: &[u8]) -> io::Result<ids::ShortId> {
-    let short_address_bytes = bytes_to_short_address_bytes(d)?;
+    let short_address_bytes = public_key_bytes_to_short_address_bytes(d)?;
 
     // "ids.ShortID.String"
     // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID.String
@@ -456,8 +510,8 @@ fn public_key_to_short_address(public_key: &PublicKey) -> io::Result<ids::ShortI
 
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-pub fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
-    let digest_sha256 = hash::compute_sha256(d);
+pub fn public_key_bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
+    let digest_sha256: Vec<u8> = digest(&SHA256, d).as_ref().into();
 
     // "hashing.PubkeyBytesToAddress"
     // acquire hash digest in the form of GenericArray,
@@ -484,7 +538,7 @@ pub fn bytes_to_short_address_bytes(d: &[u8]) -> io::Result<Vec<u8>> {
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
 pub fn public_key_to_short_address_bytes(public_key: &PublicKey) -> io::Result<Vec<u8>> {
     let public_key_bytes_compressed = public_key.serialize();
-    bytes_to_short_address_bytes(&public_key_bytes_compressed)
+    public_key_bytes_to_short_address_bytes(&public_key_bytes_compressed)
 }
 
 /// Encodes the public key in ETH address format.
@@ -498,7 +552,7 @@ pub fn public_key_to_eth_address(public_key: &PublicKey) -> io::Result<String> {
     let digest_h256 = &digest_h256.0[12..];
 
     let addr = Address::from_slice(digest_h256);
-    let addr_hex = addr.to_hex(); // "hex::encode"
+    let addr_hex = hex::encode(addr);
 
     // make EIP-55 compliant
     let addr_eip55 = eth_checksum(&addr_hex);
@@ -530,7 +584,7 @@ fn eth_checksum(addr: &str) -> String {
     //     })
     //     .collect::<String>()
 
-    checksum_eip55(&addr_lower_case, &digest_h256.to_hex())
+    checksum_eip55(&addr_lower_case, &hex::encode(digest_h256))
 }
 
 /// ref. https://github.com/Ethereum/EIPs/blob/master/EIPS/eip-55.md
@@ -749,7 +803,7 @@ pub struct PrivateKeyInfoEntryAddress {
 /// Support multiple keys as a chain.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain
 /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/p/builder.go
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Keychain {
     pub keys: Vec<Key>,
     pub short_addr_to_key_index: HashMap<ids::ShortId, u32>,

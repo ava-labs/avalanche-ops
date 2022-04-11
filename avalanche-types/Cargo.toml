@@ -18,6 +18,7 @@ log = "0.4.16"
 num-bigint = "0.4.3"
 rand_core = { version = "0.6.3", features = ["std"] }
 rcgen = "0.9.2"
+ring = "0.16.20"
 ripemd = "0.1.1"
 rust-embed = "6.3.0"
 rustls-pemfile = "0.3.0"

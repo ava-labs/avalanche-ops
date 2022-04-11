@@ -16,9 +16,9 @@ fn main() {
 
     let key = soft_key::Key::from_mnemonic_phrase(phrase).unwrap();
 
-    let info = key.info(1).expect("failed to_info");
+    let info = key.private_key_info(1).expect("failed to_info");
     info!("network ID 1:\n{}", info);
 
-    let info = key.info(9999).expect("failed to_info");
+    let info = key.private_key_info(9999).expect("failed to_info");
     info!("network ID 9999:\n{}", info);
 }

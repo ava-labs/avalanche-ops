@@ -11,11 +11,11 @@ use std::{
 
 use lazy_static::lazy_static;
 use log::{info, warn};
+use ring::digest::{digest, SHA256};
 use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{formatting, packer, soft_key};
-use utils::hash;
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
@@ -75,7 +75,7 @@ impl Id {
         packer.pack_bytes(&self.d);
 
         let b = packer.take_bytes();
-        let d = hash::compute_sha256(&b);
+        let d: Vec<u8> = digest(&SHA256, &b).as_ref().into();
         Self::from_slice(&d)
     }
 }
@@ -316,6 +316,38 @@ fn test_sort_ids() {
         Id::from_slice(&<Vec<u8>>::from([0x03])),
     ];
     assert!(ids1 == ids2);
+}
+
+/// Generates VM ID based on the name.
+pub fn vm_id_from_str(name: &str) -> io::Result<Id> {
+    let n = name.len();
+    if n > 32 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!("can't id {} bytes (>32)", n),
+        ));
+    }
+
+    let input = name.as_bytes().to_vec();
+    Ok(Id::from_slice(&input))
+}
+
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_vm_id --exact --show-output
+#[test]
+fn test_vm_id() {
+    use log::info;
+    use utils::random;
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let subnet_evm_id = vm_id_from_str("subnetevm").expect("failed to generate id from str");
+    assert_eq!(
+        format!("{}", subnet_evm_id),
+        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"
+    );
+
+    let contents = random::string(30);
+    let v = vm_id_from_str(&contents).expect("failed to generate id from str");
+    info!("vm_id_from_str: {}", v);
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
@@ -673,7 +705,7 @@ impl NodeId {
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ToShortID
     pub fn from_cert_raw(cert_raw: &[u8]) -> io::Result<Self> {
-        let short_address = soft_key::bytes_to_short_address_bytes(cert_raw)?;
+        let short_address = soft_key::public_key_bytes_to_short_address_bytes(cert_raw)?;
         let node_id = Self::from_slice(&short_address);
         Ok(node_id)
     }

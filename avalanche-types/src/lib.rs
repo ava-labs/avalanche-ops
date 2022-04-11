@@ -6,6 +6,7 @@ pub mod constants;
 pub mod formatting;
 pub mod genesis;
 pub mod ids;
+pub mod key;
 pub mod metrics;
 pub mod node;
 pub mod packer;

@@ -597,7 +597,9 @@ impl Spec {
                             soft_key::Key::generate().expect("unexpected key generate failure")
                         }
                     };
-                    let info = k.info(network_id).expect("unexpected to_info failure");
+                    let info = k
+                        .private_key_info(network_id)
+                        .expect("unexpected to_info failure");
                     seed_keys.push(info);
                 }
                 (None, seed_keys)

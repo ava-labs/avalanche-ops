@@ -24,7 +24,7 @@ fn main() {
 
         let mut addresses: HashMap<String, soft_key::PrivateKeyInfoEntryAddress> = HashMap::new();
 
-        let info1 = key.info(1).unwrap();
+        let info1 = key.private_key_info(1).unwrap();
         addresses.insert(
             "1".to_string(),
             soft_key::PrivateKeyInfoEntryAddress {
@@ -33,7 +33,7 @@ fn main() {
                 c_address: info1.c_address,
             },
         );
-        let info9999 = key.info(9999).unwrap();
+        let info9999 = key.private_key_info(9999).unwrap();
         addresses.insert(
             "9999".to_string(),
             soft_key::PrivateKeyInfoEntryAddress {
