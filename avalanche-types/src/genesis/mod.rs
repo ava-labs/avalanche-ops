@@ -124,11 +124,11 @@ impl Genesis {
 
     /// Creates a new Genesis object with "keys" number of generated
     /// pre-funded keys.
-    pub fn new<T: key::ReadOnly>(network_id: u32, keys: &[T]) -> io::Result<Self> {
+    pub fn new<T: key::ReadOnly>(network_id: u32, seed_keys: &[T]) -> io::Result<Self> {
         let mut initial_staked_funds: Vec<String> = Vec::new();
         let mut allocations: Vec<Allocation> = Vec::new();
         let mut c_chain_seed_allocs = BTreeMap::new();
-        for key in keys.iter() {
+        for key in seed_keys.iter() {
             // allocation for X/P-chain
             let mut alloc = Allocation::default();
             alloc.eth_addr = Some(key.get_eth_address());
