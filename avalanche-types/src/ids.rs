@@ -15,7 +15,7 @@ use ring::digest::{digest, SHA256};
 use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{formatting, packer, soft_key};
+use crate::{formatting, packer, public_key};
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
@@ -387,6 +387,20 @@ impl ShortId {
         }
         Self { d }
     }
+
+    /// "hashing.PubkeyBytesToAddress"
+    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
+    pub fn from_public_key_bytes<S>(pub_key_bytes: S) -> io::Result<Self>
+    where
+        S: AsRef<[u8]>,
+    {
+        let hashed = public_key::hash_sha256_ripemd160(pub_key_bytes)?;
+
+        // "ids.ShortID.String"
+        // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID.String
+        let encoded = formatting::encode_cb58_with_checksum(&hashed);
+        Self::from_str(&encoded)
+    }
 }
 
 /// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
@@ -697,15 +711,18 @@ impl NodeId {
         // "ids.ToShortID(hashing.PubkeyBytesToAddress(StakingTLSCert.Leaf.Raw))"
         // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/node#Node.Initialize
         let pub_key_der = cert.unwrap();
-        Self::from_cert_raw(&pub_key_der)
+        Self::from_cert_bytes(&pub_key_der)
     }
 
     /// Encodes the cert raw bytes to a node ID.
     /// It applies "sha256" and "ripemd160" on "Certificate.Leaf.Raw".
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ToShortID
-    pub fn from_cert_raw(cert_raw: &[u8]) -> io::Result<Self> {
-        let short_address = soft_key::public_key_bytes_to_short_address_bytes(cert_raw)?;
+    pub fn from_cert_bytes<S>(cert_bytes: S) -> io::Result<Self>
+    where
+        S: AsRef<[u8]>,
+    {
+        let short_address = public_key::hash_sha256_ripemd160(cert_bytes)?;
         let node_id = Self::from_slice(&short_address);
         Ok(node_id)
     }

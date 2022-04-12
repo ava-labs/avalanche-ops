@@ -11,6 +11,7 @@ pub mod metrics;
 pub mod node;
 pub mod packer;
 pub mod platformvm;
+pub mod public_key;
 pub mod secp256k1fx;
 pub mod soft_key;
 pub mod units;
