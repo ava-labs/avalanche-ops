@@ -1,4 +1,4 @@
-use clap::Command;
+use clap::{crate_version, Command};
 
 mod apply;
 mod check_balances;
@@ -7,12 +7,13 @@ mod delete;
 mod events;
 mod read_spec;
 
-const NAME: &str = "avalanche-ops-aws";
+const APP_NAME: &str = "avalanche-ops-aws";
 
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
 fn main() {
-    let matches = Command::new(NAME)
+    let matches = Command::new(APP_NAME)
+        .version(crate_version!())
         .about("Avalanche node operations on AWS")
         .subcommands(vec![
             default_spec::command(),

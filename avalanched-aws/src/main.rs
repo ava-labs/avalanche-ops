@@ -1,13 +1,14 @@
-use clap::Command;
+use clap::{crate_version, Command};
 
 mod backup;
 mod run;
 
-const NAME: &str = "avalanched-aws";
+const APP_NAME: &str = "avalanched-aws";
 
 #[tokio::main]
 async fn main() {
-    let matches = Command::new(NAME)
+    let matches = Command::new(APP_NAME)
+        .version(crate_version!())
         .about("avalanched on AWS")
         .long_about("Avalanche agent (daemon) on AWS")
         .subcommands(vec![run::command(), backup::command()])
