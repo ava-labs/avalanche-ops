@@ -1,15 +1,16 @@
-use clap::Command;
+use clap::{crate_version, Command};
 
 mod apply;
 mod default_spec;
 mod delete;
 
-const NAME: &str = "dev-machine";
+const APP_NAME: &str = "dev-machine";
 
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
 fn main() {
-    let matches = Command::new(NAME)
+    let matches = Command::new(APP_NAME)
+        .version(crate_version!())
         .about("Development machine provisioner")
         .subcommands(vec![
             default_spec::command(),
