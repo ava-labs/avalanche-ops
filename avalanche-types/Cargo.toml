@@ -3,8 +3,6 @@ name = "avalanche-types"
 version = "0.0.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 bech32 = "0.8.1"
 bip32 = "0.3.0"

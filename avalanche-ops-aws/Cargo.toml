@@ -3,7 +3,9 @@ name = "avalanche-ops-aws"
 version = "0.0.8-pre"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "avalanche-ops-aws"
+path = "src/main.rs"
 
 [dependencies]
 avalanche-api = { path = "../avalanche-api" }
