@@ -1,5 +1,5 @@
 
-**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.7**
+**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.8**
 
 # avalanche-ops-recipes
 

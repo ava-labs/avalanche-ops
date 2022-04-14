@@ -44,8 +44,7 @@ impl UtxoId {
 impl Ord for UtxoId {
     fn cmp(&self, other: &UtxoId) -> Ordering {
         self.tx_id
-            .d
-            .cmp(&(other.tx_id.d)) // returns when "tx_id"s are not Equal
+            .cmp(&(other.tx_id)) // returns when "tx_id"s are not Equal
             .then_with(
                 || self.output_index.cmp(&other.output_index), // if "tx_id"s are Equal, compare "output_index"
             )
