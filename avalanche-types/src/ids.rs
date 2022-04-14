@@ -14,12 +14,12 @@ use log::{info, warn};
 use ring::digest::{digest, SHA256};
 use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
+use zerocopy::{AsBytes, FromBytes, Unaligned};
 
 use crate::{formatting, packer, public_key};
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
-
 pub const NODE_ID_LEN: usize = 20;
 pub const NODE_ID_ENCODE_PREFIX: &str = "NodeID-";
 
@@ -30,10 +30,10 @@ lazy_static! {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ID
-#[derive(Debug, Deserialize, Clone, Eq)]
-pub struct Id {
-    pub d: Vec<u8>,
-}
+/// ref. https://docs.rs/zerocopy/latest/zerocopy/trait.AsBytes.html#safety
+#[derive(Debug, Deserialize, Clone, Eq, AsBytes, FromBytes, Unaligned)]
+#[repr(transparent)]
+pub struct Id([u8; ID_LEN]);
 
 impl Default for Id {
     fn default() -> Self {
@@ -43,11 +43,11 @@ impl Default for Id {
 
 impl Id {
     pub fn default() -> Self {
-        Self { d: EMPTY.to_vec() }
+        Id([0; ID_LEN])
     }
 
     pub fn empty() -> Self {
-        Self { d: EMPTY.to_vec() }
+        Id([0; ID_LEN])
     }
 
     pub fn is_empty(&self) -> bool {
@@ -62,7 +62,8 @@ impl Id {
         if d.len() < ID_LEN {
             d.resize(ID_LEN, 0);
         }
-        Self { d }
+        let d: [u8; ID_LEN] = d.try_into().unwrap();
+        Id(d)
     }
 
     /// ref. "ids.ID.Prefix(output_index)"
@@ -72,11 +73,17 @@ impl Id {
         for pfx in prefixes {
             packer.pack_u64(*pfx);
         }
-        packer.pack_bytes(&self.d);
+        packer.pack_bytes(&self.0);
 
         let b = packer.take_bytes();
         let d: Vec<u8> = digest(&SHA256, &b).as_ref().into();
         Self::from_slice(&d)
+    }
+}
+
+impl AsRef<[u8]> for Id {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -85,7 +92,7 @@ impl Id {
 /// Use "Self.to_string()" to directly invoke this
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = formatting::encode_cb58_with_checksum(&self.d);
+        let s = formatting::encode_cb58_with_checksum(&self.0);
         write!(f, "{}", s)
     }
 }
@@ -175,7 +182,7 @@ fn test_id() {
 
 impl Ord for Id {
     fn cmp(&self, other: &Id) -> Ordering {
-        self.d.cmp(&(other.d))
+        self.0.cmp(&(other.0))
     }
 }
 
@@ -194,7 +201,7 @@ impl PartialEq for Id {
 /// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
 impl Hash for Id {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.d.hash(state);
+        self.0.hash(state);
     }
 }
 
@@ -351,10 +358,10 @@ fn test_vm_id() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone, Eq)]
-pub struct ShortId {
-    pub d: Vec<u8>,
-}
+/// ref. https://docs.rs/zerocopy/latest/zerocopy/trait.AsBytes.html#safety
+#[derive(Debug, Deserialize, Clone, Eq, AsBytes, FromBytes, Unaligned)]
+#[repr(transparent)]
+pub struct ShortId([u8; SHORT_ID_LEN]);
 
 impl Default for ShortId {
     fn default() -> Self {
@@ -364,15 +371,11 @@ impl Default for ShortId {
 
 impl ShortId {
     pub fn default() -> Self {
-        Self {
-            d: SHORT_EMPTY.to_vec(),
-        }
+        ShortId([0; SHORT_ID_LEN])
     }
 
     pub fn empty() -> Self {
-        Self {
-            d: SHORT_EMPTY.to_vec(),
-        }
+        ShortId([0; SHORT_ID_LEN])
     }
 
     pub fn is_empty(&self) -> bool {
@@ -385,7 +388,8 @@ impl ShortId {
         if d.len() < SHORT_ID_LEN {
             d.resize(SHORT_ID_LEN, 0);
         }
-        Self { d }
+        let d: [u8; SHORT_ID_LEN] = d.try_into().unwrap();
+        ShortId(d)
     }
 
     /// "hashing.PubkeyBytesToAddress"
@@ -403,12 +407,18 @@ impl ShortId {
     }
 }
 
+impl AsRef<[u8]> for ShortId {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 /// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
 /// ref. https://doc.rust-lang.org/std/fmt/trait.Display.html
 /// Use "Self.to_string()" to directly invoke this
 impl fmt::Display for ShortId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = formatting::encode_cb58_with_checksum(&self.d);
+        let s = formatting::encode_cb58_with_checksum(&self.0);
         write!(f, "{}", s)
     }
 }
@@ -484,7 +494,7 @@ fn test_short_id() {
 
 impl Ord for ShortId {
     fn cmp(&self, other: &ShortId) -> Ordering {
-        self.d.cmp(&(other.d))
+        self.0.cmp(&(other.0))
     }
 }
 
@@ -503,7 +513,7 @@ impl PartialEq for ShortId {
 /// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
 impl Hash for ShortId {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.d.hash(state);
+        self.0.hash(state);
     }
 }
 
@@ -628,10 +638,10 @@ fn test_sort_short_ids() {
 }
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID
-#[derive(Debug, Deserialize, Clone, Eq)]
-pub struct NodeId {
-    pub d: Vec<u8>,
-}
+/// ref. https://docs.rs/zerocopy/latest/zerocopy/trait.AsBytes.html#safety
+#[derive(Debug, Deserialize, Clone, Eq, AsBytes, FromBytes, Unaligned)]
+#[repr(transparent)]
+pub struct NodeId([u8; SHORT_ID_LEN]);
 
 impl Default for NodeId {
     fn default() -> Self {
@@ -641,15 +651,11 @@ impl Default for NodeId {
 
 impl NodeId {
     pub fn default() -> Self {
-        Self {
-            d: NODE_ID_EMPTY.to_vec(),
-        }
+        NodeId([0; SHORT_ID_LEN])
     }
 
     pub fn empty() -> Self {
-        Self {
-            d: NODE_ID_EMPTY.to_vec(),
-        }
+        NodeId([0; SHORT_ID_LEN])
     }
 
     pub fn is_empty(&self) -> bool {
@@ -658,8 +664,8 @@ impl NodeId {
 
     pub fn from_slice(d: &[u8]) -> Self {
         assert_eq!(d.len(), SHORT_ID_LEN);
-        let d = Vec::from(d);
-        Self { d }
+        let d: [u8; SHORT_ID_LEN] = d.try_into().unwrap();
+        NodeId(d)
     }
 
     /// Loads a node ID from the PEM-encoded X509 certificate.
@@ -728,7 +734,13 @@ impl NodeId {
     }
 
     pub fn short_id(&self) -> ShortId {
-        ShortId::from_slice(&self.d)
+        ShortId::from_slice(&self.0)
+    }
+}
+
+impl AsRef<[u8]> for NodeId {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -738,7 +750,7 @@ impl NodeId {
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut node_id = String::from(NODE_ID_ENCODE_PREFIX);
-        let short_id = formatting::encode_cb58_with_checksum(&self.d);
+        let short_id = formatting::encode_cb58_with_checksum(&self.0);
         node_id.push_str(&short_id);
         write!(f, "{}", node_id)
     }
@@ -945,7 +957,7 @@ fn test_from_cert_file() {
 
 impl Ord for NodeId {
     fn cmp(&self, other: &NodeId) -> Ordering {
-        self.d.cmp(&(other.d))
+        self.0.cmp(&(other.0))
     }
 }
 
@@ -964,7 +976,7 @@ impl PartialEq for NodeId {
 /// ref. https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
 impl Hash for NodeId {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.d.hash(state);
+        self.0.hash(state);
     }
 }
 
