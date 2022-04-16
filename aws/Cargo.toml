@@ -30,6 +30,6 @@ utils = { path = "../utils" }
 
 [dev-dependencies]
 env_logger = "0.9.0"
-rust-embed = "6.3.0"
+rust-embed = "6.4.0"
 tempfile = "3.3.0"
 tokio-test = "0.4.2"
