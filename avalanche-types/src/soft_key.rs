@@ -232,27 +232,35 @@ impl Key {
 
     /// Loads the specified Secp256k1 key with CB58 encoding.
     /// Takes the "private_key" field in the "Key" struct.
-    pub fn from_private_key_raw(raw: &[u8]) -> io::Result<Self> {
+    pub fn from_private_key_raw<S>(raw: S) -> io::Result<Self>
+    where
+        S: AsRef<[u8]>,
+    {
         let pfx = PRIVATE_KEY_ENCODE_PREFIX.as_bytes();
         let pos = {
-            if cmp::eq_vectors(pfx, &raw[0..pfx.len()]) {
+            if cmp::eq_vectors(pfx, &raw.as_ref()[0..pfx.len()]) {
                 pfx.len()
             } else {
                 0
             }
         };
 
-        if raw[pos..].len() != secp256k1::constants::SECRET_KEY_SIZE {
-            let encoded_priv_key = String::from_utf8(raw[pos..].to_vec()).map_err(|e| {
-                return Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("failed convert {}-byte to string ({})", raw[pos..].len(), e),
-                );
-            })?;
+        if raw.as_ref()[pos..].len() != secp256k1::constants::SECRET_KEY_SIZE {
+            let encoded_priv_key =
+                String::from_utf8(raw.as_ref()[pos..].to_vec()).map_err(|e| {
+                    return Error::new(
+                        ErrorKind::InvalidInput,
+                        format!(
+                            "failed convert {}-byte to string ({})",
+                            raw.as_ref()[pos..].len(),
+                            e
+                        ),
+                    );
+                })?;
             return Self::from_private_key(&encoded_priv_key);
         }
 
-        let secret_key = match SecretKey::from_slice(&raw[pos..]) {
+        let secret_key = match SecretKey::from_slice(&raw.as_ref()[pos..]) {
             Ok(v) => v,
             Err(e) => {
                 return Err(Error::new(
