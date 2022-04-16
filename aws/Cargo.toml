@@ -5,16 +5,16 @@ edition = "2021"
 
 [dependencies]
 # https://github.com/awslabs/aws-sdk-rust/releases
-aws-config = "0.9.0"
-aws-sdk-cloudformation = "0.9.0"
-aws-sdk-cloudwatch = "0.9.0"
-aws-sdk-cloudwatchlogs = "0.9.0"
-aws-sdk-ec2 = "0.9.0"
-aws-sdk-kms = "0.9.0"
-aws-sdk-s3 = "0.9.0"
-aws-sdk-sts = "0.9.0"
-aws-smithy-types = "0.39.0"
-aws-types = "0.9.0"
+aws-config = "0.10.1"
+aws-sdk-cloudformation = "0.10.1"
+aws-sdk-cloudwatch = "0.10.1"
+aws-sdk-cloudwatchlogs = "0.10.1"
+aws-sdk-ec2 = "0.10.1"
+aws-sdk-kms = "0.10.1"
+aws-sdk-s3 = "0.10.1"
+aws-sdk-sts = "0.10.1"
+aws-smithy-types = "0.40.2"
+aws-types = "0.10.1"
 byteorder = "1.4.3"
 chrono = "0.4.19"
 hyper = { version = "0.14.18", features = ["full"] }
@@ -29,7 +29,7 @@ tokio-stream = "0.1.8"
 utils = { path = "../utils" }
 
 [dev-dependencies]
-env_logger = "0.9.0"
+env_logger = "0.10.1"
 rust-embed = "6.4.0"
 tempfile = "3.3.0"
 tokio-test = "0.4.2"
