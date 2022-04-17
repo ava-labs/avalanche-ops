@@ -8,25 +8,6 @@ fi
 
 ###
 pushd ./compatibility
-go run ./key-info-gen/main.go 9999 /tmp/test.key.json
-go run ./key-info-validate/main.go /tmp/test.key.json 9999
-popd
-cargo run --example soft_key_info_validate -- /tmp/test.key.json 9999
-
-###
-cargo run --example soft_key_info_gen -- 9999 /tmp/test.key.json
-pushd ./compatibility
-go run ./key-info-validate/main.go /tmp/test.key.json 9999
-popd
-
-###
-pushd ./compatibility
-go run ./key-infos-validate/main.go ../artifacts/test.insecure.secp256k1.key.infos.mnemonic.json
-go run ./key-infos-validate/main.go ../artifacts/test.insecure.secp256k1.key.infos.no.mnemonic.json
-popd
-
-###
-pushd ./compatibility
 # copied from "avalanchego/staking/local/staking1.key,crt"
 go run ./node-id-load/main.go ../artifacts/staker1.insecure.key ../artifacts/staker1.insecure.crt
 go run ./node-id-load/main.go ../artifacts/staker2.insecure.key ../artifacts/staker2.insecure.crt

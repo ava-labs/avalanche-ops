@@ -8,7 +8,6 @@ use std::{
     string::String,
 };
 
-use bip32::{DerivationPath, Language, Mnemonic, XPrv};
 use lazy_static::lazy_static;
 use log::info;
 use rust_embed::RustEmbed;
@@ -25,22 +24,17 @@ lazy_static! {
         #[prefix = "artifacts/"]
         struct Asset;
 
-        let key_file = Asset::get("artifacts/test.insecure.secp256k1.key.infos.mnemonic.json").unwrap();
+        let key_file =
+            Asset::get("artifacts/test.insecure.secp256k1.key.infos.no.mnemonic.json").unwrap();
         let key_file_data = key_file.data;
-        let  key_infos: Vec<PrivateKeyInfoEntry> =
-            serde_json::from_slice(&key_file_data).unwrap();
+        let key_infos: Vec<PrivateKeyInfoEntry> = serde_json::from_slice(&key_file_data).unwrap();
 
         let mut keys: Vec<Key> = Vec::new();
         for ki in key_infos.iter() {
-            let k = Key::from_mnemonic_phrase(ki.mnemonic_phrase.clone().unwrap()).unwrap();
+            let k = Key::from_private_key(ki.private_key.clone()).unwrap();
             keys.push(k);
         }
         keys
-    };
-
-    /// ref. https://github.com/ava-labs/avalanche-wallet/blob/v0.3.8/src/js/wallets/MnemonicWallet.ts
-    pub static ref AVAX_ACCOUNT_DERIVIATION_PATH: DerivationPath = {
-        "m/44'/9000'/0'".parse().unwrap()
     };
 }
 
@@ -323,34 +317,6 @@ impl Key {
         Self::from_private_key(&enc)
     }
 
-    pub fn from_mnemonic_phrase<S>(phrase: S) -> io::Result<Self>
-    where
-        S: AsRef<str>,
-    {
-        let mnemonic = Mnemonic::new(phrase, Language::English).map_err(|e| {
-            return Error::new(
-                ErrorKind::Other,
-                format!("failed to read mnemonic phrase ({})", e),
-            );
-        })?;
-        let seed = mnemonic.to_seed("password");
-
-        // ref. https://github.com/ava-labs/avalanche-wallet/blob/v0.3.8/src/js/wallets/MnemonicWallet.ts
-        let child_xprv =
-            XPrv::derive_from_path(&seed, &AVAX_ACCOUNT_DERIVIATION_PATH).map_err(|e| {
-                return Error::new(
-                    ErrorKind::Other,
-                    format!("failed to derive AVAX account path ({})", e),
-                );
-            })?;
-
-        let pk = child_xprv.private_key().to_bytes();
-
-        let mut key = Self::from_private_key_raw(&pk)?;
-        key.mnemonic_phrase = Some(String::from(mnemonic.phrase()));
-        Ok(key)
-    }
-
     pub fn address(&self, chain_id_alias: &str, network_id: u32) -> io::Result<String> {
         let hrp = match constants::NETWORK_ID_TO_HRP.get(&network_id) {
             Some(v) => v,
@@ -439,18 +405,6 @@ impl Key {
     }
 }
 
-/// Only supports "English" for now.
-/// ref. https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
-/// ref. https://github.com/rust-bitcoin/rust-bitcoin/blob/master/src/util/bip32.rs
-/// ref. https://github.com/bitcoin/bips/blob/master/bip-0039/bip-0039-wordlists.md
-/// ref. https://iancoleman.io/bip39/
-pub fn generate_mnemonic_phrase_24_word() -> String {
-    let m = Mnemonic::random(&mut rand_core::OsRng, Language::English);
-    let s = m.phrase();
-    assert_eq!(s.split(' ').count(), 24);
-    String::from(s)
-}
-
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- soft_key::test_soft_key --exact --show-output
 #[test]
 fn test_soft_key() {
@@ -482,18 +436,11 @@ fn test_soft_key() {
     struct Asset;
 
     let test_keys_file =
-        Asset::get("artifacts/test.insecure.secp256k1.key.infos.mnemonic.json").unwrap();
-    let test_keys_file_contents = std::str::from_utf8(test_keys_file.data.as_ref()).unwrap();
-    let mut key_infos: Vec<PrivateKeyInfoEntry> =
-        serde_json::from_slice(&test_keys_file_contents.as_bytes()).unwrap();
-
-    let test_keys_file =
         Asset::get("artifacts/test.insecure.secp256k1.key.infos.no.mnemonic.json").unwrap();
     let test_keys_file_contents = std::str::from_utf8(test_keys_file.data.as_ref()).unwrap();
-    let key_infos_no_mnemonic: Vec<PrivateKeyInfoEntry> =
+    let key_infos: Vec<PrivateKeyInfoEntry> =
         serde_json::from_slice(&test_keys_file_contents.as_bytes()).unwrap();
 
-    key_infos.extend(key_infos_no_mnemonic);
     for (pos, ki) in key_infos.iter().enumerate() {
         info!("checking the key info at {}", pos);
 
@@ -506,15 +453,6 @@ fn test_soft_key() {
             k,
             Key::from_private_key_raw(&k.private_key.as_bytes()).unwrap(),
         );
-
-        if ki.mnemonic_phrase.is_some() {
-            let mut k2 = k.clone();
-            k2.mnemonic_phrase = ki.mnemonic_phrase.clone();
-            assert_eq!(
-                k2,
-                Key::from_mnemonic_phrase(&ki.mnemonic_phrase.clone().unwrap()).unwrap(),
-            );
-        }
 
         assert_eq!(k.private_key_hex.clone(), ki.private_key_hex);
 
