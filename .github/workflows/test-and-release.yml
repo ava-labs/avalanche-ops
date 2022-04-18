@@ -77,37 +77,10 @@ jobs:
       - name: Run unit tests
         run: scripts/tests.unit.sh
 
-  compatibility_tests:
-    name: Compatibility tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17
-      - name: Check Go version
-        run: go version
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-      - name: Check Rust version
-        run: rustc --version
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: Run compatibility tests
-        run: pushd ./avalanche-types && scripts/tests.compatibility.sh && popd
-
   release:
     name: Release ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
-    needs:
-      [static_analysis, check_cargo_unused, unit_tests, compatibility_tests]
+    needs: [static_analysis, check_cargo_unused, unit_tests]
     strategy:
       matrix:
         job:
