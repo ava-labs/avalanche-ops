@@ -7,7 +7,7 @@ mod delete;
 mod events;
 mod read_spec;
 
-const APP_NAME: &str = "avalanche-ops-aws";
+const APP_NAME: &str = "avalancheup-aws";
 
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
@@ -29,7 +29,7 @@ fn main() {
         Some((default_spec::NAME, sub_matches)) => {
             let keys_to_generate = sub_matches.value_of("KEYS_TO_GENERATE").unwrap_or("");
             let keys_to_generate = keys_to_generate.parse::<usize>().unwrap();
-            let opt = avalanche_ops_aws::DefaultSpecOption {
+            let opt = avalancheup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .value_of("LOG_LEVEL")
                     .unwrap_or("info")

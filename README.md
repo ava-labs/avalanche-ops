@@ -11,7 +11,7 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 
 `avalanche-ops` aims to find vulnerabilities in Avalanche protocol by intentionally causing failures, and provides a reliable and faster way to validate the ﬁx. In addition, `avalanche-ops` implements some basic principles and best practices for operating Avalanche node in production.
 
-`avalanche-ops` is an operation toolkit for Avalanche nodes:
+`avalanche-ops` is a set of operation toolkits for Avalanche nodes:
 - 🦀 Written in Rust
 - ✅ Optimized for ephemeral network create/delete
 - ✅ Fully automates VM (or physical machine) provisioning
@@ -32,19 +32,19 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 
 ## Workflow
 
-**`avalanche-ops`** is the client (or "control plane") that runs on the operator's host machine or test runner, which provisions a set of remote machines based on user-provided configuration. **`avalanched`** is an agent (or daemon) that runs on every remote machine, which creates and installs Avalanche-specific resources (e.g., TLS certificate generation, anchor-node discovery, write avalanche node service file).
+**`avalancheup`** is the client (or "control plane") that runs on the operator's host machine or test runner, which provisions a set of remote machines based on user-provided configuration. **`avalanched`** is an agent (or daemon) that runs on every remote machine, which creates and installs Avalanche-specific resources (e.g., TLS certificate generation, anchor-node discovery, write avalanche node service file).
 
-To set up a custom network, provide **`avalanche-ops`** with executable binaries to run in remote machines. Which then generates a genesis file with pre-funded keys and provisions remote machines to install the user-provided artifacts. A custom network requires two groups of machines: (1) anchor node (beacon node, only required for custom network), and (2) non-anchor node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-anchor nodes list the storage to discover anchor nodes.
+To set up a custom network, provide **`avalancheup`** with executable binaries to run in remote machines. Which then generates a genesis file with pre-funded keys and provisions remote machines to install the user-provided artifacts. A custom network requires two groups of machines: (1) anchor node (beacon node, only required for custom network), and (2) non-anchor node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-anchor nodes list the storage to discover anchor nodes.
 
-![avalanche-ops.drawio.png](./avalanche-ops-aws/img/avalanche-ops.drawio.png)
+![avalanche-ops.drawio.png](./avalancheup-aws/img/avalancheup.drawio.png)
 
-## `avalanche-ops` and `avalanched` on AWS
+## `avalancheup` and `avalanched` on AWS
 
-See [`recipes-aws.md`](./avalanche-ops-aws/recipes-aws.md) and [`example-aws.md`](./avalanche-ops-aws/example-aws.md).
+See [`recipes-aws.md`](./avalancheup-aws/recipes-aws.md) and [`example-aws.md`](./avalancheup-aws/example-aws.md).
 
-![example-aws/32](./avalanche-ops-aws/img/example-aws/32.png)
+![example-aws/32](./avalancheup-aws/img/example-aws/32.png)
 
-![example-aws/43](./avalanche-ops-aws/img/example-aws/43.png)
+![example-aws/43](./avalancheup-aws/img/example-aws/43.png)
 
 ## Installation
 

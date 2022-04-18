@@ -9,18 +9,18 @@ fi
 # "--bin" can be specified multiple times for each directory in "bin/*" or workspaces
 cargo build \
 --release \
---bin avalanche-ops-aws \
+--bin avalancheup-aws \
 --bin avalanched-aws \
 --bin dev-machine-aws
 
-./target/release/avalanche-ops-aws --help
-./target/release/avalanche-ops-aws default-spec --help
-./target/release/avalanche-ops-aws apply --help
-./target/release/avalanche-ops-aws delete --help
-./target/release/avalanche-ops-aws read-spec --help
-./target/release/avalanche-ops-aws check-balances --help
-./target/release/avalanche-ops-aws events --help
-./target/release/avalanche-ops-aws events update-artifacts --help
+./target/release/avalancheup-aws --help
+./target/release/avalancheup-aws default-spec --help
+./target/release/avalancheup-aws apply --help
+./target/release/avalancheup-aws delete --help
+./target/release/avalancheup-aws read-spec --help
+./target/release/avalancheup-aws check-balances --help
+./target/release/avalancheup-aws events --help
+./target/release/avalancheup-aws events update-artifacts --help
 
 ./target/release/avalanched-aws --help
 ./target/release/avalanched-aws backup upload --help

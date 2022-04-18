@@ -1,10 +1,10 @@
 [package]
-name = "avalanche-ops-aws"
+name = "avalancheup-aws"
 version = "0.0.8-pre"
 edition = "2021"
 
 [[bin]]
-name = "avalanche-ops-aws"
+name = "avalancheup-aws"
 path = "src/main.rs"
 
 [dependencies]

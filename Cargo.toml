@@ -1,10 +1,10 @@
 [workspace]
 members = [
     "avalanche-api",
-    "avalanche-ops-aws",
     "avalanche-types",
     "avalanched-aws",
     "avalanchego",
+    "avalancheup-aws",
     "aws",
     "coreth",
     "dev-machine-aws",

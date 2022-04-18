@@ -13,7 +13,7 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 use tokio::runtime::Runtime;
 
-use avalanche_ops_aws;
+use avalancheup_aws;
 use aws::{self, s3};
 use utils::{compress, random};
 
@@ -82,7 +82,7 @@ pub fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalanche_ops_aws::Spec::load(spec_file_path).expect("failed to load spec");
+    let spec = avalancheup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
     execute!(
@@ -129,7 +129,7 @@ pub fn execute(
     rt.block_on(s3_manager.put_object(
         Arc::new(tmp_avalanche_bin_compressed_path.clone()),
         Arc::new(aws_resources.s3_bucket.clone()),
-        Arc::new(avalanche_ops_aws::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(spec.id.clone()).encode()),
+        Arc::new(avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(spec.id.clone()).encode()),
     ))
     .expect("failed put_object compressed install_artifacts_avalanche_bin");
     fs::remove_file(tmp_avalanche_bin_compressed_path)?;
@@ -161,7 +161,7 @@ pub fn execute(
                         Arc::new(aws_resources.s3_bucket.clone()),
                     Arc::new(format!(
                         "{}/{}{}",
-                        &avalanche_ops_aws::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(spec.id.clone()).encode(),
+                        &avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(spec.id.clone()).encode(),
                         file_name,
                         compress::Encoder::Zstd(3).ext()
                     )),
@@ -174,7 +174,7 @@ pub fn execute(
     rt.block_on(s3_manager.put_object(
         Arc::new(spec_file_path.to_string()),
         Arc::new(aws_resources.s3_bucket),
-        Arc::new(avalanche_ops_aws::StorageNamespace::EventsUpdateArtifactsEvent(spec.id).encode()),
+        Arc::new(avalancheup_aws::StorageNamespace::EventsUpdateArtifactsEvent(spec.id).encode()),
     ))
     .expect("failed put_object EventsUpdateArtifactsEvent");
 
