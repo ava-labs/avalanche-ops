@@ -73,7 +73,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalanche_ops_aws::Spec::load(spec_file_path).expect("failed to load spec");
+    let spec = avalancheup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     let eps = spec.endpoints.expect("unexpected None endpoints");
     let http_rpc = eps.http_rpc.expect("unexpected None http_rpc");
 

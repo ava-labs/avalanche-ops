@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-api = { path = "../avalanche-api" }
-avalanche-ops-aws = { path = "../avalanche-ops-aws" }
+avalancheup-aws = { path = "../avalancheup-aws" }
 avalanche-types = { path = "../avalanche-types" }
 avalanchego = { path = "../avalanchego" }
 aws = { path = "../aws" }

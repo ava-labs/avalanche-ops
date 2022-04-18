@@ -157,7 +157,7 @@ To look at the `subnet-vm` logs:
 
 <hr>
 
-To shut down the network, run `avalanche-ops-aws delete` command:
+To shut down the network, run `avalancheup-aws delete` command:
 
 ![example-aws/45](./img/example-aws/45.png)
 

@@ -97,7 +97,7 @@ pub fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalanche_ops_aws::Spec::load(spec_file_path).expect("failed to load spec");
+    let spec = avalancheup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     let aws_resources = spec.aws_resources.clone().unwrap();
 
     let rt = Runtime::new().unwrap();

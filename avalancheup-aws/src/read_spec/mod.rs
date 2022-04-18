@@ -69,7 +69,7 @@ pub fn execute(
     http_endpoints: bool,
     node_ids: bool,
 ) -> io::Result<()> {
-    let spec = avalanche_ops_aws::Spec::load(spec_file_path).expect("failed to load spec");
+    let spec = avalancheup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     let current_nodes = spec
         .current_nodes
         .expect("unexpected None current_nodes in spec file");

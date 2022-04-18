@@ -80,7 +80,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut spec = avalanche_ops_aws::Spec::load(spec_file_path).expect("failed to load spec");
+    let mut spec = avalancheup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
     let rt = Runtime::new().unwrap();
@@ -118,21 +118,21 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     }
     if aws_resources.cloudformation_ec2_instance_role.is_none() {
         aws_resources.cloudformation_ec2_instance_role =
-            Some(avalanche_ops_aws::StackName::Ec2InstanceRole(spec.id.clone()).encode());
+            Some(avalancheup_aws::StackName::Ec2InstanceRole(spec.id.clone()).encode());
     }
     if aws_resources.cloudformation_vpc.is_none() {
         aws_resources.cloudformation_vpc =
-            Some(avalanche_ops_aws::StackName::Vpc(spec.id.clone()).encode());
+            Some(avalancheup_aws::StackName::Vpc(spec.id.clone()).encode());
     }
     if spec.avalanchego_config.is_custom_network()
         && aws_resources.cloudformation_asg_anchor_nodes.is_none()
     {
         aws_resources.cloudformation_asg_anchor_nodes =
-            Some(avalanche_ops_aws::StackName::AsgBeaconNodes(spec.id.clone()).encode());
+            Some(avalancheup_aws::StackName::AsgBeaconNodes(spec.id.clone()).encode());
     }
     if aws_resources.cloudformation_asg_non_anchor_nodes.is_none() {
         aws_resources.cloudformation_asg_non_anchor_nodes =
-            Some(avalanche_ops_aws::StackName::AsgNonBeaconNodes(spec.id.clone()).encode());
+            Some(avalancheup_aws::StackName::AsgNonBeaconNodes(spec.id.clone()).encode());
     }
     if aws_resources
         .cloudwatch_avalanche_metrics_namespace
@@ -207,7 +207,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     rt.block_on(s3_manager.put_object(
         Arc::new(spec.install_artifacts.avalanched_bin.clone()),
         Arc::new(aws_resources.s3_bucket.clone()),
-        Arc::new(avalanche_ops_aws::StorageNamespace::AvalanchedBin(spec.id.clone()).encode()),
+        Arc::new(avalancheup_aws::StorageNamespace::AvalanchedBin(spec.id.clone()).encode()),
     ))
     .expect("failed put_object install_artifacts.avalanched_bin");
 
@@ -224,7 +224,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         Arc::new(tmp_avalanche_bin_compressed_path.clone()),
         Arc::new(aws_resources.s3_bucket.clone()),
         Arc::new(
-            avalanche_ops_aws::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode(),
+            avalancheup_aws::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode(),
         ),
     ))
     .expect("failed put_object compressed avalanchego_bin");
@@ -257,7 +257,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 Arc::new(aws_resources.s3_bucket.clone()),
                 Arc::new(format!(
                     "{}/{}{}",
-                    &avalanche_ops_aws::StorageNamespace::PluginsDir(spec.id.clone()).encode(),
+                    &avalancheup_aws::StorageNamespace::PluginsDir(spec.id.clone()).encode(),
                     file_name,
                     compress::Encoder::Zstd(3).ext()
                 )),
@@ -269,7 +269,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     rt.block_on(s3_manager.put_object(
         Arc::new(spec_file_path.to_string()),
         Arc::new(aws_resources.s3_bucket.clone()),
-        Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
     ))
     .unwrap();
 
@@ -293,7 +293,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         rt.block_on(s3_manager.put_object(
             Arc::new(spec_file_path.to_string()),
             Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -334,7 +334,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 Arc::new(tmp_encrypted_path),
                 Arc::new(aws_resources.s3_bucket.clone()),
                 Arc::new(
-                    avalanche_ops_aws::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
+                    avalancheup_aws::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
                         spec.id.clone(),
                     )
                     .encode(),
@@ -350,7 +350,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         rt.block_on(s3_manager.put_object(
             Arc::new(spec_file_path.to_string()),
             Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -422,7 +422,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         rt.block_on(s3_manager.put_object(
             Arc::new(spec_file_path.to_string()),
             Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -507,7 +507,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         rt.block_on(s3_manager.put_object(
             Arc::new(spec_file_path.to_string()),
             Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
@@ -577,7 +577,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     }
 
     // TODO: support bootstrap from existing DB for anchor nodes
-    let mut current_nodes: Vec<avalanche_ops_aws::Node> = Vec::new();
+    let mut current_nodes: Vec<avalancheup_aws::Node> = Vec::new();
     if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && aws_resources
             .cloudformation_asg_anchor_nodes_logical_id
@@ -736,7 +736,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     s3_manager.list_objects(
                         Arc::new(aws_resources.s3_bucket.clone()),
                         Some(Arc::new(s3::append_slash(
-                            &avalanche_ops_aws::StorageNamespace::DiscoverReadyAnchorNodesDir(
+                            &avalancheup_aws::StorageNamespace::DiscoverReadyAnchorNodesDir(
                                 spec.id.clone(),
                             )
                             .encode(),
@@ -773,7 +773,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let anchor_node =
-                avalanche_ops_aws::StorageNamespace::parse_node_from_path(s3_key).unwrap();
+                avalancheup_aws::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             current_nodes.push(anchor_node.clone());
         }
 
@@ -783,7 +783,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         rt.block_on(s3_manager.put_object(
             Arc::new(spec_file_path.to_string()),
             Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
 
@@ -963,11 +963,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
         let s3_dir = {
             if require_db_download {
-                avalanche_ops_aws::StorageNamespace::DiscoverProvisioningNonAnchorNodesDir(
+                avalancheup_aws::StorageNamespace::DiscoverProvisioningNonAnchorNodesDir(
                     spec.id.clone(),
                 )
             } else {
-                avalanche_ops_aws::StorageNamespace::DiscoverReadyNonAnchorNodesDir(spec.id.clone())
+                avalancheup_aws::StorageNamespace::DiscoverReadyNonAnchorNodesDir(spec.id.clone())
             }
         };
         // wait for non-anchor nodes to generate certs and node ID and post to remote storage
@@ -1010,7 +1010,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let non_anchor_node =
-                avalanche_ops_aws::StorageNamespace::parse_node_from_path(s3_key).unwrap();
+                avalancheup_aws::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             current_nodes.push(non_anchor_node.clone());
         }
         spec.current_nodes = Some(current_nodes.clone());
@@ -1020,7 +1020,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         rt.block_on(s3_manager.put_object(
             Arc::new(spec_file_path.to_string()),
             Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .expect("failed put_object ConfigFile");
 
@@ -1082,7 +1082,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
-    let mut dns_endpoints = avalanche_ops_aws::Endpoints::default();
+    let mut dns_endpoints = avalancheup_aws::Endpoints::default();
     let http_rpc = format!("{}://{}:{}", scheme_for_dns, dns_name, port_for_dns);
     dns_endpoints.http_rpc = Some(http_rpc.clone());
     dns_endpoints.http_rpc_x = Some(format!("{}/ext/bc/X", http_rpc));
@@ -1098,7 +1098,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     rt.block_on(s3_manager.put_object(
         Arc::new(spec_file_path.to_string()),
         Arc::new(aws_resources.s3_bucket.clone()),
-        Arc::new(avalanche_ops_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
     ))
     .expect("failed put_object ConfigFile");
     println!();

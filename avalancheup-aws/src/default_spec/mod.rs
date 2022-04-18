@@ -108,7 +108,7 @@ pub fn command() -> Command<'static> {
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .default_value("5"), // ref. "avalanche_ops_aws::DEFAULT_KEYS_TO_GENERATE"
+                .default_value("5"), // ref. "avalancheup_aws::DEFAULT_KEYS_TO_GENERATE"
         )
         .arg(
             Arg::new("AVALANCHEGO_LOG_LEVEL") 
@@ -250,13 +250,13 @@ pub fn command() -> Command<'static> {
         )
 }
 
-pub fn execute(opt: avalanche_ops_aws::DefaultSpecOption) -> io::Result<()> {
+pub fn execute(opt: avalancheup_aws::DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.clone().log_level),
     );
 
-    let spec = avalanche_ops_aws::Spec::default_aws(opt.clone());
+    let spec = avalancheup_aws::Spec::default_aws(opt.clone());
     spec.validate()?;
 
     let spec_file_path = {

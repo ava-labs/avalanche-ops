@@ -171,8 +171,7 @@ pub async fn execute(log_level: &str) {
 
     if !Path::new(&avalanche_bin_path).exists() {
         info!("STEP: downloading avalanche binary from S3");
-        let s3_key =
-            avalanche_ops_aws::StorageNamespace::AvalancheBinCompressed(id.clone()).encode();
+        let s3_key = avalancheup_aws::StorageNamespace::AvalancheBinCompressed(id.clone()).encode();
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         s3::spawn_get_object(
             s3_manager.clone(),
@@ -206,7 +205,7 @@ pub async fn execute(log_level: &str) {
             s3_manager.clone(),
             &s3_bucket,
             Some(s3::append_slash(
-                &avalanche_ops_aws::StorageNamespace::PluginsDir(id.clone()).encode(),
+                &avalancheup_aws::StorageNamespace::PluginsDir(id.clone()).encode(),
             )),
         )
         .await
@@ -235,13 +234,13 @@ pub async fn execute(log_level: &str) {
     s3::spawn_get_object(
         s3_manager.clone(),
         &s3_bucket,
-        &avalanche_ops_aws::StorageNamespace::ConfigFile(id.clone()).encode(),
+        &avalancheup_aws::StorageNamespace::ConfigFile(id.clone()).encode(),
         &tmp_spec_file_path,
     )
     .await
     .expect("failed s3::spawn_get_object");
 
-    let mut spec = avalanche_ops_aws::Spec::load(&tmp_spec_file_path).unwrap();
+    let mut spec = avalancheup_aws::Spec::load(&tmp_spec_file_path).unwrap();
     spec.avalanchego_config.public_ip = Some(public_ipv4.clone());
     spec.avalanchego_config
         .sync(None)
@@ -343,7 +342,7 @@ pub async fn execute(log_level: &str) {
         info!("uploading generated TLS certs to S3");
         let s3_key = format!(
             "{}/{}.crt",
-            avalanche_ops_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
             instance_id
         );
         s3::spawn_put_object(s3_manager.clone(), &tls_cert_path, &s3_bucket, &s3_key)
@@ -374,7 +373,7 @@ pub async fn execute(log_level: &str) {
             &s3_bucket,
             format!(
                 "{}/{}.key.zstd.seal_aes_256.encrypted",
-                avalanche_ops_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+                avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
                 instance_id
             )
             .as_str(),
@@ -402,7 +401,7 @@ pub async fn execute(log_level: &str) {
             "http"
         }
     };
-    let local_node = avalanche_ops_aws::Node::new(
+    let local_node = avalancheup_aws::Node::new(
         node_kind.clone(),
         &instance_id,
         &node_id.to_string(),
@@ -429,19 +428,19 @@ pub async fn execute(log_level: &str) {
             info!("STEP: publishing node information before db backup downloads");
             let s3_key = {
                 if matches!(node_kind, node::Kind::Anchor) {
-                    avalanche_ops_aws::StorageNamespace::DiscoverProvisioningAnchorNode(
+                    avalancheup_aws::StorageNamespace::DiscoverProvisioningAnchorNode(
                         id.clone(),
                         local_node.clone(),
                     )
                 } else {
-                    avalanche_ops_aws::StorageNamespace::DiscoverProvisioningNonAnchorNode(
+                    avalancheup_aws::StorageNamespace::DiscoverProvisioningNonAnchorNode(
                         id.clone(),
                         local_node.clone(),
                     )
                 }
             }
             .encode();
-            let node_info = avalanche_ops_aws::NodeInfo::new(
+            let node_info = avalancheup_aws::NodeInfo::new(
                 local_node.clone(),
                 spec.avalanchego_config.clone(),
                 spec.coreth_config.clone(),
@@ -508,7 +507,7 @@ pub async fn execute(log_level: &str) {
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
         info!("STEP: publishing seed/bootstrapping anchor node information for discovery");
-        let node_info = avalanche_ops_aws::NodeInfo::new(
+        let node_info = avalancheup_aws::NodeInfo::new(
             local_node.clone(),
             spec.avalanchego_config.clone(),
             spec.coreth_config.clone(),
@@ -520,7 +519,7 @@ pub async fn execute(log_level: &str) {
             s3_manager.clone(),
             &tmp_path,
             &s3_bucket,
-            &avalanche_ops_aws::StorageNamespace::DiscoverBootstrappingAnchorNode(
+            &avalancheup_aws::StorageNamespace::DiscoverBootstrappingAnchorNode(
                 id.clone(),
                 local_node.clone(),
             )
@@ -535,7 +534,7 @@ pub async fn execute(log_level: &str) {
         info!("STEP: waiting for all seed/bootstrapping anchor nodes to be ready");
         let target_nodes = spec.machine.anchor_nodes.unwrap();
         let s3_key = s3::append_slash(
-            &avalanche_ops_aws::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(id.clone())
+            &avalancheup_aws::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(id.clone())
                 .encode(),
         );
         let mut objects: Vec<Object>;
@@ -567,7 +566,7 @@ pub async fn execute(log_level: &str) {
             // just parse the s3 key name
             // to reduce "s3_manager.get_object" call volume
             let seed_anchor_node =
-                avalanche_ops_aws::StorageNamespace::parse_node_from_path(s3_key).unwrap();
+                avalancheup_aws::StorageNamespace::parse_node_from_path(s3_key).unwrap();
 
             let mut staker = avalanchego_genesis::Staker::default();
             staker.node_id = Some(seed_anchor_node.node_id);
@@ -604,7 +603,7 @@ pub async fn execute(log_level: &str) {
             s3_manager.clone(),
             &avalanchego_genesis_path,
             &s3_bucket,
-            &avalanche_ops_aws::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
+            &avalancheup_aws::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
         )
         .await
         .expect("failed s3::spawn_put_object");
@@ -620,7 +619,7 @@ pub async fn execute(log_level: &str) {
         s3::spawn_get_object(
             s3_manager.clone(),
             &s3_bucket,
-            &avalanche_ops_aws::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
+            &avalancheup_aws::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
             &tmp_genesis_path,
         )
         .await
@@ -664,7 +663,7 @@ pub async fn execute(log_level: &str) {
             .anchor_nodes
             .expect("unexpected None machine.anchor_nodes for custom network");
         let s3_key = s3::append_slash(
-            &avalanche_ops_aws::StorageNamespace::DiscoverReadyAnchorNodesDir(id.clone()).encode(),
+            &avalancheup_aws::StorageNamespace::DiscoverReadyAnchorNodesDir(id.clone()).encode(),
         );
         let mut objects: Vec<Object>;
         loop {
@@ -691,7 +690,7 @@ pub async fn execute(log_level: &str) {
 
             // just parse the s3 key name
             // to reduce "s3_manager.get_object" call volume
-            let anchor_node = avalanche_ops_aws::StorageNamespace::parse_node_from_path(s3_key)
+            let anchor_node = avalancheup_aws::StorageNamespace::parse_node_from_path(s3_key)
                 .expect("failed to parse node from storage path");
 
             // assume all nodes in the network use the same ports
@@ -856,13 +855,13 @@ WantedBy=multi-user.target",
     info!("spawning async routines...");
     let node_info_ready_s3_key = {
         if matches!(node_kind, node::Kind::Anchor) {
-            avalanche_ops_aws::StorageNamespace::DiscoverReadyAnchorNode(
+            avalancheup_aws::StorageNamespace::DiscoverReadyAnchorNode(
                 id.to_string(),
                 local_node.clone(),
             )
             .encode()
         } else {
-            avalanche_ops_aws::StorageNamespace::DiscoverReadyNonAnchorNode(
+            avalancheup_aws::StorageNamespace::DiscoverReadyNonAnchorNode(
                 id.to_string(),
                 local_node.clone(),
             )
@@ -874,7 +873,7 @@ WantedBy=multi-user.target",
             s3_manager.clone(),
             Arc::new(s3_bucket.clone()),
             Arc::new(node_info_ready_s3_key),
-            Arc::new(avalanche_ops_aws::NodeInfo::new(
+            Arc::new(avalancheup_aws::NodeInfo::new(
                 local_node.clone(),
                 spec.avalanchego_config.clone(),
                 spec.coreth_config.clone(),
@@ -919,7 +918,7 @@ async fn publish_node_info_ready_loop(
     s3_manager: s3::Manager,
     s3_bucket: Arc<String>,
     s3_key: Arc<String>,
-    node_info: Arc<avalanche_ops_aws::NodeInfo>,
+    node_info: Arc<avalancheup_aws::NodeInfo>,
 ) {
     info!("STEP: starting 'publish_node_info_ready_loop'");
 
@@ -1005,7 +1004,7 @@ async fn check_node_update_loop(
             s3_manager.clone(),
             s3_bucket.as_str(),
             Some(
-                avalanche_ops_aws::StorageNamespace::EventsUpdateArtifactsEvent(id.to_string())
+                avalancheup_aws::StorageNamespace::EventsUpdateArtifactsEvent(id.to_string())
                     .encode(),
             ),
         )
@@ -1060,7 +1059,7 @@ async fn check_node_update_loop(
         s3::spawn_get_object(
                     s3_manager.clone(),
                     &s3_bucket,
-                    &avalanche_ops_aws::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.to_string()).encode(),
+                    &avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.to_string()).encode(),
                     &tmp_avalanche_bin_compressed_path,
                 )
                 .await
@@ -1094,7 +1093,7 @@ async fn check_node_update_loop(
             s3_manager.clone(),
             &s3_bucket,
             Some(s3::append_slash(
-                &avalanche_ops_aws::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(
+                &avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(
                     id.to_string(),
                 )
                 .encode(),
@@ -1150,7 +1149,7 @@ async fn print_backup_commands(
             db_dir,
             db_dir_network,
             &s3_bucket,
-            avalanche_ops_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
+            avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
             compress::DirEncoder::TarGzip.ext(),
         );
 
@@ -1158,7 +1157,7 @@ async fn print_backup_commands(
             s3_region,
             compress::DirDecoder::TarGzip.id(),
             s3_bucket,
-            avalanche_ops_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
+            avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
             compress::DirDecoder::TarGzip.ext(),
             db_dir,
         );
