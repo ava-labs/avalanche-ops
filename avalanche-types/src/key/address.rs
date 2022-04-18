@@ -41,7 +41,7 @@ where
 
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-pub fn to_short_address_bytes(public_key: &PublicKey) -> io::Result<Vec<u8>> {
+pub fn to_short_bytes(public_key: &PublicKey) -> io::Result<Vec<u8>> {
     let public_key_bytes_compressed = public_key.serialize();
     hash_sha256_ripemd160(&public_key_bytes_compressed)
 }
@@ -49,7 +49,7 @@ pub fn to_short_address_bytes(public_key: &PublicKey) -> io::Result<Vec<u8>> {
 /// "hashing.PubkeyBytesToAddress"
 /// ref. "pk.PublicKey().Address().Bytes()"
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#PubkeyBytesToAddress
-pub fn to_short_address(public_key: &PublicKey) -> io::Result<ids::ShortId> {
+pub fn to_short(public_key: &PublicKey) -> io::Result<ids::ShortId> {
     let public_key_bytes_compressed = public_key.serialize();
     ids::ShortId::from_public_key_bytes(&public_key_bytes_compressed)
 }
@@ -57,7 +57,7 @@ pub fn to_short_address(public_key: &PublicKey) -> io::Result<ids::ShortId> {
 /// Encodes the public key in ETH address format.
 /// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/crypto#PubkeyToAddress
 /// ref. https://pkg.go.dev/github.com/ethereum/go-ethereum/common#Address.Hex
-pub fn to_eth_address(public_key: &PublicKey) -> io::Result<String> {
+pub fn to_eth(public_key: &PublicKey) -> io::Result<String> {
     let public_key_bytes_uncompressed = public_key.serialize_uncompressed();
 
     // ref. "Keccak256(pubBytes[1:])[12:]"

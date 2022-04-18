@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use avalanche_types::{constants, genesis as avalanchego_genesis, node, soft_key};
+use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
 use subnet_evm::genesis as subnet_evm_genesis;
@@ -240,11 +240,11 @@ pub struct Spec {
     /// initial stake duration in genesis.
     /// Only valid for custom networks.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_key_with_locked_p_chain_balance: Option<soft_key::PrivateKeyInfo>,
+    pub generated_seed_private_key_with_locked_p_chain_balance: Option<hot::PrivateKeyInfoEntry>,
     /// Generated key infos with immediately unlocked P-chain balance.
     /// Only pre-funded for custom networks with a custom genesis file.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_keys: Option<Vec<soft_key::PrivateKeyInfo>>,
+    pub generated_seed_private_keys: Option<Vec<hot::PrivateKeyInfoEntry>>,
 
     /// Current all nodes. May be stale.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -581,19 +581,19 @@ impl Spec {
         };
 
         // existing network has only 1 pre-funded key "ewoq"
-        let mut generated_seed_key_infos: Vec<soft_key::PrivateKeyInfo> = Vec::new();
-        let mut generated_seed_keys: Vec<soft_key::Key> = Vec::new();
+        let mut generated_seed_key_infos: Vec<hot::PrivateKeyInfoEntry> = Vec::new();
+        let mut generated_seed_keys: Vec<hot::Key> = Vec::new();
         for i in 0..opt.keys_to_generate {
             let k = {
-                if i < soft_key::TEST_KEYS.len() {
-                    soft_key::TEST_KEYS[i].clone()
+                if i < hot::TEST_KEYS.len() {
+                    hot::TEST_KEYS[i].clone()
                 } else {
-                    soft_key::Key::generate().expect("unexpected key generate failure")
+                    hot::Key::generate().expect("unexpected key generate failure")
                 }
             };
 
             let info = k
-                .private_key_info(network_id)
+                .private_key_info_entry(network_id)
                 .expect("unexpected to_info failure");
             generated_seed_key_infos.push(info);
 

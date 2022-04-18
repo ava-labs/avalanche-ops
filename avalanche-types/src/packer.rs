@@ -1,39 +1,14 @@
 use std::{
     cell::Cell,
     io::{Error, ErrorKind},
-    u16,
 };
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-
-pub const MAX_STR_LEN: u16 = u16::MAX - 1;
-
-/// number of bytes per byte
-/// 8-bit unsigned integer, so the length is 1-byte
-pub const BYTE_LEN: usize = 1;
-pub const BYTE_SENTINEL: u8 = 0;
-
-/// number of bytes per short
-/// 16-bit unsigned integer, so the length is 2-byte
-pub const U16_LEN: usize = 2;
-pub const U16_SENTINEL: u16 = 0;
-
-/// number of bytes per int
-/// 32-bit unsigned integer, so the length is 4-byte
-pub const U32_LEN: usize = 4;
-pub const U32_SENTINEL: u32 = 0;
 
 /// number of bytes per long
 /// 64-bit unsigned integer, so the length is 8-byte
 pub const U64_LEN: usize = 8;
 pub const U64_SENTINEL: u64 = 0;
-
-/// number of bytes per bool
-pub const BOOL_LEN: usize = 1;
-pub const BOOL_SENTINEL: bool = false;
-
-/// number of bytes per IP
-pub const IP_LEN: usize = 16 + U16_LEN;
 
 /// ref. "avalanchego/utils/wrapper.Packer"
 /// ref. https://doc.rust-lang.org/1.7.0/book/mutability.html
@@ -211,162 +186,6 @@ impl Packer {
                 "packer has insufficient length for input", // ref. "errBadLength"
             ));
         };
-    }
-
-    /// Writes the "u8" value at the offset and increments the offset afterwards.
-    /// ref. "avalanchego/utils/wrappers.Packer.PackByte"
-    pub fn pack_byte(&self, v: u8) {
-        self.expand(BYTE_LEN);
-        if self.errored() {
-            return;
-        }
-
-        let offset = self.get_offset();
-        let mut b = self.bytes.take();
-
-        // assume "offset" is not updated by the other "unpack*"
-        // thus no need to keep internal cursor in sync with "offset"
-        // unsafe { b.advance_mut(offset) };
-
-        // writes an unsigned 8-bit integer
-        b.put_u8(v);
-
-        // remember to put it back -- "take" leaves the field as "Default::default()"
-        self.bytes.set(b);
-
-        // "put_u8" already advances the current position by BYTE_LEN
-        // thus no need for "unsafe { b.advance_mut(offset + BYTE_LEN) };"
-        // ref. https://docs.rs/bytes/latest/bytes/buf/trait.BufMut.html#method.put_u8
-        self.set_offset(offset + BYTE_LEN);
-    }
-
-    /// Unpacks the byte in the "offset" position,
-    /// and advances the cursor and offset.
-    /// ref. "avalanchego/utils/wrappers.Packer.UnpackByte"
-    pub fn unpack_byte(&self) -> u8 {
-        self.check_space(BYTE_LEN);
-        if self.errored() {
-            return BYTE_SENTINEL;
-        }
-
-        let offset = self.get_offset();
-        let b = self.bytes.take();
-
-        let p = &b[offset];
-        let v = *p;
-
-        // remember to put it back -- "take" leaves the field as "Default::default()"
-        self.bytes.set(b);
-
-        self.set_offset(offset + BYTE_LEN);
-        v
-    }
-
-    /// Writes the "u16" value at the offset and increments the offset afterwards.
-    /// ref. "avalanchego/utils/wrappers.Packer.PackShort"
-    pub fn pack_u16(&self, v: u16) {
-        self.expand(U16_LEN);
-        if self.errored() {
-            return;
-        }
-
-        let offset = self.get_offset();
-        let mut b = self.bytes.take();
-
-        // assume "offset" is not updated by the other "unpack*"
-        // thus no need to keep internal cursor in sync with "offset"
-        // unsafe { b.advance_mut(offset) };
-
-        // writes an unsigned 16 bit integer in big-endian byte order
-        // ref. "binary.BigEndian.PutUint16"
-        b.put_u16(v);
-
-        // remember to put it back -- "take" leaves the field as "Default::default()"
-        self.bytes.set(b);
-
-        // "put_u16" already advances the current position by U16_LEN
-        // thus no need for "unsafe { b.advance_mut(offset + U16_LEN) };"
-        // ref. https://docs.rs/bytes/latest/bytes/buf/trait.BufMut.html#method.put_u16
-        self.set_offset(offset + U16_LEN);
-    }
-
-    /// Unpacks the u16 from the "offset" position,
-    /// and advances the cursor and offset.
-    /// ref. "avalanchego/utils/wrappers.Packer.UnpackShort"
-    pub fn unpack_u16(&self) -> u16 {
-        self.check_space(U16_LEN);
-        if self.errored() {
-            return U16_SENTINEL;
-        }
-
-        let offset = self.get_offset();
-        let b = self.bytes.take();
-
-        let pos = &b[offset..offset + U16_LEN];
-
-        // ref. "binary.BigEndian.Uint16"
-        // ref. https://doc.rust-lang.org/std/primitive.u16.html#method.from_be_bytes
-        let v = u16::from_be_bytes([pos[0], pos[1]]);
-
-        // remember to put it back -- "take" leaves the field as "Default::default()"
-        self.bytes.set(b);
-
-        self.set_offset(offset + U16_LEN);
-        v
-    }
-
-    /// Writes the "u32" value at the offset and increments the offset afterwards.
-    /// This is also used for encoding the type IDs from codec.
-    /// ref. "avalanchego/utils/wrappers.Packer.PackInt"
-    pub fn pack_u32(&self, v: u32) {
-        self.expand(U32_LEN);
-        if self.errored() {
-            return;
-        }
-
-        let offset = self.get_offset();
-        let mut b = self.bytes.take();
-
-        // assume "offset" is not updated by the other "unpack*"
-        // thus no need to keep internal cursor in sync with "offset"
-        // unsafe { b.advance_mut(offset) };
-
-        // writes an unsigned 32 bit integer in big-endian byte order
-        // ref. "binary.BigEndian.PutUint32"
-        b.put_u32(v);
-
-        // remember to put it back -- "take" leaves the field as "Default::default()"
-        self.bytes.set(b);
-
-        // "put_u32" already advances the current position by U32_LEN
-        // thus no need for "unsafe { b.advance_mut(offset + U32_LEN) };"
-        // ref. https://docs.rs/bytes/latest/bytes/buf/trait.BufMut.html#method.put_u32
-        self.set_offset(offset + U32_LEN);
-    }
-
-    /// Unpacks the u32 from the "offset" position,
-    /// and advances the cursor and offset.
-    /// ref. "avalanchego/utils/wrappers.Packer.UnpackInt"
-    pub fn unpack_u32(&self) -> u32 {
-        self.check_space(U32_LEN);
-        if self.errored() {
-            return U32_SENTINEL;
-        }
-
-        let offset = self.get_offset();
-        let b = self.bytes.take();
-
-        let pos = &b[offset..offset + U32_LEN];
-
-        // ref. "binary.BigEndian.Uint32"
-        // ref. https://doc.rust-lang.org/std/primitive.u32.html#method.from_be_bytes
-        let v = u32::from_be_bytes([pos[0], pos[1], pos[2], pos[3]]);
-
-        // remember to put it back -- "take" leaves the field as "Default::default()"
-        self.bytes.set(b);
-
-        self.set_offset(offset + U32_LEN);
-        v
     }
 
     /// Writes the "u64" value at the offset and increments the offset afterwards.

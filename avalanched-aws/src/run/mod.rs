@@ -14,7 +14,7 @@ use tokio::time::sleep;
 
 use avalanche_api::{health as api_health, metrics as api_metrics};
 use avalanche_types::{
-    api::health as api_health_types, cert, constants, genesis as avalanchego_genesis, ids,
+    api::health as api_health_types, constants, genesis as avalanchego_genesis, ids, key::cert,
     metrics::avalanchego as avalanchego_metrics, node,
 };
 use aws::{self, cloudwatch, ec2, envelope, kms, s3};
@@ -571,7 +571,14 @@ pub async fn execute(log_level: &str) {
 
             let mut staker = avalanchego_genesis::Staker::default();
             staker.node_id = Some(seed_anchor_node.node_id);
-            staker.reward_address = Some(seed_priv_key.x_address.clone());
+            staker.reward_address = Some(
+                seed_priv_key
+                    .addresses
+                    .get(&format!("{}", spec.avalanchego_config.network_id))
+                    .unwrap()
+                    .x_address
+                    .clone(),
+            );
 
             initial_stakers.push(staker);
         }

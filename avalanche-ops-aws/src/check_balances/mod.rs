@@ -87,13 +87,29 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
         keys.push(k.clone());
     }
 
+    let network_id = {
+        if spec.avalanchego_genesis_template.is_some() {
+            spec.avalanchego_genesis_template.unwrap().network_id
+        } else {
+            1
+        }
+    };
+
     println!();
     let rt = Runtime::new().unwrap();
     for k in keys.iter() {
         let (xaddr, paddr, caddr) = {
             (
-                k.x_address.clone(),
-                k.p_address.clone(),
+                k.addresses
+                    .get(&format!("{}", network_id))
+                    .unwrap()
+                    .x_address
+                    .clone(),
+                k.addresses
+                    .get(&format!("{}", network_id))
+                    .unwrap()
+                    .p_address
+                    .clone(),
                 k.eth_address.clone(),
             )
         };

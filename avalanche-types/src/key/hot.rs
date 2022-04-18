@@ -14,7 +14,10 @@ use rust_embed::RustEmbed;
 use secp256k1::{self, rand::rngs::OsRng, PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 
-use crate::{constants, formatting, ids, key, public_key, secp256k1fx};
+use crate::{
+    constants, formatting, ids,
+    key::{self, address},
+};
 use utils::cmp;
 
 lazy_static! {
@@ -75,7 +78,7 @@ pub fn load_encoded_keys(d: &[u8]) -> io::Result<Vec<Key>> {
     Ok(keys)
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- soft_key::test_load_test_keys --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- hot::test_load_test_keys --exact --show-output
 #[test]
 fn test_load_test_keys() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -147,8 +150,8 @@ impl Key {
         let mut rng = OsRng::new().expect("OsRng");
         let (secret_key, public_key) = secp.generate_keypair(&mut rng);
 
-        let short_address = public_key::to_short_address(&public_key)?;
-        let eth_address = public_key::to_eth_address(&public_key)?;
+        let short_address = address::to_short(&public_key)?;
+        let eth_address = address::to_eth(&public_key)?;
 
         // ref. https://github.com/rust-bitcoin/rust-secp256k1/pull/396
         let priv_bytes = secret_key.secret_bytes();
@@ -203,8 +206,8 @@ impl Key {
         let secp = Secp256k1::new();
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
 
-        let short_address = public_key::to_short_address(&public_key)?;
-        let eth_address = public_key::to_eth_address(&public_key)?;
+        let short_address = address::to_short(&public_key)?;
+        let eth_address = address::to_eth(&public_key)?;
 
         // ref. https://github.com/rust-bitcoin/rust-secp256k1/pull/396
         let priv_bytes = secret_key.secret_bytes();
@@ -267,8 +270,8 @@ impl Key {
         let secp = Secp256k1::new();
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
 
-        let short_address = public_key::to_short_address(&public_key)?;
-        let eth_address = public_key::to_eth_address(&public_key)?;
+        let short_address = address::to_short(&public_key)?;
+        let eth_address = address::to_eth(&public_key)?;
 
         // ref. https://github.com/rust-bitcoin/rust-secp256k1/pull/396
         let priv_bytes = secret_key.secret_bytes();
@@ -323,89 +326,42 @@ impl Key {
             None => constants::FALLBACK_HRP,
         };
         // ref. "pk.PublicKey().Address().Bytes()"
-        let short_address_bytes = public_key::to_short_address_bytes(
-            &self.public_key.expect("unexpected empty public_key"),
-        )?;
+        let short_address_bytes =
+            address::to_short_bytes(&self.public_key.expect("unexpected empty public_key"))?;
 
         // ref. "formatting.FormatAddress(chainIDAlias, hrp, pubBytes)"
         formatting::address(chain_id_alias, hrp, &short_address_bytes)
     }
 
     pub fn short_address_bytes(&self) -> io::Result<Vec<u8>> {
-        public_key::to_short_address_bytes(&self.public_key.expect("unexpected empty public_key"))
+        address::to_short_bytes(&self.public_key.expect("unexpected empty public_key"))
     }
 
-    pub fn private_key_info(&self, network_id: u32) -> io::Result<PrivateKeyInfo> {
+    pub fn private_key_info_entry(&self, network_id: u32) -> io::Result<PrivateKeyInfoEntry> {
         let x_address = self.address("X", network_id)?;
         let p_address = self.address("P", network_id)?;
         let c_address = self.address("C", network_id)?;
-        Ok(PrivateKeyInfo {
+        let mut addresses: HashMap<String, key::NetworkAddressEntry> = HashMap::new();
+        addresses.insert(
+            format!("{}", network_id),
+            key::NetworkAddressEntry {
+                x_address,
+                p_address,
+                c_address,
+            },
+        );
+        Ok(PrivateKeyInfoEntry {
             mnemonic_phrase: self.mnemonic_phrase.clone(),
             private_key: self.private_key.clone(),
             private_key_hex: self.private_key_hex.clone(),
-            x_address,
-            p_address,
-            c_address,
+            addresses,
             short_address: self.short_address.clone(),
             eth_address: self.eth_address.clone(),
         })
     }
-
-    /// Returns "None" if the output owners are still locked or the threshold is NOT met.
-    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Match
-    pub fn match_threshold(
-        &self,
-        output_owners: &secp256k1fx::OutputOwners,
-        time: u64,
-    ) -> Option<Vec<u32>> {
-        if output_owners.locktime > time {
-            // output owners are still locked
-            return None;
-        }
-
-        let mut sig_indices: Vec<u32> = Vec::new();
-        for (pos, short_addr) in output_owners.addrs.iter().enumerate() {
-            if self.short_address != *short_addr {
-                continue;
-            }
-            sig_indices.push(pos as u32);
-
-            if (sig_indices.len() as u32) == output_owners.threshold {
-                break;
-            }
-        }
-
-        let n = sig_indices.len();
-        if (n as u32) == output_owners.threshold {
-            Some(sig_indices)
-        } else {
-            None
-        }
-    }
-
-    /// Returns "None" if the threshold is NOT met.
-    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
-    /// TODO: support "secp256k1fx::MintOutput"
-    pub fn spend(
-        &self,
-        output: &secp256k1fx::TransferOutput,
-        time: u64,
-    ) -> Option<secp256k1fx::TransferInput> {
-        let res = self.match_threshold(&output.output_owners, time);
-        let threshold_met = res.is_some();
-        if !threshold_met {
-            return None;
-        }
-
-        let sig_indices = res.unwrap();
-        Some(secp256k1fx::TransferInput {
-            amount: output.amount,
-            sig_indices,
-        })
-    }
 }
 
-/// RUST_LOG=debug cargo test --package avalanche-types --lib -- soft_key::test_soft_key --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-types --lib -- hot::test_soft_key --exact --show-output
 #[test]
 fn test_soft_key() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -487,9 +443,13 @@ fn test_soft_key() {
     }
 }
 
+// test random keys generated by "avalanchego/utils/crypto.FactorySECP256K1R"
+// and make sure both generate the same addresses
+// use "avalanche-ops/avalanchego-compatibility/key/main.go"
+// to generate keys and addresses with "avalanchego"
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct PrivateKeyInfo {
+pub struct PrivateKeyInfoEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mnemonic_phrase: Option<String>,
 
@@ -497,18 +457,16 @@ pub struct PrivateKeyInfo {
     pub private_key: String,
     pub private_key_hex: String,
 
-    pub x_address: String,
-    pub p_address: String,
-    pub c_address: String,
+    pub addresses: HashMap<String, key::NetworkAddressEntry>,
 
     #[serde(deserialize_with = "ids::must_deserialize_short_id")]
     pub short_address: ids::ShortId,
     pub eth_address: String,
 }
 
-impl PrivateKeyInfo {
+impl PrivateKeyInfoEntry {
     pub fn load(file_path: &str) -> io::Result<Self> {
-        info!("loading PrivateKeyInfo from {}", file_path);
+        info!("loading PrivateKeyInfoEntry from {}", file_path);
 
         if !Path::new(file_path).exists() {
             return Err(Error::new(
@@ -554,124 +512,9 @@ impl PrivateKeyInfo {
 /// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
 /// ref. https://doc.rust-lang.org/std/fmt/trait.Display.html
 /// Use "Self.to_string()" to directly invoke this
-impl fmt::Display for PrivateKeyInfo {
+impl fmt::Display for PrivateKeyInfoEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = serde_yaml::to_string(&self).unwrap();
         write!(f, "{}", s)
-    }
-}
-
-// test random keys generated by "avalanchego/utils/crypto.FactorySECP256K1R"
-// and make sure both generate the same addresses
-// use "avalanche-ops/avalanchego-compatibility/key/main.go"
-// to generate keys and addresses with "avalanchego"
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct PrivateKeyInfoEntry {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mnemonic_phrase: Option<String>,
-
-    pub private_key: String,
-    pub private_key_hex: String,
-
-    pub addresses: HashMap<String, PrivateKeyInfoEntryAddress>,
-
-    #[serde(deserialize_with = "ids::must_deserialize_short_id")]
-    pub short_address: ids::ShortId,
-    pub eth_address: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct PrivateKeyInfoEntryAddress {
-    pub x_address: String,
-    pub p_address: String,
-    pub c_address: String,
-}
-
-/// Support multiple keys as a chain.
-/// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain
-/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.9/wallet/chain/p/builder.go
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct Keychain {
-    pub keys: Vec<Key>,
-    pub short_addr_to_key_index: HashMap<ids::ShortId, u32>,
-}
-
-impl Keychain {
-    pub fn new(keys: Vec<Key>) -> Self {
-        let mut short_addr_to_key_index = HashMap::new();
-        for (pos, k) in keys.iter().enumerate() {
-            short_addr_to_key_index.insert(k.short_address.to_owned(), pos as u32);
-        }
-        Self {
-            keys,
-            short_addr_to_key_index,
-        }
-    }
-
-    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Get
-    pub fn get(&self, short_addr: &ids::ShortId) -> Option<Key> {
-        self.short_addr_to_key_index
-            .get(short_addr)
-            .map(|k| self.keys[(*k) as usize].clone())
-    }
-
-    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Match
-    pub fn match_threshold(
-        &self,
-        output_owners: &secp256k1fx::OutputOwners,
-        time: u64,
-    ) -> Option<(Vec<u32>, Vec<Key>)> {
-        if output_owners.locktime > time {
-            // output owners are still locked
-            return None;
-        }
-
-        let mut sig_indices: Vec<u32> = Vec::new();
-        let mut keys: Vec<Key> = Vec::new();
-        for (pos, addr) in output_owners.addrs.iter().enumerate() {
-            let key = self.get(addr);
-            if key.is_none() {
-                continue;
-            }
-            sig_indices.push(pos as u32);
-            keys.push(key.unwrap());
-
-            if (keys.len() as u32) == output_owners.threshold {
-                break;
-            }
-        }
-
-        let n = keys.len();
-        if (n as u32) == output_owners.threshold {
-            Some((sig_indices, keys))
-        } else {
-            None
-        }
-    }
-
-    /// Returns "None" if the threshold is NOT met.
-    /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/secp256k1fx#Keychain.Spend
-    /// TODO: support spend on "secp256k1fx::MintOutput"
-    pub fn spend(
-        &self,
-        output: &secp256k1fx::TransferOutput,
-        time: u64,
-    ) -> Option<(secp256k1fx::TransferInput, Vec<Key>)> {
-        let res = self.match_threshold(&output.output_owners, time);
-        let threshold_met = res.is_some();
-        if !threshold_met {
-            return None;
-        }
-
-        let (sig_indices, keys) = res.unwrap();
-        Some((
-            secp256k1fx::TransferInput {
-                amount: output.amount,
-                sig_indices,
-            },
-            keys,
-        ))
     }
 }

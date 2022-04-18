@@ -16,7 +16,7 @@ use rustls_pemfile::{read_one, Item};
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
 use zerocopy::{AsBytes, FromBytes, Unaligned};
 
-use crate::{formatting, packer, public_key};
+use crate::{formatting, key::address, packer};
 
 pub const ID_LEN: usize = 32;
 pub const SHORT_ID_LEN: usize = 20;
@@ -398,7 +398,7 @@ impl ShortId {
     where
         S: AsRef<[u8]>,
     {
-        let hashed = public_key::hash_sha256_ripemd160(pub_key_bytes)?;
+        let hashed = address::hash_sha256_ripemd160(pub_key_bytes)?;
 
         // "ids.ShortID.String"
         // ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ShortID.String
@@ -728,7 +728,7 @@ impl NodeId {
     where
         S: AsRef<[u8]>,
     {
-        let short_address = public_key::hash_sha256_ripemd160(cert_bytes)?;
+        let short_address = address::hash_sha256_ripemd160(cert_bytes)?;
         let node_id = Self::from_slice(&short_address);
         Ok(node_id)
     }
