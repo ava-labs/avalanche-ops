@@ -166,7 +166,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -175,11 +175,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name custom \
 --avalanchego-log-level DEBUG
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -188,7 +188,7 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 
 ```bash
 # to check balances
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws check-balances \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
@@ -204,7 +204,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -216,11 +216,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name custom \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -236,7 +236,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -245,11 +245,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name custom \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -257,7 +257,7 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ```
 
 ```bash
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws events update-artifacts \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
@@ -280,7 +280,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -290,11 +290,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name custom \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -316,7 +316,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -327,11 +327,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --avalanchego-http-tls-enabled \
 --spec-file-path [YOUR_SPEC_PATH]
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -349,7 +349,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -360,11 +360,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ---keys-to-generate 5 \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -410,7 +410,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # TODO: pre-generate subnet ID
 # replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
 # with real subnet ID from subnet-cli wizard
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -421,16 +421,16 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
 --enable-subnet-evm
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws check-balances --spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ```bash
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -465,7 +465,7 @@ cat [YOUR_SPEC_PATH] | grep http_rpc:
 # to node IDs
 # cat [YOUR_SPEC_PATH] | grep node_id:
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws read-spec \
 --spec-file-path [YOUR_SPEC_PATH] \
 --node-ids
@@ -569,7 +569,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -578,11 +578,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name fuji \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -600,7 +600,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -612,11 +612,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --avalanchego-state-sync-ips ... \
 --spec-file-path [YOUR_SPEC_PATH]
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -637,7 +637,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --db-backup-s3-region us-east-1 \
@@ -649,11 +649,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name fuji \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -661,22 +661,22 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 ```
 
 ```bash
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws read-spec \
 --spec-file-path [YOUR_SPEC_PATH]
 --instance-ids
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws read-spec \
 --spec-file-path [YOUR_SPEC_PATH]
 --public-ips
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws read-spec \
 --spec-file-path [YOUR_SPEC_PATH]
 --nlb-endpoint
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws read-spec \
 --spec-file-path [YOUR_SPEC_PATH]
 --http-endpoints
@@ -697,7 +697,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
@@ -706,11 +706,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name mainnet \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
@@ -731,7 +731,7 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # ./scripts/build.x86_64-linux-musl.sh
 # AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --db-backup-s3-region us-east-1 \
@@ -743,11 +743,11 @@ cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
 --network-name mainnet \
 --avalanchego-log-level INFO
 
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 
 # only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/go/src/github.com/ava-labs/avalanche-ops
+cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
