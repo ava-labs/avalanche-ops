@@ -14,7 +14,7 @@ avalanchego = { path = "../avalanchego" }
 aws = { path = "../aws" }
 aws-sdk-cloudformation = "0.10.1"
 aws-sdk-s3 = "0.10.1"
-clap = { version = "3.1.10", features = ["cargo", "derive"] }
+clap = { version = "3.1.11", features = ["cargo", "derive"] }
 coreth = { path = "../coreth" }
 crossterm = "0.23.2"
 dialoguer = "0.10.0"
