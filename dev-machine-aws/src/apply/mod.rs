@@ -545,22 +545,76 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
 
         let asg_name = aws_resources.cloudformation_asg_logical_id.clone().unwrap();
-        let droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
+
+        let mut droplets: Vec<ec2::Droplet> = Vec::new();
+        let target_nodes = spec.machine.machines;
+        for _ in 0..10 {
+            // TODO: better retries
+            info!(
+                "fetching all droplets for dev-machine SSH access (target nodes {})",
+                target_nodes
+            );
+            droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
+            if (droplets.len() as u32) >= target_nodes {
+                break;
+            }
+            info!(
+                "retrying fetching all droplets (only got {})",
+                droplets.len()
+            );
+            thread::sleep(Duration::from_secs(30));
+        }
+
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
-        println!("\nchmod 400 {}", ec2_key_path);
+        println!(
+            "
+# change SSH key permission
+chmod 400 {}",
+            ec2_key_path
+        );
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             // TODO: support other user name?
             println!(
-                "# instance '{}' ({}, {})\nssh -o \"StrictHostKeyChecking no\" -i {} ec2-user@{}\naws ssm start-session --region {} --target {}",
+                "# instance '{}' ({}, {})
+ssh -o \"StrictHostKeyChecking no\" -i {} {}@{}
+# download to local machine
+scp -i {} {}@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
+scp -i {} -r {}@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
+# upload to remote machine
+scp -i {} LOCAL_FILE_PATH {}@{}:REMOTE_FILE_PATH
+scp -i {} -r LOCAL_DIRECTORY_PATH {}@{}:REMOTE_DIRECTORY_PATH
+# SSM session (requires SSM agent)
+aws ssm start-session --region {} --target {}
+",
+                //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
+                //
                 ec2_key_path,
+                "ec2-user",
                 d.public_ipv4,
+                //
+                ec2_key_path,
+                "ec2-user",
+                d.public_ipv4,
+                //
+                ec2_key_path,
+                "ec2-user",
+                d.public_ipv4,
+                //
+                ec2_key_path,
+                "ec2-user",
+                d.public_ipv4,
+                //
+                ec2_key_path,
+                "ec2-user",
+                d.public_ipv4,
+                //
                 aws_resources.region,
                 d.instance_id,
             );
