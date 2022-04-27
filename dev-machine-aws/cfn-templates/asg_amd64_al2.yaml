@@ -269,7 +269,7 @@ Resources:
               docker ps
 
               curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscli.v2.zip
-              unzip awscliv2.zip
+              unzip awscli.v2.zip
               sudo ./aws/install
               /usr/local/bin/aws --version
               aws s3 ls s3://${S3BucketName}/
