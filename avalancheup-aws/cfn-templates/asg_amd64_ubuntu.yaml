@@ -317,9 +317,10 @@ Resources:
         KeyName: !Ref Ec2KeyPairName
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
         BlockDeviceMappings:
           - DeviceName: "/dev/xvdb"
-            # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
             Ebs:
               VolumeType: !Ref VolumeType
               VolumeSize: !Ref VolumeSize
@@ -327,6 +328,7 @@ Resources:
               Throughput: !Ref VolumeThroughput
               DeleteOnTermination: true
               Encrypted: true
+
         Monitoring:
           Enabled: true
 
