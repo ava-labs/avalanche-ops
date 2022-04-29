@@ -157,14 +157,23 @@ avalancheup-aws delete --spec-file-path spec.yaml
 ### Custom network with NO initial database state
 
 ```bash
+rm -rf ${HOME}/go/src/github.com/ava-labs/avalanchego/build
+cd ${HOME}/go/src/github.com/ava-labs/avalanchego
+CC=x86_64-linux-musl-gcc \
+CXX=x86_64-linux-musl-g++ \
+CGO_ENABLED=1 \
+STATIC_COMPILATION=1 \
+GOOS=linux GOARCH=amd64 ./scripts/build.sh
+```
+
+```bash
 # to set the test ID "my-test-cluster"
 # use "--spec-file-path ~/my-test-cluster.yaml"
 
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -199,10 +208,9 @@ See https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config for more.
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -231,10 +239,9 @@ cd ${HOME}/avalanche-ops
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -275,10 +282,9 @@ TODOs
 ACM_CERT_ARN=arn:aws:acm:...:...:certificate/...
 
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -311,10 +317,9 @@ cat ${HOME}/test-custom-https-for-nlb.yaml \
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -344,10 +349,9 @@ See https://pkg.go.dev/github.com/ava-labs/snow-machine for more.
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -402,10 +406,9 @@ ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins/srEXiWaHuhNyGwPUi44
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 # TODO: pre-generate subnet ID
 # replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
@@ -564,10 +567,9 @@ This will sync from peer (rather than downloading from S3):
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -595,10 +597,9 @@ This will fast-sync from peer (rather than downloading from S3):
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -632,10 +633,9 @@ cd ${HOME}/avalanche-ops
 aws s3 ls --recursive --human-readable s3://avalanche-db-daily/testnet | sort
 
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -692,10 +692,9 @@ This will sync from peer (rather than downloading from S3):
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -726,10 +725,9 @@ cd ${HOME}/avalanche-ops
 aws s3 ls --recursive --human-readable s3://avalanche-db-daily/mainnet | sort
 
 # download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
-# AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
