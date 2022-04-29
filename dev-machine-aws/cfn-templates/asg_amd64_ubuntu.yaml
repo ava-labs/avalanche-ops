@@ -249,7 +249,7 @@ Resources:
               sudo apt-get update -y && sudo apt-get upgrade -y \
               && sudo apt-get install -y \
                   curl wget unzip zip gzip tar libssl-dev \
-                  python3-pip python-setuptools zsh
+                  python3-pip python-setuptools zsh pkg-config
 
               curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
               unzip awscli.v2.zip
