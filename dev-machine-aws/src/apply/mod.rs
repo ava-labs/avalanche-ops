@@ -484,16 +484,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let mut parameters = asg_parameters.clone();
 
         // TODO: remove this... doesn't work for amd64 and other regions
-        if aws_resources.region == "us-west-2" {
+        if aws_resources.region == "us-west-2" && spec.machine.os == "al2" {
             // manually overwrite to use latest kernel
             if spec.machine.arch == "amd64" {
                 // 64-bit AMD with Kernel 5.10
                 // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2" returns Kernel 4.14
-                parameters.push(build_param("ImageId", "ami-0892d3c7ee96c0bf7"));
+                parameters.push(build_param("ImageId", "ami-02b92c281a4d3dc79"));
             } else if spec.machine.arch == "arm64" {
                 // 64-bit Arm with Kernel 5.10
                 // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2" returns Kernel 4.14
-                parameters.push(build_param("ImageId", "ami-078278691222aee06"));
+                parameters.push(build_param("ImageId", "ami-0100e0d6026a6c58d"));
             }
         }
         parameters.push(build_param(
