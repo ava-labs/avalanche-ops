@@ -204,7 +204,7 @@ Resources:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
         BlockDeviceMappings:
-          - DeviceName: "/dev/xvda"
+          - DeviceName: "/dev/root"
             Ebs:
               VolumeType: gp3
               VolumeSize: 200
@@ -249,7 +249,7 @@ Resources:
               sudo apt-get update -y && sudo apt-get upgrade -y \
               && sudo apt-get install -y \
                   curl wget unzip zip gzip tar libssl-dev \
-                  python3-pip python-setuptools
+                  python3-pip python-setuptools zsh
 
               curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
               unzip awscli.v2.zip
@@ -284,10 +284,10 @@ Resources:
 
               # TODO: why device name is not "/dev/xvdb"?
               sudo mkfs -t ext4 /dev/nvme1n1
-              mkdir -p /avalanche-data
-              sudo mount /dev/nvme1n1 /avalanche-data -t ext4
+              mkdir -p /data
+              sudo mount /dev/nvme1n1 /data -t ext4
               # auto remount in case of instance reboot
-              sudo echo '/dev/nvme1n1       /avalanche-data   ext4    defaults,nofail 0       2' >> /etc/fstab
+              sudo echo '/dev/nvme1n1       /data   ext4    defaults,nofail 0       2' >> /etc/fstab
               sudo mount --all
               lsblk
               df -h

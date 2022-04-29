@@ -320,7 +320,7 @@ Resources:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
         BlockDeviceMappings:
-          - DeviceName: "/dev/xvda"
+          - DeviceName: "/dev/root"
             Ebs:
               VolumeType: gp3
               VolumeSize: 200
