@@ -469,8 +469,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ResetColor
         )?;
 
-        let cloudformation_asg_yaml =
-            Asset::get(&format!("cfn-templates/asg_{}_al2.yaml", spec.machine.arch)).unwrap();
+        let cloudformation_asg_yaml = Asset::get(&format!(
+            "cfn-templates/asg_{}_{}.yaml",
+            spec.machine.arch, spec.machine.os
+        ))
+        .unwrap();
         let cloudformation_asg_tmpl =
             std::str::from_utf8(cloudformation_asg_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_stack_name = aws_resources.cloudformation_asg.clone().unwrap();
@@ -486,11 +489,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             if spec.machine.arch == "amd64" {
                 // 64-bit AMD with Kernel 5.10
                 // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2" returns Kernel 4.14
-                parameters.push(build_param("ImageId", "ami-00ee4df451840fa9d"));
+                parameters.push(build_param("ImageId", "ami-0892d3c7ee96c0bf7"));
             } else if spec.machine.arch == "arm64" {
                 // 64-bit Arm with Kernel 5.10
                 // "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-arm64-gp2" returns Kernel 4.14
-                parameters.push(build_param("ImageId", "ami-0cde3ffbd04841819"));
+                parameters.push(build_param("ImageId", "ami-078278691222aee06"));
             }
         }
         parameters.push(build_param(
@@ -574,6 +577,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 chmod 400 {}",
             ec2_key_path
         );
+        let user_name = {
+            if spec.machine.os == dev_machine_aws::OS_AL2 {
+                dev_machine_aws::OS_AL2_USER_NAME
+            } else {
+                dev_machine_aws::OS_UBUNTU_USER_NAME
+            }
+        };
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
@@ -596,23 +606,23 @@ aws ssm start-session --region {} --target {}
                 d.availability_zone,
                 //
                 ec2_key_path,
-                "ec2-user",
+                user_name,
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ec2-user",
+                user_name,
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ec2-user",
+                user_name,
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ec2-user",
+                user_name,
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ec2-user",
+                user_name,
                 d.public_ipv4,
                 //
                 aws_resources.region,

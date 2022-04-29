@@ -80,7 +80,7 @@ Parameters:
   #
   InstanceTypes:
     Type: CommaDelimitedList
-    Default: c6g.2xlarge,m6g.2xlarge,r6g.2xlarge,t4g.2xlarge
+    Default: c6g.4xlarge,m6g.2xlarge,r6g.2xlarge,t4g.2xlarge
     Description: EC2 instance types
 
   InstanceTypesCount:
