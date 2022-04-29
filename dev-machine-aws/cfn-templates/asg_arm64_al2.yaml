@@ -244,7 +244,7 @@ Resources:
 
               sudo yum update -y && sudo yum upgrade -y
               sudo yum install -y \
-              tmux \
+              tmux zsh \
               curl wget \
               tar unzip \
               git gcc \
