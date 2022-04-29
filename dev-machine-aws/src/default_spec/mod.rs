@@ -36,6 +36,18 @@ pub fn command() -> Command<'static> {
                 .default_value(dev_machine_aws::ARCH_ARM64),
         )
         .arg(
+            Arg::new("OS")
+                .long("os")
+                .short('o')
+                .help("Sets the machine OS")
+                .required(true)
+                .takes_value(true)
+                .possible_value(dev_machine_aws::OS_AL2)
+                .possible_value(dev_machine_aws::OS_UBUNTU)
+                .allow_invalid_utf8(false)
+                .default_value(dev_machine_aws::OS_UBUNTU),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
@@ -49,6 +61,7 @@ pub fn command() -> Command<'static> {
 pub struct Option {
     pub log_level: String,
     pub arch: String,
+    pub os: String,
     pub spec_file_path: String,
 }
 
@@ -58,7 +71,7 @@ pub fn execute(opt: Option) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opt.log_level),
     );
 
-    let spec = dev_machine_aws::Spec::default(&opt.arch).unwrap();
+    let spec = dev_machine_aws::Spec::default(&opt.arch, &opt.os).unwrap();
     spec.validate()?;
     spec.sync(&opt.spec_file_path)?;
 

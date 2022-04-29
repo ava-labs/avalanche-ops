@@ -27,6 +27,7 @@ fn main() {
                     .unwrap_or("info")
                     .to_string(),
                 arch: sub_matches.value_of("ARCH").unwrap().to_string(),
+                os: sub_matches.value_of("OS").unwrap().to_string(),
                 spec_file_path: sub_matches.value_of("SPEC_FILE_PATH").unwrap().to_string(),
             };
             default_spec::execute(opt).unwrap();

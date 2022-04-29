@@ -40,7 +40,7 @@ Parameters:
   # https://aws.amazon.com/blogs/compute/query-for-the-latest-amazon-linux-ami-ids-using-aws-systems-manager-parameter-store/
   ImageIdSsmParameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+    Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
 
   Arch:
@@ -245,46 +245,28 @@ Resources:
               #!/bin/bash
               set -xeu
 
-              sudo yum update -y && sudo yum upgrade -y
-              sudo yum install -y \
-              tmux \
-              curl wget \
-              tar unzip \
-              git gcc \
-              graphviz \
-              python3-pip \
-              openssl-devel \
-              chrony \
-              yum-utils device-mapper-persistent-data lvm2 \
-              amazon-linux-extras
+              export DEBIAN_FRONTEND=noninteractive
+              sudo apt-get update -y && sudo apt-get upgrade -y \
+              && sudo apt-get install -y \
+                  curl wget unzip zip gzip tar libssl-dev \
+                  python3-pip python-setuptools
 
-              sudo chkconfig chronyd on
-              cat <<EOF | sudo tee -a /etc/chrony.conf
-              # enables kernel synchronisation
-              rtcsync
-              EOF
-
-              amazon-linux-extras
-              sudo amazon-linux-extras enable vim=latest epel docker=latest
-              sudo amazon-linux-extras install -y vim epel docker
-              sudo systemctl daemon-reload
-              sudo systemctl start --no-block docker
-              sleep 2
-              sudo systemctl status docker --full --no-pager || true
-              sudo chmod 666 /var/run/docker.sock
-              docker ps
-
-              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscli.v2.zip
+              curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
               unzip awscli.v2.zip
               sudo ./aws/install
               /usr/local/bin/aws --version
-              aws s3 ls s3://${S3BucketName}/
 
-              # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-manual-agent-install.html
-              sudo yum install -y https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_${Arch}/amazon-ssm-agent.rpm
-              sudo systemctl enable amazon-ssm-agent || true
-              sudo systemctl start --no-block amazon-ssm-agent
-              sudo systemctl status amazon-ssm-agent
+              # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
+              sudo snap install amazon-ssm-agent --classic
+              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+              mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
+              cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
+              [Service]
+              Restart=always
+              RestartSec=60s
+              EOF
+              sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
               INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --retry 3 -s http://169.254.169.254/latest/meta-data/instance-id)
@@ -302,10 +284,10 @@ Resources:
 
               # TODO: why device name is not "/dev/xvdb"?
               sudo mkfs -t ext4 /dev/nvme1n1
-              mkdir -p /data
-              sudo mount /dev/nvme1n1 /data -t ext4
+              mkdir -p /avalanche-data
+              sudo mount /dev/nvme1n1 /avalanche-data -t ext4
               # auto remount in case of instance reboot
-              sudo echo '/dev/nvme1n1       /data   ext4    defaults,nofail 0       2' >> /etc/fstab
+              sudo echo '/dev/nvme1n1       /avalanche-data   ext4    defaults,nofail 0       2' >> /etc/fstab
               sudo mount --all
               lsblk
               df -h
