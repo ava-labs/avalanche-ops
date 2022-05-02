@@ -6,10 +6,10 @@ edition = "2021"
 [dependencies]
 avalanche-types = { path = "../avalanche-types" }
 aws-sdk-cloudwatch = "0.10.1"
-aws-smithy-types = "0.40.2"
+aws-smithy-types = "0.41.0"
 chrono = "0.4.19"
 log = "0.4.16"
-serde_json = "1.0.79"
+serde_json = "1.0.80"
 tokio = { version = "1.18.0", features = ["full"] }
 utils = { path = "../utils" }
 
