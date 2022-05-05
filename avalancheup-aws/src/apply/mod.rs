@@ -559,7 +559,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     // mainnet/* requires higher volume size
     // TODO: make this configurable
     if spec.avalanchego_config.is_mainnet() {
-        let param = build_param("VolumeSize", "800");
+        let param = build_param("VolumeSize", "1000");
         asg_parameters.push(param);
     } else if !spec.avalanchego_config.is_custom_network() {
         let param = build_param("VolumeSize", "400");
