@@ -188,7 +188,7 @@ pub const DEFAULT_DB_TYPE: &str = "leveldb";
 /// MUST BE matched with the attached physical storage volume path.
 /// MUST BE a valid path in remote host machine.
 /// ref. See "src/aws/cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
-pub const DEFAULT_DB_DIR: &str = "/avalanche-data";
+pub const DEFAULT_DB_DIR: &str = "/data";
 /// Default "log-dir" directory path for remote linux machines.
 /// MUST BE a valid path in remote host machine.
 /// ref. See "src/aws/cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"

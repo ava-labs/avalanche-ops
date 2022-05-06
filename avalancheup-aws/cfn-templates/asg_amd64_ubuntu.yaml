@@ -400,10 +400,10 @@ Resources:
 
               # TODO: why device name is not "/dev/xvdb"?
               sudo mkfs -t ext4 /dev/nvme1n1
-              mkdir -p /avalanche-data
-              sudo mount /dev/nvme1n1 /avalanche-data -t ext4
+              mkdir -p /data
+              sudo mount /dev/nvme1n1 /data -t ext4
               # auto remount in case of instance reboot
-              sudo echo '/dev/nvme1n1       /avalanche-data   ext4    defaults,nofail 0       2' >> /etc/fstab
+              sudo echo '/dev/nvme1n1       /data   ext4    defaults,nofail 0       2' >> /etc/fstab
               sudo mount --all
               lsblk
               df -h
@@ -547,7 +547,7 @@ Resources:
           Value: /usr/local/bin/avalanche
         - Key: AVALANCHE_DATA_VOLUME_PATH
           PropagateAtLaunch: true
-          Value: /avalanche-data
+          Value: /data
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       MixedInstancesPolicy:
         InstancesDistribution:
