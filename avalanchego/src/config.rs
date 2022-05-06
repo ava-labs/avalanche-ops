@@ -16,7 +16,7 @@ use avalanche_types::{constants, genesis};
 /// but the actual Avalanche nodes run on the remote machines
 /// so the paths will be invalid.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/config
-/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.6/config/flags.go
+/// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.10/config/flags.go
 /// ref. https://serde.rs/container-attrs.html
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -159,7 +159,16 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub throttler_inbound_at_large_alloc_size: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub throttler_inbound_validator_alloc_size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub throttler_inbound_node_max_at_large_bytes: Option<u64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub throttler_outbound_at_large_alloc_size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub throttler_outbound_validator_alloc_size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub throttler_outbound_node_max_at_large_bytes: Option<u64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network_minimum_timeout: Option<String>,
@@ -299,7 +308,12 @@ impl Config {
             profile_continuous_max_files: None,
 
             throttler_inbound_at_large_alloc_size: None,
+            throttler_inbound_validator_alloc_size: None,
             throttler_inbound_node_max_at_large_bytes: None,
+
+            throttler_outbound_at_large_alloc_size: None,
+            throttler_outbound_validator_alloc_size: None,
+            throttler_outbound_node_max_at_large_bytes: None,
 
             network_minimum_timeout: None,
             network_require_validator_to_connect: None,
