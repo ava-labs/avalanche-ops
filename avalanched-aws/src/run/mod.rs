@@ -1137,7 +1137,7 @@ async fn print_backup_commands(
     info!("STEP: starting 'print_backup_commands'");
 
     loop {
-        // e.g., "--pack-dir /avalanche-data/network-1000000/v1.4.5"
+        // e.g., "--pack-dir /data/network-1000000/v1.4.5"
         let db_dir_network = match constants::NETWORK_ID_TO_NETWORK_NAME.get(network_id.as_ref()) {
             Some(v) => String::from(*v),
             None => format!("network-{}", network_id),

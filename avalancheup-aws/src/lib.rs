@@ -1026,7 +1026,7 @@ avalanchego_config:
   config-file: /etc/avalanche.config.json
   network-id: 1
   db-type: leveldb
-  db-dir: /avalanche-data
+  db-dir: /data
   log-dir: /var/log/avalanche
   log-level: INFO
   http-port: 9650

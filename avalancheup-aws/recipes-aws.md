@@ -120,7 +120,7 @@ aws ssm start-session --region us-west-2 --target i-abc
 # in the machine, you can run something like this
 sudo tail -f /var/log/avalanched/avalanched.log
 sudo tail -f /var/log/avalanche/avalanche.log
-ls -lah /avalanche-data/
+ls -lah /data/
 
 # logs are available in CloudWatch
 # metrics are available in CloudWatch
