@@ -26,8 +26,36 @@ Meanwhile the staking TLS certificates (once created) must be used at all times,
 
 The available EBS volumes can be identified with its volume attachment status, the subnet ID, and its cluster name tag value. The staking TLS certificates can be identified with the corresponding node ID, the hash digest of certificate. The availability of each certificate can be tracked in S3, the simplest and strongly consistent metadata storage. The keys will be updated as follows:
 
-```
-# TODO: s3 bucket, key hierarchy
+```bash
+# the staking cert "NodeID-def" is available for use in a new node
+# no node is using that cert!
+#
+# the staking cert "NodeID-ghi" is reserved by a bootstrapping node
+# if the "reserved" timestamp is longer than X-minute
+# the other node may take it over for its own node
+#
+# the staking cert "NodeID-jkl" is actively used by a node
+# and should be not reused by other nodes
+# unless the node fails to post its heartbeat to the S3 key
+# e.g., the process in the terminating node will fail to
+# post hearbeats thus marked outdated by the new node
+
+.
+└── my-s3-bucket
+    ├── cluster-id-1
+    │   └── staking-certs-mapping
+    │       ├── available
+    │       │   └── NodeID-def
+    │       ├── reserved
+    │       │   └── NodeID-ghi
+    │       └── being-used
+    │           └── NodeID-jkl
+    └── cluster-id-2
+        └── staking-certs-mapping
+            ├── available
+            ├── reserved
+            └── being-used
+                └── NodeID-abc
 ```
 
 ## FAQ: What about ENI? What about IPv6?
