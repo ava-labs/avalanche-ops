@@ -28,8 +28,6 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 - 🚫 NOT using Kubernetes, prefers physical machines (or cloud VMs)
 - 🚫 **NOT production ready yet** (under heavy development)
 
-*Why not production ready?* (1) The way we set up AutoScaling group (AWS ASG) for anchor nodes may not work for long-running network, where nodes get replaced by ASG for EC2 health check failures (e.g., degraded network, EC2 hardwares). We need to set up proper health checks against Avalanche health API. (2) We need to support static IP (thus static node ID) and static certificates by implementing another layer of control plane. (3) We need to track more avalanche layer metrics natively via CloudWatch or DataDog. Contributions are welcome!
-
 ## Workflow
 
 **`avalancheup`** is the client (or "control plane") that runs on the operator's host machine or test runner, which provisions a set of remote machines based on user-provided configuration. **`avalanched`** is an agent (or daemon) that runs on every remote machine, which creates and installs Avalanche-specific resources (e.g., TLS certificate generation, anchor-node discovery, write avalanche node service file).
@@ -67,8 +65,6 @@ https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aw
 Contributions are welcome!
 
 - Support automatic subnet/VM setup
-- Support more static IP (by pre-allocating IPv6)
-- Support more static node ID (by reusing generated certs)
 - Support mainnet fork
 - Failure injection testing
 - Stress testing
