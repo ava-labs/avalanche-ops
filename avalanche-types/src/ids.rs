@@ -54,6 +54,10 @@ impl Id {
         (*self) == Self::empty()
     }
 
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+
     /// If the passed array is shorter than the ID_LEN,
     /// it fills in with zero.
     pub fn from_slice(d: &[u8]) -> Self {
@@ -166,6 +170,16 @@ fn test_id() {
         id.to_string(),
         "TtF4d2QWbk5vzQGTEPrN48x6vwgAoAmKQ9cbp79inpQmcRKES"
     );
+    assert_eq!(
+        id.to_vec(),
+        <Vec<u8>>::from([
+            0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92, 0x8e, 0xdf, 0x24, //
+            0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, //
+            0xc3, 0x2b, 0xff, 0x1d, 0x6d, 0xec, 0x47, 0x2b, 0x25, 0xcf, //
+            0x59, 0xa7,
+        ])
+    );
+
     let id_from_str = Id::from_str("TtF4d2QWbk5vzQGTEPrN48x6vwgAoAmKQ9cbp79inpQmcRKES").unwrap();
     assert_eq!(id, id_from_str);
 
