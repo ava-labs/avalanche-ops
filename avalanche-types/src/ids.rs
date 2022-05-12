@@ -31,7 +31,7 @@ lazy_static! {
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/ids#ID
 /// ref. https://docs.rs/zerocopy/latest/zerocopy/trait.AsBytes.html#safety
-#[derive(Debug, Deserialize, Clone, Eq, AsBytes, FromBytes, Unaligned)]
+#[derive(Debug, Deserialize, Clone, Copy, Eq, AsBytes, FromBytes, Unaligned)]
 #[repr(transparent)]
 pub struct Id([u8; ID_LEN]);
 
