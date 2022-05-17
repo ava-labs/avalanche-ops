@@ -13,7 +13,7 @@ avalancheup-aws = { path = "../avalancheup-aws" }
 avalanche-types = { path = "../avalanche-types" }
 avalanchego = { path = "../avalanchego" }
 aws = { path = "../aws" }
-aws-sdk-s3 = "0.11.0"
+aws-sdk-s3 = "0.12.0"
 clap = { version = "3.1.18", features = ["cargo", "derive"] }
 env_logger = "0.9.0"
 log = "0.4.17"
