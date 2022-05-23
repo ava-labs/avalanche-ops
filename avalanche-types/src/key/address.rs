@@ -7,7 +7,7 @@ use secp256k1::{self, PublicKey};
 use sha3::Keccak256;
 
 use crate::ids;
-use utils::prefix;
+use avalanche_utils::prefix;
 
 /// Converts public key bytes to the short address bytes (20-byte).
 /// "hashing.PubkeyBytesToAddress" and "ids.ToShortID"

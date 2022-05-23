@@ -16,7 +16,7 @@ use crate::errors::{
     Error::{Other, API},
     Result,
 };
-use utils::{http, rfc3339};
+use avalanche_utils::{http, rfc3339};
 
 /// Implements AWS EC2 manager.
 #[derive(Debug, Clone)]

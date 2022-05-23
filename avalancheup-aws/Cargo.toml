@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 avalanche-api = { path = "../avalanche-api" }
 avalanche-types = { path = "../avalanche-types" }
+avalanche-utils = { version = "0.0.3", features = ["full"] }
 avalanchego = { path = "../avalanchego" }
 aws = { path = "../aws" }
 aws-sdk-cloudformation = "0.12.0"
@@ -28,7 +29,6 @@ serde_yaml = "0.8.24"
 signal-hook = "0.3.14"
 subnet-evm = { path = "../subnet-evm" }
 tokio = { version = "1.18.2", features = ["full"] }
-utils = { path = "../utils" }
 
 [dev-dependencies]
 tempfile = "3.3.0"

@@ -1,9 +1,8 @@
 use std::io;
 
+use avalanche_api::{c, p, x};
 use clap::{Arg, Command};
 use tokio::runtime::Runtime;
-
-use avalanche_api::{c, p, x};
 
 pub const NAME: &str = "check-balances";
 

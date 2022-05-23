@@ -5,12 +5,11 @@ use std::{
     string::String,
 };
 
+use avalanche_utils::{system_id, time as atime};
+use aws::sts;
 use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
-
-use aws::sts;
-use utils::{id, time};
 
 pub const MIN_MACHINES: u32 = 1;
 pub const MAX_MACHINES: u32 = 2;
@@ -237,11 +236,15 @@ impl Spec {
         };
 
         Ok(Self {
-            id: id::with_time("dev-machine"),
+            id: atime::with_prefix("dev-machine"),
 
             aws_resources: Some(AWSResources {
                 region: String::from("us-west-2"),
-                bucket: format!("dev-machine-{}-{}", time::get(6), id::system(7)), // [year][month][date]-[system host-based id]
+                bucket: format!(
+                    "dev-machine-{}-{}",
+                    atime::timestamp(6),
+                    system_id::string(7)
+                ), // [year][month][date]-[system host-based id]
                 ..AWSResources::default()
             }),
 
@@ -365,11 +368,11 @@ impl Spec {
 
 #[test]
 fn test_spec() {
-    use utils::random;
+    use avalanche_utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let id = random::string(10);
-    let bucket = format!("test-{}", time::get(8));
+    let bucket = format!("test-{}", atime::timestamp(8));
 
     let contents = format!(
         r#"

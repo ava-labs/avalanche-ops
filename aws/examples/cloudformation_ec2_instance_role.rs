@@ -3,12 +3,11 @@ use std::{
     time::{self, Duration},
 };
 
+use avalanche_utils::time as atime;
+use aws::{self, cloudformation};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use log::info;
 use rust_embed::RustEmbed;
-
-use aws::{self, cloudformation};
-use utils::id;
 
 /// cargo run --example cloudformation_ec2_instance_role
 fn main() {
@@ -39,7 +38,7 @@ fn main() {
     let shared_config = ret.unwrap();
     let cloudformation_manager = cloudformation::Manager::new(&shared_config);
 
-    let stack_name = id::with_time("test");
+    let stack_name = atime::with_prefix("test");
 
     // error should be ignored if it does not exist
     let ret = ab!(cloudformation_manager.delete_stack(&stack_name));
@@ -57,7 +56,7 @@ fn main() {
         Some(Vec::from([
             Parameter::builder()
                 .parameter_key("Id")
-                .parameter_value(id::with_time("id"))
+                .parameter_value(atime::with_prefix("id"))
                 .build(),
             Parameter::builder()
                 .parameter_key("KmsCmkArn")
@@ -65,11 +64,11 @@ fn main() {
                 .build(),
             Parameter::builder()
                 .parameter_key("S3BucketName")
-                .parameter_value(id::with_time("id"))
+                .parameter_value(atime::with_prefix("id"))
                 .build(),
             Parameter::builder()
                 .parameter_key("S3BucketDbBackupName")
-                .parameter_value(id::with_time("id"))
+                .parameter_value(atime::with_prefix("id"))
                 .build(),
         ])),
     ));

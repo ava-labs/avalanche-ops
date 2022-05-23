@@ -1,9 +1,9 @@
 use std::io::{self, Error, ErrorKind};
 
+use avalanche_utils::cmp;
 use bech32::{ToBase32, Variant};
 use bitcoin::util::base58;
-
-use utils::{cmp, hash};
+use ring::digest::{digest, SHA256};
 
 const CHECKSUM_LENGTH: usize = 4;
 
@@ -13,7 +13,7 @@ const CHECKSUM_LENGTH: usize = 4;
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/hashing#Checksum
 pub fn encode_cb58_with_checksum(d: &[u8]) -> String {
     // "hashing.Checksum" of "sha256.Sum256"
-    let checksum = hash::compute_sha256(d);
+    let checksum = compute_sha256(d);
     let checksum_length = checksum.len();
     let checksum = &checksum[checksum_length - CHECKSUM_LENGTH..];
 
@@ -45,7 +45,7 @@ pub fn decode_cb58_with_checksum(d: &str) -> io::Result<Vec<u8>> {
     let orig = &decoded[..decoded_length - CHECKSUM_LENGTH];
 
     // "hashing.Checksum" of "sha256.Sum256"
-    let orig_checksum = hash::compute_sha256(orig);
+    let orig_checksum = compute_sha256(orig);
     let orig_checksum_length = orig_checksum.len();
     let orig_checksum = &orig_checksum[orig_checksum_length - CHECKSUM_LENGTH..];
     if !cmp::eq_vectors(checksum, orig_checksum) {
@@ -77,7 +77,7 @@ pub fn decode_hex_with_checksum(d: &[u8]) -> io::Result<Vec<u8>> {
     let orig = &decoded[..decoded_length - CHECKSUM_LENGTH];
 
     // "hashing.Checksum" of "sha256.Sum256"
-    let orig_checksum = hash::compute_sha256(orig);
+    let orig_checksum = compute_sha256(orig);
     let orig_checksum_length = orig_checksum.len();
     let orig_checksum = &orig_checksum[orig_checksum_length - CHECKSUM_LENGTH..];
     if !cmp::eq_vectors(checksum, orig_checksum) {
@@ -140,4 +140,8 @@ fn test_encode_c58_with_checksum() {
     assert_eq!(hashed, "SkB92YpWm4Q2ijQHH34cqbKkCZWszsiQgHVjtNeFF2HdvDQU");
     let decoded = decode_cb58_with_checksum(&hashed).unwrap();
     assert_eq!(d, decoded);
+}
+
+pub fn compute_sha256(input: &[u8]) -> Vec<u8> {
+    digest(&SHA256, input).as_ref().into()
 }

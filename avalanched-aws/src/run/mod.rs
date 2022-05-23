@@ -7,18 +7,17 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use aws_sdk_s3::model::Object;
-use clap::{Arg, Command};
-use log::{info, warn};
-use tokio::time::sleep;
-
 use avalanche_api::{health as api_health, metrics as api_metrics};
 use avalanche_types::{
     api::health as api_health_types, constants, genesis as avalanchego_genesis, ids, key::cert,
     metrics::avalanchego as avalanchego_metrics, node,
 };
+use avalanche_utils::{bash, compress, random};
 use aws::{self, cloudwatch, ec2, envelope, kms, s3};
-use utils::{bash, compress, random};
+use aws_sdk_s3::model::Object;
+use clap::{Arg, Command};
+use log::{info, warn};
+use tokio::time::sleep;
 
 pub const NAME: &str = "run";
 

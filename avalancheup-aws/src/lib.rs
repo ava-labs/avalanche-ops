@@ -6,15 +6,14 @@ use std::{
     string::String,
 };
 
+use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
+use avalanche_utils::{compress, prefix, system_id, time};
+use avalanchego::config as avalanchego_config;
+use coreth::config as coreth_config;
 use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
-
-use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
-use avalanchego::config as avalanchego_config;
-use coreth::config as coreth_config;
 use subnet_evm::genesis as subnet_evm_genesis;
-use utils::{compress, id, prefix, time};
 
 /// Represents each anchor/non-anchor node.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -557,8 +556,8 @@ impl Spec {
                 spec_file_stem.to_str().unwrap().to_string()
             } else {
                 match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
-                    Some(v) => id::with_time(format!("aops-{}", *v).as_str()),
-                    None => id::with_time("aops-custom"),
+                    Some(v) => time::with_prefix(format!("aops-{}", *v).as_str()),
+                    None => time::with_prefix("aops-custom"),
                 }
             }
         };
@@ -643,7 +642,11 @@ impl Spec {
 
         let mut aws_resources = aws::Resources {
             region: opt.region,
-            s3_bucket: format!("avalanche-ops-{}-{}", time::get(6), id::system(10)), // [year][month][date]-[system host-based id]
+            s3_bucket: format!(
+                "avalanche-ops-{}-{}",
+                time::timestamp(6),
+                system_id::string(10)
+            ), // [year][month][date]-[system host-based id]
             ..aws::Resources::default()
         };
         if !opt.db_backup_s3_region.is_empty() {
@@ -966,8 +969,8 @@ impl Spec {
 
 #[test]
 fn test_spec() {
+    use avalanche_utils::random;
     use std::fs;
-    use utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
@@ -995,7 +998,7 @@ fn test_spec() {
     }
 
     let id = random::string(10);
-    let bucket = format!("test-{}", time::get(8));
+    let bucket = format!("test-{}", time::timestamp(8));
 
     let contents = format!(
         r#"
@@ -1341,7 +1344,7 @@ impl StorageNamespace {
 
 #[test]
 fn test_storage_path() {
-    use utils::random;
+    use avalanche_utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let id = random::string(10);

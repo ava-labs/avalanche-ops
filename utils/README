@@ -1,4 +1,0 @@
-
-Modules for utility/helper functions.
-
-Should be generic and not specific to Avalanche but small enough to make up for a module -- not big enough for a "crate".

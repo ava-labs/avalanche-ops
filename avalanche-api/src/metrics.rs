@@ -1,14 +1,13 @@
 use std::{io, sync::Arc};
 
 use avalanche_types::metrics::avalanchego::RawMetrics;
+use avalanche_utils::{http, prometheus};
 use aws_sdk_cloudwatch::{
     model::{Dimension, MetricDatum, StandardUnit},
     types::DateTime as SmithyDateTime,
 };
 use chrono::Utc;
 use log::info;
-
-use utils::{http, prometheus};
 
 pub fn to_cw_metric_data(cur: &RawMetrics, prev: Option<RawMetrics>) -> Vec<MetricDatum> {
     let ts = SmithyDateTime::from_nanos(cur.ts.timestamp_nanos() as i128)

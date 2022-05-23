@@ -8,6 +8,8 @@ use std::{
     time::Duration,
 };
 
+use avalanche_utils::{compress, random};
+use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use clap::{Arg, Command};
 use crossterm::{
@@ -18,9 +20,6 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
-
-use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
-use utils::{compress, random};
 
 pub const NAME: &str = "apply";
 

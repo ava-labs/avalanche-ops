@@ -17,8 +17,8 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 use tokio::runtime::Runtime;
 
+use avalanche_utils::compress;
 use aws::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
-use utils::compress;
 
 pub const NAME: &str = "delete";
 

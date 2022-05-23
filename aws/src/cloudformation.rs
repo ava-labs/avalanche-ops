@@ -3,6 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::errors::{
+    Error::{Other, API},
+    Result,
+};
 use aws_sdk_cloudformation::{
     error::{DeleteStackError, DescribeStacksError},
     model::{Capability, OnFailure, Output, Parameter, StackStatus, Tag},
@@ -11,11 +15,6 @@ use aws_sdk_cloudformation::{
 };
 use aws_types::SdkConfig as AwsSdkConfig;
 use log::{info, warn};
-
-use crate::errors::{
-    Error::{Other, API},
-    Result,
-};
 
 /// Implements AWS CloudFormation manager.
 #[derive(Debug, Clone)]

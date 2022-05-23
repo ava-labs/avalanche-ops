@@ -13,9 +13,9 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 use tokio::runtime::Runtime;
 
+use avalanche_utils::{compress, random};
 use avalancheup_aws;
 use aws::{self, s3};
-use utils::{compress, random};
 
 pub const NAME: &str = "update-artifacts";
 

@@ -16,7 +16,7 @@ use crate::{
     errors::{Error::Other, Result},
     kms,
 };
-use utils::humanize;
+use avalanche_utils::humanize;
 
 const DEK_AES_256_LENGTH: usize = 32;
 

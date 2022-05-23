@@ -10,7 +10,7 @@ use log::info;
 use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 
-use utils::big_int;
+use avalanche_utils::big_int;
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/params#ChainConfig

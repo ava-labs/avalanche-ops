@@ -12,6 +12,10 @@ use std::{
     time::Duration,
 };
 
+use avalanche_api::health as api_health;
+use avalanche_types::api::health as api_health_types;
+use avalanche_utils::{compress, home_dir, random};
+use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
@@ -23,11 +27,6 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use log::{info, warn};
 use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
-
-use avalanche_api::health as api_health;
-use avalanche_types::api::health as api_health_types;
-use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
-use utils::{compress, home_dir, random};
 
 pub const NAME: &str = "apply";
 
@@ -733,13 +732,13 @@ chmod 400 {}",
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
                 "# instance '{}' ({}, {})
-ssh -o \"StrictHostKeyChecking no\" -i {} {}@{}
+ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
 # download to local machine
-scp -i {} {}@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
-scp -i {} -r {}@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
+scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
+scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
 # upload to remote machine
-scp -i {} LOCAL_FILE_PATH {}@{}:REMOTE_FILE_PATH
-scp -i {} -r LOCAL_DIRECTORY_PATH {}@{}:REMOTE_DIRECTORY_PATH
+scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
+scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
@@ -749,23 +748,18 @@ aws ssm start-session --region {} --target {}
                 d.availability_zone,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 aws_resources.region,
@@ -1015,13 +1009,13 @@ chmod 400 {}",
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
                 "# instance '{}' ({}, {})
-ssh -o \"StrictHostKeyChecking no\" -i {} {}@{}
+ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
 # download to local machine
-scp -i {} {}@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
-scp -i {} -r {}@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
+scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
+scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
 # upload to remote machine
-scp -i {} LOCAL_FILE_PATH {}@{}:REMOTE_FILE_PATH
-scp -i {} -r LOCAL_DIRECTORY_PATH {}@{}:REMOTE_DIRECTORY_PATH
+scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
+scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
@@ -1031,23 +1025,18 @@ aws ssm start-session --region {} --target {}
                 d.availability_zone,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 ec2_key_path,
-                "ubuntu",
                 d.public_ipv4,
                 //
                 aws_resources.region,

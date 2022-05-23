@@ -13,7 +13,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 use crate::{constants, genesis::coreth as coreth_genesis, key};
-use utils::prefix;
+use avalanche_utils::prefix;
 
 /// Represents Avalanche network genesis configuration.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/genesis#Config
@@ -363,8 +363,8 @@ impl Staker {
 
 #[test]
 fn test_genesis() {
+    use avalanche_utils::{big_int, random};
     use num_bigint::BigInt;
-    use utils::{big_int, random};
     let _ = env_logger::builder().is_test(true).try_init();
 
     use rust_embed::RustEmbed;

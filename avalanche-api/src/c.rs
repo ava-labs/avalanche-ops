@@ -3,10 +3,9 @@ use std::{
     string::String,
 };
 
-use log::info;
-
 use avalanche_types::api::{eth, jsonrpc};
-use utils::http;
+use avalanche_utils::http;
+use log::info;
 
 /// e.g., "eth_getBalance" on "http://[ADDR]:9650" and "/ext/bc/C/rpc" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/c-chain#eth_getassetbalance

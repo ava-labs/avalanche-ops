@@ -67,7 +67,7 @@ impl PartialEq for UtxoId {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- avax::test_sort_utxo_ids --exact --show-output
 #[test]
 fn test_sort_utxo_ids() {
-    use utils::cmp;
+    use avalanche_utils::cmp;
 
     let mut utxos: Vec<UtxoId> = Vec::new();
     for i in (0..10).rev() {

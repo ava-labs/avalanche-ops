@@ -4,10 +4,9 @@ use std::{
     string::String,
 };
 
-use log::info;
-
 use avalanche_types::api::{jsonrpc, platformvm};
-use utils::http;
+use avalanche_utils::http;
+use log::info;
 
 /// e.g., "platform.getHeight" on "http://[ADDR]:9650" and "/ext/bc/P" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetheight
