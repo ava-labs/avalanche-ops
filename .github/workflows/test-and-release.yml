@@ -33,7 +33,7 @@ jobs:
           cache-on-failure: true
       - name: Run static analysis tests
         shell: bash
-        run: scripts/static-analysis.sh
+        run: scripts/tests.lint.sh
 
   check_cargo_unused:
     name: Check Cargo unused
@@ -55,7 +55,7 @@ jobs:
           cache-on-failure: true
       - name: Check unused Cargo dependencies
         shell: bash
-        run: scripts/cargo.unused.sh
+        run: scripts/tests.unused.sh
 
   unit_tests:
     name: Unit tests
