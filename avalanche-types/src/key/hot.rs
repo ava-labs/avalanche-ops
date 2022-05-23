@@ -18,7 +18,7 @@ use crate::{
     constants, formatting, ids,
     key::{self, address},
 };
-use utils::cmp;
+use avalanche_utils::cmp;
 
 lazy_static! {
     pub static ref TEST_KEYS: Vec<Key> = {

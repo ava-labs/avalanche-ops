@@ -1,5 +1,10 @@
 use std::{fs, path::Path, sync::Arc};
 
+use crate::errors::{
+    Error::{Other, API},
+    Result,
+};
+use avalanche_utils::humanize;
 use aws_sdk_s3::{
     error::{CreateBucketError, CreateBucketErrorKind, DeleteBucketError},
     model::{
@@ -14,12 +19,6 @@ use aws_types::SdkConfig as AwsSdkConfig;
 use log::{debug, info, warn};
 use tokio::{fs::File, io::AsyncWriteExt};
 use tokio_stream::StreamExt;
-
-use crate::errors::{
-    Error::{Other, API},
-    Result,
-};
-use utils::humanize;
 
 /// Implements AWS S3 manager.
 #[derive(Debug, Clone)]

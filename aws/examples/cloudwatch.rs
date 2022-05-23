@@ -1,9 +1,8 @@
 use std::{thread, time};
 
-use log::info;
-
+use avalanche_utils::random;
 use aws::{self, cloudwatch};
-use utils::random;
+use log::info;
 
 /// cargo run --example cloudwatch
 fn main() {

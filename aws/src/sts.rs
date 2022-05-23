@@ -1,9 +1,8 @@
+use crate::errors::{Error::API, Result};
 use aws_sdk_sts::{types::SdkError, Client};
 use aws_types::SdkConfig as AwsSdkConfig;
 use log::info;
 use serde::{Deserialize, Serialize};
-
-use crate::errors::{Error::API, Result};
 
 /// Implements AWS STS manager.
 #[derive(Debug, Clone)]

@@ -6,7 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{codec, ids};
-use utils::cmp;
+use avalanche_utils::cmp;
 
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/avm#FxCredential
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/vms/components/verify#Verifiable
@@ -100,7 +100,7 @@ impl PartialEq for Signatures {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_credentials --exact --show-output
 #[test]
 fn test_sort_credentials() {
-    use utils::cmp;
+    use avalanche_utils::cmp;
 
     let mut credentials: Vec<Credential> = Vec::new();
     for i in (0..10).rev() {
@@ -233,7 +233,7 @@ impl PartialEq for OutputOwners {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_output_owners --exact --show-output
 #[test]
 fn test_sort_output_owners() {
-    use utils::cmp;
+    use avalanche_utils::cmp;
 
     let mut owners: Vec<OutputOwners> = Vec::new();
     for i in (0..10).rev() {
@@ -364,7 +364,7 @@ impl PartialEq for TransferOutput {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_transfer_outputs --exact --show-output
 #[test]
 fn test_sort_transfer_outputs() {
-    use utils::cmp;
+    use avalanche_utils::cmp;
 
     let mut outputs: Vec<TransferOutput> = Vec::new();
     for i in (0..10).rev() {
@@ -602,7 +602,7 @@ impl PartialEq for SigIndices {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_transfer_inputs --exact --show-output
 #[test]
 fn test_sort_transfer_inputs() {
-    use utils::cmp;
+    use avalanche_utils::cmp;
 
     let mut inputs: Vec<TransferInput> = Vec::new();
     for i in (0..10).rev() {
@@ -716,7 +716,7 @@ impl PartialEq for Input {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- secp256k1fx::test_sort_inputs --exact --show-output
 #[test]
 fn test_sort_inputs() {
-    use utils::cmp;
+    use avalanche_utils::cmp;
 
     let mut inputs: Vec<Input> = Vec::new();
     for i in (0..10).rev() {

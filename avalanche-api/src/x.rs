@@ -5,9 +5,8 @@ use std::{
 };
 
 use log::info;
-
 use avalanche_types::api::{avm, jsonrpc};
-use utils::http;
+use avalanche_utils::http;
 
 /// e.g., "avm.getBalance" on "http://[ADDR]:9650" and "/ext/bc/X" path.
 /// ref. https://docs.avax.network/build/avalanchego-apis/x-chain#avmgetbalance

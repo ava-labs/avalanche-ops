@@ -8,6 +8,7 @@ name = "dev-machine-aws"
 path = "src/main.rs"
 
 [dependencies]
+avalanche-utils = { version = "0.0.3", features = ["full"] }
 aws = { path = "../aws" }
 aws-sdk-cloudformation = "0.12.0"
 clap = { version = "3.1.18", features = ["cargo", "derive"] }
@@ -20,7 +21,6 @@ rust-embed = "6.4.0"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_yaml = "0.8.24"
 tokio = { version = "1.18.2", features = ["full"] }
-utils = { path = "../utils" }
 
 [dev-dependencies]
 tempfile = "3.3.0"

@@ -8,6 +8,5 @@ members = [
     "aws",
     "coreth",
     "dev-machine-aws",
-    "subnet-evm",
-    "utils"
+    "subnet-evm"
 ]

@@ -20,7 +20,7 @@ use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
 use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
-use utils::{compress, random};
+use avalanche_utils::{compress, random};
 
 pub const NAME: &str = "apply";
 

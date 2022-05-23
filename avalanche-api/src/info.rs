@@ -7,7 +7,7 @@ use std::{
 use log::info;
 
 use avalanche_types::api::{info, jsonrpc};
-use utils::http;
+use avalanche_utils::http;
 
 /// e.g., "info.getNetworkName".
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetnetworkname

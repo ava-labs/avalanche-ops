@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use utils::rfc3339;
+use avalanche_utils::rfc3339;
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct RawMetrics {
@@ -473,9 +473,9 @@ impl RawMetrics {
 
 #[test]
 fn test_parse_metrics() {
+    use avalanche_utils::prometheus;
     use log::info;
     use rust_embed::RustEmbed;
-    use utils::prometheus;
     let _ = env_logger::builder().is_test(true).try_init();
 
     #[derive(RustEmbed)]

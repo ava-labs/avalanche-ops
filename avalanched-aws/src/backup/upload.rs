@@ -5,7 +5,7 @@ use log::info;
 use tokio::runtime::Runtime;
 
 use aws::{self, s3};
-use utils::{compress, random};
+use avalanche_utils::{compress, random};
 
 pub const NAME: &str = "upload";
 

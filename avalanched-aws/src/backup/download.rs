@@ -1,11 +1,10 @@
 use std::{fs, io, path::Path, sync::Arc};
 
+use avalanche_utils::{compress, random};
+use aws::{self, s3};
 use clap::{Arg, Command};
 use log::info;
 use tokio::runtime::Runtime;
-
-use aws::{self, s3};
-use utils::{compress, random};
 
 pub const NAME: &str = "download";
 

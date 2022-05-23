@@ -7,7 +7,7 @@ use std::{
 use log::info;
 
 use avalanche_types::api::health;
-use utils::http;
+use avalanche_utils::http;
 
 /// "If a single piece of data must be accessible from more than one task
 /// concurrently, then it must be shared using synchronization primitives such as Arc."

@@ -1,10 +1,9 @@
 use std::{fs, io::Write, sync::Arc, thread, time};
 
+use avalanche_utils::{random, system_id, time as atime};
+use aws::{self, s3};
 use log::info;
 use tokio::runtime::Runtime;
-
-use aws::{self, s3};
-use utils::{id, random, time as atime};
 
 /// cargo run --example s3
 fn main() {
@@ -27,8 +26,8 @@ fn main() {
     println!();
     let bucket = format!(
         "avalanche-ops-examples-tests-s3-{}-{}",
-        atime::get(6),
-        id::system(10)
+        atime::timestamp(6),
+        system_id::string(10)
     );
     rt.block_on(s3_manager.delete_bucket(&bucket)).unwrap(); // error should be ignored if it does not exist
 

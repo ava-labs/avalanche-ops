@@ -356,8 +356,8 @@ pub fn vm_id_from_str(name: &str) -> io::Result<Id> {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- ids::test_vm_id --exact --show-output
 #[test]
 fn test_vm_id() {
+    use avalanche_utils::random;
     use log::info;
-    use utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let subnet_evm_id = vm_id_from_str("subnetevm").expect("failed to generate id from str");

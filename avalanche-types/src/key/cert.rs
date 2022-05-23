@@ -84,8 +84,8 @@ pub fn generate(key_path: &str, cert_path: &str) -> io::Result<()> {
 /// RUST_LOG=debug cargo test --package avalanche-types --lib -- cert::test_cert --exact --show-output
 #[test]
 fn test_cert() {
+    use avalanche_utils::random;
     use std::fs;
-    use utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let tmp_dir = tempfile::tempdir().unwrap();

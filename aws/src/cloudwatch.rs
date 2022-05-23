@@ -641,7 +641,7 @@ impl Config {
 #[test]
 fn test_config() {
     use std::fs;
-    use utils::random;
+    use avalanche_utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = Config::default();

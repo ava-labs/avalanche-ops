@@ -8,7 +8,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use utils::rfc3339;
+use avalanche_utils::rfc3339;
 
 /// Represents AvalancheGo health status.
 /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/api/health#APIHealthReply

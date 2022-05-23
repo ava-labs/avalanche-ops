@@ -5,10 +5,9 @@ use std::{
     string::String,
 };
 
+use avalanche_types::{constants, genesis};
 use log::info;
 use serde::{Deserialize, Serialize};
-
-use avalanche_types::{constants, genesis};
 
 /// Represents AvalancheGo configuration.
 /// All file paths must be valid on the remote machines.
@@ -518,8 +517,8 @@ impl Config {
 
 #[test]
 fn test_config() {
+    use avalanche_utils::random;
     use std::fs;
-    use utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
     let mut config = Config::default();

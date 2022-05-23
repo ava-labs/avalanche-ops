@@ -7,8 +7,8 @@ use std::{
 
 use log::info;
 
+use avalanche_utils::{cmp, random, time as atime};
 use aws::{self, envelope, kms};
-use utils::{cmp, id, random};
 
 /// cargo run --example kms
 fn main() {
@@ -28,7 +28,7 @@ fn main() {
     let shared_config = ab!(aws::load_config(None)).unwrap();
     let kms_manager = kms::Manager::new(&shared_config);
 
-    let mut key_desc = id::with_time("test");
+    let mut key_desc = atime::with_prefix("test");
     key_desc.push_str("-cmk");
 
     // error should be ignored if it does not exist

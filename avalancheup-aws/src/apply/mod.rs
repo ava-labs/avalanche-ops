@@ -12,6 +12,10 @@ use std::{
     time::Duration,
 };
 
+use avalanche_api::health as api_health;
+use avalanche_types::api::health as api_health_types;
+use avalanche_utils::{compress, home_dir, random};
+use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
@@ -23,11 +27,6 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use log::{info, warn};
 use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
-
-use avalanche_api::health as api_health;
-use avalanche_types::api::health as api_health_types;
-use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
-use utils::{compress, home_dir, random};
 
 pub const NAME: &str = "apply";
 

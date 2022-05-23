@@ -21,7 +21,7 @@ use crate::errors::{
     Error::{Other, API},
     Result,
 };
-use utils::humanize;
+use avalanche_utils::humanize;
 
 /// Represents the data encryption key.
 #[derive(Debug)]

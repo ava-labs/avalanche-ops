@@ -6,8 +6,8 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 
+use avalanche_utils::home_dir;
 use avalanchego::config as avalanchego_config;
-use utils::home_dir;
 
 pub const NAME: &str = "default-spec";
 
