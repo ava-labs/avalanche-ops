@@ -15,7 +15,7 @@ use tokio::runtime::Runtime;
 
 use avalanche_utils::{compress, random};
 use avalancheup_aws;
-use aws::{self, s3};
+use aws_sdk_manager::{self, s3};
 
 pub const NAME: &str = "update-artifacts";
 
@@ -113,8 +113,10 @@ pub fn execute(
     let rt = Runtime::new().unwrap();
     let aws_resources = spec.aws_resources.expect("unexpected None aws_resources");
     let shared_config = rt
-        .block_on(aws::load_config(Some(aws_resources.region.clone())))
-        .expect("failed to aws::load_config");
+        .block_on(aws_sdk_manager::load_config(Some(
+            aws_resources.region.clone(),
+        )))
+        .expect("failed to aws_sdk_manager::load_config");
     let s3_manager = s3::Manager::new(&shared_config);
 
     // compress as these will be decompressed by "avalanched"

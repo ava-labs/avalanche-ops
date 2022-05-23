@@ -15,8 +15,8 @@ use std::{
 use avalanche_api::health as api_health;
 use avalanche_types::api::health as api_health_types;
 use avalanche_utils::{compress, home_dir, random};
-use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_manager::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use crossterm::{
@@ -86,8 +86,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let mut aws_resources = spec.aws_resources.clone().unwrap();
     let shared_config = rt
-        .block_on(aws::load_config(Some(aws_resources.region.clone())))
-        .expect("failed to aws::load_config");
+        .block_on(aws_sdk_manager::load_config(Some(
+            aws_resources.region.clone(),
+        )))
+        .expect("failed to aws_sdk_manager::load_config");
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
@@ -296,7 +298,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ))
         .unwrap();
     }
-    let envelope = envelope::Envelope::new(Some(kms_manager), aws_resources.kms_cmk_id.clone());
+    let envelope = envelope::Envelope::new(
+        Some(kms_manager),
+        aws_resources.kms_cmk_id.clone(),
+        "avalanche-ops".to_string(),
+    );
 
     if aws_resources.ec2_key_path.is_none() {
         execute!(

@@ -9,8 +9,8 @@ use std::{
 };
 
 use avalanche_utils::{compress, random};
-use aws::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_manager::{self, cloudformation, ec2, envelope, kms, s3, sts};
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -79,7 +79,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let mut aws_resources = spec.aws_resources.clone().unwrap();
     let shared_config = rt
-        .block_on(aws::load_config(Some(aws_resources.region.clone())))
+        .block_on(aws_sdk_manager::load_config(Some(
+            aws_resources.region.clone(),
+        )))
         .unwrap();
 
     let sts_manager = sts::Manager::new(&shared_config);
@@ -199,7 +201,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ))
         .unwrap();
     }
-    let envelope = envelope::Envelope::new(Some(kms_manager), aws_resources.kms_cmk_id.clone());
+    let envelope = envelope::Envelope::new(
+        Some(kms_manager),
+        aws_resources.kms_cmk_id.clone(),
+        "avalanche-ops".to_string(),
+    );
 
     if aws_resources.ec2_key_path.is_none() {
         thread::sleep(Duration::from_secs(2));

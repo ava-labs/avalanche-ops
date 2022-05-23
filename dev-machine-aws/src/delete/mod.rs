@@ -17,7 +17,7 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 use tokio::runtime::Runtime;
 
-use aws::{self, cloudformation, ec2, kms, s3, sts};
+use aws_sdk_manager::{self, cloudformation, ec2, kms, s3, sts};
 
 pub const NAME: &str = "delete";
 
@@ -84,7 +84,9 @@ pub fn execute(
 
     let rt = Runtime::new().unwrap();
     let shared_config = rt
-        .block_on(aws::load_config(Some(aws_resources.region.clone())))
+        .block_on(aws_sdk_manager::load_config(Some(
+            aws_resources.region.clone(),
+        )))
         .unwrap();
 
     let sts_manager = sts::Manager::new(&shared_config);

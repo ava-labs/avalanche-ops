@@ -1,7 +1,7 @@
 use std::{fs, io, path::Path, sync::Arc};
 
 use avalanche_utils::{compress, random};
-use aws::{self, s3};
+use aws_sdk_manager::{self, s3};
 use clap::{Arg, Command};
 use log::info;
 use tokio::runtime::Runtime;
@@ -97,7 +97,7 @@ pub fn execute(
 
     info!("STEP: loading AWS config");
     let shared_config = rt
-        .block_on(aws::load_config(Some(reg.to_string())))
+        .block_on(aws_sdk_manager::load_config(Some(reg.to_string())))
         .unwrap();
     let s3_manager = s3::Manager::new(&shared_config);
 

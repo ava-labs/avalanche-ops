@@ -6,7 +6,7 @@ use std::{
 };
 
 use avalanche_utils::{system_id, time as atime};
-use aws::sts;
+use aws_sdk_manager::sts;
 use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
