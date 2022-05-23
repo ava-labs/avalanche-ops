@@ -7,9 +7,12 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use avalanche_api::{health as api_health, metrics as api_metrics};
+use avalanche_sdk::{
+    health as api_health,
+    metrics::{self as api_metrics, cw as api_cw},
+};
 use avalanche_types::{
-    api::health as api_health_types, constants, genesis as avalanchego_genesis, ids, key::cert,
+    constants, genesis as avalanchego_genesis, ids, key::cert,
     metrics::avalanchego as avalanchego_metrics, node,
 };
 use avalanche_utils::{bash, compress, random};
@@ -340,7 +343,7 @@ pub async fn execute(log_level: &str) {
             "STEP: generating TLS certs (key exists {}, cert exists {})",
             tls_key_exists, tls_cert_exists
         );
-        cert::generate(&tls_key_path, &tls_cert_path).unwrap();
+        cert::generate_default_pem(&tls_key_path, &tls_cert_path).unwrap();
 
         info!("uploading generated TLS certs to S3");
         let s3_key = format!(
@@ -389,7 +392,8 @@ pub async fn execute(log_level: &str) {
     }
 
     // loads the node ID from generated/existing certs
-    let node_id = ids::NodeId::from_cert_file(&tls_cert_path).expect("failed to load node ID");
+    let node_id =
+        ids::node::Id::from_cert_pem_file(&tls_cert_path).expect("failed to load node ID");
     info!("loaded node ID {}", node_id);
 
     let http_scheme = {
@@ -820,25 +824,17 @@ WantedBy=multi-user.target",
     info!("'avalanched run' all success -- now waiting for local node liveness check");
     loop {
         let ret = api_health::spawn_check(&local_node.http_endpoint, true).await;
-        let (res, err) = match ret {
-            Ok(res) => (res, None),
-            Err(e) => (
-                api_health_types::Response {
-                    checks: None,
-                    healthy: Some(false),
-                },
-                Some(e),
-            ),
+        match ret {
+            Ok(res) => {
+                if res.healthy.is_some() && res.healthy.unwrap() {
+                    info!("health/liveness check success for {}", instance_id);
+                    break;
+                }
+            }
+            Err(e) => {
+                warn!("health/liveness check failed for {} ({:?})", instance_id, e);
+            }
         };
-        if res.healthy.is_some() && res.healthy.unwrap() {
-            info!("health/liveness check success for {}", instance_id);
-            break;
-        }
-        warn!(
-            "health/liveness check failed for {} ({:?}, {:?})",
-            instance_id, res, err
-        );
-
         sleep(Duration::from_secs(30)).await;
 
         let out = bash::run("sudo tail -10 /var/log/avalanche/avalanche.log")
@@ -975,7 +971,7 @@ async fn fetch_metrics_loop(
         match cloudwatch::spawn_put_metric_data(
             cw_manager.clone(),
             cw_namespace.as_str(),
-            api_metrics::to_cw_metric_data(&cur_metrics, prev_raw_metrics.clone()),
+            api_cw::convert(&cur_metrics, prev_raw_metrics.clone()),
         )
         .await
         {

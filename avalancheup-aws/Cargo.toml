@@ -8,8 +8,8 @@ name = "avalancheup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-api = { path = "../avalanche-api" }
-avalanche-types = { path = "../avalanche-types" }
+avalanche-sdk = { version = "^0.0.1" }
+avalanche-types = { version = "0.0.6", features = ["jsonrpc", "metrics"] }
 avalanche-utils = { version = "0.0.3", features = ["full"] }
 avalanchego = { path = "../avalanchego" }
 aws-sdk-cloudformation = "0.12.0"

@@ -12,8 +12,8 @@ use std::{
     time::Duration,
 };
 
-use avalanche_api::health as api_health;
-use avalanche_types::api::health as api_health_types;
+use avalanche_sdk::health as api_health;
+use avalanche_types::jsonrpc::health as api_health_types;
 use avalanche_utils::{compress, home_dir, random};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_manager::{self, cloudformation, ec2, envelope, kms, s3, sts};
@@ -1200,25 +1200,18 @@ aws ssm start-session --region {} --target {}
     let mut success = false;
     for _ in 0..10_u8 {
         let ret = rt.block_on(api_health::check(Arc::new(http_rpc.clone()), true));
-        let (res, err) = match ret {
-            Ok(res) => (res, None),
-            Err(e) => (
-                api_health_types::Response {
-                    checks: None,
-                    healthy: Some(false),
-                },
-                Some(e),
-            ),
+        match ret {
+            Ok(res) => {
+                if res.healthy.is_some() && res.healthy.unwrap() {
+                    success = true;
+                    info!("health/liveness check success for {}", http_rpc);
+                    break;
+                }
+            }
+            Err(e) => {
+                warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
+            }
         };
-        success = res.healthy.is_some() && res.healthy.unwrap();
-        if success {
-            info!("health/liveness check success for {}", http_rpc);
-            break;
-        }
-        warn!(
-            "health/liveness check failed for {} ({:?}, {:?})",
-            http_rpc, res, err
-        );
         if aws_resources.db_backup_s3_bucket.is_some() {
             // TODO: fix this
             warn!("node may be still downloading database backup... skipping for now...");
@@ -1243,25 +1236,21 @@ aws ssm start-session --region {} --target {}
                 Arc::new(node.http_endpoint.clone()),
                 true,
             ));
-            let (res, err) = match ret {
-                Ok(res) => (res, None),
-                Err(e) => (
-                    api_health_types::Response {
-                        checks: None,
-                        healthy: Some(false),
-                    },
-                    Some(e),
-                ),
+            match ret {
+                Ok(res) => {
+                    if res.healthy.is_some() && res.healthy.unwrap() {
+                        success = true;
+                        info!("health/liveness check success for {}", node.machine_id);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        "health/liveness check failed for {} ({:?})",
+                        node.machine_id, e
+                    );
+                }
             };
-            success = res.healthy.is_some() && res.healthy.unwrap();
-            if success {
-                info!("health/liveness check success for {}", node.machine_id);
-                break;
-            }
-            warn!(
-                "health/liveness check failed for {} ({:?}, {:?})",
-                node.machine_id, res, err
-            );
             if aws_resources.db_backup_s3_bucket.is_some() {
                 // TODO: fix this
                 warn!("node may be still downloading database backup... skipping for now...");

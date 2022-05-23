@@ -8,11 +8,12 @@ name = "avalanched-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-api = { path = "../avalanche-api" }
-avalanche-types = { path = "../avalanche-types" }
+avalanche-sdk = { version = "0.0.2", features = ["cloudwatch"] }
+avalanche-types = { version = "0.0.6", features = ["jsonrpc", "metrics"] }
 avalanche-utils = { version = "0.0.3", features = ["full"] }
 avalanchego = { path = "../avalanchego" }
 avalancheup-aws = { path = "../avalancheup-aws" }
+aws-sdk-cloudwatch = "0.12.0"
 aws-sdk-manager = { version = "0.0.1" }
 aws-sdk-s3 = "0.12.0"
 clap = { version = "3.1.18", features = ["cargo", "derive"] }

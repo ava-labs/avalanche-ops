@@ -1,7 +1,5 @@
 [workspace]
 members = [
-    "avalanche-api",
-    "avalanche-types",
     "avalanched-aws",
     "avalanchego",
     "avalancheup-aws",
