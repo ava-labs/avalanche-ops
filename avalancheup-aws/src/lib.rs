@@ -1,3 +1,5 @@
+mod aws;
+
 use std::{
     collections::BTreeMap,
     fs::{self, File},
