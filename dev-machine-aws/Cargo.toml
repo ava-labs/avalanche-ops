@@ -9,8 +9,8 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-utils = { version = "0.0.3", features = ["full"] }
-aws-sdk-manager = { version = "0.0.0" }
 aws-sdk-cloudformation = "0.12.0"
+aws-sdk-manager = { version = "0.0.1" }
 clap = { version = "3.1.18", features = ["cargo", "derive"] }
 crossterm = "0.23.2"
 dialoguer = "0.10.1"
