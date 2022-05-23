@@ -10,8 +10,7 @@ fi
 cargo build \
 --release \
 --bin avalancheup-aws \
---bin avalanched-aws \
---bin dev-machine-aws
+--bin avalanched-aws
 
 ./target/release/avalancheup-aws --help
 ./target/release/avalancheup-aws default-spec --help
@@ -25,8 +24,3 @@ cargo build \
 ./target/release/avalanched-aws --help
 ./target/release/avalanched-aws backup upload --help
 ./target/release/avalanched-aws backup download --help
-
-./target/release/dev-machine-aws --help
-./target/release/dev-machine-aws default-spec --help
-./target/release/dev-machine-aws apply --help
-./target/release/dev-machine-aws delete --help

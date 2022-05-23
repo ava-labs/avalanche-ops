@@ -6,6 +6,5 @@ members = [
     "avalanchego",
     "avalancheup-aws",
     "coreth",
-    "dev-machine-aws",
     "subnet-evm"
 ]
