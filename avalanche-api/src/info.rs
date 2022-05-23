@@ -4,10 +4,9 @@ use std::{
     string::String,
 };
 
-use log::info;
-
 use avalanche_types::api::{info, jsonrpc};
 use avalanche_utils::http;
+use log::info;
 
 /// e.g., "info.getNetworkName".
 /// ref. https://docs.avax.network/build/avalanchego-apis/info/#infogetnetworkname
