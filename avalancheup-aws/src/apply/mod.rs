@@ -12,7 +12,7 @@ use std::{
     time::Duration,
 };
 
-use avalanche_api::health as api_health;
+use avalanche_sdk::health as api_health;
 use avalanche_types::api::health as api_health_types;
 use avalanche_utils::{compress, home_dir, random};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};

@@ -7,7 +7,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use avalanche_api::{health as api_health, metrics as api_metrics};
+use avalanche_sdk::{health as api_health, metrics as api_metrics};
 use avalanche_types::{
     api::health as api_health_types, constants, genesis as avalanchego_genesis, ids, key::cert,
     metrics::avalanchego as avalanchego_metrics, node,
