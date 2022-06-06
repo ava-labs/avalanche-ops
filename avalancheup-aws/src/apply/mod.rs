@@ -13,7 +13,6 @@ use std::{
 };
 
 use avalanche_sdk::health as api_health;
-use avalanche_types::jsonrpc::health as api_health_types;
 use avalanche_utils::{compress, home_dir, random};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_manager::{self, cloudformation, ec2, envelope, kms, s3, sts};
