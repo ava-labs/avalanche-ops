@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -xue
 
-if ! [[ "$0" =~ scripts/cargo.unused.sh ]]; then
+if ! [[ "$0" =~ scripts/tests.unused.sh ]]; then
   echo "must be run from repository root"
   exit 255
 fi
