@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-avalanche-types = { version = "0.0.6", features = [] }
+avalanche-types = { version = "0.0.9", features = [] }
 avalanche-utils = { version = "0.0.3", features = ["full"] }
 log = "0.4.17"
 serde = { version = "1.0.137", features = ["derive"] }

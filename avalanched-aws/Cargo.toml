@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-sdk = { version = "0.0.2", features = ["cloudwatch"] }
-avalanche-types = { version = "0.0.6", features = ["jsonrpc", "metrics"] }
+avalanche-types = { version = "0.0.9", features = ["jsonrpc", "metrics"] }
 avalanche-utils = { version = "0.0.3", features = ["full"] }
 avalanchego = { path = "../avalanchego" }
 avalancheup-aws = { path = "../avalancheup-aws" }
