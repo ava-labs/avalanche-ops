@@ -1,3 +1,7 @@
+pub mod bootstrap;
 pub mod certs;
-pub mod install;
-pub mod systemd;
+pub mod metadata;
+pub mod telemetry;
+pub mod update;
+pub mod volumes;
+pub mod zones;
