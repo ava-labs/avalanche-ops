@@ -10,6 +10,7 @@ fi
 cargo build \
 --release \
 --bin avalancheup-aws \
+--bin avalancheup-aws-lite \
 --bin avalanched-aws
 
 ./target/release/avalancheup-aws --help
@@ -24,3 +25,5 @@ cargo build \
 ./target/release/avalanched-aws --help
 ./target/release/avalanched-aws backup upload --help
 ./target/release/avalanched-aws backup download --help
+
+./target/release/avalanched-aws-lite --help
