@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "avalanched",
     "avalanchego",
     "bin/avalanched-aws",
     "bin/avalancheup-aws",
