@@ -1,9 +1,10 @@
 [workspace]
 members = [
-    "avalanched",
     "avalanchego",
     "bin/avalanched-aws",
+    "bin/avalanched-aws-lite",
     "bin/avalancheup-aws",
     "coreth",
+    "infra-aws",
     "subnet-evm"
 ]
