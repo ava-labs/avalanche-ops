@@ -1,6 +1,6 @@
 [package]
 name = "avalancheup-aws"
-version = "0.0.9-pre"
+version = "0.0.9"
 edition = "2021"
 
 [[bin]]
