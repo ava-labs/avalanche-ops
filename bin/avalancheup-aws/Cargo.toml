@@ -11,12 +11,12 @@ path = "src/main.rs"
 avalanche-sdk = { version = "0.0.5" }
 avalanche-types = { version = "0.0.11", features = ["jsonrpc", "metrics"] }
 avalanche-utils = { version = "0.0.3", features = ["full"] }
-avalanchego = { path = "../avalanchego" }
+avalanchego = { path = "../../avalanchego" }
 aws-sdk-cloudformation = "0.14.0"
 aws-sdk-manager = { version = "0.0.3" }
 aws-sdk-s3 = "0.14.0"
 clap = { version = "3.2.6", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
-coreth = { path = "../coreth" }
+coreth = { path = "../../coreth" }
 crossterm = "0.23.2"
 dialoguer = "0.10.1"
 env_logger = "0.9.0"
@@ -27,7 +27,7 @@ serde = { version = "1.0.137", features = ["derive"] }
 serde_json = "1.0.81"
 serde_yaml = "0.8.24"
 signal-hook = "0.3.14"
-subnet-evm = { path = "../subnet-evm" }
+subnet-evm = { path = "../../subnet-evm" }
 tokio = { version = "1.19.2", features = ["full"] }
 
 [dev-dependencies]

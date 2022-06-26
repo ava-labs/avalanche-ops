@@ -11,8 +11,8 @@ path = "src/main.rs"
 avalanche-sdk = { version = "0.0.5", features = ["cloudwatch"] }
 avalanche-types = { version = "0.0.11", features = ["jsonrpc", "metrics"] }
 avalanche-utils = { version = "0.0.3", features = ["full"] }
-avalanchego = { path = "../avalanchego" }
-avalancheup-aws = { path = "../avalancheup-aws" }
+avalanchego = { path = "../../avalanchego" }
+avalancheup-aws = { path = "../../bin/avalancheup-aws" }
 aws-sdk-cloudwatch = "0.14.0"
 aws-sdk-manager = { version = "0.0.3" }
 aws-sdk-s3 = "0.14.0"
@@ -20,4 +20,4 @@ clap = { version = "3.2.6", features = ["cargo", "derive"] } # https://github.co
 env_logger = "0.9.0"
 log = "0.4.17"
 tempfile = "3.3.0"
-tokio = { version = "1.18.2", features = ["full"] }
+tokio = { version = "1.19.2", features = ["full"] }
