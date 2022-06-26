@@ -207,17 +207,35 @@ cd ${HOME}/avalanche-ops
 See https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config for more.
 
 ```bash
-# download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # or cross-compile on your machine using docker
 # ./scripts/build.x86_64-linux-musl.sh
+
+##
+# if compiled locally
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.13
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.13
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --coreth-metrics-enabled \
 --coreth-continuous-profiler-enabled \
 --coreth-offline-pruning-enabled \
