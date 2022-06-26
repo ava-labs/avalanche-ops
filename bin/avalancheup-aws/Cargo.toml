@@ -13,7 +13,7 @@ avalanche-types = { version = "0.0.11", features = ["jsonrpc", "metrics"] }
 avalanche-utils = { version = "0.0.3", features = ["full"] }
 avalanchego = { path = "../../avalanchego" }
 aws-sdk-cloudformation = "0.14.0"
-aws-sdk-manager = { version = "0.0.3" }
+aws-sdk-manager = { version = "0.0.4" }
 aws-sdk-s3 = "0.14.0"
 clap = { version = "3.2.6", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 coreth = { path = "../../coreth" }

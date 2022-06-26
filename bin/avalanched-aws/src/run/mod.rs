@@ -16,7 +16,14 @@ use avalanche_types::{
     metrics::avalanchego as avalanchego_metrics, node,
 };
 use avalanche_utils::{bash, compress, random};
-use aws_sdk_manager::{self, cloudwatch, ec2, envelope, kms, s3};
+use aws_sdk_manager::{
+    self, cloudwatch, ec2,
+    kms::{
+        self,
+        envelope::{self, Envelope},
+    },
+    s3,
+};
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use log::{info, warn};
@@ -169,11 +176,11 @@ pub async fn execute(log_level: &str) {
         panic!("'AVALANCHE_DATA_VOLUME_PATH' tag not found")
     }
 
-    let envelope = envelope::Envelope::new(
-        Some(kms_manager),
-        Some(kms_cmk_arn),
-        "avalanche-ops".to_string(),
-    );
+    let envelope = Envelope {
+        kms_manager,
+        kms_key_id: kms_cmk_arn,
+        aad_tag: "avalanche-ops".to_string(),
+    };
 
     if !Path::new(&avalanche_bin_path).exists() {
         info!("STEP: downloading avalanche binary from S3");
@@ -218,13 +225,13 @@ pub async fn execute(log_level: &str) {
         .expect("failed s3::spawn_list_objects");
         info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
-            let s3_key = obj.key().expect("unexpected None s3 object");
+            let s3_key = obj.key().expect("unexpected None s3 object").to_string();
             let tmp_path = random::tmp_path(15, None).unwrap();
-            s3::spawn_get_object(s3_manager.clone(), &s3_bucket, s3_key, &tmp_path)
+            s3::spawn_get_object(s3_manager.clone(), &s3_bucket, &s3_key, &tmp_path)
                 .await
                 .expect("failed s3::spawn_get_object");
 
-            let file_name = extract_filename(s3_key);
+            let file_name = extract_filename(&s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
             compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
 
@@ -377,12 +384,12 @@ pub async fn execute(log_level: &str) {
             s3_manager.clone(),
             &tmp_encrypted_path,
             &s3_bucket,
-            format!(
+            &format!(
                 "{}/{}.key.zstd.seal_aes_256.encrypted",
                 avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
                 instance_id
             )
-            .as_str(),
+            .to_string(),
         )
         .await
         .expect("failed s3::spawn_put_object");
@@ -934,8 +941,8 @@ async fn publish_node_info_ready_loop(
         s3::spawn_put_object(
             s3_manager.clone(),
             &tmp_path,
-            s3_bucket.as_str(),
-            s3_key.as_str(),
+            &s3_bucket.clone(),
+            &s3_key.clone(),
         )
         .await
         .expect("failed s3::spawn_put_object");
@@ -1058,9 +1065,9 @@ async fn check_node_update_loop(
         let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         s3::spawn_get_object(
                     s3_manager.clone(),
-                    &s3_bucket,
-                    &avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.to_string()).encode(),
-                    &tmp_avalanche_bin_compressed_path,
+                    s3_bucket.clone().as_ref().to_string(),
+                    avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id.to_string()).encode(),
+                      tmp_avalanche_bin_compressed_path.clone(),
                 )
                 .await
                 .expect("failed s3::spawn_get_object");
@@ -1091,7 +1098,7 @@ async fn check_node_update_loop(
         info!("STEP: downloading plugins from S3 (if any) to overwrite");
         let objects = s3::spawn_list_objects(
             s3_manager.clone(),
-            &s3_bucket,
+            s3_bucket.clone().as_ref().to_string(),
             Some(s3::append_slash(
                 &avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(
                     id.to_string(),
@@ -1104,13 +1111,18 @@ async fn check_node_update_loop(
 
         info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
-            let s3_key = obj.key().expect("unexpected None s3 object");
+            let s3_key = obj.key().expect("unexpected None s3 object").to_string();
             let tmp_path = random::tmp_path(15, None).unwrap();
-            s3::spawn_get_object(s3_manager.clone(), &s3_bucket, s3_key, &tmp_path)
-                .await
-                .expect("failed s3::spawn_get_object");
+            s3::spawn_get_object(
+                s3_manager.clone(),
+                s3_bucket.clone().as_ref().to_string(),
+                s3_key.clone(),
+                tmp_path.clone(),
+            )
+            .await
+            .expect("failed s3::spawn_get_object");
 
-            let file_name = extract_filename(s3_key);
+            let file_name = extract_filename(&s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
             compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
 
