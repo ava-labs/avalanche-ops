@@ -2,10 +2,11 @@
 name = "coreth"
 version = "0.0.1"
 edition = "2021"
+rust-version = "1.62"
 
 [dependencies]
 log = "0.4.17"
-serde = { version = "1.0.137", features = ["derive"] }
+serde = { version = "1.0.138", features = ["derive"] }
 serde_json = "1.0.82"
 
 [dev-dependencies]

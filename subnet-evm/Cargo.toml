@@ -2,12 +2,13 @@
 name = "subnet-evm"
 version = "0.0.1"
 edition = "2021"
+rust-version = "1.62"
 
 [dependencies]
-avalanche-utils = { version = "0.0.4", features = ["full"] }
+avalanche-utils = { version = "0.0.6", features = ["full"] }
 log = "0.4.17"
 num-bigint = "0.4.3"
-serde = { version = "1.0.137", features = ["derive"] }
+serde = { version = "1.0.138", features = ["derive"] }
 serde_json = "1.0.82"
 
 [dev-dependencies]
