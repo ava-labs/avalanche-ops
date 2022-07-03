@@ -15,7 +15,7 @@ use avalanche_types::{
     constants, genesis as avalanchego_genesis, ids, key::cert,
     metrics::avalanchego as avalanchego_metrics, node,
 };
-use avalanche_utils::{bash, compress, random};
+use avalanche_utils::{bash, random};
 use aws_sdk_manager::{
     self, cloudwatch, ec2,
     kms::{
@@ -195,10 +195,10 @@ pub async fn execute(log_level: &str) {
         .await
         .expect("failed s3::spawn_get_object");
 
-        compress::unpack_file(
+        compress_manager::unpack_file(
             &tmp_avalanche_bin_compressed_path,
             &avalanche_bin_path,
-            compress::Decoder::Zstd,
+            compress_manager::Decoder::Zstd,
         )
         .expect("failed unpack_file avalanche_bin_compressed_path");
 
@@ -233,7 +233,8 @@ pub async fn execute(log_level: &str) {
 
             let file_name = extract_filename(&s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
-            compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
+            compress_manager::unpack_file(&tmp_path, &file_path, compress_manager::Decoder::Zstd)
+                .unwrap();
 
             let f = File::open(file_path).expect("failed to open plugin file");
             f.set_permissions(PermissionsExt::from_mode(0o777))
@@ -365,10 +366,10 @@ pub async fn execute(log_level: &str) {
         let tmp_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
         let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
 
-        compress::pack_file(
+        compress_manager::pack_file(
             &tls_key_path,
             &tmp_compressed_path,
-            compress::Encoder::Zstd(3),
+            compress_manager::Encoder::Zstd(3),
         )
         .expect("failed pack_file tls_key_path");
 
@@ -471,7 +472,7 @@ pub async fn execute(log_level: &str) {
             let db_backup_s3_region = aws_resources.db_backup_s3_region.clone().unwrap();
             let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
             let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
-            let dec = compress::DirDecoder::new_from_file_name(&db_backup_s3_key).unwrap();
+            let dec = compress_manager::DirDecoder::new_from_file_name(&db_backup_s3_key).unwrap();
             info!(
                 "STEP: downloading database backup file 's3://{}/{}' [{}] in region {}",
                 db_backup_s3_bucket,
@@ -504,8 +505,12 @@ pub async fn execute(log_level: &str) {
             .await
             .expect("failed s3::spawn_get_object");
 
-            compress::unpack_directory(&download_path, &spec.avalanchego_config.db_dir, dec)
-                .unwrap();
+            compress_manager::unpack_directory(
+                &download_path,
+                &spec.avalanchego_config.db_dir,
+                dec,
+            )
+            .unwrap();
 
             info!("removing downloaded file {} after unpack", download_path);
             fs::remove_file(download_path).expect("failed fs::remove_file");
@@ -1077,10 +1082,10 @@ async fn check_node_update_loop(
         warn!("stopped avalanche.service before unpack...");
         sleep(Duration::from_secs(10)).await;
 
-        compress::unpack_file(
+        compress_manager::unpack_file(
             &tmp_avalanche_bin_compressed_path,
             avalanche_bin_path.as_str(),
-            compress::Decoder::Zstd,
+            compress_manager::Decoder::Zstd,
         )
         .expect("failed unpack_file avalanche_bin_compressed_path");
 
@@ -1124,7 +1129,8 @@ async fn check_node_update_loop(
 
             let file_name = extract_filename(&s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
-            compress::unpack_file(&tmp_path, &file_path, compress::Decoder::Zstd).unwrap();
+            compress_manager::unpack_file(&tmp_path, &file_path, compress_manager::Decoder::Zstd)
+                .unwrap();
 
             let f = File::open(file_path).expect("failed to open plugin file");
             f.set_permissions(PermissionsExt::from_mode(0o777))
@@ -1157,20 +1163,20 @@ async fn print_backup_commands(
 
         println!("[TO BACK UP DATA] /usr/local/bin/avalanched backup upload --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
             s3_region,
-            compress::DirEncoder::TarGzip.id(),
+            compress_manager::DirEncoder::TarGzip.id(),
             db_dir,
             db_dir_network,
             &s3_bucket,
             avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
-            compress::DirEncoder::TarGzip.ext(),
+            compress_manager::DirEncoder::TarGzip.ext(),
         );
 
         println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched backup download --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
             s3_region,
-            compress::DirDecoder::TarGzip.id(),
+            compress_manager::DirDecoder::TarGzip.id(),
             s3_bucket,
             avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
-            compress::DirDecoder::TarGzip.ext(),
+            compress_manager::DirDecoder::TarGzip.ext(),
             db_dir,
         );
 

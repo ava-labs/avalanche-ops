@@ -1,6 +1,6 @@
 use std::{fs, io, path::Path, sync::Arc};
 
-use avalanche_utils::{compress, random};
+use avalanche_utils::random;
 use aws_sdk_manager::{self, s3};
 use clap::{Arg, Command};
 use log::info;
@@ -40,11 +40,11 @@ pub fn subcommand() -> Command<'static> {
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .possible_value(compress::DirDecoder::TarGzip.id())
-                .possible_value(compress::DirDecoder::ZipGzip.id())
-                .possible_value(compress::DirDecoder::TarZstd.id())
-                .possible_value(compress::DirDecoder::ZipZstd.id())
-                .default_value(compress::DirDecoder::TarGzip.id()),
+                .possible_value(compress_manager::DirDecoder::TarGzip.id())
+                .possible_value(compress_manager::DirDecoder::ZipGzip.id())
+                .possible_value(compress_manager::DirDecoder::TarZstd.id())
+                .possible_value(compress_manager::DirDecoder::ZipZstd.id())
+                .default_value(compress_manager::DirDecoder::TarGzip.id()),
         )
         .arg(
             Arg::new("S3_BUCKET")
@@ -101,7 +101,7 @@ pub fn execute(
         .unwrap();
     let s3_manager = s3::Manager::new(&shared_config);
 
-    let dec = compress::DirDecoder::new(decompression_unarchive_method)?;
+    let dec = compress_manager::DirDecoder::new(decompression_unarchive_method)?;
 
     let parent_dir = Path::new(&unpack_dir)
         .parent()
@@ -125,7 +125,7 @@ pub fn execute(
         unpack_dir,
         dec.to_string()
     );
-    compress::unpack_directory(tmp_file_path, unpack_dir, dec)?;
+    compress_manager::unpack_directory(tmp_file_path, unpack_dir, dec)?;
     fs::remove_file(tmp_file_path)?;
 
     info!("'avalanched backup download' all success!");

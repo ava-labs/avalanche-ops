@@ -4,6 +4,8 @@ use std::{
     sync::Arc,
 };
 
+use avalanche_utils::random;
+use aws_sdk_manager::{self, s3};
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -12,10 +14,6 @@ use crossterm::{
 use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 use tokio::runtime::Runtime;
-
-use avalanche_utils::{compress, random};
-use avalancheup_aws;
-use aws_sdk_manager::{self, s3};
 
 pub const NAME: &str = "update-artifacts";
 
@@ -121,11 +119,11 @@ pub fn execute(
 
     // compress as these will be decompressed by "avalanched"
     let tmp_avalanche_bin_compressed_path =
-        random::tmp_path(15, Some(compress::Encoder::Zstd(3).ext())).unwrap();
-    compress::pack_file(
+        random::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+    compress_manager::pack_file(
         install_artifacts_avalanche_bin,
         &tmp_avalanche_bin_compressed_path,
-        compress::Encoder::Zstd(3),
+        compress_manager::Encoder::Zstd(3),
     )
     .expect("failed pack_file install_artifacts_avalanche_bin");
     rt.block_on(s3_manager.put_object(
@@ -145,11 +143,11 @@ pub fn execute(
             let file_name = file_name.as_os_str().to_str().unwrap();
 
             let tmp_plugin_compressed_path =
-                random::tmp_path(15, Some(compress::Encoder::Zstd(3).ext())).unwrap();
-            compress::pack_file(
+                random::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+            compress_manager::pack_file(
                 file_path,
                 &tmp_plugin_compressed_path,
-                compress::Encoder::Zstd(3),
+                compress_manager::Encoder::Zstd(3),
             )
             .unwrap();
 
@@ -165,7 +163,7 @@ pub fn execute(
                         "{}/{}{}",
                         &avalancheup_aws::StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(spec.id.clone()).encode(),
                         file_name,
-                        compress::Encoder::Zstd(3).ext()
+                        compress_manager::Encoder::Zstd(3).ext()
                     )),
                 ),
             )
