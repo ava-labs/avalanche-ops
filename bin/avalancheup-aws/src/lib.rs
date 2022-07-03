@@ -9,7 +9,7 @@ use std::{
 };
 
 use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
-use avalanche_utils::{compress, prefix, system_id, time};
+use avalanche_utils::{prefix, system_id, time};
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
 use lazy_static::lazy_static;
@@ -116,13 +116,14 @@ impl Node {
                 ));
             }
         };
-        let compressed = compress::pack(&d, compress::Encoder::ZstdBase58(3))?;
+        let compressed = compress_manager::pack(&d, compress_manager::Encoder::ZstdBase58(3))?;
         Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
     }
 
     /// Reverse of "compress_base64".
     pub fn decompress_base58(d: String) -> io::Result<Self> {
-        let decompressed = compress::unpack(d.as_bytes(), compress::Decoder::ZstdBase58)?;
+        let decompressed =
+            compress_manager::unpack(d.as_bytes(), compress_manager::Decoder::ZstdBase58)?;
         serde_yaml::from_slice(&decompressed).map_err(|e| {
             return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
         })

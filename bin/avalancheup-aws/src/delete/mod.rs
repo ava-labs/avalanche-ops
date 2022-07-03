@@ -8,6 +8,7 @@ use std::{
 };
 
 use aws_sdk_cloudformation::model::StackStatus;
+use aws_sdk_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -16,9 +17,6 @@ use crossterm::{
 use dialoguer::{theme::ColorfulTheme, Select};
 use log::info;
 use tokio::runtime::Runtime;
-
-use avalanche_utils::compress;
-use aws_sdk_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
 
 pub const NAME: &str = "delete";
 
@@ -176,8 +174,11 @@ pub fn execute(
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
-        let ec2_key_path_compressed =
-            format!("{}{}", ec2_key_path, compress::Encoder::Zstd(3).ext());
+        let ec2_key_path_compressed = format!(
+            "{}{}",
+            ec2_key_path,
+            compress_manager::Encoder::Zstd(3).ext()
+        );
         if Path::new(ec2_key_path_compressed.as_str()).exists() {
             fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
         }

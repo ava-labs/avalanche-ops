@@ -1,6 +1,6 @@
 use std::{fs, io, path::Path, sync::Arc};
 
-use avalanche_utils::{compress, random};
+use avalanche_utils::random;
 use aws_sdk_manager::{self, s3};
 use clap::{Arg, Command};
 use log::info;
@@ -41,15 +41,15 @@ pub fn subcommand() -> Command<'static> {
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .possible_value(compress::DirEncoder::TarGzip.id())
-                .possible_value(compress::DirEncoder::ZipGzip.id())
-                .possible_value(compress::DirEncoder::TarZstd(1).id())
-                .possible_value(compress::DirEncoder::TarZstd(2).id())
-                .possible_value(compress::DirEncoder::TarZstd(3).id())
-                .possible_value(compress::DirEncoder::ZipZstd(1).id())
-                .possible_value(compress::DirEncoder::ZipZstd(2).id())
-                .possible_value(compress::DirEncoder::ZipZstd(3).id())
-                .default_value(compress::DirEncoder::TarGzip.id()),
+                .possible_value(compress_manager::DirEncoder::TarGzip.id())
+                .possible_value(compress_manager::DirEncoder::ZipGzip.id())
+                .possible_value(compress_manager::DirEncoder::TarZstd(1).id())
+                .possible_value(compress_manager::DirEncoder::TarZstd(2).id())
+                .possible_value(compress_manager::DirEncoder::TarZstd(3).id())
+                .possible_value(compress_manager::DirEncoder::ZipZstd(1).id())
+                .possible_value(compress_manager::DirEncoder::ZipZstd(2).id())
+                .possible_value(compress_manager::DirEncoder::ZipZstd(3).id())
+                .default_value(compress_manager::DirEncoder::TarGzip.id()),
         )
         .arg(
             Arg::new("PACK_DIR")
@@ -106,14 +106,14 @@ pub fn execute(
         .unwrap();
     let s3_manager = s3::Manager::new(&shared_config);
 
-    let enc = compress::DirEncoder::new(archive_compression_method)?;
+    let enc = compress_manager::DirEncoder::new(archive_compression_method)?;
     info!("STEP: backup {} with {}", pack_dir, enc.to_string());
     let parent_dir = Path::new(&pack_dir)
         .parent()
         .expect("unexpected None parent dir");
     let tmp_file_path = parent_dir.join(random::string(10));
     let tmp_file_path = tmp_file_path.as_path().as_os_str().to_str().unwrap();
-    compress::pack_directory(pack_dir, tmp_file_path, enc)?;
+    compress_manager::pack_directory(pack_dir, tmp_file_path, enc)?;
 
     info!("STEP: upload output {} to S3", tmp_file_path);
     rt.block_on(s3_manager.put_object(
