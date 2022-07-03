@@ -13,7 +13,7 @@ use std::{
 };
 
 use avalanche_sdk::health as api_health;
-use avalanche_utils::{home_dir, random};
+use avalanche_utils::home_dir;
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_manager::{
     self, cloudformation, ec2,
@@ -217,7 +217,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     // compress as these will be decompressed by "avalanched"
     let tmp_avalanche_bin_compressed_path =
-        random::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+        random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
     compress_manager::pack_file(
         &spec.install_artifacts.avalanchego_bin,
         &tmp_avalanche_bin_compressed_path,
@@ -244,7 +244,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             let file_name = file_name.as_os_str().to_str().unwrap();
 
             let tmp_plugin_compressed_path =
-                random::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+                random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext()))
+                    .unwrap();
             compress_manager::pack_file(
                 file_path,
                 &tmp_plugin_compressed_path,
@@ -323,7 +324,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
 
         let tmp_compressed_path =
-            random::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+            random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
         compress_manager::pack_file(
             ec2_key_path.as_str(),
             &tmp_compressed_path,
@@ -331,7 +332,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         )
         .unwrap();
 
-        let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
+        let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         rt.block_on(envelope.seal_aes_256_file(
             Arc::new(tmp_compressed_path),
             Arc::new(tmp_encrypted_path.clone()),

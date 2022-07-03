@@ -1,7 +1,6 @@
 use std::{fs, io, path::Path, sync::Arc};
 
-use avalanche_utils::random;
-use aws_sdk_manager::{self, s3};
+use aws_sdk_manager::s3;
 use clap::{Arg, Command};
 use log::info;
 use tokio::runtime::Runtime;
@@ -106,7 +105,7 @@ pub fn execute(
     let parent_dir = Path::new(&unpack_dir)
         .parent()
         .expect("unexpected None parent dir");
-    let tmp_file_path = parent_dir.join(random::string(10));
+    let tmp_file_path = parent_dir.join(random_manager::string(10));
     let tmp_file_path = tmp_file_path.as_path().as_os_str().to_str().unwrap();
     info!(
         "STEP: downloading from S3 {} {} to {}",

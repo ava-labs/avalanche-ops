@@ -4,8 +4,8 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-avalanche-types = { version = "0.0.18", features = [] }
-avalanche-utils = { version = "0.0.7", features = ["full"] }
+avalanche-types = { version = "0.0.19", features = [] }
+avalanche-utils = { version = "0.0.8", features = ["full"] }
 log = "0.4.17"
 serde = { version = "1.0.138", features = ["derive"] }
 serde_json = "1.0.82"
@@ -13,5 +13,6 @@ serde_json = "1.0.82"
 [dev-dependencies]
 env_logger = "0.9.0"
 num-bigint = "0.4.3"
+random-manager = "0.0.1"
 rust-embed = "6.4.0"
 tempfile = "3.3.0"

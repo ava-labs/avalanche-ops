@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use avalanche_utils::random;
 use aws_sdk_manager::{self, s3};
 use clap::{Arg, Command};
 use crossterm::{
@@ -119,7 +118,7 @@ pub fn execute(
 
     // compress as these will be decompressed by "avalanched"
     let tmp_avalanche_bin_compressed_path =
-        random::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+        random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
     compress_manager::pack_file(
         install_artifacts_avalanche_bin,
         &tmp_avalanche_bin_compressed_path,
@@ -143,7 +142,8 @@ pub fn execute(
             let file_name = file_name.as_os_str().to_str().unwrap();
 
             let tmp_plugin_compressed_path =
-                random::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+                random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext()))
+                    .unwrap();
             compress_manager::pack_file(
                 file_path,
                 &tmp_plugin_compressed_path,

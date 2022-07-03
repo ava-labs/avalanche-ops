@@ -983,7 +983,6 @@ impl Spec {
 
 #[test]
 fn test_spec() {
-    use avalanche_utils::random;
     use std::fs;
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -998,7 +997,7 @@ fn test_spec() {
     let avalanchego_bin = f.path().to_str().unwrap();
 
     let tmp_dir = tempfile::tempdir().unwrap();
-    let plugin_path = tmp_dir.path().join(random::string(10));
+    let plugin_path = tmp_dir.path().join(random_manager::string(10));
     let mut f = File::create(&plugin_path).unwrap();
     let ret = f.write_all(&vec![0]);
     assert!(ret.is_ok());
@@ -1011,7 +1010,7 @@ fn test_spec() {
         info!("read_dir: {:?}", path);
     }
 
-    let id = random::string(10);
+    let id = random_manager::string(10);
     let bucket = format!("test-{}", time::timestamp(8));
 
     let contents = format!(
@@ -1358,11 +1357,10 @@ impl StorageNamespace {
 
 #[test]
 fn test_storage_path() {
-    use avalanche_utils::random;
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let id = random::string(10);
-    let instance_id = random::string(5);
+    let id = random_manager::string(10);
+    let instance_id = random_manager::string(5);
     let node_id = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg";
     let node_ip = "1.2.3.4";
 

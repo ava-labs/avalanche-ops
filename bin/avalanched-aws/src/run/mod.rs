@@ -15,7 +15,6 @@ use avalanche_types::{
     constants, genesis as avalanchego_genesis, ids, key::cert,
     metrics::avalanchego as avalanchego_metrics, node,
 };
-use avalanche_utils::{bash, random};
 use aws_sdk_manager::{
     self, cloudwatch, ec2,
     kms::{
@@ -185,7 +184,8 @@ pub async fn execute(log_level: &str) {
     if !Path::new(&avalanche_bin_path).exists() {
         info!("STEP: downloading avalanche binary from S3");
         let s3_key = avalancheup_aws::StorageNamespace::AvalancheBinCompressed(id.clone()).encode();
-        let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+        let tmp_avalanche_bin_compressed_path =
+            random_manager::tmp_path(15, Some(".zstd")).unwrap();
         s3::spawn_get_object(
             s3_manager.clone(),
             &s3_bucket,
@@ -226,7 +226,7 @@ pub async fn execute(log_level: &str) {
         info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
             let s3_key = obj.key().expect("unexpected None s3 object").to_string();
-            let tmp_path = random::tmp_path(15, None).unwrap();
+            let tmp_path = random_manager::tmp_path(15, None).unwrap();
             s3::spawn_get_object(s3_manager.clone(), &s3_bucket, &s3_key, &tmp_path)
                 .await
                 .expect("failed s3::spawn_get_object");
@@ -244,7 +244,7 @@ pub async fn execute(log_level: &str) {
     }
 
     info!("STEP: downloading avalanche-ops::Spec from S3");
-    let tmp_spec_file_path = random::tmp_path(15, Some(".yaml")).unwrap();
+    let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml")).unwrap();
     s3::spawn_get_object(
         s3_manager.clone(),
         &s3_bucket,
@@ -363,8 +363,8 @@ pub async fn execute(log_level: &str) {
             .await
             .expect("failed s3::spawn_put_object");
 
-        let tmp_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
-        let tmp_encrypted_path = random::tmp_path(15, Some(".zstd.encrypted")).unwrap();
+        let tmp_compressed_path = random_manager::tmp_path(15, Some(".zstd")).unwrap();
+        let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
 
         compress_manager::pack_file(
             &tls_key_path,
@@ -461,7 +461,7 @@ pub async fn execute(log_level: &str) {
                 spec.coreth_config.clone(),
             );
             let tmp_path =
-                random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+                random_manager::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
             node_info.sync(tmp_path.clone()).unwrap();
             s3::spawn_put_object(s3_manager.clone(), &tmp_path, &s3_bucket, &s3_key)
                 .await
@@ -492,7 +492,7 @@ pub async fn execute(log_level: &str) {
             let download_path = format!(
                 "{}/{}{}",
                 spec.avalanchego_config.db_dir,
-                random::string(10),
+                random_manager::string(10),
                 dec.ext()
             );
 
@@ -532,7 +532,8 @@ pub async fn execute(log_level: &str) {
             spec.avalanchego_config.clone(),
             spec.coreth_config.clone(),
         );
-        let tmp_path = random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+        let tmp_path =
+            random_manager::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
         node_info.sync(tmp_path.clone()).unwrap();
 
         s3::spawn_put_object(
@@ -635,7 +636,7 @@ pub async fn execute(log_level: &str) {
         && !Path::new(&spec.avalanchego_config.clone().genesis.unwrap()).exists()
     {
         info!("STEP: downloading genesis file from S3 (updated from other anchor nodes)");
-        let tmp_genesis_path = random::tmp_path(15, Some(".json")).unwrap();
+        let tmp_genesis_path = random_manager::tmp_path(15, Some(".json")).unwrap();
         s3::spawn_get_object(
             s3_manager.clone(),
             &s3_bucket,
@@ -736,7 +737,7 @@ pub async fn execute(log_level: &str) {
         "STEP: saving coreth evm config file to chain config dir {}",
         chain_config_dir
     );
-    let tmp_coreth_config_path = random::tmp_path(15, Some(".json")).unwrap();
+    let tmp_coreth_config_path = random_manager::tmp_path(15, Some(".json")).unwrap();
     let chain_config_dir = spec.avalanchego_config.clone().chain_config_dir;
     let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
     info!(
@@ -825,11 +826,13 @@ WantedBy=multi-user.target",
         "/etc/systemd/system/avalanche.service",
     )
     .expect("failed to copy /etc/systemd/system/avalanche.service");
-    bash::run("sudo systemctl daemon-reload").expect("failed systemctl daemon-reload command");
-    bash::run("sudo systemctl disable avalanche.service")
+    command_manager::run("sudo systemctl daemon-reload")
+        .expect("failed systemctl daemon-reload command");
+    command_manager::run("sudo systemctl disable avalanche.service")
         .expect("failed systemctl disable command");
-    bash::run("sudo systemctl enable avalanche.service").expect("failed systemctl enable command");
-    bash::run("sudo systemctl restart --no-block avalanche.service")
+    command_manager::run("sudo systemctl enable avalanche.service")
+        .expect("failed systemctl enable command");
+    command_manager::run("sudo systemctl restart --no-block avalanche.service")
         .expect("failed systemctl restart command");
 
     // this can take awhile if loaded from backups or syncing from peers
@@ -849,7 +852,7 @@ WantedBy=multi-user.target",
         };
         sleep(Duration::from_secs(30)).await;
 
-        let out = bash::run("sudo tail -10 /var/log/avalanche/avalanche.log")
+        let out = command_manager::run("sudo tail -10 /var/log/avalanche/avalanche.log")
             .expect("failed 'tail -10 /var/log/avalanche/avalanche.log'");
         println!(
             "\n'/var/log/avalanche/avalanche.log' stdout:\n\n{}\n",
@@ -858,8 +861,9 @@ WantedBy=multi-user.target",
         println!("'/var/log/avalanche/avalanche.log' stderr:\n\n{}\n", out.1);
 
         println!();
-        let out = bash::run("sudo journalctl -u avalanche.service --lines=10 --no-pager")
-            .expect("failed 'journalctl -u avalanche.service --lines=10 --no-pager'");
+        let out =
+            command_manager::run("sudo journalctl -u avalanche.service --lines=10 --no-pager")
+                .expect("failed 'journalctl -u avalanche.service --lines=10 --no-pager'");
         println!("\n'avalanche.service' stdout:\n\n{}\n", out.0);
         println!("'avalanche.service' stderr:\n\n{}\n", out.1);
     }
@@ -940,7 +944,8 @@ async fn publish_node_info_ready_loop(
             node_info.local_node.kind
         );
 
-        let tmp_path = random::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
+        let tmp_path =
+            random_manager::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
         node_info.sync(tmp_path.clone()).unwrap();
 
         s3::spawn_put_object(
@@ -1067,7 +1072,8 @@ async fn check_node_update_loop(
         // can't replace the process itself...
 
         info!("STEP: downloading avalanche binary from S3");
-        let tmp_avalanche_bin_compressed_path = random::tmp_path(15, Some(".zstd")).unwrap();
+        let tmp_avalanche_bin_compressed_path =
+            random_manager::tmp_path(15, Some(".zstd")).unwrap();
         s3::spawn_get_object(
                     s3_manager.clone(),
                     s3_bucket.clone().as_ref().to_string(),
@@ -1078,7 +1084,8 @@ async fn check_node_update_loop(
                 .expect("failed s3::spawn_get_object");
 
         warn!("stopping avalanche.service before unpack...");
-        bash::run("sudo systemctl stop avalanche.service").expect("failed systemctl stop command");
+        command_manager::run("sudo systemctl stop avalanche.service")
+            .expect("failed systemctl stop command");
         warn!("stopped avalanche.service before unpack...");
         sleep(Duration::from_secs(10)).await;
 
@@ -1117,7 +1124,7 @@ async fn check_node_update_loop(
         info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
             let s3_key = obj.key().expect("unexpected None s3 object").to_string();
-            let tmp_path = random::tmp_path(15, None).unwrap();
+            let tmp_path = random_manager::tmp_path(15, None).unwrap();
             s3::spawn_get_object(
                 s3_manager.clone(),
                 s3_bucket.clone().as_ref().to_string(),
