@@ -335,7 +335,7 @@ pub struct Machine {
 pub struct InstallArtifacts {
     /// "avalanched" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
-    /// "install/avalanched" to be shared with remote machines.
+    /// "bootstrap/install/avalanched" to be shared with remote machines.
     /// The file is NOT compressed when uploaded.
     #[serde(default)]
     pub avalanched_bin: String,
@@ -425,34 +425,45 @@ lazy_static! {
     /// Avalanche test net ("fuji") runs "c5.2xlarge"
     ///
     /// https://aws.amazon.com/ec2/instance-types/c6a/
-    /// c6a.large:   2 vCPU + 4  GiB RAM
-    /// c6a.xlarge:  4 vCPU + 8  GiB RAM
-    /// c6a.2xlarge: 8 vCPU + 16 GiB RAM
+    /// c6a.large:   2  vCPU + 4  GiB RAM
+    /// c6a.xlarge:  4  vCPU + 8  GiB RAM
+    /// c6a.2xlarge: 8  vCPU + 16 GiB RAM
+    /// c6a.4xlarge: 16 vCPU + 32 GiB RAM
+    /// c6a.8xlarge: 32 vCPU + 64 GiB RAM
     ///
     /// https://aws.amazon.com/ec2/instance-types/m6a/
-    /// m6a.large:   2 vCPU + 8  GiB RAM
-    /// m6a.xlarge:  4 vCPU + 16 GiB RAM
-    /// m6a.2xlarge: 8 vCPU + 32 GiB RAM
+    /// m6a.large:   2  vCPU + 8  GiB RAM
+    /// m6a.xlarge:  4  vCPU + 16 GiB RAM
+    /// m6a.2xlarge: 8  vCPU + 32 GiB RAM
+    /// m6a.4xlarge: 16 vCPU + 64 GiB RAM
+    /// m6a.8xlarge: 32 vCPU + 128 GiB RAM
     ///
     /// https://aws.amazon.com/ec2/instance-types/m5/
-    /// m5.large:   2 vCPU + 8  GiB RAM
-    /// m5.xlarge:  4 vCPU + 16 GiB RAM
-    /// m5.2xlarge: 8 vCPU + 32 GiB RAM
+    /// m5.large:   2  vCPU + 8  GiB RAM
+    /// m5.xlarge:  4  vCPU + 16 GiB RAM
+    /// m5.2xlarge: 8  vCPU + 32 GiB RAM
+    /// m5.4xlarge: 16 vCPU + 64 GiB RAM
+    /// m5.8xlarge: 32 vCPU + 128 GiB RAM
     ///
     /// https://aws.amazon.com/ec2/instance-types/c5/
-    /// c5.large:   2 vCPU + 4  GiB RAM
-    /// c5.xlarge:  4 vCPU + 8  GiB RAM
-    /// c5.2xlarge: 8 vCPU + 16 GiB RAM
+    /// c5.large:   2  vCPU + 4  GiB RAM
+    /// c5.xlarge:  4  vCPU + 8  GiB RAM
+    /// c5.2xlarge: 8  vCPU + 16 GiB RAM
+    /// c5.4xlarge: 16 vCPU + 32 GiB RAM
+    /// c5.9xlarge: 32 vCPU + 72 GiB RAM
     ///
     /// https://aws.amazon.com/ec2/instance-types/r5/
-    /// r5.large:   2 vCPU + 16 GiB RAM
-    /// r5.xlarge:  4 vCPU + 32 GiB RAM
-    /// r5.2xlarge: 8 vCPU + 64 GiB RAM
+    /// r5.large:   2  vCPU + 16 GiB RAM
+    /// r5.xlarge:  4  vCPU + 32 GiB RAM
+    /// r5.2xlarge: 8  vCPU + 64 GiB RAM
+    /// r5.4xlarge: 16 vCPU + 128 GiB RAM
+    /// r5.8xlarge: 32 vCPU + 256 GiB RAM
     ///
     /// https://aws.amazon.com/ec2/instance-types/t3/
-    /// t3.large:   2 vCPU + 8 GiB RAM
-    /// t3.xlarge:  4 vCPU + 16 GiB RAM
-    /// t3.2xlarge: 8 vCPU + 32 GiB RAM
+    /// t3.large:    2  vCPU + 8 GiB RAM
+    /// t3.xlarge:   4  vCPU + 16 GiB RAM
+    /// t3.2xlarge:  8  vCPU + 32 GiB RAM
+    ///
     pub static ref DEFAULT_EC2_INSTANCE_TYPES_AMD64: Vec<String> = vec![
         String::from("c6a.2xlarge"),
         String::from("m6a.2xlarge"),
@@ -1227,11 +1238,11 @@ impl StorageNamespace {
 
             StorageNamespace::GenesisFile(id) => format!("{}/genesis.json", id),
 
-            StorageNamespace::AvalanchedBin(id) => format!("{}/install/avalanched", id),
+            StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),
             StorageNamespace::AvalancheBinCompressed(id) => {
-                format!("{}/install/avalanche.zstd", id)
+                format!("{}/bootstrap/install/avalanche.zstd", id)
             }
-            StorageNamespace::PluginsDir(id) => format!("{}/install/plugins", id),
+            StorageNamespace::PluginsDir(id) => format!("{}/bootstrap/install/plugins", id),
 
             StorageNamespace::PkiKeyDir(id) => {
                 format!("{}/pki", id)
