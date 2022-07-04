@@ -14,12 +14,12 @@ use std::{
 
 use avalanche_sdk::health as api_health;
 use avalanche_utils::home_dir;
-use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
-use aws_sdk_manager::{
+use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope::Envelope},
     s3, sts,
 };
+use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use crossterm::{
@@ -89,10 +89,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let mut aws_resources = spec.aws_resources.clone().unwrap();
     let shared_config = rt
-        .block_on(aws_sdk_manager::load_config(Some(
-            aws_resources.region.clone(),
-        )))
-        .expect("failed to aws_sdk_manager::load_config");
+        .block_on(aws_manager::load_config(Some(aws_resources.region.clone())))
+        .expect("failed to aws_manager::load_config");
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();

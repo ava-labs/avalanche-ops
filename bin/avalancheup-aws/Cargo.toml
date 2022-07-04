@@ -13,8 +13,8 @@ avalanche-sdk = { version = "0.0.14" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.20", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanche-utils = { version = "0.0.11", features = ["full"] } # https://crates.io/crates/avalanche-utils
 avalanchego = { path = "../../avalanchego" }
+aws-manager = "0.0.1"
 aws-sdk-cloudformation = "0.15.0"
-aws-sdk-manager = "0.0.10"
 aws-sdk-s3 = "0.15.0"
 clap = { version = "3.2.8", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.2"

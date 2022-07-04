@@ -1,4 +1,4 @@
-use aws_sdk_manager::sts;
+use aws_manager::sts;
 use serde::{Deserialize, Serialize};
 
 /// Represents the current AWS resource status.

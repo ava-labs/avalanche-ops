@@ -1,6 +1,6 @@
 use std::{fs, io, path::Path, sync::Arc};
 
-use aws_sdk_manager::s3;
+use aws_manager::s3;
 use clap::{Arg, Command};
 use log::info;
 use tokio::runtime::Runtime;
@@ -96,7 +96,7 @@ pub fn execute(
 
     info!("STEP: loading AWS config");
     let shared_config = rt
-        .block_on(aws_sdk_manager::load_config(Some(reg.to_string())))
+        .block_on(aws_manager::load_config(Some(reg.to_string())))
         .unwrap();
     let s3_manager = s3::Manager::new(&shared_config);
 

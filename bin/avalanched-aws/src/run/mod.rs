@@ -15,7 +15,7 @@ use avalanche_types::{
     constants, genesis as avalanchego_genesis, ids, key::cert,
     metrics::avalanchego as avalanchego_metrics, node,
 };
-use aws_sdk_manager::{
+use aws_manager::{
     self, cloudwatch, ec2,
     kms::{
         self,
@@ -83,10 +83,10 @@ pub async fn execute(log_level: &str) {
     info!("fetched public ipv4 {}", public_ipv4);
 
     info!("STEP: loading AWS config");
-    let shared_config = tokio::spawn(aws_sdk_manager::load_config(Some(reg.clone())))
+    let shared_config = tokio::spawn(aws_manager::load_config(Some(reg.clone())))
         .await
-        .expect("failed spawn aws_sdk_manager::load_config")
-        .expect("failed aws_sdk_manager::load_config");
+        .expect("failed spawn aws_manager::load_config")
+        .expect("failed aws_manager::load_config");
 
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
@@ -482,10 +482,10 @@ pub async fn execute(log_level: &str) {
             );
 
             let db_backup_s3_config =
-                tokio::spawn(aws_sdk_manager::load_config(Some(db_backup_s3_region)))
+                tokio::spawn(aws_manager::load_config(Some(db_backup_s3_region)))
                     .await
                     .expect("failed spawn await")
-                    .expect("failed aws_sdk_manager::load_config");
+                    .expect("failed aws_manager::load_config");
             let db_backup_s3_manager = s3::Manager::new(&db_backup_s3_config);
 
             // do not store in "tmp", will run out of space

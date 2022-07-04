@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use aws_sdk_manager::{self, s3};
+use aws_manager::{self, s3};
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -110,10 +110,8 @@ pub fn execute(
     let rt = Runtime::new().unwrap();
     let aws_resources = spec.aws_resources.expect("unexpected None aws_resources");
     let shared_config = rt
-        .block_on(aws_sdk_manager::load_config(Some(
-            aws_resources.region.clone(),
-        )))
-        .expect("failed to aws_sdk_manager::load_config");
+        .block_on(aws_manager::load_config(Some(aws_resources.region.clone())))
+        .expect("failed to aws_manager::load_config");
     let s3_manager = s3::Manager::new(&shared_config);
 
     // compress as these will be decompressed by "avalanched"
