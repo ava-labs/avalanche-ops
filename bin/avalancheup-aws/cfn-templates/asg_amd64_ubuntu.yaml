@@ -394,29 +394,19 @@ Resources:
               EOF
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
-              TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-              INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --retry 3 -s http://169.254.169.254/latest/meta-data/instance-id)
-              ATTACHMENT_STATE="unknown"
-              until [ "$ATTACHMENT_STATE" == "attached" ]; do
-                ATTACHMENT_STATE=$(aws ec2 describe-volumes \
-                      --region ${AWS::Region} \
-                      --filters \
-                        Name=attachment.instance-id,Values=$INSTANCE_ID \
-                        Name=attachment.device,Values=/dev/xvdb \
-                      --query Volumes[].Attachments[].State \
-                      --output text)
-                sleep 5
-              done
-
-              # TODO: why device name is not "/dev/xvdb"?
-              sudo mkfs -t ext4 /dev/nvme1n1
-              mkdir -p /data
-              sudo mount /dev/nvme1n1 /data -t ext4
-              # auto remount in case of instance reboot
-              sudo echo '/dev/nvme1n1       /data   ext4    defaults,nofail 0       2' >> /etc/fstab
-              sudo mount --all
-              lsblk
-              df -h
+              # for outputs:
+              # sudo vi /var/log/cloud-init-output.log
+              # TODO: support ARM64
+              wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-mounter.x86_64-unknown-linux-gnu
+              mv ./aws-volume-mounter.x86_64-unknown-linux-gnu /tmp/aws-volume-mounter
+              chmod +x /tmp/aws-volume-mounter
+              /tmp/aws-volume-mounter \
+                --log-level=info \
+                --aws-region=${AWS::Region} \
+                --ebs-device-name=/dev/xvdb \
+                --block-device-name=/dev/nvme1n1 \
+                --filesystem-name=ext4 \
+                --mount-directory-path=/data
 
               aws s3 cp s3://${S3BucketName}/${Id}/install/avalanched /tmp/avalanched
               chmod +x /tmp/avalanched
