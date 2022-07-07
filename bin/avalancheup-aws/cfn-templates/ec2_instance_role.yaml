@@ -69,6 +69,9 @@ Resources:
                   - ec2:DescribeInstances # to fetch tags
                   - ec2:DescribeTags # to find network/resource information
                   - ec2:DescribeVolumes # to wait for volume attachment
+                  - ec2:CreateVolume # to create volume if not exists
+                  - ec2:AttachVolume
+                  - ec2:CreateTags
                 Resource: "*"
               - Effect: Allow
                 Action:

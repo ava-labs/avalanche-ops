@@ -9,6 +9,7 @@ use std::{
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
 use aws_sdk_cloudformation::model::StackStatus;
+use aws_sdk_ec2::model::Filter;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -77,6 +78,14 @@ pub fn command() -> Command<'static> {
                 .takes_value(false)
                 .allow_invalid_utf8(false),
         )
+        .arg(
+            Arg::new("DELETE_EBS_VOLUMES")
+                .long("delete-ebs-volumes")
+                .help("Enables delete orphaned EBS volumes (use with caution!)")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
 }
 
 // 50-minute
@@ -88,6 +97,7 @@ pub fn execute(
     delete_cloudwatch_log_group: bool,
     delete_s3_objects: bool,
     delete_s3_bucket: bool,
+    delete_ebs_volumes: bool,
     skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -375,6 +385,7 @@ pub fn execute(
     if delete_cloudwatch_log_group {
         // deletes the one auto-created by nodes
         thread::sleep(Duration::from_secs(2));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -386,6 +397,7 @@ pub fn execute(
 
     if delete_s3_objects {
         thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -395,13 +407,14 @@ pub fn execute(
         thread::sleep(Duration::from_secs(5));
         rt.block_on(s3_manager.delete_objects(
             Arc::new(aws_resources.s3_bucket.clone()),
-            Some(Arc::new(spec.id)),
+            Some(Arc::new(spec.id.clone())),
         ))
         .unwrap();
     }
 
     if delete_s3_bucket {
         thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -426,6 +439,43 @@ pub fn execute(
             //     s3_manager.delete_bucket(&aws_resources.s3_bucket_db_backup.clone().unwrap()),
             // )
             // .unwrap();
+        }
+    }
+
+    if delete_ebs_volumes {
+        thread::sleep(Duration::from_secs(1));
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: deleting orphaned EBS volumes\n"),
+            ResetColor
+        )?;
+        // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
+        let filters: Vec<Filter> = vec![
+            Filter::builder()
+                .set_name(Some(String::from("tag:Kind")))
+                .set_values(Some(vec![String::from("aws-volume-provisioner")]))
+                .build(),
+            Filter::builder()
+                .set_name(Some(String::from("tag:Id")))
+                .set_values(Some(vec![spec.id.clone()]))
+                .build(),
+        ];
+        let volumes = rt
+            .block_on(ec2_manager.describe_volumes(Some(filters)))
+            .unwrap();
+        info!("found {} volumes", volumes.len());
+        if !volumes.is_empty() {
+            info!("deleting {} volumes", volumes.len());
+            let ec2_cli = ec2_manager.client();
+            for v in volumes {
+                let volume_id = v.volume_id().unwrap().to_string();
+                info!("deleting EBS volume '{}'", volume_id);
+                rt.block_on(ec2_cli.delete_volume().volume_id(volume_id).send())
+                    .unwrap();
+                thread::sleep(Duration::from_secs(2));
+            }
         }
     }
 

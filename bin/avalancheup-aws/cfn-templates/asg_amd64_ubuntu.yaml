@@ -334,14 +334,6 @@ Resources:
             Ebs:
               VolumeType: gp3
               VolumeSize: 200
-          - DeviceName: "/dev/xvdb"
-            Ebs:
-              VolumeType: !Ref VolumeType
-              VolumeSize: !Ref VolumeSize
-              Iops: !Ref VolumeIops
-              Throughput: !Ref VolumeThroughput
-              DeleteOnTermination: true
-              Encrypted: true
 
         Monitoring:
           Enabled: true
@@ -355,9 +347,6 @@ Resources:
               - !Ref SecurityGroupId
         TagSpecifications:
           - ResourceType: instance
-            Tags:
-              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${Arch}" }
-          - ResourceType: volume
             Tags:
               - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${Arch}" }
 
@@ -396,13 +385,19 @@ Resources:
 
               # for outputs:
               # sudo vi /var/log/cloud-init-output.log
+              #
               # TODO: support ARM64
-              wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-mounter.x86_64-unknown-linux-gnu
-              mv ./aws-volume-mounter.x86_64-unknown-linux-gnu /tmp/aws-volume-mounter
-              chmod +x /tmp/aws-volume-mounter
-              /tmp/aws-volume-mounter \
+              wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
+              mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
+              chmod +x /tmp/aws-volume-provisioner
+              /tmp/aws-volume-provisioner \
                 --log-level=info \
-                --aws-region=${AWS::Region} \
+                --kind-tag=aws-volume-provisioner \
+                --id-tag=${Id} \
+                --volume-type=${VolumeType} \
+                --volume-size=${VolumeSize} \
+                --volume-iops=${VolumeIops} \
+                --volume-throughput=${VolumeThroughput} \
                 --ebs-device-name=/dev/xvdb \
                 --block-device-name=/dev/nvme1n1 \
                 --filesystem-name=ext4 \
@@ -419,8 +414,8 @@ Resources:
               # TODO: make this configurable?
               mkdir -p /var/log/avalanched
               chmod 755 /var/log/avalanched
-              mkdir -p /etc/pki/tls/certs
-              chmod 755 /etc/pki/tls/certs
+              mkdir -p /data/pki/tls/certs
+              chmod 755 /data/pki/tls/certs
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
 

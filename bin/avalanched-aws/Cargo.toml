@@ -14,7 +14,7 @@ avalanche-types = { version = "0.0.20", features = ["jsonrpc", "metrics"] } # ht
 avalanche-utils = { version = "0.0.11", features = ["full"] } # https://crates.io/crates/avalanche-utils
 avalanchego = { path = "../../avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = "0.0.5"
+aws-manager = "0.0.6"
 aws-sdk-cloudwatch = "0.15.0"
 aws-sdk-s3 = "0.15.0"
 clap = { version = "3.2.8", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases

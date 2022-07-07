@@ -811,7 +811,7 @@ aws ssm start-session --region {} --target {}
                         stdout(),
                         SetForegroundColor(Color::Green),
                         Print(format!(
-                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--spec-file-path {}\n",
                             exec_path.display(),
                             spec_file_path
                         )),
@@ -1091,7 +1091,7 @@ aws ssm start-session --region {} --target {}
                         stdout(),
                         SetForegroundColor(Color::Green),
                         Print(format!(
-                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--spec-file-path {}\n",
                             exec_path.display(),
                             spec_file_path
                         )),
@@ -1310,7 +1310,7 @@ aws ssm start-session --region {} --target {}
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--spec-file-path {}\n",
             exec_path.display(),
             spec_file_path
         )),
