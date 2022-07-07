@@ -1050,8 +1050,8 @@ avalanchego_config:
   http-tls-enabled: false
   staking-enabled: true
   staking-port: 9651
-  staking-tls-key-file: "/etc/pki/tls/certs/avalanched.pki.key"
-  staking-tls-cert-file: "/etc/pki/tls/certs/avalanched.pki.crt"
+  staking-tls-key-file: "/data/pki/tls/certs/avalanched.pki.key"
+  staking-tls-cert-file: "/data/pki/tls/certs/avalanched.pki.crt"
   snow-sample-size: 20
   snow-quorum-size: 15
   index-enabled: false
