@@ -332,6 +332,7 @@ Resources:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
         # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/RootDeviceStorage.html
         BlockDeviceMappings:
+          # mounted to "/dev/root"
           - DeviceName: "/dev/sda1"
             Ebs:
               VolumeType: gp3
