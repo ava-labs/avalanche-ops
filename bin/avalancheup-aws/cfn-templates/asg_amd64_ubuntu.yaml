@@ -401,7 +401,7 @@ Resources:
                 --volume-iops=${VolumeIops} \
                 --volume-throughput=${VolumeThroughput} \
                 --ebs-device-name=/dev/xvdb \
-                --block-device-name=/dev/nvme2n1 \
+                --block-device-name=/dev/nvme1n1 \
                 --filesystem-name=ext4 \
                 --mount-directory-path=/data
 
