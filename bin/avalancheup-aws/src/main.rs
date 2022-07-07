@@ -180,6 +180,7 @@ fn main() {
                 sub_matches.is_present("DELETE_CLOUDWATCH_LOG_GROUP"),
                 sub_matches.is_present("DELETE_S3_OBJECTS"),
                 sub_matches.is_present("DELETE_S3_BUCKET"),
+                sub_matches.is_present("DELETE_EBS_VOLUMES"),
                 sub_matches.is_present("SKIP_PROMPT"),
             )
             .expect("failed to execute 'delete'");

@@ -1,5 +1,5 @@
 
-**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.9**
+**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.10**
 
 # avalanche-ops-recipes
 
@@ -192,6 +192,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -250,6 +251,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -278,6 +280,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -322,6 +325,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -358,6 +362,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -390,6 +395,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -455,6 +461,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 
 # to keep s3 objects + cloudwatch logs
@@ -606,6 +613,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -639,6 +647,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -675,6 +684,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -731,6 +741,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -767,6 +778,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
+--delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
