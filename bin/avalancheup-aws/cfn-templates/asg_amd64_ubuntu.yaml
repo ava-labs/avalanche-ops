@@ -326,11 +326,13 @@ Resources:
             - !Ref ImageIdSsmParameter
         KeyName: !Ref Ec2KeyPairName
 
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/RootDeviceStorage.html
         BlockDeviceMappings:
-          - DeviceName: "/dev/xvda"
+          - DeviceName: "/dev/sda1"
             Ebs:
               VolumeType: gp3
               VolumeSize: 200
