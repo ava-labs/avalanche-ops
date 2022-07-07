@@ -38,7 +38,7 @@ For instance, to download the latest `avalanchego` release:
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.13
+VERSION=1.7.14
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
@@ -170,17 +170,32 @@ GOOS=linux GOARCH=amd64 ./scripts/build.sh
 # to set the test ID "my-test-cluster"
 # use "--spec-file-path ~/my-test-cluster.yaml"
 
-# download from https://github.com/ava-labs/avalanche-ops/releases
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level DEBUG
 
@@ -221,14 +236,14 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.13
+VERSION=1.7.14
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.13
+VERSION=1.7.14
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops

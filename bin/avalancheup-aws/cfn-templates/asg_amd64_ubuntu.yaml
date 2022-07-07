@@ -403,11 +403,11 @@ Resources:
                 --filesystem-name=ext4 \
                 --mount-directory-path=/data
 
-              aws s3 cp s3://${S3BucketName}/${Id}/install/avalanched /tmp/avalanched
+              aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
               chmod +x /tmp/avalanched
               sudo mv /tmp/avalanched /usr/local/bin/avalanched
 
-              # aws s3 cp s3://${S3BucketName}/${Id}/install/avalanche /tmp/avalanche
+              # aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche /tmp/avalanche
               # chmod +x /tmp/avalanche
               # sudo mv /tmp/avalanche /usr/local/bin/avalanche
 
