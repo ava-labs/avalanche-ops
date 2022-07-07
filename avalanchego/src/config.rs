@@ -210,9 +210,9 @@ pub const DEFAULT_STAKING_ENABLED: bool = true;
 /// NOTE: keep default value in sync with "avalanchego/config/flags.go".
 pub const DEFAULT_STAKING_PORT: u32 = 9651;
 /// MUST BE a valid path in remote host machine.
-pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/data/pki/tls/certs/avalanched.pki.key";
+pub const DEFAULT_STAKING_TLS_KEY_FILE: &str = "/data/staking.key";
 /// MUST BE a valid path in remote host machine.
-pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/data/pki/tls/certs/avalanched.pki.crt";
+pub const DEFAULT_STAKING_TLS_CERT_FILE: &str = "/data/staking.crt";
 
 /// Default snow sample size.
 /// NOTE: keep this in sync with "avalanchego/config/flags.go".

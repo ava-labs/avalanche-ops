@@ -340,6 +340,10 @@ pub async fn execute(log_level: &str) {
         .staking_tls_key_file
         .unwrap();
     let tls_key_exists = Path::new(&tls_key_path).exists();
+    info!(
+        "staking TLS key {} exists? {}",
+        tls_key_path, tls_key_exists
+    );
 
     let tls_cert_path = spec
         .avalanchego_config
@@ -347,6 +351,10 @@ pub async fn execute(log_level: &str) {
         .staking_tls_cert_file
         .unwrap();
     let tls_cert_exists = Path::new(&tls_cert_path).exists();
+    info!(
+        "staking TLS cert {} exists? {}",
+        tls_cert_path, tls_cert_exists
+    );
 
     if !tls_key_exists || !tls_cert_exists {
         info!(
