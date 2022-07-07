@@ -170,6 +170,11 @@ GOOS=linux GOARCH=amd64 ./scripts/build.sh
 # to set the test ID "my-test-cluster"
 # use "--spec-file-path ~/my-test-cluster.yaml"
 
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
 ##
 # if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
