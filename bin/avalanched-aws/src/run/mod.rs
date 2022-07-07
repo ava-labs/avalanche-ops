@@ -340,12 +340,14 @@ pub async fn execute(log_level: &str) {
         .staking_tls_key_file
         .unwrap();
     let tls_key_exists = Path::new(&tls_key_path).exists();
+
     let tls_cert_path = spec
         .avalanchego_config
         .clone()
         .staking_tls_cert_file
         .unwrap();
     let tls_cert_exists = Path::new(&tls_cert_path).exists();
+
     if !tls_key_exists || !tls_cert_exists {
         info!(
             "STEP: generating TLS certs (key exists {}, cert exists {})",
@@ -397,6 +399,11 @@ pub async fn execute(log_level: &str) {
 
         fs::remove_file(tmp_compressed_path).expect("failed fs::remove_file");
         fs::remove_file(tmp_encrypted_path).expect("failed fs::remove_file");
+    } else {
+        info!(
+            "reusing existing staking TLS certificates on '{}' and '{}'",
+            tls_key_path, tls_cert_path
+        );
     }
 
     // loads the node ID from generated/existing certs
