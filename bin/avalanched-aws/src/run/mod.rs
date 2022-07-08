@@ -334,12 +334,12 @@ pub async fn execute(log_level: &str) {
         s3_manager: s3_manager.clone(),
         s3_bucket: s3_bucket.clone(),
         s3_key_tls_key: format!(
-            "{}/{}.key",
+            "{}/{}.key.zstd.encrypted",
             avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
             instance_id
         ),
         s3_key_tls_cert: format!(
-            "{}/{}.crt",
+            "{}/{}.crt.zstd.encrypted",
             avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
             instance_id
         ),
