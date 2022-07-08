@@ -16,7 +16,7 @@ use avalanche_sdk::health as api_health;
 use avalanche_utils::home_dir;
 use aws_manager::{
     self, cloudformation, ec2,
-    kms::{self, envelope::Envelope},
+    kms::{self, envelope},
     s3, sts,
 };
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
@@ -300,7 +300,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ))
         .unwrap();
     }
-    let envelope = Envelope {
+    let envelope_manager = envelope::Manager {
         kms_manager,
         kms_key_id: aws_resources.kms_cmk_id.clone().unwrap(),
         aad_tag: "avalanche-ops".to_string(),
@@ -331,7 +331,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
 
         let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
-        rt.block_on(envelope.seal_aes_256_file(
+        rt.block_on(envelope_manager.seal_aes_256_file(
             Arc::new(tmp_compressed_path),
             Arc::new(tmp_encrypted_path.clone()),
         ))

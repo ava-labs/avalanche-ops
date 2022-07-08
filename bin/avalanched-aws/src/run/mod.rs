@@ -12,19 +12,16 @@ use avalanche_sdk::{
     metrics::{self as api_metrics, cw as api_cw},
 };
 use avalanche_types::{
-    constants, genesis as avalanchego_genesis, ids, key::cert,
-    metrics::avalanchego as avalanchego_metrics, node,
+    constants, genesis as avalanchego_genesis, metrics::avalanchego as avalanchego_metrics, node,
 };
 use aws_manager::{
     self, cloudwatch, ec2,
-    kms::{
-        self,
-        envelope::{self, Envelope},
-    },
+    kms::{self, envelope},
     s3,
 };
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
+use infra_aws::certs;
 use log::{info, warn};
 use tokio::time::sleep;
 
@@ -175,7 +172,7 @@ pub async fn execute(log_level: &str) {
         panic!("'AVALANCHE_DATA_VOLUME_PATH' tag not found")
     }
 
-    let envelope = Envelope {
+    let envelope_manager = envelope::Manager {
         kms_manager,
         kms_key_id: kms_cmk_arn,
         aad_tag: "avalanche-ops".to_string(),
@@ -332,91 +329,42 @@ pub async fn execute(log_level: &str) {
         .sync(&cloudwatch_config_file_path)
         .unwrap();
 
-    // TODO: reuse TLS certs for static node IDs
-    info!("checking TLS certs for node ID");
+    let certs_manager = certs::Manager {
+        envelope_manager,
+        s3_manager: s3_manager.clone(),
+        s3_bucket: s3_bucket.clone(),
+        s3_key_tls_key: format!(
+            "{}/{}.key",
+            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+            instance_id
+        ),
+        s3_key_tls_cert: format!(
+            "{}/{}.crt",
+            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+            instance_id
+        ),
+    };
+
     let tls_key_path = spec
         .avalanchego_config
         .clone()
         .staking_tls_key_file
         .unwrap();
-    let tls_key_exists = Path::new(&tls_key_path).exists();
-    info!(
-        "staking TLS key {} exists? {}",
-        tls_key_path, tls_key_exists
-    );
 
     let tls_cert_path = spec
         .avalanchego_config
         .clone()
         .staking_tls_cert_file
         .unwrap();
-    let tls_cert_exists = Path::new(&tls_cert_path).exists();
+
     info!(
-        "staking TLS cert {} exists? {}",
-        tls_cert_path, tls_cert_exists
+        "checking TLS certs for node ID from {} and {}",
+        tls_key_path, tls_cert_path
     );
-
-    if !tls_key_exists || !tls_cert_exists {
-        info!(
-            "STEP: generating TLS certs (key exists {}, cert exists {})",
-            tls_key_exists, tls_cert_exists
-        );
-        cert::generate_default_pem(&tls_key_path, &tls_cert_path).unwrap();
-
-        info!("uploading generated TLS certs to S3");
-        let s3_key = format!(
-            "{}/{}.crt",
-            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-            instance_id
-        );
-        s3::spawn_put_object(s3_manager.clone(), &tls_cert_path, &s3_bucket, &s3_key)
-            .await
-            .expect("failed s3::spawn_put_object");
-
-        let tmp_compressed_path = random_manager::tmp_path(15, Some(".zstd")).unwrap();
-        let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
-
-        compress_manager::pack_file(
-            &tls_key_path,
-            &tmp_compressed_path,
-            compress_manager::Encoder::Zstd(3),
-        )
-        .expect("failed pack_file tls_key_path");
-
-        envelope::spawn_seal_aes_256_file(
-            envelope.clone(),
-            &tmp_compressed_path,
-            &tmp_encrypted_path,
-        )
+    let node_id = certs_manager
+        .load_or_generate(&tls_key_path, &tls_cert_path)
         .await
-        .expect("failed envelope::spawn_seal_aes_256_file");
-
-        s3::spawn_put_object(
-            s3_manager.clone(),
-            &tmp_encrypted_path,
-            &s3_bucket,
-            &format!(
-                "{}/{}.key.zstd.seal_aes_256.encrypted",
-                avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-                instance_id
-            )
-            .to_string(),
-        )
-        .await
-        .expect("failed s3::spawn_put_object");
-
-        fs::remove_file(tmp_compressed_path).expect("failed fs::remove_file");
-        fs::remove_file(tmp_encrypted_path).expect("failed fs::remove_file");
-    } else {
-        info!(
-            "reusing existing staking TLS certificates on '{}' and '{}'",
-            tls_key_path, tls_cert_path
-        );
-    }
-
-    // loads the node ID from generated/existing certs
-    let node_id =
-        ids::node::Id::from_cert_pem_file(&tls_cert_path).expect("failed to load node ID");
+        .expect("failed load_or_generate");
     info!("loaded node ID {}", node_id);
 
     let http_scheme = {
