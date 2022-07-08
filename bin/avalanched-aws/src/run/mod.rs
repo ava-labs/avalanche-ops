@@ -21,7 +21,7 @@ use aws_manager::{
 };
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
-use infra_aws::certs;
+use infra_aws::{certs, telemetry};
 use log::{info, warn};
 use tokio::time::sleep;
 
@@ -263,70 +263,23 @@ pub async fn execute(log_level: &str) {
     // ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
     info!("STEP: writing CloudWatch configuration JSON file");
     let aws_resources = spec.aws_resources.clone().unwrap();
-    let mut log_collect_list = vec![
-        cloudwatch::Collect {
-            log_group_name: id.clone(),
-            log_stream_name: format!("{{instance_id}}-{}-avalanched", node_kind.as_str()),
-            file_path: String::from("/var/log/avalanched/avalanched.log"),
-            auto_removal: Some(true),
-            retention_in_days: Some(7),
-            ..cloudwatch::Collect::default()
-        },
-        // collect all .log files in the /var/log/avalanche tree
-        cloudwatch::Collect {
-            log_group_name: id.clone(),
-            log_stream_name: format!("{{instance_id}}-{}-all-logs", node_kind.as_str()),
-            file_path: format!("{}/**.log", spec.avalanchego_config.log_dir),
+    let cw_config_manager = telemetry::cloudwatch::ConfigManager {
+        id: id.clone(),
+        node_kind: node_kind.clone(),
+        log_dir: spec.avalanchego_config.log_dir.clone(),
 
-            // TODO: replace this with log rotation
-            auto_removal: Some(false),
+        instance_system_logs: aws_resources.instance_system_logs.is_some()
+            && aws_resources.instance_system_logs.unwrap(),
+        instance_system_metrics: aws_resources.instance_system_metrics.is_some()
+            && aws_resources.instance_system_metrics.unwrap(),
+        data_volume_path: Some(avalanche_data_volume_path),
 
-            retention_in_days: Some(7),
-            ..cloudwatch::Collect::default()
-        },
-    ];
-    if aws_resources.instance_system_logs.is_some() && aws_resources.instance_system_logs.unwrap() {
-        // to check OOMs via "oom-kill" or "Out of memory: Killed process 8266 (srEXiWaHuhNyGwP)"
-        log_collect_list.push(cloudwatch::Collect {
-            log_group_name: id.clone(),
-            log_stream_name: format!("{{instance_id}}-{}-syslog", node_kind.as_str()),
-            file_path: String::from("/var/log/syslog"),
-            auto_removal: Some(true),
-            retention_in_days: Some(7),
-            ..cloudwatch::Collect::default()
-        });
-        // to check device layer logs
-        log_collect_list.push(cloudwatch::Collect {
-            log_group_name: id.clone(),
-            log_stream_name: format!("{{instance_id}}-{}-dmesg", node_kind.as_str()),
-            file_path: String::from("/var/log/dmesg"),
-            auto_removal: Some(true),
-            retention_in_days: Some(7),
-            ..cloudwatch::Collect::default()
-        });
-    }
-    let mut cloudwatch_config = cloudwatch::Config::default();
-    cloudwatch_config.logs = Some(cloudwatch::Logs {
-        force_flush_interval: Some(60),
-        logs_collected: Some(cloudwatch::LogsCollected {
-            files: Some(cloudwatch::Files {
-                collect_list: Some(log_collect_list),
-            }),
-        }),
-    });
-    if aws_resources.instance_system_metrics.is_some()
-        && aws_resources.instance_system_metrics.unwrap()
-    {
-        let mut cw_metrics = cloudwatch::Metrics {
-            namespace: id.clone(),
-            ..Default::default()
-        };
-        cw_metrics.metrics_collected.disk =
-            Some(cloudwatch::Disk::new(vec![avalanche_data_volume_path]));
-        cloudwatch_config.metrics = Some(cw_metrics);
-    }
-    cloudwatch_config
-        .sync(&cloudwatch_config_file_path)
+        config_file_path: cloudwatch_config_file_path.clone(),
+    };
+    cw_config_manager
+        .sync(Some(vec![String::from(
+            "/var/log/avalanched/avalanched.log",
+        )]))
         .unwrap();
 
     let certs_manager = certs::Manager {
