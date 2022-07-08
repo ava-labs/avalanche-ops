@@ -7,13 +7,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use avalanche_sdk::{
-    health as api_health,
-    metrics::{self as api_metrics, cw as api_cw},
-};
-use avalanche_types::{
-    constants, genesis as avalanchego_genesis, metrics::avalanchego as avalanchego_metrics, node,
-};
+use avalanche_sdk::health as api_health;
+use avalanche_types::{constants, genesis as avalanchego_genesis, node};
 use aws_manager::{
     self, cloudwatch, ec2,
     kms::{self, envelope},
@@ -800,6 +795,7 @@ WantedBy=multi-user.target",
             .encode()
         }
     };
+
     let mut handles = vec![
         tokio::spawn(publish_node_info_ready_loop(
             s3_manager.clone(),
@@ -811,7 +807,7 @@ WantedBy=multi-user.target",
                 spec.coreth_config.clone(),
             )),
         )),
-        tokio::spawn(fetch_metrics_loop(
+        tokio::spawn(telemetry::metrics::avalanchego::fetch_loop(
             cw_manager.clone(),
             Arc::new(
                 aws_resources
@@ -819,6 +815,8 @@ WantedBy=multi-user.target",
                     .cloudwatch_avalanche_metrics_namespace
                     .unwrap(),
             ),
+            Duration::from_secs(120),
+            Duration::from_secs(60),
             Arc::new(local_node.http_endpoint.clone()),
         )),
         tokio::spawn(check_node_update_loop(
@@ -877,46 +875,6 @@ async fn publish_node_info_ready_loop(
 
         info!("sleeping 10-min for next 'publish_node_info_ready_loop'");
         sleep(Duration::from_secs(600)).await;
-    }
-}
-
-async fn fetch_metrics_loop(
-    cw_manager: cloudwatch::Manager,
-    cw_namespace: Arc<String>,
-    metrics_ep: Arc<String>,
-) {
-    info!("STEP: starting 'fetch_metrics_loop' with initial 2-minute wait");
-    sleep(Duration::from_secs(120)).await;
-
-    let mut prev_raw_metrics: Option<avalanchego_metrics::RawMetrics> = None;
-    loop {
-        info!("STEP: fetching metrics in 1-min");
-        sleep(Duration::from_secs(60)).await;
-
-        let cur_metrics = match api_metrics::spawn_get(metrics_ep.as_str()).await {
-            Ok(v) => v,
-            Err(e) => {
-                warn!("failed to fetch metrics {}, retrying...", e);
-                continue;
-            }
-        };
-
-        match cloudwatch::spawn_put_metric_data(
-            cw_manager.clone(),
-            cw_namespace.as_str(),
-            api_cw::convert(&cur_metrics, prev_raw_metrics.clone()),
-        )
-        .await
-        {
-            Ok(_) => {}
-            Err(e) => {
-                warn!("failed to put metric data {}, retrying...", e);
-                prev_raw_metrics = Some(cur_metrics.clone());
-                continue;
-            }
-        }
-
-        prev_raw_metrics = Some(cur_metrics.clone());
     }
 }
 
