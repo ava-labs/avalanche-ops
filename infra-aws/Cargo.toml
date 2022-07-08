@@ -5,3 +5,13 @@ edition = "2021"
 rust-version = "1.62"
 
 [dependencies]
+avalanche-types = { version = "0.0.20", features = [] }
+aws-manager = "0.0.8"
+compress-manager = "0.0.2"
+log = "0.4.17"
+random-manager = "0.0.1"
+
+[dev-dependencies]
+env_logger = "0.9.0"
+tempfile = "3.3.0"
+tokio-test = "0.4.2"

@@ -13,7 +13,7 @@ avalanche-sdk = { version = "0.0.14" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.20", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanche-utils = { version = "0.0.11", features = ["full"] } # https://crates.io/crates/avalanche-utils
 avalanchego = { path = "../../avalanchego" }
-aws-manager = "0.0.6"
+aws-manager = "0.0.8"
 aws-sdk-cloudformation = "0.15.0"
 aws-sdk-ec2 = "0.15.0"
 aws-sdk-s3 = "0.15.0"
