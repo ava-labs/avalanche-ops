@@ -417,8 +417,6 @@ Resources:
               # TODO: make this configurable?
               mkdir -p /var/log/avalanched
               chmod 755 /var/log/avalanched
-              mkdir -p /data/pki/tls/certs
-              chmod 755 /data/pki/tls/certs
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
 
