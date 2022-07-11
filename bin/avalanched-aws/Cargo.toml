@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-sdk = { version = "0.0.14", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.20", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.22", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanche-utils = { version = "0.0.11", features = ["full"] } # https://crates.io/crates/avalanche-utils
 avalanchego = { path = "../../avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
