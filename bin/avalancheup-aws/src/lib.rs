@@ -9,7 +9,6 @@ use std::{
 };
 
 use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
-use avalanche_utils::{prefix, system_id, time};
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
 use lazy_static::lazy_static;
@@ -570,8 +569,8 @@ impl Spec {
                 spec_file_stem.to_str().unwrap().to_string()
             } else {
                 match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
-                    Some(v) => time::with_prefix(format!("aops-{}", *v).as_str()),
-                    None => time::with_prefix("aops-custom"),
+                    Some(v) => id_manager::time::with_prefix(format!("aops-{}", *v).as_str()),
+                    None => id_manager::time::with_prefix("aops-custom"),
                 }
             }
         };
@@ -632,7 +631,7 @@ impl Spec {
                 let mut admin_addresses: Vec<String> = Vec::new();
                 for key_info in generated_seed_key_infos.iter() {
                     subnet_evm_seed_allocs.insert(
-                        String::from(prefix::strip_0x(&key_info.eth_address)),
+                        String::from(prefix_manager::strip_0x(&key_info.eth_address)),
                         subnet_evm_genesis::AllocAccount::default(),
                     );
                     admin_addresses.push(key_info.eth_address.clone());
@@ -658,8 +657,8 @@ impl Spec {
             region: opt.region,
             s3_bucket: format!(
                 "avalanche-ops-{}-{}",
-                time::timestamp(6),
-                system_id::string(10)
+                id_manager::time::timestamp(6),
+                id_manager::system::string(10)
             ), // [year][month][date]-[system host-based id]
             ..aws::Resources::default()
         };
@@ -1011,7 +1010,7 @@ fn test_spec() {
     }
 
     let id = random_manager::string(10);
-    let bucket = format!("test-{}", time::timestamp(8));
+    let bucket = format!("test-{}", id_manager::time::timestamp(8));
 
     let contents = format!(
         r#"

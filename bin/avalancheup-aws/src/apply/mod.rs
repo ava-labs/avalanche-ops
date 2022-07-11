@@ -13,7 +13,6 @@ use std::{
 };
 
 use avalanche_sdk::health as api_health;
-use avalanche_utils::home_dir;
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
@@ -1319,7 +1318,7 @@ aws ssm start-session --region {} --target {}
 
     if spec.subnet_evm_genesis.is_some() {
         let subnet_evm_genesis_file_path =
-            home_dir::named(&spec.id, Some(".subnet-evm.genesis.json"));
+            dir_manager::home::named(&spec.id, Some(".subnet-evm.genesis.json"));
         let subnet_evm_genesis = spec
             .subnet_evm_genesis
             .expect("unexpected None subnet_evm_genesis");
