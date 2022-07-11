@@ -1,13 +1,11 @@
 use std::io::{self, stdout};
 
+use avalanchego::config as avalanchego_config;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
-
-use avalanche_utils::home_dir;
-use avalanchego::config as avalanchego_config;
 
 pub const NAME: &str = "default-spec";
 
@@ -261,7 +259,7 @@ pub fn execute(opt: avalancheup_aws::DefaultSpecOption) -> io::Result<()> {
 
     let spec_file_path = {
         if opt.spec_file_path.is_empty() {
-            home_dir::named(&spec.id, Some(".yaml"))
+            dir_manager::home::named(&spec.id, Some(".yaml"))
         } else {
             opt.spec_file_path
         }
@@ -311,7 +309,7 @@ pub fn execute(opt: avalancheup_aws::DefaultSpecOption) -> io::Result<()> {
 
     if spec.subnet_evm_genesis.is_some() {
         let subnet_evm_genesis_file_path =
-            home_dir::named(&spec.id, Some(".subnet-evm.genesis.json"));
+            dir_manager::home::named(&spec.id, Some(".subnet-evm.genesis.json"));
         let subnet_evm_genesis = spec
             .subnet_evm_genesis
             .expect("unexpected None subnet_evm_genesis");

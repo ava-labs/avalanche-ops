@@ -10,8 +10,6 @@ use log::info;
 use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 
-use avalanche_utils::big_int;
-
 /// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/core#Genesis
 /// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/params#ChainConfig
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -20,9 +18,9 @@ pub struct Genesis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config: Option<ChainConfig>,
 
-    #[serde(with = "big_int::serde_hex_format")]
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub nonce: BigInt,
-    #[serde(with = "big_int::serde_hex_format")]
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub timestamp: BigInt,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,9 +28,9 @@ pub struct Genesis {
 
     /// Make sure this is set equal to "ChainConfig.FeeConfig.gas_limit".
     /// ref. https://github.com/ava-labs/subnet-evm/pull/63
-    #[serde(with = "big_int::serde_hex_format")]
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub gas_limit: BigInt,
-    #[serde(with = "big_int::serde_hex_format")]
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub difficulty: BigInt,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -51,9 +49,9 @@ pub struct Genesis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub airdrop_amount: Option<String>,
 
-    #[serde(with = "big_int::serde_hex_format")]
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub number: BigInt,
-    #[serde(with = "big_int::serde_hex_format")]
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub gas_used: BigInt,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -90,7 +88,8 @@ impl Genesis {
             timestamp: BigInt::default(),
             extra_data: Some(String::from("0x00")),
 
-            gas_limit: big_int::from_hex("0x1312D00").expect("failed to parse big_int"),
+            gas_limit: big_num_manager::from_hex_to_big_int("0x1312D00")
+                .expect("failed to parse big_int"),
 
             difficulty: BigInt::default(),
             mix_hash: Some(String::from(
@@ -115,12 +114,10 @@ impl Genesis {
     pub fn encode_json(&self) -> io::Result<String> {
         match serde_json::to_string(&self) {
             Ok(s) => Ok(s),
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize to JSON {}", e),
-                ));
-            }
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize to JSON {}", e),
+            )),
         }
     }
 
@@ -315,7 +312,7 @@ pub struct AllocAccount {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<BTreeMap<String, String>>,
 
-    #[serde(with = "big_int::serde_hex_format")]
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub balance: BigInt,
 
     /// ref. https://pkg.go.dev/github.com/ava-labs/subnet-evm/core#GenesisMultiCoinBalance
@@ -336,7 +333,7 @@ impl AllocAccount {
         Self {
             code: None,
             storage: None,
-            balance: big_int::from_hex(DEFAULT_INITIAL_AMOUNT)
+            balance: big_num_manager::from_hex_to_big_int(DEFAULT_INITIAL_AMOUNT)
                 .expect("failed to parse initial amount"),
             mcbalance: None,
             nonce: None,
