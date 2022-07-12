@@ -410,11 +410,6 @@ Resources:
               chmod +x /tmp/avalanched
               sudo mv /tmp/avalanched /usr/local/bin/avalanched
 
-              # aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche /tmp/avalanche
-              # chmod +x /tmp/avalanche
-              # sudo mv /tmp/avalanche /usr/local/bin/avalanche
-
-              # TODO: make this configurable?
               mkdir -p /var/log/avalanched
               chmod 755 /var/log/avalanched
               mkdir -p /var/log/avalanche

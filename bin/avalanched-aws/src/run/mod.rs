@@ -96,7 +96,7 @@ pub async fn execute(log_level: &str) {
     .expect("failed ec2_manager.fetch_tags");
 
     let mut id: String = String::new();
-    let mut _node_kind: String = String::new();
+    let mut node_kind_str: String = String::new();
     let mut kms_cmk_arn: String = String::new();
     let mut s3_bucket: String = String::new();
     let mut cloudwatch_config_file_path: String = String::new();
@@ -112,7 +112,7 @@ pub async fn execute(log_level: &str) {
                 id = v.to_string();
             }
             "NODE_KIND" => {
-                _node_kind = v.to_string();
+                node_kind_str = v.to_string();
             }
             "KMS_CMK_ARN" => {
                 kms_cmk_arn = v.to_string();
@@ -138,11 +138,11 @@ pub async fn execute(log_level: &str) {
     if id.is_empty() {
         panic!("'ID' tag not found")
     }
-    if _node_kind.is_empty() {
+    if node_kind_str.is_empty() {
         panic!("'NODE_KIND' tag not found")
     }
     let node_kind = {
-        if _node_kind.eq("anchor") {
+        if node_kind_str.eq("anchor") {
             node::Kind::Anchor
         } else {
             node::Kind::NonAnchor
