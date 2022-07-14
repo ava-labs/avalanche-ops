@@ -1,7 +1,13 @@
 [package]
 name = "avalanchego"
-version = "0.0.1"
+version = "0.0.0"
 edition = "2021"
+rust-version = "1.62"
+publish = true
+description = "AvalancheGo configuration"
+homepage = "https://avax.network"
+repository = "https://github.com/ava-labs/avalanchego"
+readme = "README.md"
 
 [dependencies]
 avalanche-types = { version = "0.0.23", features = [] }

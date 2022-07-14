@@ -1,8 +1,13 @@
 [package]
 name = "coreth"
-version = "0.0.1"
+version = "0.0.0"
 edition = "2021"
 rust-version = "1.62"
+publish = true
+description = "Avalanche coreth configuration"
+homepage = "https://avax.network"
+repository = "https://github.com/ava-labs/coreth"
+readme = "README.md"
 
 [dependencies]
 log = "0.4.17"
