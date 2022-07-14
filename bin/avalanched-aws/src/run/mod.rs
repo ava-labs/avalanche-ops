@@ -14,6 +14,7 @@ use aws_manager::{
     kms::{self, envelope},
     s3,
 };
+use aws_sdk_ec2::model::{Filter, Tag};
 use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use infra_aws::{certs, telemetry};
@@ -62,11 +63,11 @@ pub async fn execute(log_level: &str) {
         .expect("failed ec2::fetch_region");
     info!("fetched region {}", reg);
 
-    let instance_id = tokio::spawn(ec2::fetch_instance_id())
+    let ec2_instance_id = tokio::spawn(ec2::fetch_instance_id())
         .await
         .expect("failed spawn await")
         .expect("failed ec2::fetch_instance_id");
-    info!("fetched instance ID {}", instance_id);
+    info!("fetched instance ID {}", ec2_instance_id);
 
     let public_ipv4 = tokio::spawn(ec2::fetch_public_ipv4())
         .await
@@ -86,15 +87,14 @@ pub async fn execute(log_level: &str) {
     let cw_manager = cloudwatch::Manager::new(&shared_config);
 
     info!("STEP: fetching tags from the local instance");
-    let instance_id_arc = Arc::new(instance_id.clone());
-    let tags = tokio::spawn(async move {
-        let ec2_manager_arc = Arc::new(ec2_manager);
-        ec2_manager_arc.fetch_tags(instance_id_arc).await
-    })
-    .await
-    .expect("failed spawn await")
-    .expect("failed ec2_manager.fetch_tags");
+    let ec2_instance_id_arc = Arc::new(ec2_instance_id.clone());
+    let ec2_manager_arc = Arc::new(ec2_manager.clone());
+    let tags = tokio::spawn(async move { ec2_manager_arc.fetch_tags(ec2_instance_id_arc).await })
+        .await
+        .expect("failed spawn await")
+        .expect("failed ec2_manager.fetch_tags");
 
+    // all defined via ASG tags
     let mut id: String = String::new();
     let mut node_kind_str: String = String::new();
     let mut kms_cmk_arn: String = String::new();
@@ -103,6 +103,8 @@ pub async fn execute(log_level: &str) {
     let mut avalanched_bin_path: String = String::new();
     let mut avalanche_bin_path: String = String::new();
     let mut avalanche_data_volume_path: String = String::new();
+    let mut avalanche_data_volume_ebs_device_name: String = String::new();
+
     for c in tags {
         let k = c.key().unwrap();
         let v = c.value().unwrap();
@@ -131,6 +133,9 @@ pub async fn execute(log_level: &str) {
             }
             "AVALANCHE_DATA_VOLUME_PATH" => {
                 avalanche_data_volume_path = v.to_string();
+            }
+            "AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME" => {
+                avalanche_data_volume_ebs_device_name = v.to_string();
             }
             _ => {}
         }
@@ -165,6 +170,9 @@ pub async fn execute(log_level: &str) {
     }
     if avalanche_data_volume_path.is_empty() {
         panic!("'AVALANCHE_DATA_VOLUME_PATH' tag not found")
+    }
+    if avalanche_data_volume_ebs_device_name.is_empty() {
+        panic!("'AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME' tag not found")
     }
 
     let envelope_manager =
@@ -281,12 +289,12 @@ pub async fn execute(log_level: &str) {
         s3_key_tls_key: format!(
             "{}/{}.key.zstd.encrypted",
             avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-            instance_id
+            ec2_instance_id
         ),
         s3_key_tls_cert: format!(
             "{}/{}.crt.zstd.encrypted",
             avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-            instance_id
+            ec2_instance_id
         ),
     };
 
@@ -312,6 +320,67 @@ pub async fn execute(log_level: &str) {
         .expect("failed load_or_generate");
     info!("loaded node ID {} (was generated {})", node_id, generated);
 
+    if generated {
+        // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
+        let filters: Vec<Filter> = vec![
+            Filter::builder()
+                .set_name(Some(String::from("attachment.device")))
+                .set_values(Some(vec![avalanche_data_volume_ebs_device_name.clone()]))
+                .build(),
+            // ensures the call only returns the volume that is attached to this local instance
+            Filter::builder()
+                .set_name(Some(String::from("attachment.instance-id")))
+                .set_values(Some(vec![ec2_instance_id.clone()]))
+                .build(),
+            // ensures the call only returns the volume that is currently attached
+            Filter::builder()
+                .set_name(Some(String::from("attachment.status")))
+                .set_values(Some(vec![String::from("attached")]))
+                .build(),
+            // ensures the call only returns the volume that is currently in use
+            Filter::builder()
+                .set_name(Some(String::from("status")))
+                .set_values(Some(vec![String::from("in-use")]))
+                .build(),
+            Filter::builder()
+                .set_name(Some(String::from("availability-zone")))
+                .set_values(Some(vec![az.clone()]))
+                .build(),
+            Filter::builder()
+                .set_name(Some(String::from("tag:Id")))
+                .set_values(Some(vec![id.clone()]))
+                .build(),
+        ];
+        let volumes = ec2_manager
+            .describe_volumes(Some(filters))
+            .await
+            .expect("failed describe_volumes");
+        log::info!("found {} attached volume", volumes.len());
+        assert!(volumes.len() == 1);
+        let volume_id = volumes[0].volume_id().unwrap();
+
+        // assume all data from EBS are never lost
+        // and since we persist and retain ever generated certs
+        // in the mounted dir, we can safely assume "create tags"
+        // will only be called once per volume
+        // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
+        info!("adding node Id tag to the EBS volume '{}'", volume_id);
+        let ec2_cli = ec2_manager.clone().client();
+        ec2_cli
+            .create_tags()
+            .resources(volume_id)
+            .tags(
+                Tag::builder()
+                    .key(String::from("NODE_ID"))
+                    .value(node_id.to_string())
+                    .build(),
+            )
+            .send()
+            .await
+            .expect("failed create_tags");
+        info!("added node Id tag to the EBS volume '{}'", volume_id);
+    }
+
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
             && spec
@@ -326,7 +395,7 @@ pub async fn execute(log_level: &str) {
     };
     let local_node = avalancheup_aws::Node::new(
         node_kind.clone(),
-        &instance_id,
+        &ec2_instance_id,
         &node_id.to_string(),
         &public_ipv4,
         http_scheme,
@@ -750,12 +819,15 @@ WantedBy=multi-user.target",
         match ret {
             Ok(res) => {
                 if res.healthy.is_some() && res.healthy.unwrap() {
-                    info!("health/liveness check success for {}", instance_id);
+                    info!("health/liveness check success for {}", ec2_instance_id);
                     break;
                 }
             }
             Err(e) => {
-                warn!("health/liveness check failed for {} ({:?})", instance_id, e);
+                warn!(
+                    "health/liveness check failed for {} ({:?})",
+                    ec2_instance_id, e
+                );
             }
         };
         sleep(Duration::from_secs(30)).await;
