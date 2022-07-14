@@ -13,7 +13,7 @@ avalanche-sdk = { version = "0.0.16", features = ["cloudwatch"] } # https://crat
 avalanche-types = { version = "0.0.23", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = "0.0.8"
+aws-manager = "0.0.9"
 aws-sdk-cloudwatch = "0.15.0"
 aws-sdk-s3 = "0.15.0"
 clap = { version = "3.2.12", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases

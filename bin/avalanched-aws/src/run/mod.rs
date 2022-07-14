@@ -167,11 +167,8 @@ pub async fn execute(log_level: &str) {
         panic!("'AVALANCHE_DATA_VOLUME_PATH' tag not found")
     }
 
-    let envelope_manager = envelope::Manager {
-        kms_manager,
-        kms_key_id: kms_cmk_arn,
-        aad_tag: "avalanche-ops".to_string(),
-    };
+    let envelope_manager =
+        envelope::Manager::new(kms_manager, kms_cmk_arn, "avalanche-ops".to_string());
 
     if !Path::new(&avalanche_bin_path).exists() {
         info!("STEP: downloading avalanche binary from S3");

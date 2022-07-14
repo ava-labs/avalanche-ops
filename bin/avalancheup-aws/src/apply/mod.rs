@@ -299,11 +299,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ))
         .unwrap();
     }
-    let envelope_manager = envelope::Manager {
+    let envelope_manager = envelope::Manager::new(
         kms_manager,
-        kms_key_id: aws_resources.kms_cmk_id.clone().unwrap(),
-        aad_tag: "avalanche-ops".to_string(),
-    };
+        aws_resources.kms_cmk_id.clone().unwrap(),
+        "avalanche-ops".to_string(),
+    );
 
     if aws_resources.ec2_key_path.is_none() {
         execute!(

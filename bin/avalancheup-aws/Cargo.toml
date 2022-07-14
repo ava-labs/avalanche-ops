@@ -12,7 +12,7 @@ path = "src/main.rs"
 avalanche-sdk = { version = "0.0.16" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.23", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../avalanchego" }
-aws-manager = "0.0.8"
+aws-manager = "0.0.9"
 aws-sdk-cloudformation = "0.15.0"
 aws-sdk-ec2 = "0.15.0"
 aws-sdk-s3 = "0.15.0"
