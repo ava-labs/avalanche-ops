@@ -306,11 +306,11 @@ pub async fn execute(log_level: &str) {
         "checking TLS certs for node ID from {} and {}",
         tls_key_path, tls_cert_path
     );
-    let node_id = certs_manager
+    let (node_id, generated) = certs_manager
         .load_or_generate(&tls_key_path, &tls_cert_path)
         .await
         .expect("failed load_or_generate");
-    info!("loaded node ID {}", node_id);
+    info!("loaded node ID {} (was generated {})", node_id, generated);
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()

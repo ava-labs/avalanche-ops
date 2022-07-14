@@ -45,10 +45,16 @@ fn main() {
         s3_key_tls_key: String::from("staking.key"),
         s3_key_tls_cert: String::from("staking.crt"),
     };
+
     let tls_key_path1 = random_manager::tmp_path(10, None).unwrap();
     let tls_cert_path1 = random_manager::tmp_path(10, None).unwrap();
-    let node_id1 = ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
-    let node_id2 = ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+
+    let (node_id1, generated1) =
+        ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+    let (node_id2, generated2) =
+        ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+    assert!(generated1);
+    assert!(!generated2);
 
     let tls_key_path2 = random_manager::tmp_path(10, None).unwrap();
     let tls_cert_path2 = random_manager::tmp_path(10, None).unwrap();
