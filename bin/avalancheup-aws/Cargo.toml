@@ -11,14 +11,14 @@ path = "src/main.rs"
 [dependencies]
 avalanche-sdk = { version = "0.0.16" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.23", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
-avalanchego = { path = "../../avalanchego" }
+avalanchego = { path = "../../crates/avalanchego" }
 aws-manager = "0.0.9"
 aws-sdk-cloudformation = "0.15.0"
 aws-sdk-ec2 = "0.15.0"
 aws-sdk-s3 = "0.15.0"
 clap = { version = "3.2.12", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.2"
-coreth = { path = "../../coreth" }
+coreth = { path = "../../crates/coreth" }
 crossterm = "0.24.0"
 dialoguer = "0.10.1"
 dir-manager = "0.0.1"
@@ -33,7 +33,7 @@ serde = { version = "1.0.139", features = ["derive"] }
 serde_json = "1.0.82"
 serde_yaml = "0.8.24"
 signal-hook = "0.3.14"
-subnet-evm = { path = "../../subnet-evm" }
+subnet-evm = { path = "../../crates/subnet-evm" }
 tokio = { version = "1.20.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
