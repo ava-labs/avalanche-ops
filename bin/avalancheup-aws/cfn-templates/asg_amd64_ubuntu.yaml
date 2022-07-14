@@ -507,7 +507,7 @@ Resources:
         - Granularity: "1Minute"
       Tags:
         # we can either propagate these information
-        # via tags, CLI flags, avalanche-ops spec, etc.
+        # via tags, avalanched CLI flags, avalanche-ops spec, etc.
         # use tags for relatively static configurations
         - Key: Name
           PropagateAtLaunch: true
@@ -539,6 +539,9 @@ Resources:
         - Key: AVALANCHE_DATA_VOLUME_PATH
           PropagateAtLaunch: true
           Value: /data
+        - Key: AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME
+          PropagateAtLaunch: true
+          Value: /dev/xvdb
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       MixedInstancesPolicy:
         InstancesDistribution:
