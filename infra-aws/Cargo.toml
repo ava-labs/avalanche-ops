@@ -7,13 +7,14 @@ rust-version = "1.62"
 [dependencies]
 avalanche-sdk = { version = "0.0.16", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.23", features = [] }
-aws-manager = "0.0.8"
+aws-manager = "0.0.9"
 compress-manager = "0.0.2"
 log = "0.4.17"
 random-manager = "0.0.1"
-tokio = { version = "1.19.2", features = ["full"] }
+tokio = { version = "1.20.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
+cmp-manager = "0.0.1"
 env_logger = "0.9.0"
 tempfile = "3.3.0"
 tokio-test = "0.4.2"

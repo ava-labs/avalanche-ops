@@ -2,9 +2,8 @@ use std::{fs::File, io::Read, sync::Arc, thread, time};
 
 use aws_manager::{
     self,
-    kms::{self, envelope::Manager},
+    kms::{self, envelope},
     s3,
-    utils::cmp,
 };
 use infra_aws::certs;
 
@@ -26,11 +25,11 @@ fn main() {
 
     let kms_manager = kms::Manager::new(&shared_config);
     let cmk = ab!(kms_manager.create_key("test key description")).unwrap();
-    let envelope_manager = Manager {
-        kms_manager: kms_manager.clone(),
-        kms_key_id: cmk.id.clone(),
-        aad_tag: "test-aad-tag".to_string(),
-    };
+    let envelope_manager = envelope::Manager::new(
+        kms_manager.clone(),
+        cmk.id.clone(),
+        "test-aad-tag".to_string(),
+    );
 
     let s3_manager = s3::Manager::new(&shared_config);
     let s3_bucket = format!(
@@ -46,10 +45,16 @@ fn main() {
         s3_key_tls_key: String::from("staking.key"),
         s3_key_tls_cert: String::from("staking.crt"),
     };
+
     let tls_key_path1 = random_manager::tmp_path(10, None).unwrap();
     let tls_cert_path1 = random_manager::tmp_path(10, None).unwrap();
-    let node_id1 = ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
-    let node_id2 = ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+
+    let (node_id1, generated1) =
+        ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+    let (node_id2, generated2) =
+        ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+    assert!(generated1);
+    assert!(!generated2);
 
     let tls_key_path2 = random_manager::tmp_path(10, None).unwrap();
     let tls_cert_path2 = random_manager::tmp_path(10, None).unwrap();
@@ -72,7 +77,10 @@ fn main() {
     let mut dst_file = File::open(tls_key_path2).unwrap();
     let mut dst_file_contents = Vec::new();
     dst_file.read_to_end(&mut dst_file_contents).unwrap();
-    assert!(cmp::eq_vectors(&src_file_contents, &dst_file_contents));
+    assert!(cmp_manager::eq_vectors(
+        &src_file_contents,
+        &dst_file_contents
+    ));
 
     let mut src_file = File::open(tls_cert_path1).unwrap();
     let mut src_file_contents = Vec::new();
@@ -80,5 +88,8 @@ fn main() {
     let mut dst_file = File::open(tls_cert_path2).unwrap();
     let mut dst_file_contents = Vec::new();
     dst_file.read_to_end(&mut dst_file_contents).unwrap();
-    assert!(cmp::eq_vectors(&src_file_contents, &dst_file_contents));
+    assert!(cmp_manager::eq_vectors(
+        &src_file_contents,
+        &dst_file_contents
+    ));
 }

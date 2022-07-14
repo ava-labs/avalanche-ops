@@ -21,11 +21,12 @@ impl Manager {
     /// Loads the existing staking certificates if exists.
     /// Otherwise, generate a pair.
     /// Once loaded or generated, upload them to S3.
+    /// Returns "true" if generated.
     pub async fn load_or_generate(
         &self,
         tls_key_path: &str,
         tls_cert_path: &str,
-    ) -> io::Result<node::Id> {
+    ) -> io::Result<(node::Id, bool)> {
         let tls_key_exists = Path::new(&tls_key_path).exists();
         log::info!(
             "staking TLS key {} exists? {}",
@@ -40,6 +41,7 @@ impl Manager {
             tls_cert_exists
         );
 
+        let mut generated = false;
         if !tls_key_exists || !tls_cert_exists {
             log::info!(
                 "generating TLS certs (key exists {}, cert exists {})",
@@ -47,6 +49,8 @@ impl Manager {
                 tls_cert_exists
             );
             cert::generate_default_pem(&tls_key_path, &tls_cert_path)?;
+
+            generated = true;
 
             log::info!("backing up key file {}", tls_key_path);
             s3::spawn_compress_seal_put_object(
@@ -87,7 +91,8 @@ impl Manager {
             );
         }
 
-        node::Id::from_cert_pem_file(tls_cert_path)
+        let node_id = node::Id::from_cert_pem_file(tls_cert_path)?;
+        Ok((node_id, generated))
     }
 
     /// Downloads the staking certificates from the remote storage.
