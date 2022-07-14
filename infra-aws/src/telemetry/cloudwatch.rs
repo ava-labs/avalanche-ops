@@ -30,7 +30,7 @@ pub struct ConfigManager {
 /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
 impl ConfigManager {
     /// Set "log_files" to track extra log files via CloudWatch.
-    /// e.g., "/var/log/avalanched/avalanched.log"
+    /// e.g., "/var/log/avalanched.log"
     pub fn sync(&self, log_files: Option<Vec<String>>) -> io::Result<()> {
         log::info!("syncing CloudWatch configuration JSON file");
 
@@ -51,7 +51,7 @@ impl ConfigManager {
 
         if let Some(v) = log_files {
             for f in v {
-                // "/var/log/avalanched/avalanched.log" becomes "avalanched.log"
+                // "/var/log/avalanched.log" becomes "avalanched.log"
                 let fname = Path::new(&f)
                     .file_name()
                     .unwrap()

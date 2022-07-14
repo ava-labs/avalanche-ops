@@ -1,25 +1,31 @@
-fn main() {
-    println!("Hello, world!");
+pub mod command;
+pub mod flags;
 
-    // 1. fetch tags
+use clap::{crate_version, Arg, Command};
 
-    // 2. set up aws credential
+pub const APP_NAME: &str = "avalanched-aws-lite";
 
-    // 3. install avalanche
+#[tokio::main]
+async fn main() {
+    let matches = Command::new(APP_NAME)
+        .version(crate_version!())
+        .about("Runs an Avalanche node")
+        .arg(
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
+                .required(false)
+                .takes_value(true)
+                .possible_value("debug")
+                .possible_value("info")
+                .allow_invalid_utf8(false)
+                .default_value("info"),
+        )
+        .get_matches();
 
-    // 4. create avalanche config file
-
-    // 5. set up cloudwatch config file
-
-    // 6. generate certs
-
-    // 7. back up certs
-
-    // 8. write coreth chain config
-
-    // 9. write avalanche system service file
-
-    // 10. start avalanche systemd service
-
-    // 11. start metrics fetching loop
+    let opts = flags::Options {
+        log_level: matches.value_of("LOG_LEVEL").unwrap_or("info").to_string(),
+    };
+    command::execute(opts).await.unwrap();
 }

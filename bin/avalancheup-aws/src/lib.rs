@@ -523,12 +523,12 @@ impl Spec {
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
-        let mut avalanchego_config = avalanchego_config::Config::default();
-        avalanchego_config.network_id = network_id;
+        let mut avalanchego_config = match network_id {
+            1 => avalanchego_config::Config::default_main(),
+            5 => avalanchego_config::Config::default_fuji(),
+            _ => avalanchego_config::Config::default_custom(),
+        };
         avalanchego_config.log_level = Some(opt.avalanchego_log_level);
-        if !avalanchego_config.is_custom_network() {
-            avalanchego_config.genesis = None;
-        }
 
         // only set values if non empty
         // otherwise, avalanchego will fail with "couldn't load node config: read .: is a directory"
@@ -1086,10 +1086,7 @@ coreth_config:
     let ret = cfg.sync(config_path);
     assert!(ret.is_ok());
 
-    let mut avalanchego_config = avalanchego_config::Config::default();
-    avalanchego_config.genesis = None;
-    avalanchego_config.network_id = 1;
-
+    let avalanchego_config = avalanchego_config::Config::default_main();
     let orig = Spec {
         id: id.clone(),
 

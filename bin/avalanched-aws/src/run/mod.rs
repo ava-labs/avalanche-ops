@@ -277,25 +277,13 @@ pub async fn execute(log_level: &str) {
         config_file_path: cloudwatch_config_file_path.clone(),
     };
     cw_config_manager
-        .sync(Some(vec![String::from(
-            "/var/log/avalanched/avalanched.log",
-        )]))
+        .sync(Some(vec![String::from("/var/log/avalanched.log")]))
         .unwrap();
 
     let certs_manager = certs::Manager {
         envelope_manager,
         s3_manager: s3_manager.clone(),
         s3_bucket: s3_bucket.clone(),
-        s3_key_tls_key: format!(
-            "{}/{}.key.zstd.encrypted",
-            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-            ec2_instance_id
-        ),
-        s3_key_tls_cert: format!(
-            "{}/{}.crt.zstd.encrypted",
-            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
-            ec2_instance_id
-        ),
     };
 
     let tls_key_path = spec
@@ -314,13 +302,36 @@ pub async fn execute(log_level: &str) {
         "checking TLS certs for node ID from {} and {}",
         tls_key_path, tls_cert_path
     );
-    let (node_id, generated) = certs_manager
+    let (node_id, newly_generated) = certs_manager
         .load_or_generate(&tls_key_path, &tls_cert_path)
         .await
         .expect("failed load_or_generate");
-    info!("loaded node ID {} (was generated {})", node_id, generated);
+    info!(
+        "loaded node ID {} (was generated {})",
+        node_id, newly_generated
+    );
 
-    if generated {
+    if newly_generated {
+        let s3_key_tls_key = format!(
+            "{}/{}.key.zstd.encrypted",
+            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+            node_id
+        );
+        let s3_key_tls_cert = format!(
+            "{}/{}.crt.zstd.encrypted",
+            avalancheup_aws::StorageNamespace::PkiKeyDir(id.clone()).encode(),
+            node_id
+        );
+        certs_manager
+            .upload(
+                &tls_key_path,
+                &tls_cert_path,
+                &s3_key_tls_key,
+                &s3_key_tls_cert,
+            )
+            .await
+            .expect("failed upload");
+
         // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
         let filters: Vec<Filter> = vec![
             Filter::builder()
@@ -355,30 +366,46 @@ pub async fn execute(log_level: &str) {
             .describe_volumes(Some(filters))
             .await
             .expect("failed describe_volumes");
-        log::info!("found {} attached volume", volumes.len());
+        info!("found {} attached volume", volumes.len());
         assert!(volumes.len() == 1);
         let volume_id = volumes[0].volume_id().unwrap();
 
-        // assume all data from EBS are never lost
-        // and since we persist and retain ever generated certs
-        // in the mounted dir, we can safely assume "create tags"
-        // will only be called once per volume
-        // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
-        info!("adding node Id tag to the EBS volume '{}'", volume_id);
-        let ec2_cli = ec2_manager.clone().client();
-        ec2_cli
-            .create_tags()
-            .resources(volume_id)
-            .tags(
-                Tag::builder()
-                    .key(String::from("NODE_ID"))
-                    .value(node_id.to_string())
-                    .build(),
-            )
-            .send()
-            .await
-            .expect("failed create_tags");
-        info!("added node Id tag to the EBS volume '{}'", volume_id);
+        if let Some(v) = volumes[0].tags() {
+            let mut tag_exists = false;
+            for tg in v.iter() {
+                let k = tg.key().unwrap();
+                let v = tg.value().unwrap();
+                info!("'{}' volume tag found {}={}", volume_id, k, v);
+                if k.eq("NODE_ID") {
+                    tag_exists = true;
+                    break;
+                }
+            }
+            if tag_exists {
+                warn!("volume '{}' already has NODE_ID tag", volume_id);
+            } else {
+                // assume all data from EBS are never lost
+                // and since we persist and retain ever generated certs
+                // in the mounted dir, we can safely assume "create tags"
+                // will only be called once per volume
+                // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
+                info!("creating NODE_ID tag to the EBS volume '{}'", volume_id);
+                let ec2_cli = ec2_manager.clone().client();
+                ec2_cli
+                    .create_tags()
+                    .resources(volume_id)
+                    .tags(
+                        Tag::builder()
+                            .key(String::from("NODE_ID"))
+                            .value(node_id.to_string())
+                            .build(),
+                    )
+                    .send()
+                    .await
+                    .expect("failed create_tags");
+                info!("added node Id tag to the EBS volume '{}'", volume_id);
+            }
+        }
     }
 
     let http_scheme = {
