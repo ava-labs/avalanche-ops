@@ -411,9 +411,6 @@ pub struct DefaultSpecOption {
 
     pub enable_subnet_evm: bool,
 
-    pub disable_instance_system_logs: bool,
-    pub disable_instance_system_metrics: bool,
-
     pub spec_file_path: String,
 }
 
@@ -673,12 +670,6 @@ impl Spec {
         }
         if !opt.nlb_acm_certificate_arn.is_empty() {
             aws_resources.nlb_acm_certificate_arn = Some(opt.nlb_acm_certificate_arn);
-        }
-        if opt.disable_instance_system_logs {
-            aws_resources.instance_system_logs = Some(false);
-        }
-        if opt.disable_instance_system_metrics {
-            aws_resources.instance_system_metrics = Some(false);
         }
         let aws_resources = Some(aws_resources);
 

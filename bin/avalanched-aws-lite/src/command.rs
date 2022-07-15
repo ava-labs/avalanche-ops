@@ -93,8 +93,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     if newly_generated {
         log::info!("STEP 8: backing up newly generated certificates...");
+
         let s3_key_tls_key = format!("{}/pki/{}.key.zstd.encrypted", tags.id, node_id);
         let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", tags.id, node_id);
+
         certs_manager
             .upload(
                 &tls_key_path,
@@ -107,6 +109,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     if newly_generated {
         log::info!("STEP 8: creating tags for EBS volume with node Id...");
+
         // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
         let filters: Vec<Filter> = vec![
             Filter::builder()

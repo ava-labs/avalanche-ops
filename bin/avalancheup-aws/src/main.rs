@@ -113,11 +113,6 @@ fn main() {
 
                 enable_subnet_evm: sub_matches.is_present("ENABLE_SUBNET_EVM"),
 
-                disable_instance_system_logs: sub_matches
-                    .is_present("DISABLE_INSTANCE_SYSTEM_LOGS"),
-                disable_instance_system_metrics: sub_matches
-                    .is_present("DISABLE_INSTANCE_SYSTEM_METRICS"),
-
                 spec_file_path: sub_matches
                     .value_of("SPEC_FILE_PATH")
                     .unwrap_or("")
