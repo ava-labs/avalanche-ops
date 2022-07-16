@@ -1,5 +1,7 @@
 
-**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.0.10**
+*See [0.0.10 recipes](https://github.com/ava-labs/avalanche-ops/blob/v0.0.10/bin/avalancheup-aws/recipes-aws.md) for old commands.*
+
+**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.1.0**
 
 # avalanche-ops-recipes
 

@@ -384,10 +384,6 @@ pub struct DefaultSpecOption {
 
     pub region: String,
 
-    pub db_backup_s3_region: String,
-    pub db_backup_s3_bucket: String,
-    pub db_backup_s3_key: String,
-
     pub nlb_acm_certificate_arn: String,
 
     pub install_artifacts_avalanched_bin: String,
@@ -659,15 +655,6 @@ impl Spec {
             ), // [year][month][date]-[system host-based id]
             ..aws::Resources::default()
         };
-        if !opt.db_backup_s3_region.is_empty() {
-            aws_resources.db_backup_s3_region = Some(opt.db_backup_s3_region);
-        }
-        if !opt.db_backup_s3_bucket.is_empty() {
-            aws_resources.db_backup_s3_bucket = Some(opt.db_backup_s3_bucket);
-        }
-        if !opt.db_backup_s3_key.is_empty() {
-            aws_resources.db_backup_s3_key = Some(opt.db_backup_s3_key);
-        }
         if !opt.nlb_acm_certificate_arn.is_empty() {
             aws_resources.nlb_acm_certificate_arn = Some(opt.nlb_acm_certificate_arn);
         }
@@ -808,45 +795,6 @@ impl Spec {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     "'machine.region' cannot be empty",
-                ));
-            }
-            if aws_resources.db_backup_s3_region.is_some()
-                && aws_resources.db_backup_s3_bucket.is_none()
-            {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "{} missing corresponding bucket",
-                        aws_resources
-                            .db_backup_s3_bucket
-                            .expect("unexpected aws_resources.db_backup_s3_bucket")
-                    ),
-                ));
-            }
-            if aws_resources.db_backup_s3_bucket.is_some()
-                && aws_resources.db_backup_s3_key.is_none()
-            {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "{} missing corresponding key",
-                        aws_resources
-                            .db_backup_s3_bucket
-                            .expect("unexpected aws_resources.db_backup_s3_bucket")
-                    ),
-                ));
-            }
-            if aws_resources.db_backup_s3_bucket.is_some()
-                && aws_resources.db_backup_s3_region.is_none()
-            {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "{} missing corresponding region",
-                        aws_resources
-                            .db_backup_s3_bucket
-                            .expect("unexpected aws_resources.db_backup_s3_bucket")
-                    ),
                 ));
             }
         }

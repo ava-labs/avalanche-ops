@@ -24,27 +24,16 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
     log::info!("starting avalanched-aws-lite");
 
-    log::info!("STEP 1: fetching EC2 instance metadata...");
     let meta = fetch_metadata().await?;
-    log::info!("fetched availability zone {}", meta.az);
-    log::info!("fetched region {}", meta.region);
-    log::info!("fetched EC2 instance Id {}", meta.ec2_instance_id);
-    log::info!("fetched public ipv4 {}", meta.public_ipv4);
 
-    log::info!(
-        "STEP 2: loading up AWS credential for region '{}'...",
-        meta.region
-    );
-    let aws_creds = load_aws_credential(Arc::new(meta.region)).await?;
+    let aws_creds = load_aws_credential(&meta.region).await?;
 
-    log::info!("STEP 3: fetching tags...");
     let tags = fetch_tags(
         Arc::new(aws_creds.ec2_manager.clone()),
         Arc::new(meta.ec2_instance_id.clone()),
     )
     .await?;
 
-    log::info!("STEP 4: installing Avalanche...");
     install_avalanche(
         &tags.os_type.clone(),
         &tags.arch_type.clone(),
@@ -52,13 +41,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     )
     .await?;
 
-    log::info!("STEP 5: writing Avalanche config file...");
     let avalanchego_config = write_avalanche_config(tags.network_id, &meta.public_ipv4)?;
 
-    log::info!("STEP 6: writing coreth config file...");
     write_coreth_config(&avalanchego_config.chain_config_dir.clone())?;
 
-    log::info!("STEP 7: creating CloudWatch JSON config file...");
     create_cloudwatch_config(
         &tags.id,
         tags.node_kind,
@@ -69,7 +55,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         &tags.cloudwatch_config_file_path,
     )?;
 
-    log::info!("STEP 8: setting up certificates...");
+    log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
         aws_creds.kms_manager.clone(),
         tags.kms_cmk_arn.to_string(),
@@ -92,7 +78,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
 
     if newly_generated {
-        log::info!("STEP 8: backing up newly generated certificates...");
+        log::info!("STEP: backing up newly generated certificates...");
 
         let s3_key_tls_key = format!("{}/pki/{}.key.zstd.encrypted", tags.id, node_id);
         let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", tags.id, node_id);
@@ -108,7 +94,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     }
 
     if newly_generated {
-        log::info!("STEP 8: creating tags for EBS volume with node Id...");
+        log::info!("STEP: creating tags for EBS volume with node Id...");
 
         // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
         let filters: Vec<Filter> = vec![
@@ -142,15 +128,21 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 .set_values(Some(vec![tags.id.clone()]))
                 .build(),
         ];
+
         let volumes = aws_creds
             .ec2_manager
             .describe_volumes(Some(filters))
             .await
-            .expect("failed describe_volumes");
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed describe_volumes {}", e)))?;
         log::info!("found {} attached volume", volumes.len());
-        assert!(volumes.len() == 1);
-        let volume_id = volumes[0].volume_id().unwrap();
+        if volumes.len() != 1 {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("unexpected {} volumes found", volumes.len()),
+            ));
+        }
 
+        let volume_id = volumes[0].volume_id().unwrap();
         if let Some(v) = volumes[0].tags() {
             let mut tag_exists = false;
             for tg in v.iter() {
@@ -194,10 +186,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     }
 
-    log::info!("STEP 9: setting up and starting Avalanche systemd service...");
-    start_avalanche_systemd_service(&tags.avalanche_bin_path, avalanchego_config.clone())?;
+    start_avalanche_systemd_service(&tags.avalanche_bin_path, &avalanchego_config)?;
 
-    log::info!("STEP 10: checking liveness...");
     let http_scheme = {
         if avalanchego_config.http_tls_enabled.is_some()
             && avalanchego_config
@@ -215,7 +205,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
     check_liveness(&ep).await?;
 
-    log::info!("STEP 11: fetching Avalanche metrics...");
     telemetry::metrics::avalanchego::fetch_loop(
         aws_creds.cw_manager.clone(),
         Arc::new(tags.id.clone()),
@@ -236,24 +225,30 @@ struct Metadata {
 }
 
 async fn fetch_metadata() -> io::Result<Metadata> {
+    log::info!("STEP: fetching EC2 instance metadata...");
+
     let az = ec2::fetch_availability_zone().await.map_err(|e| {
         Error::new(
             ErrorKind::Other,
             format!("failed fetch_availability_zone {}", e),
         )
     })?;
+    log::info!("fetched availability zone {}", az);
 
     let reg = ec2::fetch_region()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_region {}", e)))?;
+    log::info!("fetched region {}", reg);
 
     let ec2_instance_id = ec2::fetch_instance_id()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_instance_id {}", e)))?;
+    log::info!("fetched EC2 instance Id {}", ec2_instance_id);
 
     let public_ipv4 = ec2::fetch_public_ipv4()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_public_ipv4 {}", e)))?;
+    log::info!("fetched public ipv4 {}", public_ipv4);
 
     Ok(Metadata {
         az,
@@ -270,7 +265,9 @@ struct AwsCreds {
     cw_manager: cloudwatch::Manager,
 }
 
-async fn load_aws_credential(reg: Arc<String>) -> io::Result<AwsCreds> {
+async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
+    log::info!("STEP: loading up AWS credential for region '{}'...", reg);
+
     let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
 
     let ec2_manager = ec2::Manager::new(&shared_config);
@@ -306,6 +303,8 @@ async fn fetch_tags(
     ec2_manager: Arc<ec2::Manager>,
     ec2_instance_id: Arc<String>,
 ) -> io::Result<Tags> {
+    log::info!("STEP: fetching tags...");
+
     let tags = ec2_manager
         .fetch_tags(ec2_instance_id)
         .await
@@ -406,6 +405,8 @@ async fn install_avalanche(
     os_type: &str,
     avalanche_bin_path: &str,
 ) -> io::Result<()> {
+    log::info!("STEP: installing Avalanche...");
+
     let arch = if arch_type.to_string() == "amd64" {
         Some(avalanche_installer::avalanchego::Arch::Amd64)
     } else {
@@ -434,6 +435,8 @@ fn write_avalanche_config(
     network_id: u32,
     public_ipv4: &str,
 ) -> io::Result<avalanchego::config::Config> {
+    log::info!("STEP: writing Avalanche config file...");
+
     let mut avalanchego_config = match network_id {
         1 => avalanchego::config::Config::default_main(),
         5 => avalanchego::config::Config::default_fuji(),
@@ -447,6 +450,8 @@ fn write_avalanche_config(
 }
 
 fn write_coreth_config(chain_config_dir: &str) -> io::Result<()> {
+    log::info!("STEP: writing coreth config file...");
+
     fs::create_dir_all(Path::new(chain_config_dir).join("C"))?;
 
     let coreth_config = coreth::config::Config::default();
@@ -475,6 +480,8 @@ fn create_cloudwatch_config(
     avalanche_data_volume_path: &str,
     cloudwatch_config_file_path: &str,
 ) -> io::Result<()> {
+    log::info!("STEP: creating CloudWatch JSON config file...");
+
     let cw_config_manager = telemetry::cloudwatch::ConfigManager {
         id: id.to_string(),
         node_kind,
@@ -492,12 +499,12 @@ fn create_cloudwatch_config(
 
 fn start_avalanche_systemd_service(
     avalanche_bin_path: &str,
-    avalanchego_config: avalanchego::config::Config,
+    avalanchego_config: &avalanchego::config::Config,
 ) -> io::Result<()> {
+    log::info!("STEP: setting up and starting Avalanche systemd service...");
+
     // persist before starting the service
-    avalanchego_config
-        .sync(None)
-        .expect("failed to sync avalanchego config_file");
+    avalanchego_config.sync(None)?;
 
     // don't use "Type=notify"
     // as "avalanchego" currently does not do anything specific to systemd
@@ -544,6 +551,8 @@ WantedBy=multi-user.target",
 }
 
 async fn check_liveness(ep: &str) -> io::Result<()> {
+    log::info!("STEP: checking liveness...");
+
     loop {
         let ret = api_health::spawn_check(&ep, true).await;
         match ret {

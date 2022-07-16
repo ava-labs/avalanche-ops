@@ -1,11 +1,8 @@
 use clap::{crate_version, Command};
 
 mod apply;
-mod check_balances;
 mod default_spec;
 mod delete;
-mod events;
-mod read_spec;
 
 const APP_NAME: &str = "avalancheup-aws";
 
@@ -17,9 +14,6 @@ fn main() {
         .about("Avalanche node operations on AWS")
         .subcommands(vec![
             default_spec::command(),
-            read_spec::command(),
-            check_balances::command(),
-            events::command(),
             apply::command(),
             delete::command(),
         ])
@@ -41,19 +35,6 @@ fn main() {
                 keys_to_generate,
 
                 region: sub_matches.value_of("REGION").unwrap().to_string(),
-
-                db_backup_s3_region: sub_matches
-                    .value_of("DB_BACKUP_S3_REGION")
-                    .unwrap_or("")
-                    .to_string(),
-                db_backup_s3_bucket: sub_matches
-                    .value_of("DB_BACKUP_S3_BUCKET")
-                    .unwrap_or("")
-                    .to_string(),
-                db_backup_s3_key: sub_matches
-                    .value_of("DB_BACKUP_S3_KEY")
-                    .unwrap_or("")
-                    .to_string(),
 
                 nlb_acm_certificate_arn: sub_matches
                     .value_of("NLB_ACM_CERTIFICATE_ARN")
@@ -120,44 +101,6 @@ fn main() {
             };
             default_spec::execute(opt).expect("failed to execute 'default-spec'");
         }
-
-        Some((read_spec::NAME, sub_matches)) => {
-            read_spec::execute(
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.is_present("INSTANCE_IDS"),
-                sub_matches.is_present("PUBLIC_IPS"),
-                sub_matches.is_present("NLB_ENDPOINT"),
-                sub_matches.is_present("HTTP_ENDPOINTS"),
-                sub_matches.is_present("NODE_IDS"),
-            )
-            .expect("failed to execute 'read-spec'");
-        }
-
-        Some((check_balances::NAME, sub_matches)) => {
-            check_balances::execute(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-            )
-            .expect("failed to execute 'check-balances'");
-        }
-
-        Some((events::NAME, sub_matches)) => match sub_matches.subcommand() {
-            Some((events::update_artifacts::NAME, sub_sub_matches)) => {
-                events::update_artifacts::execute(
-                    sub_sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                    sub_sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                    sub_sub_matches
-                        .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
-                        .unwrap(),
-                    sub_sub_matches
-                        .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
-                        .unwrap_or(""),
-                    sub_sub_matches.is_present("SKIP_PROMPT"),
-                )
-                .expect("failed to execute 'events update-artifacts'");
-            }
-            _ => unreachable!("unknown sub-subcommand"),
-        },
 
         Some((apply::NAME, sub_matches)) => {
             apply::execute(

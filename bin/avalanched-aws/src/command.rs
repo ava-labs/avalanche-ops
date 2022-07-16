@@ -9,7 +9,7 @@ use std::{
 
 use crate::flags;
 use avalanche_sdk::health as api_health;
-use avalanche_types::{constants, genesis as avalanchego_genesis, node};
+use avalanche_types::{genesis as avalanchego_genesis, node};
 use aws_manager::{
     self, cloudwatch, ec2,
     kms::{self, envelope},
@@ -244,103 +244,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             .encode_yaml()
             .expect("failed to encode node Info")
     );
-
-    // "63.65 GB" .tar.gz download  takes about 45-min
-    // "63.65 GB" .tar.gz unpack    takes about 7-min
-    // "75.47 GB" .tar    unarchive takes about 5-min
-    if spec.aws_resources.is_some() {
-        let aws_resources = spec.clone().aws_resources.unwrap();
-        if aws_resources.db_backup_s3_region.is_some()
-            && aws_resources.db_backup_s3_bucket.is_some()
-            && aws_resources.db_backup_s3_key.is_some()
-        {
-            log::info!("STEP: publishing node information before db backup downloads");
-            let s3_key = {
-                if matches!(tags.node_kind, node::Kind::Anchor) {
-                    avalancheup_aws::StorageNamespace::DiscoverProvisioningAnchorNode(
-                        tags.id.clone(),
-                        local_node.clone(),
-                    )
-                } else {
-                    avalancheup_aws::StorageNamespace::DiscoverProvisioningNonAnchorNode(
-                        tags.id.clone(),
-                        local_node.clone(),
-                    )
-                }
-            }
-            .encode();
-            let node_info = avalancheup_aws::NodeInfo::new(
-                local_node.clone(),
-                spec.avalanchego_config.clone(),
-                spec.coreth_config.clone(),
-            );
-            let tmp_path =
-                random_manager::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
-            node_info.sync(tmp_path.clone()).unwrap();
-            s3::spawn_put_object(
-                aws_creds.s3_manager.clone(),
-                &tmp_path,
-                &tags.s3_bucket,
-                &s3_key,
-            )
-            .await
-            .expect("failed s3::spawn_put_object");
-            fs::remove_file(tmp_path).expect("failed fs::remove_file");
-
-            sleep(Duration::from_secs(1)).await;
-            let db_backup_s3_region = aws_resources.db_backup_s3_region.clone().unwrap();
-            let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
-            let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
-            let dec = compress_manager::DirDecoder::new_from_file_name(&db_backup_s3_key).unwrap();
-            log::info!(
-                "STEP: downloading database backup file 's3://{}/{}' [{}] in region {}",
-                db_backup_s3_bucket,
-                db_backup_s3_key,
-                dec.id(),
-                db_backup_s3_region,
-            );
-
-            let db_backup_s3_config =
-                tokio::spawn(aws_manager::load_config(Some(db_backup_s3_region)))
-                    .await
-                    .expect("failed spawn await")
-                    .expect("failed aws_manager::load_config");
-            let db_backup_s3_manager = s3::Manager::new(&db_backup_s3_config);
-
-            // do not store in "tmp", will run out of space
-            let download_path = format!(
-                "{}/{}{}",
-                spec.avalanchego_config.db_dir,
-                random_manager::string(10),
-                dec.ext()
-            );
-
-            s3::spawn_get_object(
-                db_backup_s3_manager.clone(),
-                &db_backup_s3_bucket,
-                &db_backup_s3_key,
-                &download_path,
-            )
-            .await
-            .expect("failed s3::spawn_get_object");
-
-            compress_manager::unpack_directory(
-                &download_path,
-                &spec.avalanchego_config.db_dir,
-                dec,
-            )
-            .unwrap();
-
-            log::info!("removing downloaded file {} after unpack", download_path);
-            fs::remove_file(download_path).expect("failed fs::remove_file");
-
-            // TODO: override network id to support network fork
-        } else {
-            log::info!(
-                "STEP: db_backup_s3_bucket is empty, skipping database backup download from S3"
-            )
-        }
-    }
 
     if spec.avalanchego_config.is_custom_network()
         && matches!(tags.node_kind, node::Kind::Anchor)
@@ -624,7 +527,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     };
 
-    let mut handles = vec![
+    let handles = vec![
         tokio::spawn(publish_node_info_ready_loop(
             aws_creds.s3_manager.clone(),
             Arc::new(tags.s3_bucket.clone()),
@@ -656,38 +559,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             Arc::new(tags.avalanche_bin_path),
         )),
     ];
-    if spec
-        .clone()
-        .aws_resources
-        .clone()
-        .unwrap()
-        .db_backup_s3_bucket
-        .is_some()
-    {
-        handles.push(tokio::spawn(print_backup_commands(
-            Arc::new(
-                spec.clone()
-                    .aws_resources
-                    .clone()
-                    .unwrap()
-                    .db_backup_s3_region
-                    .clone()
-                    .unwrap(),
-            ),
-            Arc::new(
-                spec.clone()
-                    .aws_resources
-                    .clone()
-                    .unwrap()
-                    .db_backup_s3_bucket
-                    .clone()
-                    .unwrap(),
-            ),
-            Arc::new(tags.id.clone()),
-            Arc::new(spec.avalanchego_config.network_id),
-            Arc::new(spec.avalanchego_config.db_dir),
-        )));
-    }
 
     log::info!("STEP: blocking on handles via JoinHandle");
     for handle in handles {
@@ -878,46 +749,6 @@ async fn check_node_update_loop(
         );
         sleep(Duration::from_secs(240)).await; // sleep to prevent duplicate updates
         panic!("panic avalanched to trigger restarts via systemd service!!!")
-    }
-}
-
-async fn print_backup_commands(
-    s3_region: Arc<String>,
-    s3_bucket: Arc<String>,
-    id: Arc<String>,
-    network_id: Arc<u32>,
-    db_dir: Arc<String>,
-) {
-    log::info!("STEP: starting 'print_backup_commands'");
-
-    loop {
-        // e.g., "--pack-dir /data/network-1000000/v1.4.5"
-        let db_dir_network = match constants::NETWORK_ID_TO_NETWORK_NAME.get(network_id.as_ref()) {
-            Some(v) => String::from(*v),
-            None => format!("network-{}", network_id),
-        };
-
-        println!("[TO BACK UP DATA] /usr/local/bin/avalanched backup upload --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
-            s3_region,
-            compress_manager::DirEncoder::TarGzip.id(),
-            db_dir,
-            db_dir_network,
-            s3_bucket,
-            avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
-            compress_manager::DirEncoder::TarGzip.ext(),
-        );
-
-        println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched backup download --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
-            s3_region,
-            compress_manager::DirDecoder::TarGzip.id(),
-            s3_bucket,
-            avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
-            compress_manager::DirDecoder::TarGzip.ext(),
-            db_dir,
-        );
-
-        log::info!("sleeping 5-hour 'print_backup_commands'");
-        sleep(Duration::from_secs(5 * 3600)).await;
     }
 }
 

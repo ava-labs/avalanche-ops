@@ -16,12 +16,15 @@ pub async fn fetch_loop(
 
     avalanchego_rpc_endpoint: Arc<String>,
 ) {
-    log::info!("starting metrics with initial wait {:?}", initial_wait);
+    log::info!(
+        "fetching AvalancheGo metrics with initial wait {:?}",
+        initial_wait
+    );
     sleep(initial_wait.clone()).await;
 
     let mut prev_raw_metrics: Option<avalanchego_metrics::RawMetrics> = None;
     loop {
-        log::info!("fetching metrics in {:?}", interval);
+        log::info!("fetching AvalancheGo metrics in {:?}", interval);
         sleep(interval.clone()).await;
 
         let cur_metrics = match api_metrics::spawn_get(&avalanchego_rpc_endpoint).await {
