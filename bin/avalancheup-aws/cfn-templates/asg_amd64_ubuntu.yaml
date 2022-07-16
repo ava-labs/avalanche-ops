@@ -423,7 +423,7 @@ Resources:
               Restart=on-failure
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched run
+              ExecStart=/usr/local/bin/avalanched
               StandardOutput=append:/var/log/avalanched.log
               StandardError=append:/var/log/avalanched.log
 

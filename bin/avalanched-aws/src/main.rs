@@ -1,59 +1,31 @@
-use clap::{crate_version, Command};
+mod command;
+mod flags;
 
-mod backup;
-mod run;
+use clap::{crate_version, Arg, Command};
 
-const APP_NAME: &str = "avalanched-aws";
+pub const APP_NAME: &str = "avalanched-aws-lite";
 
 #[tokio::main]
 async fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
-        .about("avalanched on AWS")
-        .long_about("Avalanche agent (daemon) on AWS")
-        .subcommands(vec![run::command(), backup::command()])
+        .about("Runs an Avalanche agent (daemon) on AWS")
+        .arg(
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
+                .required(false)
+                .takes_value(true)
+                .possible_value("debug")
+                .possible_value("info")
+                .allow_invalid_utf8(false)
+                .default_value("info"),
+        )
         .get_matches();
 
-    match matches.subcommand() {
-        Some((run::NAME, sub_matches)) => {
-            let log_lvl = sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
-            run::execute(log_lvl).await;
-        }
-
-        Some((backup::NAME, sub_matches)) => match sub_matches.subcommand() {
-            Some((backup::download::NAME, sub_sub_matches)) => {
-                let log_lvl = sub_sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
-                backup::download::execute(
-                    sub_sub_matches.value_of("REGION").unwrap_or("us-west-2"),
-                    log_lvl,
-                    sub_sub_matches
-                        .value_of("UNARCHIVE_DECOMPRESSION_METHOD")
-                        .unwrap(),
-                    sub_sub_matches.value_of("S3_BUCKET").unwrap(),
-                    sub_sub_matches.value_of("S3_KEY").unwrap(),
-                    sub_sub_matches.value_of("UNPACK_DIR").unwrap(),
-                )
-                .unwrap();
-            }
-
-            Some((backup::upload::NAME, sub_sub_matches)) => {
-                let log_lvl = sub_sub_matches.value_of("LOG_LEVEL").unwrap_or("info");
-                backup::upload::execute(
-                    sub_sub_matches.value_of("REGION").unwrap_or("us-west-2"),
-                    log_lvl,
-                    sub_sub_matches
-                        .value_of("ARCHIVE_COMPRESSION_METHOD")
-                        .unwrap(),
-                    sub_sub_matches.value_of("PACK_DIR").unwrap(),
-                    sub_sub_matches.value_of("S3_BUCKET").unwrap(),
-                    sub_sub_matches.value_of("S3_KEY").unwrap(),
-                )
-                .unwrap();
-            }
-
-            _ => unreachable!("unknown sub-subcommand"),
-        },
-
-        _ => unreachable!("unknown subcommand"),
-    }
+    let opts = flags::Options {
+        log_level: matches.value_of("LOG_LEVEL").unwrap_or("info").to_string(),
+    };
+    command::execute(opts).await.unwrap();
 }

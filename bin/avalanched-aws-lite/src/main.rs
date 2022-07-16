@@ -1,5 +1,5 @@
-pub mod command;
-pub mod flags;
+mod command;
+mod flags;
 
 use clap::{crate_version, Arg, Command};
 
@@ -9,7 +9,7 @@ pub const APP_NAME: &str = "avalanched-aws-lite";
 async fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
-        .about("Runs an Avalanche node")
+        .about("Runs an Avalanche agent (daemon) on AWS")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")

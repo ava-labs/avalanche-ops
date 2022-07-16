@@ -4,9 +4,10 @@ use std::{
     os::unix::fs::PermissionsExt,
     path::Path,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::SystemTime,
 };
 
+use crate::flags;
 use avalanche_sdk::health as api_health;
 use avalanche_types::{constants, genesis as avalanchego_genesis, node};
 use aws_manager::{
@@ -16,37 +17,15 @@ use aws_manager::{
 };
 use aws_sdk_ec2::model::{Filter, Tag};
 use aws_sdk_s3::model::Object;
-use clap::{Arg, Command};
 use infra_aws::{certs, telemetry};
-use tokio::time::sleep;
+use tokio::time::{sleep, Duration};
 
-pub const NAME: &str = "run";
-
-/// Should be able to run with idempotency
-/// (e.g., multiple restarts should not change node ID)
-/// TODO: support download mainnet database from s3
-pub fn command() -> Command<'static> {
-    Command::new(NAME)
-        .about("Runs an Avalanche agent (daemon) on AWS")
-        .arg(
-            Arg::new("LOG_LEVEL")
-                .long("log-level")
-                .short('l')
-                .help("Sets the log level")
-                .required(false)
-                .takes_value(true)
-                .possible_value("debug")
-                .possible_value("info")
-                .allow_invalid_utf8(false)
-                .default_value("info"),
-        )
-}
-
-pub async fn execute(log_level: &str) -> io::Result<()> {
+pub async fn execute(opts: flags::Options) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
+    log::info!("starting avalanched-aws");
 
     log::info!("STEP 1: fetching EC2 instance metadata...");
     let meta = fetch_metadata().await?;

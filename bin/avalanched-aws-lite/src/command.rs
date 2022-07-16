@@ -22,7 +22,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
-    log::info!("starting avalanched-lite-aws");
+    log::info!("starting avalanched-aws-lite");
 
     log::info!("STEP 1: fetching EC2 instance metadata...");
     let meta = fetch_metadata().await?;
