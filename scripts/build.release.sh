@@ -23,7 +23,5 @@ cargo build \
 ./target/release/avalancheup-aws events update-artifacts --help
 
 ./target/release/avalanched-aws --help
-./target/release/avalanched-aws backup upload --help
-./target/release/avalanched-aws backup download --help
 
 ./target/release/avalanched-aws-lite --help
