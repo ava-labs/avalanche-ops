@@ -34,11 +34,6 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub db_backup_s3_key: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub instance_system_logs: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub instance_system_metrics: Option<bool>,
-
     /// AWS region to create resources.
     /// NON-EMPTY TO ENABLE HTTPS over NLB.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -148,9 +143,6 @@ impl Resources {
             db_backup_s3_region: None,
             db_backup_s3_bucket: None,
             db_backup_s3_key: None,
-
-            instance_system_logs: Some(true),
-            instance_system_metrics: Some(true),
 
             nlb_acm_certificate_arn: None,
 

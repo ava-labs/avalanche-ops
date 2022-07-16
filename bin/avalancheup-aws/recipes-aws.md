@@ -118,7 +118,7 @@ ssh -o "StrictHostKeyChecking no" -i test.key ubuntu@52.41.144.41
 aws ssm start-session --region us-west-2 --target i-abc
 
 # in the machine, you can run something like this
-sudo tail -f /var/log/avalanched/avalanched.log
+sudo tail -f /var/log/avalanched.log
 sudo tail -f /var/log/avalanche/avalanche.log
 ls -lah /data/
 
@@ -813,7 +813,7 @@ sudo systemctl stop avalanched.service
 sudo systemctl disable avalanched.service
 sudo journalctl -f -u avalanched.service
 sudo journalctl -u avalanched.service --lines=10 --no-pager
-sudo tail -f /var/log/avalanched/avalanched.log
+sudo tail -f /var/log/avalanched.log
 
 sudo systemctl cat avalanche.service
 sudo systemctl status avalanche.service

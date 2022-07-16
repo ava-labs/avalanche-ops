@@ -12,15 +12,11 @@ pub struct Manager {
     pub envelope_manager: envelope::Manager,
     pub s3_manager: s3::Manager,
     pub s3_bucket: String,
-
-    pub s3_key_tls_key: String,
-    pub s3_key_tls_cert: String,
 }
 
 impl Manager {
     /// Loads the existing staking certificates if exists.
     /// Otherwise, generate a pair.
-    /// Once loaded or generated, upload them to S3.
     /// Returns "true" if generated.
     pub async fn load_or_generate(
         &self,
@@ -49,40 +45,7 @@ impl Manager {
                 tls_cert_exists
             );
             cert::generate_default_pem(&tls_key_path, &tls_cert_path)?;
-
             generated = true;
-
-            log::info!("backing up key file {}", tls_key_path);
-            s3::spawn_compress_seal_put_object(
-                self.s3_manager.clone(),
-                self.envelope_manager.clone(),
-                tls_key_path,
-                &self.s3_bucket,
-                &self.s3_key_tls_key,
-            )
-            .await
-            .map_err(|e| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("failed spawn_compress_seal_put_object tls_key_path: {}", e),
-                )
-            })?;
-
-            log::info!("backing up cert file {}", tls_cert_path);
-            s3::spawn_compress_seal_put_object(
-                self.s3_manager.clone(),
-                self.envelope_manager.clone(),
-                tls_cert_path,
-                &self.s3_bucket,
-                &self.s3_key_tls_cert,
-            )
-            .await
-            .map_err(|e| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
-                )
-            })?;
         } else {
             log::info!(
                 "loading existing staking TLS certificates from '{}' and '{}'",
@@ -95,9 +58,57 @@ impl Manager {
         Ok((node_id, generated))
     }
 
+    /// Uploads the staking certificates to the remote storage.
+    /// It envelope-encrypts using KMS.
+    pub async fn upload(
+        &self,
+        tls_key_path: &str,
+        tls_cert_path: &str,
+        s3_key_tls_key: &str,
+        s3_key_tls_cert: &str,
+    ) -> io::Result<()> {
+        log::info!("uploading key file {}", tls_key_path);
+        s3::spawn_compress_seal_put_object(
+            self.s3_manager.clone(),
+            self.envelope_manager.clone(),
+            tls_key_path,
+            &self.s3_bucket,
+            s3_key_tls_key,
+        )
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed spawn_compress_seal_put_object tls_key_path: {}", e),
+            )
+        })?;
+
+        log::info!("uploading cert file {}", tls_cert_path);
+        s3::spawn_compress_seal_put_object(
+            self.s3_manager.clone(),
+            self.envelope_manager.clone(),
+            tls_cert_path,
+            &self.s3_bucket,
+            s3_key_tls_cert,
+        )
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
+            )
+        })
+    }
+
     /// Downloads the staking certificates from the remote storage.
     /// It envelope-decrypts using KMS.
-    pub async fn download(&self, tls_key_path: &str, tls_cert_path: &str) -> io::Result<node::Id> {
+    pub async fn download(
+        &self,
+        s3_key_tls_key: &str,
+        s3_key_tls_cert: &str,
+        tls_key_path: &str,
+        tls_cert_path: &str,
+    ) -> io::Result<node::Id> {
         let tls_key_exists = Path::new(&tls_key_path).exists();
         log::info!(
             "staking TLS key {} exists? {}",
@@ -127,7 +138,7 @@ impl Manager {
             self.s3_manager.clone(),
             self.envelope_manager.clone(),
             self.s3_bucket.as_str(),
-            self.s3_key_tls_key.as_str(),
+            s3_key_tls_key,
             tls_key_path,
         )
         .await
@@ -146,7 +157,7 @@ impl Manager {
             self.s3_manager.clone(),
             self.envelope_manager.clone(),
             self.s3_bucket.as_str(),
-            self.s3_key_tls_cert.as_str(),
+            s3_key_tls_cert,
             tls_cert_path,
         )
         .await

@@ -410,8 +410,6 @@ Resources:
               chmod +x /tmp/avalanched
               sudo mv /tmp/avalanched /usr/local/bin/avalanched
 
-              mkdir -p /var/log/avalanched
-              chmod 755 /var/log/avalanched
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
 
@@ -425,9 +423,9 @@ Resources:
               Restart=on-failure
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched run
-              StandardOutput=append:/var/log/avalanched/avalanched.log
-              StandardError=append:/var/log/avalanched/avalanched.log
+              ExecStart=/usr/local/bin/avalanched
+              StandardOutput=append:/var/log/avalanched.log
+              StandardError=append:/var/log/avalanched.log
 
               [Install]
               WantedBy=multi-user.target
@@ -518,12 +516,21 @@ Resources:
         - Key: NETWORK_ID
           PropagateAtLaunch: true
           Value: !Ref NetworkId
+        - Key: ARCH_TYPE
+          PropagateAtLaunch: true
+          Value: amd64
+        - Key: OS_TYPE
+          PropagateAtLaunch: true
+          Value: linux
         - Key: NODE_KIND
           PropagateAtLaunch: true
           Value: !Ref NodeKind
         - Key: KMS_CMK_ARN
           PropagateAtLaunch: true
           Value: !Ref KmsCmkArn
+        - Key: AAD_TAG
+          PropagateAtLaunch: true
+          Value: avalanche-ops-aad-tag
         - Key: S3_BUCKET_NAME
           PropagateAtLaunch: true
           Value: !Ref S3BucketName

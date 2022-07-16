@@ -31,7 +31,7 @@ pub struct Config {
 
     /// Network ID. Default to custom network ID.
     /// Set it to 1 for mainnet.
-    /// e.g., "mainnet" is 1, "fuji" is 4, "local" is 12345.
+    /// e.g., "mainnet" is 1, "fuji" is 5, "local" is 12345.
     /// "utils/constants/NetworkID" only accepts string for known networks.
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#pkg-constants
     /// ref. https://pkg.go.dev/github.com/ava-labs/avalanchego/utils/constants#NetworkName
@@ -186,11 +186,11 @@ pub const DEFAULT_DB_TYPE: &str = "leveldb";
 /// Default "db-dir" directory path for remote linux machines.
 /// MUST BE matched with the attached physical storage volume path.
 /// MUST BE a valid path in remote host machine.
-/// ref. See "src/aws/cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
+/// ref. See "cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_DB_DIR: &str = "/data";
 /// Default "log-dir" directory path for remote linux machines.
 /// MUST BE a valid path in remote host machine.
-/// ref. See "src/aws/cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
+/// ref. See "cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
 pub const DEFAULT_LOG_LEVEL: &str = "INFO";
 
@@ -246,6 +246,158 @@ impl Default for Config {
 
 impl Config {
     pub fn default() -> Self {
+        Self::default_main()
+    }
+
+    pub fn default_main() -> Self {
+        Self {
+            config_file: Some(String::from(DEFAULT_CONFIG_FILE_PATH)),
+            genesis: None,
+
+            network_id: 1,
+
+            db_type: String::from(DEFAULT_DB_TYPE),
+            db_dir: String::from(DEFAULT_DB_DIR),
+            log_dir: String::from(DEFAULT_LOG_DIR),
+            log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
+            log_display_level: None,
+
+            http_port: DEFAULT_HTTP_PORT,
+            http_host: Some(String::from(DEFAULT_HTTP_HOST)),
+            http_tls_enabled: Some(DEFAULT_HTTP_TLS_ENABLED),
+            http_tls_key_file: None,
+            http_tls_cert_file: None,
+            public_ip: None,
+
+            staking_enabled: Some(DEFAULT_STAKING_ENABLED),
+            staking_port: DEFAULT_STAKING_PORT,
+            staking_tls_key_file: Some(String::from(DEFAULT_STAKING_TLS_KEY_FILE)),
+            staking_tls_cert_file: Some(String::from(DEFAULT_STAKING_TLS_CERT_FILE)),
+
+            bootstrap_ips: None,
+            bootstrap_ids: None,
+
+            snow_sample_size: Some(DEFAULT_SNOW_SAMPLE_SIZE),
+            snow_quorum_size: Some(DEFAULT_SNOW_QUORUM_SIZE),
+            snow_concurrent_repolls: None,
+            snow_max_time_processing: None,
+            snow_rogue_commit_threshold: None,
+            snow_virtuous_commit_threshold: None,
+
+            network_peer_list_gossip_frequency: None,
+            network_max_reconnect_delay: None,
+
+            index_enabled: Some(DEFAULT_INDEX_ENABLED),
+            index_allow_incomplete: Some(DEFAULT_INDEX_ALLOW_INCOMPLETE),
+
+            api_admin_enabled: Some(DEFAULT_API_ADMIN_ENABLED),
+            api_info_enabled: Some(DEFAULT_API_INFO_ENABLED),
+            api_keystore_enabled: Some(DEFAULT_API_KEYSTORE_ENABLED),
+            api_metrics_enabled: Some(DEFAULT_API_METRICS_ENABLED),
+            api_health_enabled: Some(DEFAULT_API_HEALTH_ENABLED),
+            api_ipcs_enabled: Some(DEFAULT_API_IPCS_ENABLED),
+
+            whitelisted_subnets: None,
+
+            chain_config_dir: String::from(DEFAULT_CHAIN_CONFIG_DIR),
+            subnet_config_dir: Some(String::from(DEFAULT_SUBNET_CONFIG_DIR)),
+
+            state_sync_ids: None,
+            state_sync_ips: None,
+
+            profile_dir: Some(String::from(DEFAULT_PROFILE_DIR)),
+            profile_continuous_enabled: None,
+            profile_continuous_freq: None,
+            profile_continuous_max_files: None,
+
+            throttler_inbound_at_large_alloc_size: None,
+            throttler_inbound_validator_alloc_size: None,
+            throttler_inbound_node_max_at_large_bytes: None,
+
+            throttler_outbound_at_large_alloc_size: None,
+            throttler_outbound_validator_alloc_size: None,
+            throttler_outbound_node_max_at_large_bytes: None,
+
+            network_minimum_timeout: None,
+            network_require_validator_to_connect: None,
+        }
+    }
+
+    pub fn default_fuji() -> Self {
+        Self {
+            config_file: Some(String::from(DEFAULT_CONFIG_FILE_PATH)),
+            genesis: None,
+
+            network_id: 5,
+
+            db_type: String::from(DEFAULT_DB_TYPE),
+            db_dir: String::from(DEFAULT_DB_DIR),
+            log_dir: String::from(DEFAULT_LOG_DIR),
+            log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
+            log_display_level: None,
+
+            http_port: DEFAULT_HTTP_PORT,
+            http_host: Some(String::from(DEFAULT_HTTP_HOST)),
+            http_tls_enabled: Some(DEFAULT_HTTP_TLS_ENABLED),
+            http_tls_key_file: None,
+            http_tls_cert_file: None,
+            public_ip: None,
+
+            staking_enabled: Some(DEFAULT_STAKING_ENABLED),
+            staking_port: DEFAULT_STAKING_PORT,
+            staking_tls_key_file: Some(String::from(DEFAULT_STAKING_TLS_KEY_FILE)),
+            staking_tls_cert_file: Some(String::from(DEFAULT_STAKING_TLS_CERT_FILE)),
+
+            bootstrap_ips: None,
+            bootstrap_ids: None,
+
+            snow_sample_size: Some(DEFAULT_SNOW_SAMPLE_SIZE),
+            snow_quorum_size: Some(DEFAULT_SNOW_QUORUM_SIZE),
+            snow_concurrent_repolls: None,
+            snow_max_time_processing: None,
+            snow_rogue_commit_threshold: None,
+            snow_virtuous_commit_threshold: None,
+
+            network_peer_list_gossip_frequency: None,
+            network_max_reconnect_delay: None,
+
+            index_enabled: Some(DEFAULT_INDEX_ENABLED),
+            index_allow_incomplete: Some(DEFAULT_INDEX_ALLOW_INCOMPLETE),
+
+            api_admin_enabled: Some(DEFAULT_API_ADMIN_ENABLED),
+            api_info_enabled: Some(DEFAULT_API_INFO_ENABLED),
+            api_keystore_enabled: Some(DEFAULT_API_KEYSTORE_ENABLED),
+            api_metrics_enabled: Some(DEFAULT_API_METRICS_ENABLED),
+            api_health_enabled: Some(DEFAULT_API_HEALTH_ENABLED),
+            api_ipcs_enabled: Some(DEFAULT_API_IPCS_ENABLED),
+
+            whitelisted_subnets: None,
+
+            chain_config_dir: String::from(DEFAULT_CHAIN_CONFIG_DIR),
+            subnet_config_dir: Some(String::from(DEFAULT_SUBNET_CONFIG_DIR)),
+
+            state_sync_ids: None,
+            state_sync_ips: None,
+
+            profile_dir: Some(String::from(DEFAULT_PROFILE_DIR)),
+            profile_continuous_enabled: None,
+            profile_continuous_freq: None,
+            profile_continuous_max_files: None,
+
+            throttler_inbound_at_large_alloc_size: None,
+            throttler_inbound_validator_alloc_size: None,
+            throttler_inbound_node_max_at_large_bytes: None,
+
+            throttler_outbound_at_large_alloc_size: None,
+            throttler_outbound_validator_alloc_size: None,
+            throttler_outbound_node_max_at_large_bytes: None,
+
+            network_minimum_timeout: None,
+            network_require_validator_to_connect: None,
+        }
+    }
+
+    pub fn default_custom() -> Self {
         Self {
             config_file: Some(String::from(DEFAULT_CONFIG_FILE_PATH)),
             genesis: Some(String::from(DEFAULT_GENESIS_PATH)),
@@ -520,7 +672,7 @@ fn test_config() {
     use std::fs;
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let mut config = Config::default();
+    let mut config = Config::default_custom();
     config.network_id = 1337;
 
     let ret = config.encode_json();
