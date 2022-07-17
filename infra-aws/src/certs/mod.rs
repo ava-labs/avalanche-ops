@@ -44,7 +44,7 @@ impl Manager {
                 tls_key_exists,
                 tls_cert_exists
             );
-            cert::generate_default_pem(&tls_key_path, &tls_cert_path)?;
+            cert::generate_default_pem(tls_key_path, tls_cert_path)?;
             generated = true;
         } else {
             log::info!(

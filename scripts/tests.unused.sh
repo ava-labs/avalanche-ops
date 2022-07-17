@@ -9,6 +9,6 @@ fi
 # cargo install cargo-udeps --locked
 # https://github.com/est31/cargo-udeps
 cargo install cargo-udeps --locked
-cargo +nightly udeps --all-targets || true
+cargo +nightly udeps --all-targets
 
 echo "ALL SUCCESS!"

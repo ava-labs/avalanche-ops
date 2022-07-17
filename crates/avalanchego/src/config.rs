@@ -177,10 +177,10 @@ pub struct Config {
 
 /// Default "config-file" path on the remote linux machines.
 /// MUST BE a valid path in remote host machine.
-pub const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/avalanche.config.json";
+pub const DEFAULT_CONFIG_FILE_PATH: &str = "/data/avalanche-configs/config.json";
 /// Default "genesis" path on the remote linux machines.
 /// MUST BE a valid path in remote host machine.
-pub const DEFAULT_GENESIS_PATH: &str = "/etc/avalanche.genesis.json";
+pub const DEFAULT_GENESIS_PATH: &str = "/data/avalanche-configs/genesis.json";
 
 pub const DEFAULT_DB_TYPE: &str = "leveldb";
 /// Default "db-dir" directory path for remote linux machines.
@@ -232,8 +232,8 @@ pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
 pub const DEFAULT_API_IPCS_ENABLED: bool = true;
 
 /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.6/config/flags.go#L25-L44
-pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/etc/avalanche/configs/chains";
-pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/etc/avalanche/configs/subnets";
+pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/data/avalanche-configs/chains";
+pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/data/avalanche-configs/subnets";
 
 /// MUST BE a valid path in remote host machine.
 pub const DEFAULT_PROFILE_DIR: &str = "/var/log/avalanche-profile/avalanche";
@@ -486,12 +486,10 @@ impl Config {
     pub fn encode_json(&self) -> io::Result<String> {
         match serde_json::to_string(&self) {
             Ok(s) => Ok(s),
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize to JSON {}", e),
-                ));
-            }
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize to JSON {}", e),
+            )),
         }
     }
 
@@ -501,7 +499,7 @@ impl Config {
         if file_path.is_none() && self.config_file.is_none() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                "empty config-file path",
+                "empty config_file path",
             ));
         }
         let p = file_path.unwrap_or_else(|| {
@@ -510,7 +508,7 @@ impl Config {
                 .expect("unexpected None config_file")
         });
 
-        info!("syncing avalanchego Config to '{}'", p);
+        info!("mkdir avalanchego configuration dir for '{}'", p);
         let path = Path::new(&p);
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
@@ -525,6 +523,8 @@ impl Config {
                 ));
             }
         };
+
+        info!("syncing avalanchego Config to '{}'", p);
         let mut f = File::create(p)?;
         f.write_all(&d)?;
 
@@ -542,14 +542,13 @@ impl Config {
         }
 
         let f = File::open(&file_path).map_err(|e| {
-            return Error::new(
+            Error::new(
                 ErrorKind::Other,
                 format!("failed to open {} ({})", file_path, e),
-            );
+            )
         })?;
-        serde_json::from_reader(f).map_err(|e| {
-            return Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e));
-        })
+        serde_json::from_reader(f)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e)))
     }
 
     /// Validates the configuration.

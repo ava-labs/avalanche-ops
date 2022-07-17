@@ -23,17 +23,6 @@ pub struct Resources {
     #[serde(default)]
     pub s3_bucket: String,
 
-    /// Region for s3 where database backup resides.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub db_backup_s3_region: Option<String>,
-    /// Bucket to download backups from.
-    /// Non-empty to download the database for bootstrapping.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub db_backup_s3_bucket: Option<String>,
-    /// Non-empty to download the database for bootstrapping.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub db_backup_s3_key: Option<String>,
-
     /// AWS region to create resources.
     /// NON-EMPTY TO ENABLE HTTPS over NLB.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -139,10 +128,6 @@ impl Resources {
             region: String::from("us-west-2"),
 
             s3_bucket: String::from(""),
-
-            db_backup_s3_region: None,
-            db_backup_s3_bucket: None,
-            db_backup_s3_key: None,
 
             nlb_acm_certificate_arn: None,
 

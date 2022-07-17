@@ -424,22 +424,6 @@ pub fn execute(
         thread::sleep(Duration::from_secs(5));
         rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
             .unwrap();
-        // NOTE: do not delete db backups...
-        if aws_resources.db_backup_s3_bucket.is_some() {
-            info!(
-                "skipping deleting {}",
-                aws_resources.db_backup_s3_bucket.clone().unwrap()
-            );
-            // rt.block_on(
-            //     s3_manager
-            //         .delete_objects(&aws_resources.s3_bucket_db_backup.clone().unwrap(), None),
-            // )
-            // .unwrap();
-            // rt.block_on(
-            //     s3_manager.delete_bucket(&aws_resources.s3_bucket_db_backup.clone().unwrap()),
-            // )
-            // .unwrap();
-        }
     }
 
     if delete_ebs_volumes {

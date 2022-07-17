@@ -190,10 +190,6 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     )?;
     rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket))
         .unwrap();
-    if aws_resources.db_backup_s3_bucket.is_some() {
-        rt.block_on(s3_manager.create_bucket(&aws_resources.db_backup_s3_bucket.clone().unwrap()))
-            .unwrap();
-    }
 
     thread::sleep(Duration::from_secs(2));
     execute!(
@@ -380,18 +376,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .clone()
             .unwrap();
 
-        let mut role_params = Vec::from([
+        let role_params = Vec::from([
             build_param("Id", &spec.id),
             build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
             build_param("S3BucketName", &aws_resources.s3_bucket),
         ]);
-        if aws_resources.db_backup_s3_bucket.is_some() {
-            let param = build_param(
-                "S3BucketDbBackupName",
-                &aws_resources.db_backup_s3_bucket.clone().unwrap(),
-            );
-            role_params.push(param);
-        }
         rt.block_on(cloudformation_manager.create_stack(
             ec2_instance_role_stack_name.as_str(),
             Some(vec![Capability::CapabilityNamedIam]),
@@ -1052,16 +1041,9 @@ aws ssm start-session --region {} --target {}
         }
         println!();
 
-        let require_db_download = aws_resources.db_backup_s3_bucket.is_some();
-        let s3_dir = {
-            if require_db_download {
-                avalancheup_aws::StorageNamespace::DiscoverProvisioningNonAnchorNodesDir(
-                    spec.id.clone(),
-                )
-            } else {
-                avalancheup_aws::StorageNamespace::DiscoverReadyNonAnchorNodesDir(spec.id.clone())
-            }
-        };
+        let s3_dir =
+            avalancheup_aws::StorageNamespace::DiscoverReadyNonAnchorNodesDir(spec.id.clone());
+
         // wait for non-anchor nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
         let mut objects: Vec<Object>;
@@ -1115,19 +1097,6 @@ aws ssm start-session --region {} --target {}
             Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .expect("failed put_object ConfigFile");
-
-        // TODO: if downloading mainnet db, it will take a while
-        // TODO: better handle this
-        if require_db_download {
-            spec.current_nodes = Some(current_nodes.clone());
-            spec.aws_resources = Some(aws_resources);
-            spec.sync(spec_file_path)?;
-            println!();
-            warn!(
-                "non-anchor nodes are downloading db backups, can take awhile, check back later..."
-            );
-            return Ok(());
-        }
 
         info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));
@@ -1213,12 +1182,7 @@ aws ssm start-session --region {} --target {}
                 warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
             }
         };
-        if aws_resources.db_backup_s3_bucket.is_some() {
-            // TODO: fix this
-            warn!("node may be still downloading database backup... skipping for now...");
-            success = true;
-            break;
-        }
+
         thread::sleep(Duration::from_secs(10));
     }
     if !success {
@@ -1252,12 +1216,7 @@ aws ssm start-session --region {} --target {}
                     );
                 }
             };
-            if aws_resources.db_backup_s3_bucket.is_some() {
-                // TODO: fix this
-                warn!("node may be still downloading database backup... skipping for now...");
-                success = true;
-                break;
-            }
+
             thread::sleep(Duration::from_secs(10));
         }
         if !success {

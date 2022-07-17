@@ -9,7 +9,7 @@ use std::{
 
 use crate::flags;
 use avalanche_sdk::health as api_health;
-use avalanche_types::{constants, genesis as avalanchego_genesis, node};
+use avalanche_types::{genesis as avalanchego_genesis, node};
 use aws_manager::{
     self, cloudwatch, ec2,
     kms::{self, envelope},
@@ -27,28 +27,17 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
     log::info!("starting avalanched-aws");
 
-    log::info!("STEP 1: fetching EC2 instance metadata...");
     let meta = fetch_metadata().await?;
-    log::info!("fetched availability zone {}", meta.az);
-    log::info!("fetched region {}", meta.region);
-    log::info!("fetched EC2 instance Id {}", meta.ec2_instance_id);
-    log::info!("fetched public ipv4 {}", meta.public_ipv4);
 
-    log::info!(
-        "STEP 2: loading up AWS credential for region '{}'...",
-        meta.region
-    );
-    let aws_creds = load_aws_credential(Arc::new(meta.region)).await?;
+    let aws_creds = load_aws_credential(&meta.region).await?;
     let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
 
-    log::info!("STEP 3: fetching tags...");
     let tags = fetch_tags(
         Arc::new(aws_creds.ec2_manager.clone()),
         Arc::new(meta.ec2_instance_id.clone()),
     )
     .await?;
 
-    log::info!("STEP 4: installing Avalanche...");
     install_avalanche(
         Arc::clone(&s3_manager_arc),
         &tags.s3_bucket,
@@ -57,16 +46,15 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     )
     .await?;
 
-    log::info!("STEP 5: downloading avalanche-ops::Spec from S3");
     let mut spec = load_spec(
         Arc::clone(&s3_manager_arc),
         &tags.s3_bucket,
         &tags.id,
         &meta.public_ipv4,
+        &tags.avalancheup_spec_path,
     )
     .await?;
 
-    log::info!("STEP 6: creating CloudWatch JSON config file...");
     create_cloudwatch_config(
         &tags.id,
         tags.node_kind.clone(),
@@ -77,7 +65,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         &tags.cloudwatch_config_file_path,
     )?;
 
-    log::info!("STEP 7: setting up certificates...");
+    log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
         aws_creds.kms_manager.clone(),
         tags.kms_cmk_arn.to_string(),
@@ -108,7 +96,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
 
     if newly_generated {
-        log::info!("STEP 7: backing up newly generated certificates...");
+        log::info!("STEP: backing up newly generated certificates...");
 
         let s3_key_tls_key = format!(
             "{}/{}.key.zstd.encrypted",
@@ -132,7 +120,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     }
 
     if newly_generated {
-        log::info!("STEP 7: creating tags for EBS volume with node Id...");
+        log::info!("STEP: creating tags for EBS volume with node Id...");
 
         // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
         let filters: Vec<Filter> = vec![
@@ -244,103 +232,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             .encode_yaml()
             .expect("failed to encode node Info")
     );
-
-    // "63.65 GB" .tar.gz download  takes about 45-min
-    // "63.65 GB" .tar.gz unpack    takes about 7-min
-    // "75.47 GB" .tar    unarchive takes about 5-min
-    if spec.aws_resources.is_some() {
-        let aws_resources = spec.clone().aws_resources.unwrap();
-        if aws_resources.db_backup_s3_region.is_some()
-            && aws_resources.db_backup_s3_bucket.is_some()
-            && aws_resources.db_backup_s3_key.is_some()
-        {
-            log::info!("STEP: publishing node information before db backup downloads");
-            let s3_key = {
-                if matches!(tags.node_kind, node::Kind::Anchor) {
-                    avalancheup_aws::StorageNamespace::DiscoverProvisioningAnchorNode(
-                        tags.id.clone(),
-                        local_node.clone(),
-                    )
-                } else {
-                    avalancheup_aws::StorageNamespace::DiscoverProvisioningNonAnchorNode(
-                        tags.id.clone(),
-                        local_node.clone(),
-                    )
-                }
-            }
-            .encode();
-            let node_info = avalancheup_aws::NodeInfo::new(
-                local_node.clone(),
-                spec.avalanchego_config.clone(),
-                spec.coreth_config.clone(),
-            );
-            let tmp_path =
-                random_manager::tmp_path(10, Some(".yaml")).expect("unexpected tmp_path failure");
-            node_info.sync(tmp_path.clone()).unwrap();
-            s3::spawn_put_object(
-                aws_creds.s3_manager.clone(),
-                &tmp_path,
-                &tags.s3_bucket,
-                &s3_key,
-            )
-            .await
-            .expect("failed s3::spawn_put_object");
-            fs::remove_file(tmp_path).expect("failed fs::remove_file");
-
-            sleep(Duration::from_secs(1)).await;
-            let db_backup_s3_region = aws_resources.db_backup_s3_region.clone().unwrap();
-            let db_backup_s3_bucket = aws_resources.db_backup_s3_bucket.clone().unwrap();
-            let db_backup_s3_key = aws_resources.db_backup_s3_key.unwrap();
-            let dec = compress_manager::DirDecoder::new_from_file_name(&db_backup_s3_key).unwrap();
-            log::info!(
-                "STEP: downloading database backup file 's3://{}/{}' [{}] in region {}",
-                db_backup_s3_bucket,
-                db_backup_s3_key,
-                dec.id(),
-                db_backup_s3_region,
-            );
-
-            let db_backup_s3_config =
-                tokio::spawn(aws_manager::load_config(Some(db_backup_s3_region)))
-                    .await
-                    .expect("failed spawn await")
-                    .expect("failed aws_manager::load_config");
-            let db_backup_s3_manager = s3::Manager::new(&db_backup_s3_config);
-
-            // do not store in "tmp", will run out of space
-            let download_path = format!(
-                "{}/{}{}",
-                spec.avalanchego_config.db_dir,
-                random_manager::string(10),
-                dec.ext()
-            );
-
-            s3::spawn_get_object(
-                db_backup_s3_manager.clone(),
-                &db_backup_s3_bucket,
-                &db_backup_s3_key,
-                &download_path,
-            )
-            .await
-            .expect("failed s3::spawn_get_object");
-
-            compress_manager::unpack_directory(
-                &download_path,
-                &spec.avalanchego_config.db_dir,
-                dec,
-            )
-            .unwrap();
-
-            log::info!("removing downloaded file {} after unpack", download_path);
-            fs::remove_file(download_path).expect("failed fs::remove_file");
-
-            // TODO: override network id to support network fork
-        } else {
-            log::info!(
-                "STEP: db_backup_s3_bucket is empty, skipping database backup download from S3"
-            )
-        }
-    }
 
     if spec.avalanchego_config.is_custom_network()
         && matches!(tags.node_kind, node::Kind::Anchor)
@@ -561,11 +452,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         spec.avalanchego_config.bootstrap_ids = Some(bootstrap_ids.join(","));
     }
 
-    log::info!("STEP: writing Avalanche config file...");
     write_avalanche_config(tags.network_id, &spec)?;
-
-    log::info!("STEP: writing coreth config file...");
-    write_coreth_config(&spec)?;
+    write_coreth_config_from_spec(&spec)?;
 
     if spec.avalanchego_config.subnet_config_dir.is_some() {
         let subnet_config_dir = spec
@@ -597,10 +485,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             .expect("failed to create continuous_profiler_dir");
     };
 
-    log::info!("STEP: setting up and starting Avalanche systemd service...");
     start_avalanche_systemd_service(&tags.avalanche_bin_path, spec.avalanchego_config.clone())?;
 
-    log::info!("STEP: checking liveness...");
     let ep = format!(
         "{}://{}:{}",
         http_scheme, meta.public_ipv4, spec.avalanchego_config.http_port
@@ -624,7 +510,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     };
 
-    let mut handles = vec![
+    let handles = vec![
         tokio::spawn(publish_node_info_ready_loop(
             aws_creds.s3_manager.clone(),
             Arc::new(tags.s3_bucket.clone()),
@@ -636,7 +522,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             )),
         )),
         tokio::spawn(telemetry::metrics::avalanchego::fetch_loop(
-            aws_creds.cw_manager.clone(),
+            Arc::new(aws_creds.cw_manager.clone()),
             Arc::new(
                 spec.clone()
                     .aws_resources
@@ -656,38 +542,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             Arc::new(tags.avalanche_bin_path),
         )),
     ];
-    if spec
-        .clone()
-        .aws_resources
-        .clone()
-        .unwrap()
-        .db_backup_s3_bucket
-        .is_some()
-    {
-        handles.push(tokio::spawn(print_backup_commands(
-            Arc::new(
-                spec.clone()
-                    .aws_resources
-                    .clone()
-                    .unwrap()
-                    .db_backup_s3_region
-                    .clone()
-                    .unwrap(),
-            ),
-            Arc::new(
-                spec.clone()
-                    .aws_resources
-                    .clone()
-                    .unwrap()
-                    .db_backup_s3_bucket
-                    .clone()
-                    .unwrap(),
-            ),
-            Arc::new(tags.id.clone()),
-            Arc::new(spec.avalanchego_config.network_id),
-            Arc::new(spec.avalanchego_config.db_dir),
-        )));
-    }
 
     log::info!("STEP: blocking on handles via JoinHandle");
     for handle in handles {
@@ -881,46 +735,6 @@ async fn check_node_update_loop(
     }
 }
 
-async fn print_backup_commands(
-    s3_region: Arc<String>,
-    s3_bucket: Arc<String>,
-    id: Arc<String>,
-    network_id: Arc<u32>,
-    db_dir: Arc<String>,
-) {
-    log::info!("STEP: starting 'print_backup_commands'");
-
-    loop {
-        // e.g., "--pack-dir /data/network-1000000/v1.4.5"
-        let db_dir_network = match constants::NETWORK_ID_TO_NETWORK_NAME.get(network_id.as_ref()) {
-            Some(v) => String::from(*v),
-            None => format!("network-{}", network_id),
-        };
-
-        println!("[TO BACK UP DATA] /usr/local/bin/avalanched backup upload --region {} --archive-compression-method {} --pack-dir {}/{} --s3-bucket {} --s3-key {}/backup{}", 
-            s3_region,
-            compress_manager::DirEncoder::TarGzip.id(),
-            db_dir,
-            db_dir_network,
-            s3_bucket,
-            avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
-            compress_manager::DirEncoder::TarGzip.ext(),
-        );
-
-        println!("[TO DOWNLOAD DATA] /usr/local/bin/avalanched backup download --region {} --unarchive-decompression-method {} --s3-bucket {} --s3-key {}/backup{} --unpack-dir {}",
-            s3_region,
-            compress_manager::DirDecoder::TarGzip.id(),
-            s3_bucket,
-            avalancheup_aws::StorageNamespace::BackupsDir(id.to_string()).encode(),
-            compress_manager::DirDecoder::TarGzip.ext(),
-            db_dir,
-        );
-
-        log::info!("sleeping 5-hour 'print_backup_commands'");
-        sleep(Duration::from_secs(5 * 3600)).await;
-    }
-}
-
 struct Metadata {
     az: String,
     region: String,
@@ -929,24 +743,30 @@ struct Metadata {
 }
 
 async fn fetch_metadata() -> io::Result<Metadata> {
+    log::info!("STEP: fetching EC2 instance metadata...");
+
     let az = ec2::fetch_availability_zone().await.map_err(|e| {
         Error::new(
             ErrorKind::Other,
             format!("failed fetch_availability_zone {}", e),
         )
     })?;
+    log::info!("fetched availability zone {}", az);
 
     let reg = ec2::fetch_region()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_region {}", e)))?;
+    log::info!("fetched region {}", reg);
 
     let ec2_instance_id = ec2::fetch_instance_id()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_instance_id {}", e)))?;
+    log::info!("fetched EC2 instance Id {}", ec2_instance_id);
 
     let public_ipv4 = ec2::fetch_public_ipv4()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_public_ipv4 {}", e)))?;
+    log::info!("fetched public ipv4 {}", public_ipv4);
 
     Ok(Metadata {
         az,
@@ -964,7 +784,9 @@ struct AwsCreds {
     cw_manager: cloudwatch::Manager,
 }
 
-async fn load_aws_credential(reg: Arc<String>) -> io::Result<AwsCreds> {
+async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
+    log::info!("STEP: loading up AWS credential for region '{}'...", reg);
+
     let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
 
     let ec2_manager = ec2::Manager::new(&shared_config);
@@ -991,6 +813,7 @@ struct Tags {
     aad_tag: String,
     s3_bucket: String,
     cloudwatch_config_file_path: String,
+    avalancheup_spec_path: String,
     avalanched_bin_path: String,
     avalanche_bin_path: String,
     avalanche_data_volume_path: String,
@@ -1001,6 +824,8 @@ async fn fetch_tags(
     ec2_manager: Arc<ec2::Manager>,
     ec2_instance_id: Arc<String>,
 ) -> io::Result<Tags> {
+    log::info!("STEP: fetching tags...");
+
     let tags = ec2_manager
         .fetch_tags(ec2_instance_id)
         .await
@@ -1016,6 +841,7 @@ async fn fetch_tags(
         aad_tag: String::new(),
         s3_bucket: String::new(),
         cloudwatch_config_file_path: String::new(),
+        avalancheup_spec_path: String::new(),
         avalanched_bin_path: String::new(),
         avalanche_bin_path: String::new(),
         avalanche_data_volume_path: String::new(),
@@ -1058,6 +884,9 @@ async fn fetch_tags(
             "CLOUDWATCH_CONFIG_FILE_PATH" => {
                 fetched_tags.cloudwatch_config_file_path = v.to_string();
             }
+            "AVALANCHEUP_SPEC_PATH" => {
+                fetched_tags.avalancheup_spec_path = v.to_string();
+            }
             "AVALANCHED_BIN_PATH" => {
                 fetched_tags.avalanched_bin_path = v.to_string();
             }
@@ -1086,6 +915,7 @@ async fn fetch_tags(
     assert!(!fetched_tags.aad_tag.is_empty());
     assert!(!fetched_tags.s3_bucket.is_empty());
     assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
+    assert!(!fetched_tags.avalancheup_spec_path.is_empty());
     assert!(!fetched_tags.avalanched_bin_path.is_empty());
     assert!(!fetched_tags.avalanche_bin_path.is_empty());
     assert!(!fetched_tags.avalanche_data_volume_path.is_empty());
@@ -1102,6 +932,8 @@ async fn install_avalanche(
     id: &str,
     avalanche_bin_path: &str,
 ) -> io::Result<()> {
+    log::info!("STEP: installing Avalanche...");
+
     let s3_manager: &s3::Manager = s3_manager.as_ref();
 
     if !Path::new(avalanche_bin_path).exists() {
@@ -1177,7 +1009,10 @@ async fn load_spec(
     s3_bucket: &str,
     id: &str,
     public_ipv4: &str,
+    avalancheup_spec_path: &str,
 ) -> io::Result<avalancheup_aws::Spec> {
+    log::info!("STEP: downloading avalanche-ops spec from S3");
+
     let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml")).unwrap();
 
     let s3_manager: &s3::Manager = s3_manager.as_ref();
@@ -1194,14 +1029,15 @@ async fn load_spec(
     spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
     spec.avalanchego_config.sync(None)?;
 
-    // "avalanched" never updates "spec" file, runs in read-only mode
-    fs::remove_file(&tmp_spec_file_path)?;
+    fs::copy(&tmp_spec_file_path, &avalancheup_spec_path)?;
+    fs::remove_file(&tmp_spec_file_path)?; // "avalanched" never updates "spec" file, runs in read-only mode
 
     Ok(spec)
 }
 
-/// TODO: support other networks
 fn write_avalanche_config(network_id: u32, spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    log::info!("STEP: writing Avalanche config file...");
+
     if spec.avalanchego_config.network_id != network_id {
         return Err(Error::new(
             ErrorKind::Other,
@@ -1218,7 +1054,9 @@ fn write_avalanche_config(network_id: u32, spec: &avalancheup_aws::Spec) -> io::
     spec.avalanchego_config.sync(None)
 }
 
-fn write_coreth_config(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    log::info!("STEP: writing coreth config file...");
+
     let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
     fs::create_dir_all(Path::new(&chain_config_dir).join("C"))?;
 
@@ -1246,6 +1084,8 @@ fn create_cloudwatch_config(
     avalanche_data_volume_path: &str,
     cloudwatch_config_file_path: &str,
 ) -> io::Result<()> {
+    log::info!("STEP: creating CloudWatch JSON config file...");
+
     let cw_config_manager = telemetry::cloudwatch::ConfigManager {
         id: id.to_string(),
         node_kind,
@@ -1265,6 +1105,8 @@ fn start_avalanche_systemd_service(
     avalanche_bin_path: &str,
     avalanchego_config: avalanchego::config::Config,
 ) -> io::Result<()> {
+    log::info!("STEP: setting up and starting Avalanche systemd service...");
+
     // persist before starting the service
     avalanchego_config
         .sync(None)
@@ -1315,6 +1157,8 @@ WantedBy=multi-user.target",
 }
 
 async fn check_liveness(ep: &str) -> io::Result<()> {
+    log::info!("STEP: checking liveness...");
+
     loop {
         let ret = api_health::spawn_check(&ep, true).await;
         match ret {

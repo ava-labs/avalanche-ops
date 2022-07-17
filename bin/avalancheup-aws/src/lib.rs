@@ -49,12 +49,10 @@ impl Node {
     pub fn encode_yaml(&self) -> io::Result<String> {
         match serde_yaml::to_string(&self) {
             Ok(s) => Ok(s),
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize to YAML {}", e),
-                ));
-            }
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize to YAML {}", e),
+            )),
         }
     }
 
@@ -93,14 +91,13 @@ impl Node {
         }
 
         let f = File::open(&file_path).map_err(|e| {
-            return Error::new(
+            Error::new(
                 ErrorKind::Other,
                 format!("failed to open {} ({})", file_path, e),
-            );
+            )
         })?;
-        serde_yaml::from_reader(f).map_err(|e| {
-            return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
-        })
+        serde_yaml::from_reader(f)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
     }
 
     /// Encodes the object in YAML format, compresses, and apply base58.
@@ -123,9 +120,8 @@ impl Node {
     pub fn decompress_base58(d: String) -> io::Result<Self> {
         let decompressed =
             compress_manager::unpack(d.as_bytes(), compress_manager::Decoder::ZstdBase58)?;
-        serde_yaml::from_slice(&decompressed).map_err(|e| {
-            return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
-        })
+        serde_yaml::from_slice(&decompressed)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
     }
 }
 
@@ -254,7 +250,7 @@ pub struct Spec {
     pub endpoints: Option<Endpoints>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Endpoints {
     /// Only updated after creation.
@@ -304,12 +300,10 @@ impl Endpoints {
     pub fn encode_yaml(&self) -> io::Result<String> {
         match serde_yaml::to_string(&self) {
             Ok(s) => Ok(s),
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize DnsEndpoints to YAML {}", e),
-                ));
-            }
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize DnsEndpoints to YAML {}", e),
+            )),
         }
     }
 }
@@ -383,10 +377,6 @@ pub struct DefaultSpecOption {
     pub keys_to_generate: usize,
 
     pub region: String,
-
-    pub db_backup_s3_region: String,
-    pub db_backup_s3_bucket: String,
-    pub db_backup_s3_key: String,
 
     pub nlb_acm_certificate_arn: String,
 
@@ -659,15 +649,6 @@ impl Spec {
             ), // [year][month][date]-[system host-based id]
             ..aws::Resources::default()
         };
-        if !opt.db_backup_s3_region.is_empty() {
-            aws_resources.db_backup_s3_region = Some(opt.db_backup_s3_region);
-        }
-        if !opt.db_backup_s3_bucket.is_empty() {
-            aws_resources.db_backup_s3_bucket = Some(opt.db_backup_s3_bucket);
-        }
-        if !opt.db_backup_s3_key.is_empty() {
-            aws_resources.db_backup_s3_key = Some(opt.db_backup_s3_key);
-        }
         if !opt.nlb_acm_certificate_arn.is_empty() {
             aws_resources.nlb_acm_certificate_arn = Some(opt.nlb_acm_certificate_arn);
         }
@@ -732,12 +713,10 @@ impl Spec {
     pub fn encode_yaml(&self) -> io::Result<String> {
         match serde_yaml::to_string(&self) {
             Ok(s) => Ok(s),
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize Spec to YAML {}", e),
-                ));
-            }
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize Spec to YAML {}", e),
+            )),
         }
     }
 
@@ -776,14 +755,13 @@ impl Spec {
         }
 
         let f = File::open(&file_path).map_err(|e| {
-            return Error::new(
+            Error::new(
                 ErrorKind::Other,
                 format!("failed to open {} ({})", file_path, e),
-            );
+            )
         })?;
-        serde_yaml::from_reader(f).map_err(|e| {
-            return Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e));
-        })
+        serde_yaml::from_reader(f)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
     }
 
     /// Validates the spec.
@@ -808,45 +786,6 @@ impl Spec {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     "'machine.region' cannot be empty",
-                ));
-            }
-            if aws_resources.db_backup_s3_region.is_some()
-                && aws_resources.db_backup_s3_bucket.is_none()
-            {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "{} missing corresponding bucket",
-                        aws_resources
-                            .db_backup_s3_bucket
-                            .expect("unexpected aws_resources.db_backup_s3_bucket")
-                    ),
-                ));
-            }
-            if aws_resources.db_backup_s3_bucket.is_some()
-                && aws_resources.db_backup_s3_key.is_none()
-            {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "{} missing corresponding key",
-                        aws_resources
-                            .db_backup_s3_bucket
-                            .expect("unexpected aws_resources.db_backup_s3_bucket")
-                    ),
-                ));
-            }
-            if aws_resources.db_backup_s3_bucket.is_some()
-                && aws_resources.db_backup_s3_region.is_none()
-            {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "{} missing corresponding region",
-                        aws_resources
-                            .db_backup_s3_bucket
-                            .expect("unexpected aws_resources.db_backup_s3_bucket")
-                    ),
                 ));
             }
         }
@@ -1029,7 +968,7 @@ install_artifacts:
   plugins_dir: {}
 
 avalanchego_config:
-  config-file: /etc/avalanche.config.json
+  config-file: /data/avalanche-configs/config.json
   network-id: 1
   db-type: leveldb
   db-dir: /data
@@ -1052,8 +991,8 @@ avalanchego_config:
   api-metrics-enabled: true
   api-health-enabled: true
   api-ipcs-enabled: true
-  chain-config-dir: /etc/avalanche/configs/chains
-  subnet-config-dir: /etc/avalanche/configs/subnets
+  chain-config-dir: /data/avalanche-configs/chains
+  subnet-config-dir: /data/avalanche-configs/subnets
   profile-dir: /var/log/avalanche-profile/avalanche
 
 coreth_config:
@@ -1332,12 +1271,10 @@ impl StorageNamespace {
         let compressed_id = splits[1];
         match Node::decompress_base58(compressed_id.replace(".yaml", "")) {
             Ok(node) => Ok(node),
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed node::Node::decompress_base64 {}", e),
-                ));
-            }
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed node::Node::decompress_base64 {}", e),
+            )),
         }
     }
 }
