@@ -1237,32 +1237,6 @@ aws ssm start-session --region {} --target {}
     info!("apply all success!");
 
     println!();
-    println!("# run the following to check balances");
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "{} check-balances \\\n--spec-file-path {}\n",
-            exec_path.display(),
-            spec_file_path
-        )),
-        ResetColor
-    )?;
-
-    println!();
-    println!("# run the following to get all node IDs");
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "{} read-spec \\\n--spec-file-path {} \\\n--node-ids\n",
-            exec_path.display(),
-            spec_file_path
-        )),
-        ResetColor
-    )?;
-
-    println!();
     println!("# run the following to delete resources");
     execute!(
         stdout(),

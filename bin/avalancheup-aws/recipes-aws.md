@@ -218,13 +218,6 @@ cd ${HOME}/avalanche-ops
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
-```bash
-# to check balances
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws check-balances \
---spec-file-path [YOUR_SPEC_PATH]
-```
-
 ### Custom network with NO initial database state, with Coreth EVM config file
 
 See https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config for more.
@@ -472,9 +465,6 @@ cd ${HOME}/avalanche-ops
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws check-balances --spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ```bash
@@ -509,16 +499,6 @@ cat /tmp/test.key
 ```bash
 # to get HTTP RPC endpoints
 cat [YOUR_SPEC_PATH] | grep http_rpc:
-```
-
-```bash
-# to node IDs
-# cat [YOUR_SPEC_PATH] | grep node_id:
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws read-spec \
---spec-file-path [YOUR_SPEC_PATH] \
---node-ids
 ```
 
 ```bash
@@ -673,69 +653,6 @@ cd ${HOME}/avalanche-ops
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
-### Fuji network with initial database state
-
-```bash
-# list and sort by timestamp
-# this takes >40-min to complete...
-# TOOD: make this faster
-aws s3 ls --recursive --human-readable s3://avalanche-db-daily/testnet | sort
-
-# download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws default-spec \
---region us-west-2 \
---db-backup-s3-region us-east-1 \
---db-backup-s3-bucket avalanche-db-daily \
---db-backup-s3-key testnet-db-daily-02-26-2022-050001-tar.gz \
---install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
---network-name fuji \
---avalanchego-log-level INFO
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
-```
-
-```bash
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws read-spec \
---spec-file-path [YOUR_SPEC_PATH]
---instance-ids
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws read-spec \
---spec-file-path [YOUR_SPEC_PATH]
---public-ips
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws read-spec \
---spec-file-path [YOUR_SPEC_PATH]
---nlb-endpoint
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws read-spec \
---spec-file-path [YOUR_SPEC_PATH]
---http-endpoints
-
-cat $HOME/test-fuji-from-backup-db.yaml \
-| grep cloudformation_asg_nlb_dns_name
-# Use "https://[NLB_DNS]:443" for web wallet
-```
-
 ### Main network with NO initial database state
 
 This will sync from peer (rather than downloading from S3):
@@ -749,43 +666,6 @@ AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
---network-name mainnet \
---avalanchego-log-level INFO
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
-```
-
-### Main network with initial database state
-
-```bash
-# list and sort by timestamp
-# this takes hours to complete...
-# TOOD: make this faster
-aws s3 ls --recursive --human-readable s3://avalanche-db-daily/mainnet | sort
-
-# download from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws default-spec \
---region us-west-2 \
---db-backup-s3-region us-east-1 \
---db-backup-s3-bucket avalanche-db-daily \
---db-backup-s3-key mainnet-db-daily-02-25-2022-050003-tar.gz \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
 --install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
