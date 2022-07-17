@@ -19,5 +19,3 @@ cargo build \
 ./target/release/avalancheup-aws delete --help
 
 ./target/release/avalanched-aws --help
-
-./target/release/avalanched-aws-lite --help
