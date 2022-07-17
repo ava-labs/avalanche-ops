@@ -977,7 +977,7 @@ install_artifacts:
   avalanchego_bin: {}
   plugins_dir: {}
 
-avalanched_flags:
+avalanched_config:
   log_level: INFO
   lite_mode: true
 
@@ -1023,9 +1023,7 @@ coreth_config:
     assert!(ret.is_ok());
     let config_path = f.path().to_str().unwrap();
 
-    let ret = Spec::load(config_path);
-    assert!(ret.is_ok());
-    let cfg = ret.unwrap();
+    let cfg = Spec::load(config_path).unwrap();
 
     let ret = cfg.sync(config_path);
     assert!(ret.is_ok());
