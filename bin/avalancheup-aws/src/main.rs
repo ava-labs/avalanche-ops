@@ -47,7 +47,7 @@ fn main() {
                     .to_string(),
                 install_artifacts_avalanche_bin: sub_matches
                     .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
-                    .unwrap()
+                    .unwrap_or("")
                     .to_string(),
                 install_artifacts_plugins_dir: sub_matches
                     .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
@@ -56,13 +56,13 @@ fn main() {
 
                 avalanched_log_level: sub_matches
                     .value_of("AVALANCHED_LOG_LEVEL")
-                    .unwrap_or("info")
+                    .unwrap_or("INFO")
                     .to_string(),
                 avalanched_lite_mode: sub_matches.is_present("AVALANCHED_LITE_MODE"),
 
                 avalanchego_log_level: sub_matches
                     .value_of("AVALANCHEGO_LOG_LEVEL")
-                    .unwrap()
+                    .unwrap_or("INFO")
                     .to_string(),
                 avalanchego_whitelisted_subnets: sub_matches
                     .value_of("AVALANCHEGO_WHITELISTED_SUBNETS")
