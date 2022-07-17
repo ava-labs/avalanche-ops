@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "bin/avalanched-aws",
-    "bin/avalanched-aws-lite",
     "bin/avalancheup-aws",
     "crates/avalanchego",
     "crates/coreth",
