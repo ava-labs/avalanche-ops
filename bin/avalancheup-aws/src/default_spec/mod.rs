@@ -91,7 +91,9 @@ pub fn command() -> Command<'static> {
                 .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false)
-                .default_value(avalanchego_config::DEFAULT_LOG_LEVEL),
+                .possible_value("debug")
+                .possible_value("info")
+                .default_value("info"),
         )
         .arg(
             Arg::new("AVALANCHED_LITE_MODE") 
