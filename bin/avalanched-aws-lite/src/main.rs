@@ -22,10 +22,20 @@ async fn main() {
                 .allow_invalid_utf8(false)
                 .default_value("info"),
         )
+        .arg(
+            Arg::new("LITE_MODE")
+                .long("lite-mode")
+                .short('d')
+                .help("Enables lite mode")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
         .get_matches();
 
     let opts = flags::Options {
         log_level: matches.value_of("LOG_LEVEL").unwrap_or("info").to_string(),
+        lite_mode: matches.is_present("LITE_MODE"),
     };
     command::execute(opts).await.unwrap();
 }

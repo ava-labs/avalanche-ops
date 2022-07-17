@@ -569,11 +569,11 @@ sudo systemctl cat avalanche
 /usr/local/bin/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy --version
 
 # to replace the avalanche configuration
-sudo cat /etc/avalanche.config.json
-cp /etc/avalanche.config.json /tmp/avalanche.config.json
+sudo cat /data/avalanche-configs/config.json
+cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
 sed -i -- 's/hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf/2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7/g' /tmp/avalanche.config.json
 cat /tmp/avalanche.config.json
-sudo cp /tmp/avalanche.config.json /etc/avalanche.config.json
+sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
 sudo systemctl restart avalanche
 sleep 5

@@ -8,7 +8,7 @@ use tokio::time::{sleep, Duration};
 /// Periodically collects the "avalanchego" metrics
 /// and uploads them to cloudwatch.
 pub async fn fetch_loop(
-    cloudwatch_manager: cloudwatch::Manager,
+    cloudwatch_manager: Arc<cloudwatch::Manager>,
     cloudwatch_namespace: Arc<String>,
 
     initial_wait: Duration,
@@ -20,12 +20,13 @@ pub async fn fetch_loop(
         "fetching AvalancheGo metrics with initial wait {:?}",
         initial_wait
     );
-    sleep(initial_wait.clone()).await;
+    sleep(initial_wait).await;
 
+    let cloudwatch_manager: &cloudwatch::Manager = cloudwatch_manager.as_ref();
     let mut prev_raw_metrics: Option<avalanchego_metrics::RawMetrics> = None;
     loop {
         log::info!("fetching AvalancheGo metrics in {:?}", interval);
-        sleep(interval.clone()).await;
+        sleep(interval).await;
 
         let cur_metrics = match api_metrics::spawn_get(&avalanchego_rpc_endpoint).await {
             Ok(v) => v,
