@@ -208,14 +208,6 @@ cd ${HOME}/avalanche-ops
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ### Custom network with NO initial database state, with Coreth EVM config file
@@ -260,50 +252,54 @@ cd ${HOME}/avalanche-ops
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ### Custom network with NO initial database state, with new install artifacts (trigger updates)
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ```bash
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws events update-artifacts \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -318,30 +314,42 @@ TODOs
 ACM_CERT_ARN=arn:aws:acm:...:...:certificate/...
 
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --nlb-acm-certificate-arn $ACM_CERT_ARN \
 --network-name custom \
 --avalanchego-log-level INFO
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ```bash
@@ -354,16 +362,36 @@ cat ${HOME}/test-custom-https-for-nlb.yaml \
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
 --avalanchego-http-tls-enabled \
@@ -371,14 +399,6 @@ cd ${HOME}/avalanche-ops
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ### Custom network with NO initial database state, with snow-machine
@@ -387,16 +407,36 @@ See https://pkg.go.dev/github.com/ava-labs/snow-machine for more.
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --install-artifacts-snow-machine-file-path ${HOME}/coreth.json \
 --network-name custom \
 ---keys-to-generate 5 \
@@ -404,14 +444,6 @@ cd ${HOME}/avalanche-ops
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ### Custom network with initial database state
@@ -445,9 +477,15 @@ ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins/srEXiWaHuhNyGwPUi44
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 
 # TODO: pre-generate subnet ID
 # replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
@@ -456,8 +494,8 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
@@ -594,29 +632,70 @@ This will sync from peer (rather than downloading from S3):
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO
 
 cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH
+./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
+```
 
-# only if you want to delete s3 objects + cloudwatch logs
+### Fuji network with NO initial database state, with "avalanched-aws --lite-mode"
+
+This will sync from peer (rather than downloading from S3):
+
+```bash
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+# download latest binary from github
 cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--avalanched-lite-mode \
+--install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
+--network-name fuji \
+--avalanchego-log-level INFO
+
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ### Fuji network with NO initial database state, with fast-sync
@@ -625,16 +704,36 @@ This will fast-sync from peer (rather than downloading from S3):
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO \
 --avalanchego-state-sync-ids ... \
@@ -643,14 +742,6 @@ cd ${HOME}/avalanche-ops
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ### Main network with NO initial database state
@@ -659,29 +750,41 @@ This will sync from peer (rather than downloading from S3):
 
 ```bash
 # download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
-# or cross-compile on your machine using docker
-# ./scripts/build.x86_64-linux-musl.sh
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
+
+##
+# if compiled locally
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+VERSION=1.7.14
+AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-avalanche-bin ${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego \
---install-artifacts-plugins-dir ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name mainnet \
 --avalanchego-log-level INFO
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
-
-# only if you want to delete s3 objects + cloudwatch logs
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---spec-file-path [YOUR_SPEC_PATH]
 ```
 
 ## FAQ: What if I want to control the systemd serviec manually?

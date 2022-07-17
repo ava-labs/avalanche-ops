@@ -6,7 +6,6 @@ use std::{
     sync::Arc,
 };
 
-use crate::flags;
 use avalanche_sdk::health as api_health;
 use avalanche_types::{genesis as avalanchego_genesis, node};
 use aws_manager::{
@@ -18,7 +17,7 @@ use aws_sdk_ec2::model::{Filter, Tag};
 use infra_aws::{certs, telemetry};
 use tokio::time::{sleep, Duration};
 
-pub async fn execute(opts: flags::Options) -> io::Result<()> {
+pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
@@ -38,7 +37,33 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     )
     .await?;
 
-    if opts.lite_mode {
+    let (mut avalanchego_config, coreth_config, download_avalanchego_from_github) =
+        if opts.lite_mode {
+            let avalanchego_config =
+                write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
+            let coreth_config =
+                write_default_coreth_config(&avalanchego_config.chain_config_dir.clone())?;
+
+            (avalanchego_config, coreth_config, true)
+        } else {
+            let spec = download_spec(
+                Arc::clone(&s3_manager_arc),
+                &tags.s3_bucket,
+                &tags.id,
+                &meta.public_ipv4,
+                &tags.avalancheup_spec_path,
+            )
+            .await?;
+            write_coreth_config_from_spec(&spec)?;
+
+            (
+                spec.avalanchego_config.clone(),
+                spec.coreth_config.clone(),
+                spec.install_artifacts.avalanchego_bin.is_none(),
+            )
+        };
+
+    if download_avalanchego_from_github {
         install_avalanche_from_github(
             &tags.os_type.clone(),
             &tags.arch_type.clone(),
@@ -54,27 +79,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         )
         .await?;
     }
-
-    let (mut avalanchego_config, coreth_config) = if opts.lite_mode {
-        let avalanchego_config =
-            write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
-        let coreth_config =
-            write_default_coreth_config(&avalanchego_config.chain_config_dir.clone())?;
-
-        (avalanchego_config, coreth_config)
-    } else {
-        let spec = download_spec(
-            Arc::clone(&s3_manager_arc),
-            &tags.s3_bucket,
-            &tags.id,
-            &meta.public_ipv4,
-            &tags.avalancheup_spec_path,
-        )
-        .await?;
-        write_coreth_config_from_spec(&spec)?;
-
-        (spec.avalanchego_config.clone(), spec.coreth_config.clone())
-    };
 
     create_cloudwatch_config(
         &tags.id,
@@ -535,6 +539,99 @@ async fn fetch_tags(
     Ok(fetched_tags)
 }
 
+async fn download_spec(
+    s3_manager: Arc<s3::Manager>,
+    s3_bucket: &str,
+    id: &str,
+    public_ipv4: &str,
+    avalancheup_spec_path: &str,
+) -> io::Result<avalancheup_aws::Spec> {
+    log::info!("STEP: downloading avalancheup spec file from S3...");
+
+    let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
+
+    let s3_manager: &s3::Manager = s3_manager.as_ref();
+    s3::spawn_get_object(
+        s3_manager.to_owned(),
+        s3_bucket,
+        &avalancheup_aws::StorageNamespace::ConfigFile(id.to_string()).encode(),
+        &tmp_spec_file_path,
+    )
+    .await
+    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+
+    let mut spec = avalancheup_aws::Spec::load(&tmp_spec_file_path)?;
+    spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
+    spec.avalanchego_config.sync(None)?;
+
+    fs::copy(&tmp_spec_file_path, &avalancheup_spec_path)?;
+    fs::remove_file(&tmp_spec_file_path)?; // "avalanched" never updates "spec" file, runs in read-only mode
+
+    Ok(spec)
+}
+
+fn write_default_avalanche_config(
+    network_id: u32,
+    public_ipv4: &str,
+) -> io::Result<avalanchego::config::Config> {
+    log::info!("STEP: writing Avalanche config file...");
+
+    let mut avalanchego_config = match network_id {
+        1 => avalanchego::config::Config::default_main(),
+        5 => avalanchego::config::Config::default_fuji(),
+        _ => avalanchego::config::Config::default_custom(),
+    };
+    avalanchego_config.network_id = network_id;
+    avalanchego_config.public_ip = Some(public_ipv4.to_string());
+    avalanchego_config.sync(None)?;
+
+    Ok(avalanchego_config)
+}
+
+fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::config::Config> {
+    log::info!("STEP: writing default coreth config file...");
+
+    fs::create_dir_all(Path::new(chain_config_dir).join("C"))?;
+
+    let default_coreth_config = coreth::config::Config::default();
+
+    let tmp_coreth_config_path = random_manager::tmp_path(15, Some(".json"))?;
+    let chain_config_c_path = Path::new(chain_config_dir).join("C").join("config.json");
+
+    default_coreth_config.sync(&tmp_coreth_config_path)?;
+    fs::copy(&tmp_coreth_config_path, &chain_config_c_path)?;
+    fs::remove_file(&tmp_coreth_config_path)?;
+
+    log::info!(
+        "saved default coreth config file to {:?}",
+        chain_config_c_path.as_os_str()
+    );
+
+    Ok(default_coreth_config)
+}
+
+fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    log::info!("STEP: writing coreth config file from spec...");
+
+    let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
+    fs::create_dir_all(Path::new(&chain_config_dir).join("C"))?;
+
+    let tmp_coreth_config_path = random_manager::tmp_path(15, Some(".json"))?;
+    let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
+
+    spec.coreth_config.sync(&tmp_coreth_config_path)?;
+
+    fs::copy(&tmp_coreth_config_path, &chain_config_c_path)?;
+    fs::remove_file(&tmp_coreth_config_path)?;
+
+    log::info!(
+        "saved coreth config file to {:?}",
+        chain_config_c_path.as_os_str()
+    );
+
+    Ok(())
+}
+
 async fn install_avalanche_from_github(
     arch_type: &str,
     os_type: &str,
@@ -636,99 +733,6 @@ async fn install_avalanche_from_s3(
             fs::remove_file(&tmp_path)?;
         }
     }
-
-    Ok(())
-}
-
-async fn download_spec(
-    s3_manager: Arc<s3::Manager>,
-    s3_bucket: &str,
-    id: &str,
-    public_ipv4: &str,
-    avalancheup_spec_path: &str,
-) -> io::Result<avalancheup_aws::Spec> {
-    log::info!("STEP: downloading avalancheup spec file from S3...");
-
-    let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
-
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
-    s3::spawn_get_object(
-        s3_manager.to_owned(),
-        s3_bucket,
-        &avalancheup_aws::StorageNamespace::ConfigFile(id.to_string()).encode(),
-        &tmp_spec_file_path,
-    )
-    .await
-    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
-
-    let mut spec = avalancheup_aws::Spec::load(&tmp_spec_file_path)?;
-    spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
-    spec.avalanchego_config.sync(None)?;
-
-    fs::copy(&tmp_spec_file_path, &avalancheup_spec_path)?;
-    fs::remove_file(&tmp_spec_file_path)?; // "avalanched" never updates "spec" file, runs in read-only mode
-
-    Ok(spec)
-}
-
-fn write_default_avalanche_config(
-    network_id: u32,
-    public_ipv4: &str,
-) -> io::Result<avalanchego::config::Config> {
-    log::info!("STEP: writing Avalanche config file...");
-
-    let mut avalanchego_config = match network_id {
-        1 => avalanchego::config::Config::default_main(),
-        5 => avalanchego::config::Config::default_fuji(),
-        _ => avalanchego::config::Config::default_custom(),
-    };
-    avalanchego_config.network_id = network_id;
-    avalanchego_config.public_ip = Some(public_ipv4.to_string());
-    avalanchego_config.sync(None)?;
-
-    Ok(avalanchego_config)
-}
-
-fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::config::Config> {
-    log::info!("STEP: writing default coreth config file...");
-
-    fs::create_dir_all(Path::new(chain_config_dir).join("C"))?;
-
-    let default_coreth_config = coreth::config::Config::default();
-
-    let tmp_coreth_config_path = random_manager::tmp_path(15, Some(".json"))?;
-    let chain_config_c_path = Path::new(chain_config_dir).join("C").join("config.json");
-
-    default_coreth_config.sync(&tmp_coreth_config_path)?;
-    fs::copy(&tmp_coreth_config_path, &chain_config_c_path)?;
-    fs::remove_file(&tmp_coreth_config_path)?;
-
-    log::info!(
-        "saved default coreth config file to {:?}",
-        chain_config_c_path.as_os_str()
-    );
-
-    Ok(default_coreth_config)
-}
-
-fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
-    log::info!("STEP: writing coreth config file from spec...");
-
-    let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
-    fs::create_dir_all(Path::new(&chain_config_dir).join("C"))?;
-
-    let tmp_coreth_config_path = random_manager::tmp_path(15, Some(".json"))?;
-    let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
-
-    spec.coreth_config.sync(&tmp_coreth_config_path)?;
-
-    fs::copy(&tmp_coreth_config_path, &chain_config_c_path)?;
-    fs::remove_file(&tmp_coreth_config_path)?;
-
-    log::info!(
-        "saved coreth config file to {:?}",
-        chain_config_c_path.as_os_str()
-    );
 
     Ok(())
 }

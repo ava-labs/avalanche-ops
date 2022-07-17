@@ -1,8 +1,8 @@
-use clap::{crate_version, Command};
-
 mod apply;
 mod default_spec;
 mod delete;
+
+use clap::{crate_version, Command};
 
 const APP_NAME: &str = "avalancheup-aws";
 
@@ -53,6 +53,12 @@ fn main() {
                     .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
                     .unwrap_or("")
                     .to_string(),
+
+                avalanched_log_level: sub_matches
+                    .value_of("AVALANCHED_LOG_LEVEL")
+                    .unwrap_or("info")
+                    .to_string(),
+                avalanched_lite_mode: sub_matches.is_present("AVALANCHED_LITE_MODE"),
 
                 avalanchego_log_level: sub_matches
                     .value_of("AVALANCHEGO_LOG_LEVEL")

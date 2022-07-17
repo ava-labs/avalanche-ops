@@ -35,30 +35,6 @@ pub fn command() -> Command<'static> {
                 .default_value("us-west-2"),
         )
         .arg(
-            Arg::new("DB_BACKUP_S3_REGION") 
-                .long("db-backup-s3-region")
-                .help("Sets S3 region for database backup download")
-                .required(false)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("DB_BACKUP_S3_BUCKET") 
-                .long("db-backup-s3-bucket")
-                .help("Sets S3 bucket for database backup download")
-                .required(false)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("DB_BACKUP_S3_KEY") 
-                .long("db-backup-s3-key")
-                .help("Sets S3 key for database backup download")
-                .required(false)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
             Arg::new("NLB_ACM_CERTIFICATE_ARN") 
                 .long("nlb-acm-certificate-arn")
                 .help("Sets ACM ARN to enable NLB HTTPS")
@@ -77,8 +53,8 @@ pub fn command() -> Command<'static> {
         .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHE_BIN") 
                 .long("install-artifacts-avalanche-bin")
-                .help("Sets the Avalanche node binary path in the local machine to be shared with remote machines")
-                .required(true)
+                .help("Sets the Avalanche node binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
@@ -107,6 +83,23 @@ pub fn command() -> Command<'static> {
                 .takes_value(true)
                 .allow_invalid_utf8(false)
                 .default_value("5"), // ref. "avalancheup_aws::DEFAULT_KEYS_TO_GENERATE"
+        )
+        .arg(
+            Arg::new("AVALANCHED_LOG_LEVEL") 
+                .long("avalanched-log-level")
+                .help("Sets the log level for 'avalanched'")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+                .default_value(avalanchego_config::DEFAULT_LOG_LEVEL),
+        )
+        .arg(
+            Arg::new("AVALANCHED_LITE_MODE") 
+                .long("avalanched-lite-mode")
+                .help("Sets the lite-mode for 'avalanched'")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
         )
         .arg(
             Arg::new("AVALANCHEGO_LOG_LEVEL") 
@@ -217,22 +210,6 @@ pub fn command() -> Command<'static> {
             Arg::new("ENABLE_SUBNET_EVM")
                 .long("enable-subnet-evm")
                 .help("Sets to enable subnet-evm")
-                .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("DISABLE_INSTANCE_SYSTEM_LOGS")
-                .long("disable-instance-system-logs")
-                .help("Sets to disable instance-level system logs collected by CloudWatch agent")
-                .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
-        )
-        .arg(
-            Arg::new("DISABLE_INSTANCE_SYSTEM_METRICS")
-                .long("disable-instance-system-metrics")
-                .help("Sets to disable instance-level system metrics collected by CloudWatch agent")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),

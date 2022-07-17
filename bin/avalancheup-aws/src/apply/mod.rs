@@ -208,24 +208,30 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     ))
     .expect("failed put_object install_artifacts.avalanched_bin");
 
-    // compress as these will be decompressed by "avalanched"
-    let tmp_avalanche_bin_compressed_path =
-        random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
-    compress_manager::pack_file(
-        &spec.install_artifacts.avalanchego_bin,
-        &tmp_avalanche_bin_compressed_path,
-        compress_manager::Encoder::Zstd(3),
-    )
-    .expect("failed pack_file install_artifacts.avalanched_bin");
-    rt.block_on(s3_manager.put_object(
-        Arc::new(tmp_avalanche_bin_compressed_path.clone()),
-        Arc::new(aws_resources.s3_bucket.clone()),
-        Arc::new(
-            avalancheup_aws::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode(),
-        ),
-    ))
-    .expect("failed put_object compressed avalanchego_bin");
-    fs::remove_file(tmp_avalanche_bin_compressed_path)?;
+    if let Some(v) = &spec.install_artifacts.avalanchego_bin {
+        // compress as these will be decompressed by "avalanched"
+        let tmp_avalanche_bin_compressed_path =
+            random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
+
+        compress_manager::pack_file(
+            v,
+            &tmp_avalanche_bin_compressed_path,
+            compress_manager::Encoder::Zstd(3),
+        )
+        .expect("failed pack_file install_artifacts.avalanched_bin");
+
+        rt.block_on(s3_manager.put_object(
+            Arc::new(tmp_avalanche_bin_compressed_path.clone()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(
+                avalancheup_aws::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode(),
+            ),
+        ))
+        .expect("failed put_object compressed avalanchego_bin");
+
+        fs::remove_file(tmp_avalanche_bin_compressed_path)?;
+    }
+
     if spec.install_artifacts.plugins_dir.is_some() {
         let plugins_dir = spec.install_artifacts.plugins_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
@@ -570,6 +576,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             format!("{}", instance_types.len()).as_str(),
         ));
     }
+
+    asg_parameters.push(build_param(
+        "AvalanchedFlag",
+        &spec.avalanched_config.to_flags(),
+    ));
 
     // TODO: support bootstrap from existing DB for anchor nodes
     let mut current_nodes: Vec<avalancheup_aws::Node> = Vec::new();

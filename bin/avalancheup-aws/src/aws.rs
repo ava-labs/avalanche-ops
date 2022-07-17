@@ -127,7 +127,7 @@ impl Resources {
             identity: None,
             region: String::from("us-west-2"),
 
-            s3_bucket: String::from(""),
+            s3_bucket: String::new(),
 
             nlb_acm_certificate_arn: None,
 
