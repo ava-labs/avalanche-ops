@@ -4,6 +4,10 @@ version = "0.0.1"
 edition = "2021"
 rust-version = "1.62"
 
+[[bin]]
+name = "avalanched-aws"
+path = "src/main.rs"
+
 [dependencies]
 avalanche-installer = "0.0.2"
 avalanche-sdk = { version = "0.0.16", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk

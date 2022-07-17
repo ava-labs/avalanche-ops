@@ -192,6 +192,11 @@ Parameters:
     Default: ""
     Description: (Optional) Certificates for NLB HTTPs traffic.
 
+  AvalanchedFlag:
+    Type: String
+    Default: ""
+    Description: (Optional) flag for "avalanched" CLI.
+
 Conditions:
   HasImageId:
     Fn::Not:
@@ -415,7 +420,7 @@ Resources:
 
               cat > /tmp/avalanched.service <<EOF
               [Unit]
-              Description=avalanched (avalanche agent)
+              Description=Avalanched (avalanche agent)
 
               [Service]
               Type=exec
@@ -423,7 +428,7 @@ Resources:
               Restart=on-failure
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched
+              ExecStart=/usr/local/bin/avalanched ${AvalanchedFlag}
               StandardOutput=append:/var/log/avalanched.log
               StandardError=append:/var/log/avalanched.log
 

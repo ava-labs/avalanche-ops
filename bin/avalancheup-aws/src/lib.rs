@@ -1,3 +1,4 @@
+mod avalanched;
 mod aws;
 
 use std::{
@@ -213,6 +214,10 @@ pub struct Spec {
     /// Install artifacts to share with remote machines.
     pub install_artifacts: InstallArtifacts,
 
+    /// Flag to pass to the "avalanched" command-line interface
+    /// (e.g., "--lite-mode").
+    pub avalanched_config: avalanched::Flags,
+
     /// Represents the configuration for "avalanchego".
     /// Set as if run in remote machines.
     /// For instance, "config-file" must be the path valid
@@ -222,6 +227,7 @@ pub struct Spec {
     /// If non-empty, the JSON-encoded data are saved to a file
     /// in Path::new(&avalanchego_config.chain_config_dir).join("C").
     pub coreth_config: coreth_config::Config,
+
     /// If non-empty, the JSON-encoded data are saved to a file
     /// and used for "--genesis" in Path::new(&avalanchego_config.genesis).
     /// This includes "coreth_genesis::Genesis".
@@ -333,16 +339,20 @@ pub struct InstallArtifacts {
     /// The file is NOT compressed when uploaded.
     #[serde(default)]
     pub avalanched_bin: String,
+
     /// AvalancheGo binary path in the local environment.
     /// The file is "compressed" and uploaded to remote storage
     /// to be shared with remote machines.
+    ///
+    /// If none, it downloads the latest from the github.
     ///
     ///  build
     ///    ├── avalanchego (the binary from compiling the app directory)
     ///    └── plugins
     ///        └── evm
     #[serde(default)]
-    pub avalanchego_bin: String,
+    pub avalanchego_bin: Option<String>,
+
     /// Plugin directories in the local environment.
     /// Files (if any) are uploaded to the remote storage to be shared
     /// with remote machiens.
@@ -383,6 +393,9 @@ pub struct DefaultSpecOption {
     pub install_artifacts_avalanched_bin: String,
     pub install_artifacts_avalanche_bin: String,
     pub install_artifacts_plugins_dir: String,
+
+    pub avalanched_log_level: String,
+    pub avalanched_lite_mode: bool,
 
     pub avalanchego_log_level: String,
     pub avalanchego_whitelisted_subnets: String,
@@ -508,6 +521,11 @@ impl Spec {
         {
             Some(v) => *v,
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
+        };
+
+        let avalanched_config = avalanched::Flags {
+            log_level: opt.avalanched_log_level,
+            lite_mode: opt.avalanched_lite_mode,
         };
 
         let mut avalanchego_config = match network_id {
@@ -656,9 +674,12 @@ impl Spec {
 
         let mut install_artifacts = InstallArtifacts {
             avalanched_bin: opt.install_artifacts_avalanched_bin,
-            avalanchego_bin: opt.install_artifacts_avalanche_bin,
+            avalanchego_bin: None,
             plugins_dir: None,
         };
+        if !opt.install_artifacts_avalanche_bin.is_empty() {
+            install_artifacts.avalanchego_bin = Some(opt.install_artifacts_avalanche_bin);
+        }
         if !opt.install_artifacts_plugins_dir.is_empty() {
             install_artifacts.plugins_dir = Some(opt.install_artifacts_plugins_dir);
         }
@@ -694,6 +715,8 @@ impl Spec {
             aws_resources,
             machine,
             install_artifacts,
+
+            avalanched_config,
 
             avalanchego_config,
             coreth_config,
@@ -818,35 +841,21 @@ impl Spec {
                 ),
             ));
         }
-        if !Path::new(&self.install_artifacts.avalanchego_bin).exists() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "avalanchego_bin {} does not exist",
-                    self.install_artifacts.avalanchego_bin
-                ),
-            ));
+        if let Some(v) = &self.install_artifacts.avalanchego_bin {
+            if !Path::new(v).exists() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("avalanchego_bin {} does not exist", v),
+                ));
+            }
         }
-        if self.install_artifacts.plugins_dir.is_some()
-            && !Path::new(
-                &self
-                    .install_artifacts
-                    .plugins_dir
-                    .clone()
-                    .expect("unexpected None install_artifacts.plugins_dir"),
-            )
-            .exists()
-        {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "plugins_dir {} does not exist",
-                    self.install_artifacts
-                        .plugins_dir
-                        .clone()
-                        .expect("unexpected None install_artifacts.plugins_dir")
-                ),
-            ));
+        if let Some(v) = &self.install_artifacts.plugins_dir {
+            if !Path::new(v).exists() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("plugins_dir {} does not exist", v),
+                ));
+            }
         }
 
         if !self.avalanchego_config.is_custom_network() {
@@ -910,6 +919,7 @@ impl Spec {
     }
 }
 
+/// RUST_LOG=debug cargo test --package avalancheup-aws --lib -- test_spec --exact --show-output
 #[test]
 fn test_spec() {
     use std::fs;
@@ -967,6 +977,10 @@ install_artifacts:
   avalanchego_bin: {}
   plugins_dir: {}
 
+avalanched_config:
+  log_level: INFO
+  lite_mode: true
+
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
   network-id: 1
@@ -1009,9 +1023,7 @@ coreth_config:
     assert!(ret.is_ok());
     let config_path = f.path().to_str().unwrap();
 
-    let ret = Spec::load(config_path);
-    assert!(ret.is_ok());
-    let cfg = ret.unwrap();
+    let cfg = Spec::load(config_path).unwrap();
 
     let ret = cfg.sync(config_path);
     assert!(ret.is_ok());
@@ -1040,8 +1052,13 @@ coreth_config:
 
         install_artifacts: InstallArtifacts {
             avalanched_bin: avalanched_bin.to_string(),
-            avalanchego_bin: avalanchego_bin.to_string(),
+            avalanchego_bin: Some(avalanchego_bin.to_string()),
             plugins_dir: Some(plugins_dir.to_string()),
+        },
+
+        avalanched_config: avalanched::Flags {
+            log_level: String::from("INFO"),
+            lite_mode: true,
         },
 
         avalanchego_config,
@@ -1068,11 +1085,14 @@ coreth_config:
     assert_eq!(aws_resources.s3_bucket, bucket);
 
     assert_eq!(cfg.install_artifacts.avalanched_bin, avalanched_bin);
-    assert_eq!(cfg.install_artifacts.avalanchego_bin, avalanchego_bin);
     assert_eq!(
         cfg.install_artifacts
-            .plugins_dir
-            .unwrap_or(String::from("")),
+            .avalanchego_bin
+            .unwrap_or(String::new()),
+        avalanchego_bin
+    );
+    assert_eq!(
+        cfg.install_artifacts.plugins_dir.unwrap_or(String::new()),
         plugins_dir.to_string()
     );
 
