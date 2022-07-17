@@ -537,6 +537,9 @@ Resources:
         - Key: CLOUDWATCH_CONFIG_FILE_PATH
           PropagateAtLaunch: true
           Value: /opt/aws/amazon-cloudwatch-agent/bin/config.json
+        - Key: AVALANCHEUP_SPEC_PATH
+          PropagateAtLaunch: true
+          Value: /data/avalancheup.yaml
         - Key: AVALANCHED_BIN_PATH
           PropagateAtLaunch: true
           Value: /usr/local/bin/avalanched
