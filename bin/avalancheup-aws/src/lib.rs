@@ -978,7 +978,7 @@ install_artifacts:
   plugins_dir: {}
 
 avalanched_config:
-  log_level: INFO
+  log_level: info
   lite_mode: true
 
 avalanchego_config:
@@ -1057,7 +1057,7 @@ coreth_config:
         },
 
         avalanched_config: avalanched::Flags {
-            log_level: String::from("INFO"),
+            log_level: String::from("info"),
             lite_mode: true,
         },
 

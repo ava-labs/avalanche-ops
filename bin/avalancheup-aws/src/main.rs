@@ -56,7 +56,7 @@ fn main() {
 
                 avalanched_log_level: sub_matches
                     .value_of("AVALANCHED_LOG_LEVEL")
-                    .unwrap_or("INFO")
+                    .unwrap_or("info")
                     .to_string(),
                 avalanched_lite_mode: sub_matches.is_present("AVALANCHED_LITE_MODE"),
 
