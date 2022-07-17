@@ -10,7 +10,6 @@ fi
 cargo build \
 --release \
 --bin avalancheup-aws \
---bin avalanched-aws-lite \
 --bin avalanched-aws
 
 ./target/release/avalancheup-aws --help
