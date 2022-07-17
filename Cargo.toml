@@ -2,6 +2,7 @@
 members = [
     "bin/avalanched-aws",
     "bin/avalancheup-aws",
+    "bin/staking-key-cert-s3-downloader",
     "crates/avalanchego",
     "crates/coreth",
     "crates/subnet-evm",

@@ -1242,9 +1242,46 @@ aws ssm start-session --region {} --target {}
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--spec-file-path {}\n",
+            "{} delete \\
+--delete-cloudwatch-log-group \\
+--delete-s3-objects \\
+--delete-ebs-volumes \\
+--spec-file-path {}
+",
             exec_path.display(),
             spec_file_path
+        )),
+        ResetColor
+    )?;
+
+    println!();
+    println!("# run the following to download the generated certificates");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "aws --region {} s3 ls s3://{}/{}/pki
+
+staking-key-cert-s3-downloader \\
+--log-level=info \\
+--aws-region={} \\
+--s3-bucket={} \\
+--s3-key-tls-key={}/pki/[KEY_FILE_NAME_IN_S3] \\
+--s3-key-tls-cert={}/pki/[CERT_FILE_NAME_IN_S3] \\
+--kms-cmk-id={} \\
+--tls-key-path=/tmp/my.key \\
+--tls-cert-path=/tmp/my.crt
+
+
+",
+            aws_resources.region,
+            aws_resources.s3_bucket,
+            spec.id,
+            aws_resources.region,
+            aws_resources.s3_bucket,
+            spec.id,
+            spec.id,
+            aws_resources.kms_cmk_id.unwrap(),
         )),
         ResetColor
     )?;
