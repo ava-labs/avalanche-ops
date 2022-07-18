@@ -337,19 +337,21 @@ pub struct InstallArtifacts {
     /// The file is uploaded to the remote storage with the path
     /// "bootstrap/install/avalanched" to be shared with remote machines.
     /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub avalanched_bin: String,
+    pub avalanched_bin: Option<String>,
 
     /// AvalancheGo binary path in the local environment.
     /// The file is "compressed" and uploaded to remote storage
     /// to be shared with remote machines.
     ///
-    /// If none, it downloads the latest from the github.
-    ///
     ///  build
     ///    ├── avalanchego (the binary from compiling the app directory)
     ///    └── plugins
     ///        └── evm
+    ///
+    /// If none, it downloads the latest from github.
     #[serde(default)]
     pub avalanchego_bin: Option<String>,
 
@@ -673,10 +675,13 @@ impl Spec {
         let aws_resources = Some(aws_resources);
 
         let mut install_artifacts = InstallArtifacts {
-            avalanched_bin: opt.install_artifacts_avalanched_bin,
+            avalanched_bin: None,
             avalanchego_bin: None,
             plugins_dir: None,
         };
+        if !opt.install_artifacts_avalanched_bin.is_empty() {
+            install_artifacts.avalanched_bin = Some(opt.install_artifacts_avalanched_bin);
+        }
         if !opt.install_artifacts_avalanche_bin.is_empty() {
             install_artifacts.avalanchego_bin = Some(opt.install_artifacts_avalanche_bin);
         }
@@ -832,14 +837,13 @@ impl Spec {
             ));
         }
 
-        if !Path::new(&self.install_artifacts.avalanched_bin).exists() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "avalanched_bin {} does not exist",
-                    self.install_artifacts.avalanched_bin
-                ),
-            ));
+        if let Some(v) = &self.install_artifacts.avalanched_bin {
+            if !Path::new(v).exists() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("avalanched_bin {} does not exist", v),
+                ));
+            }
         }
         if let Some(v) = &self.install_artifacts.avalanchego_bin {
             if !Path::new(v).exists() {
@@ -1051,7 +1055,7 @@ coreth_config:
         },
 
         install_artifacts: InstallArtifacts {
-            avalanched_bin: avalanched_bin.to_string(),
+            avalanched_bin: Some(avalanched_bin.to_string()),
             avalanchego_bin: Some(avalanchego_bin.to_string()),
             plugins_dir: Some(plugins_dir.to_string()),
         },
@@ -1084,7 +1088,12 @@ coreth_config:
     assert_eq!(aws_resources.region, "us-west-2");
     assert_eq!(aws_resources.s3_bucket, bucket);
 
-    assert_eq!(cfg.install_artifacts.avalanched_bin, avalanched_bin);
+    assert_eq!(
+        cfg.install_artifacts
+            .avalanched_bin
+            .unwrap_or(String::new()),
+        avalanched_bin
+    );
     assert_eq!(
         cfg.install_artifacts
             .avalanchego_bin

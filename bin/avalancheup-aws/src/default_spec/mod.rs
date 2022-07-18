@@ -45,8 +45,8 @@ pub fn command() -> Command<'static> {
         .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
                 .long("install-artifacts-avalanched-bin")
-                .help("Sets the Avalanched binary path in the local machine to be shared with remote machines")
-                .required(true)
+                .help("Sets the Avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .required(false)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )

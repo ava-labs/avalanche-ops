@@ -192,6 +192,11 @@ Parameters:
     Default: ""
     Description: (Optional) Certificates for NLB HTTPs traffic.
 
+  AvalanchedDownloadSource:
+    Type: String
+    Default: ""
+    Description: (Optional) set to "github" to download from github, or download from S3.
+
   AvalanchedFlag:
     Type: String
     Default: ""
@@ -411,9 +416,17 @@ Resources:
                 --filesystem-name=ext4 \
                 --mount-directory-path=/data
 
-              aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
-              chmod +x /tmp/avalanched
-              sudo mv /tmp/avalanched /usr/local/bin/avalanched
+              if [[ ${AvalanchedDownloadSource} == "github" ]]; then
+                # TODO: support ARM64
+                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched.x86_64-unknown-linux-gnu
+                mv ./avalanched.x86_64-unknown-linux-gnu /tmp/avalanched
+                chmod +x /tmp/avalanched
+                sudo mv /tmp/avalanched /usr/local/bin/avalanched
+              else
+                aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
+                chmod +x /tmp/avalanched
+                sudo mv /tmp/avalanched /usr/local/bin/avalanched
+              fi;
 
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
