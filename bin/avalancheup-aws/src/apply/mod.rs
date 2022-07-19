@@ -26,7 +26,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use log::{info, warn};
 use rust_embed::RustEmbed;
 use tokio::runtime::Runtime;
 
@@ -172,7 +171,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let exec_path = env::current_exe().expect("unexpected None current_exe");
 
-    info!("creating resources (with spec path {})", spec_file_path);
+    log::info!("creating resources (with spec path {})", spec_file_path);
     let s3_manager = s3::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let ec2_manager = ec2::Manager::new(&shared_config);
@@ -208,6 +207,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             Arc::new(avalancheup_aws::StorageNamespace::AvalanchedBin(spec.id.clone()).encode()),
         ))
         .expect("failed put_object install_artifacts.avalanched_bin");
+    } else {
+        log::info!("skipping uploading avalanched_bin, will be downloaded on remote machines...");
     }
 
     if let Some(v) = &spec.install_artifacts.avalanchego_bin {
@@ -232,6 +233,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .expect("failed put_object compressed avalanchego_bin");
 
         fs::remove_file(tmp_avalanche_bin_compressed_path)?;
+    } else {
+        log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
     }
 
     if spec.install_artifacts.plugins_dir.is_some() {
@@ -254,9 +257,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             )
             .unwrap();
 
-            info!(
+            log::info!(
                 "uploading {} (compressed from {}) from plugins directory {}",
-                tmp_plugin_compressed_path, file_path, plugins_dir,
+                tmp_plugin_compressed_path,
+                file_path,
+                plugins_dir,
             );
             rt.block_on(s3_manager.put_object(
                 Arc::new(tmp_plugin_compressed_path.clone()),
@@ -271,7 +276,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .expect("failed put_object tmp_plugin_compressed_path");
             fs::remove_file(tmp_plugin_compressed_path)?;
         }
+    } else {
+        log::info!("skipping uploading plugin dir...");
     }
+
+    log::info!("uploading avalancheup spec file...");
     rt.block_on(s3_manager.put_object(
         Arc::new(spec_file_path.to_string()),
         Arc::new(aws_resources.s3_bucket.clone()),
@@ -414,7 +423,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         for o in stack.outputs.unwrap() {
             let k = o.output_key.unwrap();
             let v = o.output_value.unwrap();
-            info!("stack output key=[{}], value=[{}]", k, v,);
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("InstanceProfileArn") {
                 aws_resources.cloudformation_ec2_instance_profile_arn = Some(v)
             }
@@ -485,7 +494,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         for o in stack.outputs.unwrap() {
             let k = o.output_key.unwrap();
             let v = o.output_value.unwrap();
-            info!("stack output key=[{}], value=[{}]", k, v,);
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("VpcId") {
                 aws_resources.cloudformation_vpc_id = Some(v);
                 continue;
@@ -498,7 +507,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 let splits: Vec<&str> = v.split(',').collect();
                 let mut pub_subnets: Vec<String> = vec![];
                 for s in splits {
-                    info!("public subnet {}", s);
+                    log::info!("public subnet {}", s);
                     pub_subnets.push(String::from(s));
                 }
                 aws_resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
@@ -665,7 +674,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         for o in stack.outputs.unwrap() {
             let k = o.output_key.unwrap();
             let v = o.output_value.unwrap();
-            info!("stack output key=[{}], value=[{}]", k, v,);
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("AsgLogicalId") {
                 aws_resources.cloudformation_asg_anchor_nodes_logical_id = Some(v);
                 continue;
@@ -723,7 +732,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let target_nodes = spec.machine.non_anchor_nodes;
         for _ in 0..10 {
             // TODO: better retries
-            info!(
+            log::info!(
                 "fetching all droplets for anchor-node SSH access (target nodes {})",
                 target_nodes
             );
@@ -731,7 +740,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             if (droplets.len() as u32) >= target_nodes {
                 break;
             }
-            info!(
+            log::info!(
                 "retrying fetching all droplets (only got {})",
                 droplets.len()
             );
@@ -806,7 +815,7 @@ aws ssm start-session --region {} --target {}
                     ),
                 )
                 .unwrap();
-            info!(
+            log::info!(
                 "{} anchor nodes are bootstrapped and ready (expecting {} nodes)",
                 objects.len(),
                 target_nodes
@@ -816,7 +825,7 @@ aws ssm start-session --region {} --target {}
             }
 
             if term.load(Ordering::Relaxed) {
-                warn!("received signal {}", signal_hook::consts::SIGINT);
+                log::warn!("received signal {}", signal_hook::consts::SIGINT);
                 println!();
                 println!("# run the following to delete resources");
                 execute!(
@@ -849,7 +858,7 @@ aws ssm start-session --region {} --target {}
         ))
         .unwrap();
 
-        info!("waiting for anchor nodes bootstrap and ready (to be safe)");
+        log::info!("waiting for anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(15));
     }
 
@@ -936,7 +945,7 @@ aws ssm start-session --region {} --target {}
         for o in stack.outputs.unwrap() {
             let k = o.output_key.unwrap();
             let v = o.output_value.unwrap();
-            info!("stack output key=[{}], value=[{}]", k, v,);
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("AsgLogicalId") {
                 aws_resources.cloudformation_asg_non_anchor_nodes_logical_id = Some(v);
                 continue;
@@ -1000,7 +1009,7 @@ aws ssm start-session --region {} --target {}
         let target_nodes = spec.machine.non_anchor_nodes;
         for _ in 0..10 {
             // TODO: better retries
-            info!(
+            log::info!(
                 "fetching all droplets for non-anchor node SSH access (target nodes {})",
                 target_nodes
             );
@@ -1008,7 +1017,7 @@ aws ssm start-session --region {} --target {}
             if (droplets.len() as u32) >= target_nodes {
                 break;
             }
-            info!(
+            log::info!(
                 "retrying fetching all droplets (only got {})",
                 droplets.len()
             );
@@ -1079,7 +1088,7 @@ aws ssm start-session --region {} --target {}
                     Some(Arc::new(s3::append_slash(&s3_dir.encode()))),
                 ))
                 .unwrap();
-            info!(
+            log::info!(
                 "{} non-anchor nodes are ready (expecting {} nodes)",
                 objects.len(),
                 target_nodes
@@ -1089,7 +1098,7 @@ aws ssm start-session --region {} --target {}
             }
 
             if term.load(Ordering::Relaxed) {
-                warn!("received signal {}", signal_hook::consts::SIGINT);
+                log::warn!("received signal {}", signal_hook::consts::SIGINT);
                 println!();
                 println!("# run the following to delete resources");
                 execute!(
@@ -1122,7 +1131,7 @@ aws ssm start-session --region {} --target {}
         ))
         .expect("failed put_object ConfigFile");
 
-        info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
+        log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));
     }
     spec.current_nodes = Some(current_nodes.clone());
@@ -1198,19 +1207,19 @@ aws ssm start-session --region {} --target {}
             Ok(res) => {
                 if res.healthy.is_some() && res.healthy.unwrap() {
                     success = true;
-                    info!("health/liveness check success for {}", http_rpc);
+                    log::info!("health/liveness check success for {}", http_rpc);
                     break;
                 }
             }
             Err(e) => {
-                warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
+                log::warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
             }
         };
 
         thread::sleep(Duration::from_secs(10));
     }
     if !success {
-        warn!(
+        log::warn!(
             "health/liveness check failed for network id {}",
             &spec.avalanchego_config.network_id
         );
@@ -1229,14 +1238,15 @@ aws ssm start-session --region {} --target {}
                 Ok(res) => {
                     if res.healthy.is_some() && res.healthy.unwrap() {
                         success = true;
-                        info!("health/liveness check success for {}", node.machine_id);
+                        log::info!("health/liveness check success for {}", node.machine_id);
                         break;
                     }
                 }
                 Err(e) => {
-                    warn!(
+                    log::warn!(
                         "health/liveness check failed for {} ({:?})",
-                        node.machine_id, e
+                        node.machine_id,
+                        e
                     );
                 }
             };
@@ -1244,7 +1254,7 @@ aws ssm start-session --region {} --target {}
             thread::sleep(Duration::from_secs(10));
         }
         if !success {
-            warn!(
+            log::warn!(
                 "health/liveness check failed for network id {}",
                 &spec.avalanchego_config.network_id
             );
@@ -1258,7 +1268,7 @@ aws ssm start-session --region {} --target {}
     println!("\nURIs: {}", uris.join(","));
 
     println!();
-    info!("apply all success!");
+    log::info!("apply all success!");
 
     println!();
     println!("# run the following to delete resources");
@@ -1284,19 +1294,21 @@ aws ssm start-session --region {} --target {}
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "aws --region {} s3 ls s3://{}/{}/pki
+            "$ aws --region {} s3 ls s3://{}/{}/pki/ --human-readable
 
-staking-key-cert-s3-downloader \\
+$ ./scripts/build.release.sh
+$ ./target/release/staking-key-cert-s3-downloader \\
 --log-level=info \\
 --aws-region={} \\
 --s3-bucket={} \\
---s3-key-tls-key={}/pki/[KEY_FILE_NAME_IN_S3] \\
---s3-key-tls-cert={}/pki/[CERT_FILE_NAME_IN_S3] \\
+--s3-key-tls-key={}/pki/NodeID-ABC.key.zstd.encrypted \\
+--s3-key-tls-cert={}/pki/NodeID-ABC.crt.zstd.encrypted \\
 --kms-cmk-id={} \\
 --aad-tag='{}' \\
---tls-key-path=/tmp/my.key \\
---tls-cert-path=/tmp/my.crt
+--tls-key-path=/tmp/NodeID-ABC.key \\
+--tls-cert-path=/tmp/NodeID-ABC.crt
 
+$ cat /tmp/NodeID-ABC.crt
 
 ",
             aws_resources.region,

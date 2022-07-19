@@ -378,8 +378,8 @@ Resources:
               set -xeu
 
               export DEBIAN_FRONTEND=noninteractive
-              sudo apt-get update -y && sudo apt-get upgrade -y \
-              && sudo apt-get install -y \
+              sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
+              && sudo apt-get install -yq \
                   curl wget unzip zip gzip tar libssl-dev \
                   python3-pip python-setuptools zsh
 
@@ -431,7 +431,6 @@ Resources:
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               fi;
-
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
 
