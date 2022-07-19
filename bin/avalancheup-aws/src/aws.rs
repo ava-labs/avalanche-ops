@@ -15,6 +15,11 @@ pub struct Resources {
     #[serde(default)]
     pub region: String,
 
+    /// Index of the preferred AZ.
+    /// Use this other than 0 to deploy to other AZs.
+    #[serde(default)]
+    pub preferred_az_index: usize,
+
     /// Name of the bucket to store (or download from)
     /// the configuration and resources (e.g., S3).
     /// If not exists, it creates automatically.
@@ -125,7 +130,9 @@ impl Resources {
     pub fn default() -> Self {
         Self {
             identity: None,
+
             region: String::from("us-west-2"),
+            preferred_az_index: 0,
 
             s3_bucket: String::new(),
 

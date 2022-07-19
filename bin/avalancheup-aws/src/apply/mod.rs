@@ -545,14 +545,6 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 .unwrap(),
         ),
         build_param(
-            "PublicSubnetIds",
-            &aws_resources
-                .cloudformation_vpc_public_subnet_ids
-                .clone()
-                .unwrap()
-                .join(","),
-        ),
-        build_param(
             "SecurityGroupId",
             &aws_resources
                 .cloudformation_vpc_security_group_id
@@ -568,6 +560,49 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             format!("{}", spec.avalanchego_config.http_port).as_str(),
         ),
     ]);
+
+    let all_public_subnet_ids = aws_resources
+        .cloudformation_vpc_public_subnet_ids
+        .clone()
+        .unwrap();
+    if spec.avalanchego_config.is_custom_network() {
+        log::info!(
+            "setting 'PublicSubnetIds' parameter with {:?} for custom network",
+            all_public_subnet_ids
+        );
+
+        // custom network is for testing, for ok to allow multi-AZ
+        asg_parameters.push(build_param(
+            "PublicSubnetIds",
+            &aws_resources
+                .cloudformation_vpc_public_subnet_ids
+                .clone()
+                .unwrap()
+                .join(","),
+        ));
+    } else {
+        log::info!(
+            "choosing only 1 public subnet Id '{}' for 'PublicSubnetIds' parameter for network {}",
+            all_public_subnet_ids[aws_resources.preferred_az_index],
+            spec.avalanchego_config.network_id
+        );
+
+        // only use 1 AZ for main/fuji net
+        // to maximize the static EBS provision
+        //
+        // one can create multiple avalancheup for multi-AZ deployments
+        // or manually update the ASG.VPCZoneIdentifier for fallbacks
+        //
+        // TODO: support AZ choose
+        asg_parameters.push(build_param(
+            "PublicSubnetIds",
+            format!(
+                "{}",
+                all_public_subnet_ids[aws_resources.preferred_az_index]
+            )
+            .as_str(),
+        ));
+    }
 
     // mainnet/* requires higher volume size
     // TODO: make this configurable

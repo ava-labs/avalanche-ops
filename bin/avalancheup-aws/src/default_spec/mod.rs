@@ -35,6 +35,16 @@ pub fn command() -> Command<'static> {
                 .default_value("us-west-2"),
         )
         .arg(
+            Arg::new("PREFERRED_AZ_INDEX")
+                .long("preferred-az-index")
+                .short('x')
+                .help("Sets the index to choose the preferred AZ (only use it to launch an instance other than first AZ for custom network, or second avalancheup cluster)")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+                .default_value("0"),
+        )
+        .arg(
             Arg::new("AAD_TAG")
                 .long("aad-tag")
                 .short('a')
