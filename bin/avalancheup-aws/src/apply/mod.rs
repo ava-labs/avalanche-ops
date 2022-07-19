@@ -199,14 +199,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ResetColor
     )?;
 
-    // don't compress since we need to download this in user data
-    // while instance bootstrapping
-    rt.block_on(s3_manager.put_object(
-        Arc::new(spec.install_artifacts.avalanched_bin.clone()),
-        Arc::new(aws_resources.s3_bucket.clone()),
-        Arc::new(avalancheup_aws::StorageNamespace::AvalanchedBin(spec.id.clone()).encode()),
-    ))
-    .expect("failed put_object install_artifacts.avalanched_bin");
+    if let Some(v) = &spec.install_artifacts.avalanched_bin {
+        // don't compress since we need to download this in user data
+        // while instance bootstrapping
+        rt.block_on(s3_manager.put_object(
+            Arc::new(v.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalancheup_aws::StorageNamespace::AvalanchedBin(spec.id.clone()).encode()),
+        ))
+        .expect("failed put_object install_artifacts.avalanched_bin");
+    }
 
     if let Some(v) = &spec.install_artifacts.avalanchego_bin {
         // compress as these will be decompressed by "avalanched"
@@ -576,6 +578,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             format!("{}", instance_types.len()).as_str(),
         ));
     }
+
+    let avalanched_download_source = if spec.install_artifacts.avalanched_bin.is_some() {
+        "s3"
+    } else {
+        "github"
+    };
+    asg_parameters.push(build_param(
+        "AvalanchedDownloadSource",
+        avalanched_download_source,
+    ));
 
     asg_parameters.push(build_param(
         "AvalanchedFlag",

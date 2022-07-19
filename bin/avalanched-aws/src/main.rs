@@ -26,7 +26,7 @@ async fn main() {
             Arg::new("LITE_MODE")
                 .long("lite-mode")
                 .short('d')
-                .help("Enables lite mode")
+                .help("Enables lite mode (without any avalancheup spec dependency, useful for CDK integration)")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),

@@ -43,7 +43,7 @@ fn main() {
 
                 install_artifacts_avalanched_bin: sub_matches
                     .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
-                    .unwrap()
+                    .unwrap_or("")
                     .to_string(),
                 install_artifacts_avalanche_bin: sub_matches
                     .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
