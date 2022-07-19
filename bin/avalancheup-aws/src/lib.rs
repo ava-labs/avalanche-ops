@@ -1092,6 +1092,7 @@ coreth_config:
 
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
+    assert_eq!(cfg.aad_tag, "test");
 
     let aws_resources = cfg.aws_resources.unwrap();
     assert_eq!(aws_resources.region, "us-west-2");
