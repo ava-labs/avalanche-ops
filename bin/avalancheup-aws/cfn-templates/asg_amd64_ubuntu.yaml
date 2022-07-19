@@ -149,6 +149,12 @@ Parameters:
     Default: 500
     Description: The throughput to provision for a gp3 volume, with a maximum of 1,000 MiB/s.
 
+  AsgSpotInstance:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: Set to "true" if the EC2 instance is set up with spot instance.
+
   AsgMinInstancesInService:
     Type: Number
     Description: Minimum instances in service for update.
@@ -543,6 +549,9 @@ Resources:
         - Key: OS_TYPE
           PropagateAtLaunch: true
           Value: linux
+        - Key: ASG_SPOT_INSTANCE
+          PropagateAtLaunch: true
+          Value: !Ref AsgSpotInstance
         - Key: NODE_KIND
           PropagateAtLaunch: true
           Value: !Ref NodeKind

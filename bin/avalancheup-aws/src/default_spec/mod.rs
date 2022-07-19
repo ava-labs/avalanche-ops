@@ -45,6 +45,14 @@ pub fn command() -> Command<'static> {
                 .default_value("0"),
         )
         .arg(
+            Arg::new("USE_SPOT_INSTANCE")
+                .long("use-spot-instance")
+                .help("Sets to use EC2 spot instance")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("AAD_TAG")
                 .long("aad-tag")
                 .short('a')

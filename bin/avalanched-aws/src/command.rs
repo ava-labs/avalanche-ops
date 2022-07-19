@@ -13,7 +13,7 @@ use aws_manager::{
     kms::{self, envelope},
     s3,
 };
-use aws_sdk_ec2::model::{Filter, Tag};
+use aws_sdk_ec2::model::{Filter, Tag, Volume};
 use infra_aws::{certs, telemetry};
 use tokio::time::{sleep, Duration};
 
@@ -90,6 +90,16 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         &tags.cloudwatch_config_file_path,
     )?;
 
+    let attached_volume = find_attached_volume(
+        Arc::clone(&ec2_manager_arc),
+        &tags.avalanche_data_volume_ebs_device_name,
+        &meta.ec2_instance_id,
+        &meta.az,
+        &tags.id,
+    )
+    .await?;
+    let attached_volume_id = attached_volume.volume_id().unwrap();
+
     log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
         aws_creds.kms_manager.clone(),
@@ -131,59 +141,12 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     if newly_generated {
         log::info!("STEP: creating tags for EBS volume with node Id...");
 
-        // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
-        let filters: Vec<Filter> = vec![
-            Filter::builder()
-                .set_name(Some(String::from("attachment.device")))
-                .set_values(Some(vec![tags
-                    .avalanche_data_volume_ebs_device_name
-                    .clone()]))
-                .build(),
-            // ensures the call only returns the volume that is attached to this local instance
-            Filter::builder()
-                .set_name(Some(String::from("attachment.instance-id")))
-                .set_values(Some(vec![meta.ec2_instance_id.clone()]))
-                .build(),
-            // ensures the call only returns the volume that is currently attached
-            Filter::builder()
-                .set_name(Some(String::from("attachment.status")))
-                .set_values(Some(vec![String::from("attached")]))
-                .build(),
-            // ensures the call only returns the volume that is currently in use
-            Filter::builder()
-                .set_name(Some(String::from("status")))
-                .set_values(Some(vec![String::from("in-use")]))
-                .build(),
-            Filter::builder()
-                .set_name(Some(String::from("availability-zone")))
-                .set_values(Some(vec![meta.az.clone()]))
-                .build(),
-            Filter::builder()
-                .set_name(Some(String::from("tag:Id")))
-                .set_values(Some(vec![tags.id.clone()]))
-                .build(),
-        ];
-
-        let volumes = aws_creds
-            .ec2_manager
-            .describe_volumes(Some(filters))
-            .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed describe_volumes {}", e)))?;
-        log::info!("found {} attached volume", volumes.len());
-        if volumes.len() != 1 {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("unexpected {} volumes found", volumes.len()),
-            ));
-        }
-
-        let volume_id = volumes[0].volume_id().unwrap();
-        if let Some(v) = volumes[0].tags() {
+        if let Some(v) = attached_volume.tags() {
             let mut tag_exists = false;
             for tg in v.iter() {
                 let k = tg.key().unwrap();
                 let v = tg.value().unwrap();
-                log::info!("'{}' volume tag found {}={}", volume_id, k, v);
+                log::info!("'{}' volume tag found {}={}", attached_volume_id, k, v);
                 if k.eq("NODE_ID") {
                     tag_exists = true;
                     break;
@@ -192,7 +155,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             if tag_exists {
                 log::warn!(
                     "volume '{}' already has NODE_ID tag -- skipping creating tags",
-                    volume_id
+                    attached_volume_id
                 );
             } else {
                 // assume all data from EBS are never lost
@@ -200,11 +163,14 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
                 // in the mounted dir, we can safely assume "create tags"
                 // will only be called once per volume
                 // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
-                log::info!("creating NODE_ID tag to the EBS volume '{}'", volume_id);
+                log::info!(
+                    "creating NODE_ID tag to the EBS volume '{}'",
+                    attached_volume_id
+                );
                 let ec2_cli = aws_creds.ec2_manager.clone().client();
                 ec2_cli
                     .create_tags()
-                    .resources(volume_id)
+                    .resources(attached_volume_id)
                     .tags(
                         Tag::builder()
                             .key(String::from("NODE_ID"))
@@ -216,7 +182,10 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
                     .map_err(|e| {
                         Error::new(ErrorKind::Other, format!("failed create_tags {}", e))
                     })?;
-                log::info!("added node Id tag to the EBS volume '{}'", volume_id);
+                log::info!(
+                    "added node Id tag to the EBS volume '{}'",
+                    attached_volume_id
+                );
             }
         }
     }
@@ -315,7 +284,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     );
     check_liveness(&ep).await?;
 
-    let handles = vec![
+    let mut handles = vec![
         tokio::spawn(publish_node_info_ready_loop(
             Arc::new(meta.ec2_instance_id.clone()),
             tags.node_kind.clone(),
@@ -333,6 +302,15 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             Arc::new(ep.to_string()),
         )),
     ];
+    if tags.asg_spot_instance {
+        handles.push(tokio::spawn(monitor_spot_instance_action(
+            Arc::clone(&ec2_manager_arc),
+            Arc::new(meta.ec2_instance_id.clone()),
+            Arc::new(attached_volume_id.to_string()),
+        )));
+    } else {
+        log::info!("skipped monitoring the spot instance-action...");
+    }
 
     log::info!("STEP: blocking on handles via JoinHandle");
     for handle in handles {
@@ -358,25 +336,27 @@ struct Metadata {
 async fn fetch_metadata() -> io::Result<Metadata> {
     log::info!("STEP: fetching EC2 instance metadata...");
 
-    let az = ec2::fetch_availability_zone().await.map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("failed fetch_availability_zone {}", e),
-        )
-    })?;
+    let az = ec2::metadata::fetch_availability_zone()
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed fetch_availability_zone {}", e),
+            )
+        })?;
     log::info!("fetched availability zone {}", az);
 
-    let reg = ec2::fetch_region()
+    let reg = ec2::metadata::fetch_region()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_region {}", e)))?;
     log::info!("fetched region {}", reg);
 
-    let ec2_instance_id = ec2::fetch_instance_id()
+    let ec2_instance_id = ec2::metadata::fetch_instance_id()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_instance_id {}", e)))?;
     log::info!("fetched EC2 instance Id {}", ec2_instance_id);
 
-    let public_ipv4 = ec2::fetch_public_ipv4()
+    let public_ipv4 = ec2::metadata::fetch_public_ipv4()
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_public_ipv4 {}", e)))?;
     log::info!("fetched public ipv4 {}", public_ipv4);
@@ -421,6 +401,7 @@ struct Tags {
     network_id: u32,
     arch_type: String,
     os_type: String,
+    asg_spot_instance: bool,
     node_kind: node::Kind,
     kms_cmk_arn: String,
     aad_tag: String,
@@ -449,6 +430,7 @@ async fn fetch_tags(
         network_id: 0,
         arch_type: String::new(),
         os_type: String::new(),
+        asg_spot_instance: false,
         node_kind: node::Kind::Unknown(String::new()),
         kms_cmk_arn: String::new(),
         aad_tag: String::new(),
@@ -477,6 +459,13 @@ async fn fetch_tags(
             }
             "OS_TYPE" => {
                 fetched_tags.os_type = v.to_string();
+            }
+            "ASG_SPOT_INSTANCE" => {
+                fetched_tags.asg_spot_instance = if v.to_string().to_lowercase().eq("true") {
+                    true
+                } else {
+                    false
+                };
             }
             "NODE_KIND" => {
                 fetched_tags.node_kind = if v.to_string().eq("anchor") {
@@ -761,6 +750,62 @@ fn create_cloudwatch_config(
         config_file_path: cloudwatch_config_file_path.to_string(),
     };
     cw_config_manager.sync(Some(vec![String::from("/var/log/avalanched.log")]))
+}
+
+async fn find_attached_volume(
+    ec2_manager: Arc<ec2::Manager>,
+    avalanche_data_volume_ebs_device_name: &str,
+    ec2_instance_id: &str,
+    az: &str,
+    id: &str,
+) -> io::Result<Volume> {
+    // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
+    let filters: Vec<Filter> = vec![
+        Filter::builder()
+            .set_name(Some(String::from("attachment.device")))
+            .set_values(Some(
+                vec![avalanche_data_volume_ebs_device_name.to_string()],
+            ))
+            .build(),
+        // ensures the call only returns the volume that is attached to this local instance
+        Filter::builder()
+            .set_name(Some(String::from("attachment.instance-id")))
+            .set_values(Some(vec![ec2_instance_id.to_string()]))
+            .build(),
+        // ensures the call only returns the volume that is currently attached
+        Filter::builder()
+            .set_name(Some(String::from("attachment.status")))
+            .set_values(Some(vec![String::from("attached")]))
+            .build(),
+        // ensures the call only returns the volume that is currently in use
+        Filter::builder()
+            .set_name(Some(String::from("status")))
+            .set_values(Some(vec![String::from("in-use")]))
+            .build(),
+        Filter::builder()
+            .set_name(Some(String::from("availability-zone")))
+            .set_values(Some(vec![az.to_string()]))
+            .build(),
+        Filter::builder()
+            .set_name(Some(String::from("tag:Id")))
+            .set_values(Some(vec![id.to_string()]))
+            .build(),
+    ];
+
+    let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
+    let volumes = ec2_manager
+        .describe_volumes(Some(filters))
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed describe_volumes {}", e)))?;
+    log::info!("found {} attached volume", volumes.len());
+    if volumes.len() != 1 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!("unexpected {} volumes found", volumes.len()),
+        ));
+    }
+
+    Ok(volumes[0].clone())
 }
 
 /// To be called by each bootstrapping anchor node: Each anchor node publishes
@@ -1215,10 +1260,7 @@ async fn publish_node_info_ready_loop(
 
     let s3_manager: &s3::Manager = s3_manager.as_ref();
     loop {
-        log::info!(
-            "STEP: posting node info ready for {}",
-            node_info.local_node.kind
-        );
+        log::info!("posting node info ready for {}", node_info.local_node.kind);
 
         match s3::spawn_put_object(
             s3_manager.clone(),
@@ -1247,6 +1289,108 @@ async fn publish_node_info_ready_loop(
 
         log::info!("sleeping 10-min for next 'publish_node_info_ready_loop'");
         sleep(Duration::from_secs(600)).await;
+    }
+}
+
+async fn monitor_spot_instance_action(
+    ec2_manager: Arc<ec2::Manager>,
+    ec2_instance_id: Arc<String>,
+    attached_volume_id: Arc<String>,
+) {
+    let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
+    let ec2_cli = ec2_manager.client();
+
+    loop {
+        log::info!(
+            "checking spot instance action for {} with attached volume Id {}",
+            ec2_instance_id,
+            attached_volume_id
+        );
+
+        // if the action is "stop" or "terminate", just stop and recylce EC2 instance faster!
+        // ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html#instance-action-metadata
+        match ec2::metadata::fetch_spot_instance_action().await {
+            Ok(instance_action) => {
+                log::info!("received instance action {:?}", instance_action);
+                let need_terminate = match instance_action.action.as_str() {
+                    "stop" => {
+                        log::warn!(
+                            "instance '{}' will be stopped at {} -- just terminate now!",
+                            ec2_instance_id,
+                            instance_action.time
+                        );
+                        true
+                    }
+                    "terminate" => {
+                        log::warn!(
+                            "instance '{}' will be terminated at {} -- just terminate now!",
+                            ec2_instance_id,
+                            instance_action.time
+                        );
+                        true
+                    }
+                    _ => {
+                        log::warn!("unknown instance action {}", instance_action.action);
+                        false
+                    }
+                };
+                if need_terminate {
+                    log::warn!("stopping avalanche service before instance termination...");
+                    match command_manager::run("sudo systemctl stop avalanche.service") {
+                        Ok(_) => {}
+                        Err(e) => log::warn!("failed systemctl stop command {}", e),
+                    }
+                    match command_manager::run("sudo systemctl disable avalanche.service") {
+                        Ok(_) => {}
+                        Err(e) => log::warn!("failed systemctl disable command {}", e),
+                    }
+
+                    // enough time for avalanche process to gracefully shut down
+                    sleep(Duration::from_secs(15)).await;
+
+                    // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DetachVolume.html
+                    log::warn!("detaching EBS volume before instance termination...");
+                    match ec2_cli
+                        .detach_volume()
+                        .instance_id(ec2_instance_id.as_str())
+                        .volume_id(attached_volume_id.as_str())
+                        .force(false) // "true" can lead to data loss or a corrupted file system
+                        .send()
+                        .await
+                    {
+                        Ok(v) => {
+                            log::info!("successfully detached volume {:?}", v);
+                            sleep(Duration::from_secs(10)).await;
+                        }
+                        Err(e) => log::warn!("failed detach_volume {}", e),
+                    }
+
+                    log::warn!("terminating the instance...");
+                    match ec2_cli
+                        .terminate_instances()
+                        .instance_ids(ec2_instance_id.as_str())
+                        .send()
+                        .await
+                    {
+                        Ok(v) => {
+                            log::info!("successfully terminated instance {:?}", v);
+                            return;
+                        }
+                        Err(e) => log::warn!("failed terminate instance {}", e),
+                    }
+                }
+            }
+
+            Err(e) => {
+                log::warn!("failed fetch_spot_instance_action {} -- likely no spot instance-action event yet", e);
+                sleep(Duration::from_secs(5)).await;
+                continue;
+            }
+        }
+
+        // warning will be issued two minutes before EC2 stops or terminates Spot instance
+        // so monitor more aggressively
+        sleep(Duration::from_secs(20)).await;
     }
 }
 

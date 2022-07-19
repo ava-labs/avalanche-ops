@@ -673,6 +673,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let mut asg_anchor_params = asg_parameters.clone();
         asg_anchor_params.push(build_param("NodeKind", "anchor"));
         asg_anchor_params.push(build_param(
+            "AsgSpotInstance",
+            format!("{}", spec.machine.use_spot_instance).as_str(),
+        ));
+        asg_anchor_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
@@ -936,6 +940,10 @@ aws ssm start-session --region {} --target {}
         // must deep-copy as shared with other node kind
         let mut asg_non_anchor_params = asg_parameters.clone();
         asg_non_anchor_params.push(build_param("NodeKind", "non-anchor"));
+        asg_non_anchor_params.push(build_param(
+            "AsgSpotInstance",
+            format!("{}", spec.machine.use_spot_instance).as_str(),
+        ));
         asg_non_anchor_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
