@@ -81,17 +81,17 @@ $ staking-key-cert-s3-downloader \
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("TLS_KEY_PATH")
-                .long("tls-key-path")
-                .help("Sets the local file path to save TLS key")
+            Arg::new("AAD_TAG")
+                .long("aad-tag")
+                .help("Sets the AAD tag for envelope encryption")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AAD_TAG")
-                .long("aad-tag")
-                .help("Sets the AAD tag for envelope encryption")
+            Arg::new("TLS_KEY_PATH")
+                .long("tls-key-path")
+                .help("Sets the local file path to save TLS key")
                 .required(true)
                 .takes_value(true)
                 .allow_invalid_utf8(false),
