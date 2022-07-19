@@ -24,6 +24,10 @@ Parameters:
     Type: String
     Description: KMS CMK ARN that de/encrypts resources.
 
+  AadTag:
+    Type: String
+    Description: AAD tag for envelope encryption with KMS.
+
   S3BucketName:
     Type: String
     Description: S3 bucket name.
@@ -419,7 +423,7 @@ Resources:
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
                 wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
-                mv ./avalanched.x86_64-unknown-linux-gnu /tmp/avalanched
+                mv ./avalanched-aws.x86_64-unknown-linux-gnu /tmp/avalanched
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               else
@@ -548,7 +552,7 @@ Resources:
           Value: !Ref KmsCmkArn
         - Key: AAD_TAG
           PropagateAtLaunch: true
-          Value: avalanche-ops-aad-tag
+          Value: !Ref AadTag
         - Key: S3_BUCKET_NAME
           PropagateAtLaunch: true
           Value: !Ref S3BucketName
