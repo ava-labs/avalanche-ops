@@ -36,6 +36,8 @@ fn main() {
 
                 region: sub_matches.value_of("REGION").unwrap().to_string(),
 
+                aad_tag: sub_matches.value_of("AAD_TAG").unwrap().to_string(),
+
                 nlb_acm_certificate_arn: sub_matches
                     .value_of("NLB_ACM_CERTIFICATE_ARN")
                     .unwrap_or("")

@@ -35,6 +35,16 @@ pub fn command() -> Command<'static> {
                 .default_value("us-west-2"),
         )
         .arg(
+            Arg::new("AAD_TAG")
+                .long("aad-tag")
+                .short('a')
+                .help("Sets the AAD tag for envelope encryption with KMS")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false)
+                .default_value("avalanche-ops-aad-tag"),
+        )
+        .arg(
             Arg::new("NLB_ACM_CERTIFICATE_ARN") 
                 .long("nlb-acm-certificate-arn")
                 .help("Sets ACM ARN to enable NLB HTTPS")

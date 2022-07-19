@@ -19,7 +19,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let envelope_manager = envelope::Manager::new(
         aws_creds.kms_manager.clone(),
         opts.kms_cmk_id.clone(),
-        "avalanche-ops-aad-tag".to_string(), // equal to "cfn-templates" tag "AAD_TAG"
+        // must've be equal for envelope encryption
+        // e.g., "cfn-templates" tag "AAD_TAG"
+        opts.aad_tag.clone(),
     );
     let certs_manager = certs::Manager {
         envelope_manager,
