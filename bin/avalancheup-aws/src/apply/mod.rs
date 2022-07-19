@@ -567,7 +567,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
     if spec.avalanchego_config.is_custom_network() {
         log::info!(
-            "setting 'PublicSubnetIds' parameter with {:?} for custom network",
+            "custom network, so setting 'PublicSubnetIds' parameter with multiple subnets {:?}",
             all_public_subnet_ids
         );
 
@@ -582,9 +582,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ));
     } else {
         log::info!(
-            "choosing only 1 public subnet Id '{}' for 'PublicSubnetIds' parameter for network {}",
-            all_public_subnet_ids[aws_resources.preferred_az_index],
-            spec.avalanchego_config.network_id
+            "network {}, so choosing only 1 public subnet Id '{}' for 'PublicSubnetIds' parameter",
+            spec.avalanchego_config.network_id,
+            all_public_subnet_ids[aws_resources.preferred_az_index]
         );
 
         // only use 1 AZ for main/fuji net
@@ -596,20 +596,21 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         // TODO: support AZ choose
         asg_parameters.push(build_param(
             "PublicSubnetIds",
-            format!(
-                "{}",
-                all_public_subnet_ids[aws_resources.preferred_az_index]
-            )
-            .as_str(),
+            &all_public_subnet_ids[aws_resources.preferred_az_index],
         ));
     }
 
     // mainnet/* requires higher volume size
     // TODO: make this configurable
     if spec.avalanchego_config.is_mainnet() {
-        let param = build_param("VolumeSize", "1000");
+        let param = build_param("VolumeSize", "1024");
         asg_parameters.push(param);
     } else if !spec.avalanchego_config.is_custom_network() {
+        // fuji/*
+        let param = build_param("VolumeSize", "600");
+        asg_parameters.push(param);
+    } else {
+        // custom network does not need that much...
         let param = build_param("VolumeSize", "400");
         asg_parameters.push(param);
     }
