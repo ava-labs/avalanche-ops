@@ -584,6 +584,7 @@ Resources:
           Value: /dev/xvdb
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       MixedInstancesPolicy:
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-instancesdistribution.html
         InstancesDistribution:
           OnDemandAllocationStrategy: "prioritized"
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplate.html
