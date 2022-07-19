@@ -545,14 +545,6 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 .unwrap(),
         ),
         build_param(
-            "PublicSubnetIds",
-            &aws_resources
-                .cloudformation_vpc_public_subnet_ids
-                .clone()
-                .unwrap()
-                .join(","),
-        ),
-        build_param(
             "SecurityGroupId",
             &aws_resources
                 .cloudformation_vpc_security_group_id
@@ -569,12 +561,56 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ),
     ]);
 
+    let all_public_subnet_ids = aws_resources
+        .cloudformation_vpc_public_subnet_ids
+        .clone()
+        .unwrap();
+    if spec.avalanchego_config.is_custom_network() {
+        log::info!(
+            "custom network, so setting 'PublicSubnetIds' parameter with multiple subnets {:?}",
+            all_public_subnet_ids
+        );
+
+        // custom network is for testing, for ok to allow multi-AZ
+        asg_parameters.push(build_param(
+            "PublicSubnetIds",
+            &aws_resources
+                .cloudformation_vpc_public_subnet_ids
+                .clone()
+                .unwrap()
+                .join(","),
+        ));
+    } else {
+        log::info!(
+            "network {}, so choosing only 1 public subnet Id '{}' for 'PublicSubnetIds' parameter",
+            spec.avalanchego_config.network_id,
+            all_public_subnet_ids[aws_resources.preferred_az_index]
+        );
+
+        // only use 1 AZ for main/fuji net
+        // to maximize the static EBS provision
+        //
+        // one can create multiple avalancheup for multi-AZ deployments
+        // or manually update the ASG.VPCZoneIdentifier for fallbacks
+        //
+        // TODO: support AZ choose
+        asg_parameters.push(build_param(
+            "PublicSubnetIds",
+            &all_public_subnet_ids[aws_resources.preferred_az_index],
+        ));
+    }
+
     // mainnet/* requires higher volume size
     // TODO: make this configurable
     if spec.avalanchego_config.is_mainnet() {
-        let param = build_param("VolumeSize", "1000");
+        let param = build_param("VolumeSize", "1024");
         asg_parameters.push(param);
     } else if !spec.avalanchego_config.is_custom_network() {
+        // fuji/*
+        let param = build_param("VolumeSize", "600");
+        asg_parameters.push(param);
+    } else {
+        // custom network does not need that much...
         let param = build_param("VolumeSize", "400");
         asg_parameters.push(param);
     }

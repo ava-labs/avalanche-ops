@@ -23,6 +23,10 @@ fn main() {
         Some((default_spec::NAME, sub_matches)) => {
             let keys_to_generate = sub_matches.value_of("KEYS_TO_GENERATE").unwrap_or("");
             let keys_to_generate = keys_to_generate.parse::<usize>().unwrap();
+
+            let preferred_az_index = sub_matches.value_of("PREFERRED_AZ_INDEX").unwrap_or("0");
+            let preferred_az_index = preferred_az_index.parse::<usize>().unwrap();
+
             let opt = avalancheup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .value_of("LOG_LEVEL")
@@ -35,6 +39,7 @@ fn main() {
                 keys_to_generate,
 
                 region: sub_matches.value_of("REGION").unwrap().to_string(),
+                preferred_az_index,
 
                 aad_tag: sub_matches.value_of("AAD_TAG").unwrap().to_string(),
 

@@ -185,7 +185,10 @@ pub const MIN_MACHINE_ANCHOR_NODES: u32 = 1;
 pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10; // TODO: allow higher number?
 
 /// Default machine non-anchor nodes size.
-pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
+/// "1" is better in order to choose only one AZ for static EBS provision.
+/// If one wants to run multiple nodes, it should create multiple groups
+/// of avalanche ops clusters.
+pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 1;
 pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
 pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20; // TODO: allow higher number?
 
@@ -392,6 +395,7 @@ pub struct DefaultSpecOption {
     pub keys_to_generate: usize,
 
     pub region: String,
+    pub preferred_az_index: usize,
 
     pub aad_tag: String,
 
@@ -842,6 +846,15 @@ impl Spec {
                 ),
             ));
         }
+        if !self.avalanchego_config.is_custom_network() && self.machine.non_anchor_nodes != 1 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "'machine.non_anchor_nodes' must be 1 (set to {}) in order to maximize the benefit of static EBS provision per AZ",
+                    self.machine.non_anchor_nodes
+                ),
+            ));
+        }
 
         if let Some(v) = &self.install_artifacts.avalanched_bin {
             if !Path::new(v).exists() {
@@ -971,12 +984,13 @@ aad_tag: test
 
 aws_resources:
   region: us-west-2
+  preferred_az_index: 2
   s3_bucket: {}
   instance_system_logs: true
   instance_system_metrics: true
 
 machine:
-  non_anchor_nodes: 20
+  non_anchor_nodes: 1
   arch: amd64
   instance_types:
   - m5.large
@@ -1047,13 +1061,14 @@ coreth_config:
 
         aws_resources: Some(aws::Resources {
             region: String::from("us-west-2"),
+            preferred_az_index: 2,
             s3_bucket: bucket.clone(),
             ..aws::Resources::default()
         }),
 
         machine: Machine {
             anchor_nodes: None,
-            non_anchor_nodes: 20,
+            non_anchor_nodes: 1,
             arch: "amd64".to_string(),
             instance_types: vec![
                 String::from("m5.large"),
@@ -1096,6 +1111,7 @@ coreth_config:
 
     let aws_resources = cfg.aws_resources.unwrap();
     assert_eq!(aws_resources.region, "us-west-2");
+    assert_eq!(aws_resources.preferred_az_index, 2);
     assert_eq!(aws_resources.s3_bucket, bucket);
 
     assert_eq!(
@@ -1116,7 +1132,7 @@ coreth_config:
     );
 
     assert!(cfg.machine.anchor_nodes.is_none());
-    assert_eq!(cfg.machine.non_anchor_nodes, 20);
+    assert_eq!(cfg.machine.non_anchor_nodes, 1);
     let instance_types = cfg.machine.instance_types;
     assert_eq!(instance_types[0], "m5.large");
     assert_eq!(instance_types[1], "c5.large");
