@@ -614,7 +614,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create ASG for anchor nodes\n"),
+            Print(format!(
+                "\n\n\nSTEP: create ASG for anchor nodes for network Id {}\n",
+                spec.avalanchego_config.network_id
+            )),
             ResetColor
         )?;
 
@@ -869,7 +872,10 @@ aws ssm start-session --region {} --target {}
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create ASG for non-anchor nodes\n"),
+            Print(format!(
+                "\n\n\nSTEP: create ASG for non-anchor nodes for network Id {}\n",
+                spec.avalanchego_config.network_id
+            )),
             ResetColor
         )?;
 
