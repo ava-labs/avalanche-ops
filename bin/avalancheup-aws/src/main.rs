@@ -27,6 +27,12 @@ fn main() {
             let preferred_az_index = sub_matches.value_of("PREFERRED_AZ_INDEX").unwrap_or("0");
             let preferred_az_index = preferred_az_index.parse::<usize>().unwrap();
 
+            // TODO: remove this
+            assert!(
+                !sub_matches.is_present("USE_SPOT_INSTANCE"),
+                "--use-spot-instance not supported yet"
+            );
+
             let opt = avalancheup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .value_of("LOG_LEVEL")
@@ -40,6 +46,9 @@ fn main() {
 
                 region: sub_matches.value_of("REGION").unwrap().to_string(),
                 preferred_az_index,
+
+                // TODO: support this
+                use_spot_instance: sub_matches.is_present("USE_SPOT_INSTANCE"),
 
                 aad_tag: sub_matches.value_of("AAD_TAG").unwrap().to_string(),
 

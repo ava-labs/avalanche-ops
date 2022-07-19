@@ -332,6 +332,8 @@ pub struct Machine {
     pub arch: String,
     #[serde(default)]
     pub instance_types: Vec<String>,
+    #[serde(default)]
+    pub use_spot_instance: bool,
 }
 
 /// Represents artifacts for installation, to be shared with
@@ -396,6 +398,7 @@ pub struct DefaultSpecOption {
 
     pub region: String,
     pub preferred_az_index: usize,
+    pub use_spot_instance: bool,
 
     pub aad_tag: String,
 
@@ -606,6 +609,8 @@ impl Spec {
             // TODO: support "arm64"
             arch: ARCH_AMD64.to_string(),
             instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
+
+            use_spot_instance: opts.use_spot_instance,
         };
 
         // existing network has only 1 pre-funded key "ewoq"
@@ -856,6 +861,13 @@ impl Spec {
             ));
         }
 
+        if self.machine.use_spot_instance {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "machine.use_spot_instance not supported yet",
+            ));
+        }
+
         if let Some(v) = &self.install_artifacts.avalanched_bin {
             if !Path::new(v).exists() {
                 return Err(Error::new(
@@ -985,6 +997,7 @@ aad_tag: test
 aws_resources:
   region: us-west-2
   preferred_az_index: 2
+  use_spot_instance: false
   s3_bucket: {}
   instance_system_logs: true
   instance_system_metrics: true
@@ -1076,6 +1089,7 @@ coreth_config:
                 String::from("r5.large"),
                 String::from("t3.large"),
             ],
+            use_spot_instance: false,
         },
 
         install_artifacts: InstallArtifacts {
