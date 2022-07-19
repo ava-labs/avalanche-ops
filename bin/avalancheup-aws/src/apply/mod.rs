@@ -1292,11 +1292,19 @@ aws ssm start-session --region {} --target {}
     println!("# run the following to download the generated certificates");
     execute!(
         stdout(),
+        SetForegroundColor(Color::Magenta),
+        Print(format!(
+            "aws --region {} s3 ls s3://{}/{}/pki/ --human-readable\n",
+            aws_resources.region, aws_resources.s3_bucket, spec.id
+        )),
+        ResetColor
+    )?;
+    execute!(
+        stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "$ aws --region {} s3 ls s3://{}/{}/pki/ --human-readable
+            "$ ./scripts/build.release.sh
 
-$ ./scripts/build.release.sh
 $ ./target/release/staking-key-cert-s3-downloader \\
 --log-level=info \\
 --aws-region={} \\
@@ -1311,9 +1319,6 @@ $ ./target/release/staking-key-cert-s3-downloader \\
 $ cat /tmp/NodeID-ABC.crt
 
 ",
-            aws_resources.region,
-            aws_resources.s3_bucket,
-            spec.id,
             aws_resources.region,
             aws_resources.s3_bucket,
             spec.id,
