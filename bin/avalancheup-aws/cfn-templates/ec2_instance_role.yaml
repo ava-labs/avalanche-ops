@@ -69,9 +69,13 @@ Resources:
                   - ec2:DescribeInstances # to fetch tags
                   - ec2:DescribeTags # to find network/resource information
                   - ec2:DescribeVolumes # to wait for volume attachment
+                  - ec2:CreateTags
                   - ec2:CreateVolume # to create volume if not exists
                   - ec2:AttachVolume
-                  - ec2:CreateTags
+                  - ec2:DetachVolume # to fail fast in case of spot instance-action
+                  - ec2:TerminateInstances # to fail fast in case of spot instance-action
+                # restrict this better
+                # ref. https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_ec2_ebs-owner.html
                 Resource: "*"
               - Effect: Allow
                 Action:
