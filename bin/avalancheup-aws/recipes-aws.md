@@ -206,6 +206,21 @@ cd ${HOME}/avalanche-ops
 --network-name custom \
 --avalanchego-log-level DEBUG
 
+# to run with the latest binaries automatically downloaded
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--network-name custom \
+--avalanchego-log-level DEBUG
+
+# to set your own AAD tag
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--aad-tag my-tag \
+--network-name custom \
+--avalanchego-log-level DEBUG
+
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 ```
@@ -662,6 +677,13 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--network-name fuji \
+--avalanchego-log-level INFO
+
+# to download install artifacts on remote machines automatically
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
 --network-name fuji \
 --avalanchego-log-level INFO
 

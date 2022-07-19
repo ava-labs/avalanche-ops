@@ -204,6 +204,9 @@ pub struct Spec {
     #[serde(default)]
     pub id: String,
 
+    /// AAD tag used for envelope encryption with KMS.
+    #[serde(default)]
+    pub aad_tag: String,
     /// AWS resources if run in AWS.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub aws_resources: Option<aws::Resources>,
@@ -390,6 +393,8 @@ pub struct DefaultSpecOption {
 
     pub region: String,
 
+    pub aad_tag: String,
+
     pub nlb_acm_certificate_arn: String,
 
     pub install_artifacts_avalanched_bin: String,
@@ -518,16 +523,16 @@ impl Spec {
     /// For custom networks, it generates the "keys" number of keys
     /// and pre-funds them in the genesis file path, which is
     /// included in "InstallArtifacts.genesis_draft_file_path".
-    pub fn default_aws(opt: DefaultSpecOption) -> Self {
-        let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opt.network_name.as_str())
+    pub fn default_aws(opts: DefaultSpecOption) -> Self {
+        let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opts.network_name.as_str())
         {
             Some(v) => *v,
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
         let avalanched_config = avalanched::Flags {
-            log_level: opt.avalanched_log_level,
-            lite_mode: opt.avalanched_lite_mode,
+            log_level: opts.avalanched_log_level,
+            lite_mode: opts.avalanched_lite_mode,
         };
 
         let mut avalanchego_config = match network_id {
@@ -535,44 +540,44 @@ impl Spec {
             5 => avalanchego_config::Config::default_fuji(),
             _ => avalanchego_config::Config::default_custom(),
         };
-        avalanchego_config.log_level = Some(opt.avalanchego_log_level);
+        avalanchego_config.log_level = Some(opts.avalanchego_log_level);
 
         // only set values if non empty
         // otherwise, avalanchego will fail with "couldn't load node config: read .: is a directory"
         // TODO: use different certs than staking?
-        if opt.avalanchego_http_tls_enabled {
+        if opts.avalanchego_http_tls_enabled {
             avalanchego_config.http_tls_enabled = Some(true);
             avalanchego_config.http_tls_key_file = avalanchego_config.staking_tls_key_file.clone();
             avalanchego_config.http_tls_cert_file =
                 avalanchego_config.staking_tls_cert_file.clone();
         }
 
-        if !opt.avalanchego_state_sync_ids.is_empty() {
-            avalanchego_config.state_sync_ids = Some(opt.avalanchego_state_sync_ids.clone());
+        if !opts.avalanchego_state_sync_ids.is_empty() {
+            avalanchego_config.state_sync_ids = Some(opts.avalanchego_state_sync_ids.clone());
         };
-        if !opt.avalanchego_state_sync_ips.is_empty() {
-            avalanchego_config.state_sync_ips = Some(opt.avalanchego_state_sync_ips.clone());
+        if !opts.avalanchego_state_sync_ips.is_empty() {
+            avalanchego_config.state_sync_ips = Some(opts.avalanchego_state_sync_ips.clone());
         };
-        if opt.avalanchego_profile_continuous_enabled {
+        if opts.avalanchego_profile_continuous_enabled {
             avalanchego_config.profile_continuous_enabled = Some(true);
         }
-        if !opt.avalanchego_profile_continuous_freq.is_empty() {
+        if !opts.avalanchego_profile_continuous_freq.is_empty() {
             avalanchego_config.profile_continuous_freq =
-                Some(opt.avalanchego_profile_continuous_freq.clone());
+                Some(opts.avalanchego_profile_continuous_freq.clone());
         };
-        if !opt.avalanchego_profile_continuous_max_files.is_empty() {
-            let profile_continuous_max_files = opt.avalanchego_profile_continuous_max_files;
+        if !opts.avalanchego_profile_continuous_max_files.is_empty() {
+            let profile_continuous_max_files = opts.avalanchego_profile_continuous_max_files;
             let profile_continuous_max_files = profile_continuous_max_files.parse::<u32>().unwrap();
             avalanchego_config.profile_continuous_max_files = Some(profile_continuous_max_files);
         };
-        if !opt.avalanchego_whitelisted_subnets.is_empty() {
-            avalanchego_config.whitelisted_subnets = Some(opt.avalanchego_whitelisted_subnets);
+        if !opts.avalanchego_whitelisted_subnets.is_empty() {
+            avalanchego_config.whitelisted_subnets = Some(opts.avalanchego_whitelisted_subnets);
         };
 
         let network_id = avalanchego_config.network_id;
         let id = {
-            if !opt.spec_file_path.is_empty() {
-                let spec_file_stem = Path::new(&opt.spec_file_path).file_stem().unwrap();
+            if !opts.spec_file_path.is_empty() {
+                let spec_file_stem = Path::new(&opts.spec_file_path).file_stem().unwrap();
                 spec_file_stem.to_str().unwrap().to_string()
             } else {
                 match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
@@ -602,7 +607,7 @@ impl Spec {
         // existing network has only 1 pre-funded key "ewoq"
         let mut generated_seed_key_infos: Vec<hot::PrivateKeyInfoEntry> = Vec::new();
         let mut generated_seed_keys: Vec<hot::Key> = Vec::new();
-        for i in 0..opt.keys_to_generate {
+        for i in 0..opts.keys_to_generate {
             let k = {
                 if i < hot::TEST_KEYS.len() {
                     hot::TEST_KEYS[i].clone()
@@ -633,7 +638,7 @@ impl Spec {
         let generated_seed_private_keys = Some(generated_seed_key_infos[1..].to_vec());
 
         let subnet_evm_genesis = {
-            if opt.enable_subnet_evm {
+            if opts.enable_subnet_evm {
                 let mut subnet_evm_seed_allocs = BTreeMap::new();
                 let mut admin_addresses: Vec<String> = Vec::new();
                 for key_info in generated_seed_key_infos.iter() {
@@ -661,7 +666,7 @@ impl Spec {
         };
 
         let mut aws_resources = aws::Resources {
-            region: opt.region,
+            region: opts.region,
             s3_bucket: format!(
                 "avalanche-ops-{}-{}",
                 id_manager::time::timestamp(6),
@@ -669,8 +674,8 @@ impl Spec {
             ), // [year][month][date]-[system host-based id]
             ..aws::Resources::default()
         };
-        if !opt.nlb_acm_certificate_arn.is_empty() {
-            aws_resources.nlb_acm_certificate_arn = Some(opt.nlb_acm_certificate_arn);
+        if !opts.nlb_acm_certificate_arn.is_empty() {
+            aws_resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
         }
         let aws_resources = Some(aws_resources);
 
@@ -679,21 +684,21 @@ impl Spec {
             avalanchego_bin: None,
             plugins_dir: None,
         };
-        if !opt.install_artifacts_avalanched_bin.is_empty() {
-            install_artifacts.avalanched_bin = Some(opt.install_artifacts_avalanched_bin);
+        if !opts.install_artifacts_avalanched_bin.is_empty() {
+            install_artifacts.avalanched_bin = Some(opts.install_artifacts_avalanched_bin);
         }
-        if !opt.install_artifacts_avalanche_bin.is_empty() {
-            install_artifacts.avalanchego_bin = Some(opt.install_artifacts_avalanche_bin);
+        if !opts.install_artifacts_avalanche_bin.is_empty() {
+            install_artifacts.avalanchego_bin = Some(opts.install_artifacts_avalanche_bin);
         }
-        if !opt.install_artifacts_plugins_dir.is_empty() {
-            install_artifacts.plugins_dir = Some(opt.install_artifacts_plugins_dir);
+        if !opts.install_artifacts_plugins_dir.is_empty() {
+            install_artifacts.plugins_dir = Some(opts.install_artifacts_plugins_dir);
         }
 
         let mut coreth_config = coreth_config::Config::default();
-        if opt.coreth_metrics_enabled {
+        if opts.coreth_metrics_enabled {
             coreth_config.metrics_enabled = Some(true);
         }
-        if opt.coreth_continuous_profiler_enabled {
+        if opts.coreth_continuous_profiler_enabled {
             coreth_config.continuous_profiler_dir =
                 Some(String::from(coreth_config::DEFAULT_PROFILE_DIR));
             coreth_config.continuous_profiler_frequency =
@@ -701,21 +706,22 @@ impl Spec {
             coreth_config.continuous_profiler_max_files =
                 Some(coreth_config::DEFAULT_PROFILE_MAX_FILES);
         }
-        if opt.coreth_offline_pruning_enabled {
+        if opts.coreth_offline_pruning_enabled {
             coreth_config.offline_pruning_enabled = Some(true);
         }
-        if opt.coreth_state_sync_enabled {
+        if opts.coreth_state_sync_enabled {
             coreth_config.state_sync_enabled = Some(true);
-            if !opt.avalanchego_state_sync_ids.is_empty() {
-                coreth_config.state_sync_ids = Some(opt.avalanchego_state_sync_ids.clone());
+            if !opts.avalanchego_state_sync_ids.is_empty() {
+                coreth_config.state_sync_ids = Some(opts.avalanchego_state_sync_ids.clone());
             }
         }
-        if opt.coreth_state_sync_metrics_enabled {
+        if opts.coreth_state_sync_metrics_enabled {
             coreth_config.state_sync_metrics_enabled = Some(true);
         }
 
         Self {
             id,
+            aad_tag: opts.aad_tag,
 
             aws_resources,
             machine,
@@ -961,6 +967,8 @@ fn test_spec() {
 
 id: {}
 
+aad_tag: test
+
 aws_resources:
   region: us-west-2
   s3_bucket: {}
@@ -1035,6 +1043,7 @@ coreth_config:
     let avalanchego_config = avalanchego_config::Config::default_main();
     let orig = Spec {
         id: id.clone(),
+        aad_tag: String::from("test"),
 
         aws_resources: Some(aws::Resources {
             region: String::from("us-west-2"),

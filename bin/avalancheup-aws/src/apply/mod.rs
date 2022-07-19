@@ -522,6 +522,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             format!("{}", &spec.avalanchego_config.network_id).as_str(),
         ),
         build_param("KmsCmkArn", &aws_resources.kms_cmk_arn.clone().unwrap()),
+        build_param("AadTag", &spec.aad_tag),
         build_param("S3BucketName", &aws_resources.s3_bucket),
         build_param(
             "Ec2KeyPairName",
@@ -1292,6 +1293,7 @@ staking-key-cert-s3-downloader \\
 --s3-key-tls-key={}/pki/[KEY_FILE_NAME_IN_S3] \\
 --s3-key-tls-cert={}/pki/[CERT_FILE_NAME_IN_S3] \\
 --kms-cmk-id={} \\
+--aad-tag='{}' \\
 --tls-key-path=/tmp/my.key \\
 --tls-cert-path=/tmp/my.crt
 
@@ -1305,6 +1307,7 @@ staking-key-cert-s3-downloader \\
             spec.id,
             spec.id,
             aws_resources.kms_cmk_id.unwrap(),
+            spec.aad_tag,
         )),
         ResetColor
     )?;

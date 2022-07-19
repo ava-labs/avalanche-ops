@@ -22,6 +22,7 @@ $ staking-key-cert-s3-downloader \
 --s3-key-tls-key=pki/NodeABCDE.key.zstd.encrypted \
 --s3-key-tls-cert=pki/NodeABCDE.crt.zstd.encrypted \
 --kms-cmk-id=abc-abc-abc \
+--aad-tag=mytag \
 --tls-key-path=pki/NodeABCDE.key \
 --tls-cert-path=pki/NodeABCDE.crt
 
@@ -88,6 +89,14 @@ $ staking-key-cert-s3-downloader \
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("AAD_TAG")
+                .long("aad-tag")
+                .help("Sets the AAD tag for envelope encryption")
+                .required(true)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("TLS_CERT_PATH")
                 .long("tls-cert-path")
                 .help("Sets the local file path to save TLS cert")
@@ -104,6 +113,7 @@ $ staking-key-cert-s3-downloader \
         s3_key_tls_key: matches.value_of("S3_KEY_TLS_KEY").unwrap().to_string(),
         s3_key_tls_cert: matches.value_of("S3_KEY_TLS_CERT").unwrap().to_string(),
         kms_cmk_id: matches.value_of("KMS_CMK_ID").unwrap().to_string(),
+        aad_tag: matches.value_of("AAD_TAG").unwrap().to_string(),
         tls_key_path: matches.value_of("TLS_KEY_PATH").unwrap().to_string(),
         tls_cert_path: matches.value_of("TLS_CERT_PATH").unwrap().to_string(),
     };
