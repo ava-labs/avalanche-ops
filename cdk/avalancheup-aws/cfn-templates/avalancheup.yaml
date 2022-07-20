@@ -1,0 +1,1045 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Avalancheup (combined ec2_instance_role + vpc + asg templates from avalancheup-aws)"
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+Parameters:
+  #####################################
+  # ROLE
+  #####################################
+  ClusterId:
+    Type: String
+    Description: Unique identifier, prefix for all resources created below.
+
+  KmsCmkArn:
+    Type: String
+    Description: KMS CMK ARN that de/encrypts resources.
+
+  S3BucketName:
+    Type: String
+    Description: S3 bucket name to store.
+
+  S3BucketDbBackupName:
+    Type: String
+    Default: ""
+    Description: S3 bucket name to download backups from.
+
+  #####################################
+  # VPC
+  #####################################
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+    Description: IP range (CIDR notation) for VPC, must be a valid (RFC 1918) CIDR range (from 10.0.0.0 to 10.0.255.255)
+
+  PublicSubnetCidr1:
+    Type: String
+    Default: 10.0.64.0/19
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+    Description: CIDR block for public subnet 1 within the VPC (from 10.0.64.0 to 10.0.95.255)
+
+  PublicSubnetCidr2:
+    Type: String
+    Default: 10.0.128.0/19
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+    Description: CIDR block for public subnet 2 within the VPC (from 10.0.128.0 to 10.0.159.255)
+
+  PublicSubnetCidr3:
+    Type: String
+    Default: 10.0.192.0/19
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+    Description: CIDR block for public subnet 2 within the VPC (from 10.0.192.0 to 10.0.223.255)
+
+  IngressIpv4Range:
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+    Description: IP range for SSH/HTTP inbound traffic
+
+  HttpPort:
+    Type: Number
+    Default: 9650
+    Description: HTTP port
+
+  StakingPort:
+    Type: Number
+    Default: 9651
+    Description: HTTP port
+
+  #####################################
+  # ASG
+  #####################################
+  Ec2KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 SSH key name
+
+  NetworkId:
+    Type: Number
+    Default: 5
+    Description: Avalanche network ID, used for resource tagging.
+
+  NodeKind:
+    Type: String
+    Default: "non-anchor"
+    AllowedValues: ["non-anchor"]
+    Description: Node kind.
+
+  AadTag:
+    Type: String
+    Description: AAD tag for envelope encryption with KMS.
+
+  ImageId:
+    Type: String
+    Default: ""
+    Description: (Optional) Custom image ID. This value overrides any AWS Systems Manager Parameter Store value specified above.
+
+  # https://ubuntu.com/server/docs/cloud-images/amazon-ec2
+  # TODO: support arm64
+  ImageIdSsmParameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+    Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
+
+  Arch:
+    Type: String
+    Default: "amd64"
+    Description: The name of the architecture.
+
+  # Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
+  # Avalanche test net ("fuji") runs "c5.2xlarge"
+  #
+  # https://aws.amazon.com/ec2/instance-types/c6a/
+  # c6a.large:   2  vCPU + 4  GiB RAM
+  # c6a.xlarge:  4  vCPU + 8  GiB RAM
+  # c6a.2xlarge: 8  vCPU + 16 GiB RAM
+  # c6a.4xlarge: 16 vCPU + 32 GiB RAM
+  # c6a.8xlarge: 32 vCPU + 64 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/m6a/
+  # m6a.large:   2  vCPU + 8  GiB RAM
+  # m6a.xlarge:  4  vCPU + 16 GiB RAM
+  # m6a.2xlarge: 8  vCPU + 32 GiB RAM
+  # m6a.4xlarge: 16 vCPU + 64 GiB RAM
+  # m6a.8xlarge: 32 vCPU + 128 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/m5/
+  # m5.large:   2  vCPU + 8  GiB RAM
+  # m5.xlarge:  4  vCPU + 16 GiB RAM
+  # m5.2xlarge: 8  vCPU + 32 GiB RAM
+  # m5.4xlarge: 16 vCPU + 64 GiB RAM
+  # m5.8xlarge: 32 vCPU + 128 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/c5/
+  # c5.large:   2  vCPU + 4  GiB RAM
+  # c5.xlarge:  4  vCPU + 8  GiB RAM
+  # c5.2xlarge: 8  vCPU + 16 GiB RAM
+  # c5.4xlarge: 16 vCPU + 32 GiB RAM
+  # c5.9xlarge: 32 vCPU + 72 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/r5/
+  # r5.large:   2  vCPU + 16 GiB RAM
+  # r5.xlarge:  4  vCPU + 32 GiB RAM
+  # r5.2xlarge: 8  vCPU + 64 GiB RAM
+  # r5.4xlarge: 16 vCPU + 128 GiB RAM
+  # r5.8xlarge: 32 vCPU + 256 GiB RAM
+  #
+  # https://aws.amazon.com/ec2/instance-types/t3/
+  # t3.large:    2  vCPU + 8 GiB RAM
+  # t3.xlarge:   4  vCPU + 16 GiB RAM
+  # t3.2xlarge:  8  vCPU + 32 GiB RAM
+  #
+  InstanceTypes:
+    Type: CommaDelimitedList
+    Default: c6a.2xlarge,m6a.2xlarge,m5.2xlarge,c5.2xlarge
+    Description: EC2 instance types
+
+  InstanceTypesCount:
+    Type: Number
+    Default: 4
+    MinValue: 1
+    MaxValue: 4
+    Description: The number of instance types
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumetype
+  VolumeType:
+    Type: String
+    Default: gp3
+    Description: Volume type.
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
+  VolumeSize:
+    Type: Number
+    Default: 1024
+    MinValue: 200
+    MaxValue: 1024
+    Description: Size of the root disk for the EC2 instances, in GiB.
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-iops
+  VolumeIops:
+    Type: Number
+    Default: 3000
+    Description: The number of I/O operations per second (IOPS).
+
+  # only for gp3
+  # https://aws.amazon.com/ebs/volume-types/
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-throughput
+  # "1000" does not work -- "InvalidParameterValue - Throughput (MiBps) to iops ratio of 0.333333 is too high; maximum is 0.250000 MiBps per iops."
+  VolumeThroughput:
+    Type: Number
+    Default: 500
+    Description: The throughput to provision for a gp3 volume, with a maximum of 1,000 MiB/s.
+
+  AsgSpotInstance:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: Set to "true" if the EC2 instance is set up with spot instance.
+
+  AsgMinInstancesInService:
+    Type: Number
+    Description: Minimum instances in service for update.
+    Default: 1
+    MinValue: 1
+    MaxValue: 1000
+
+  AsgMinSize:
+    Type: Number
+    Description: Minimum size auto scaling group
+    Default: 0
+    MinValue: 0
+    MaxValue: 1000
+
+  AsgMaxSize:
+    Type: Number
+    Description: Maximum size auto scaling group
+    Default: 10
+    MinValue: 1
+    MaxValue: 1000
+
+  AsgDesiredCapacity:
+    Type: Number
+    Description: Desired size auto scaling group
+    Default: 5
+    MinValue: 1
+    MaxValue: 1000
+
+  NlbTargetGroupArn:
+    Type: String
+    Default: ""
+    Description: NLB target group ARN for ASG
+
+  NlbVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  NlbHttpPort:
+    Type: Number
+    Default: 9650
+    Description: HTTP port (only required for NLB)
+
+  NlbAcmCertificateArn:
+    Type: String
+    Default: ""
+    Description: (Optional) Certificates for NLB HTTPs traffic.
+
+  AvalanchedDownloadSource:
+    Type: String
+    Default: ""
+    Description: (Optional) set to "github" to download from github, or download from S3.
+
+  AvalanchedFlag:
+    Type: String
+    Default: ""
+    Description: (Optional) flag for "avalanched" CLI.
+
+Mappings:
+  ServicePrincipals:
+    aws-cn:
+      ec2: ec2.amazonaws.com.cn
+    aws:
+      ec2: ec2.amazonaws.com
+
+Conditions:
+  HasS3BucketDbBackupName:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: S3BucketDbBackupName
+          - ""
+
+  Has2Azs:
+    Fn::Or:
+      - Fn::Equals:
+          - { Ref: "AWS::Region" }
+          - ap-south-1
+      - Fn::Equals:
+          - { Ref: "AWS::Region" }
+          - ap-northeast-2
+      - Fn::Equals:
+          - { Ref: "AWS::Region" }
+          - ca-central-1
+      - Fn::Equals:
+          - { Ref: "AWS::Region" }
+          - cn-north-1
+      - Fn::Equals:
+          - { Ref: "AWS::Region" }
+          - sa-east-1
+      - Fn::Equals:
+          - { Ref: "AWS::Region" }
+          - us-west-1
+
+  HasMoreThan2Azs:
+    Fn::Not:
+      - Condition: Has2Azs
+
+  HasImageId:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: ImageId
+          - ""
+
+  Has2InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 2
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 3
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 4
+
+  Has3InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 3
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 4
+
+  Has4InstanceTypes:
+    Fn::Equals:
+      - Ref: InstanceTypesCount
+      - 4
+
+Resources:
+  #####################################
+  # ROLE
+  #####################################
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["-", [!Ref ClusterId, "instance-role"]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - Fn::FindInMap:
+                    - ServicePrincipals
+                    - Ref: AWS::Partition
+                    - ec2
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Path: /
+      Policies:
+        - PolicyName: avalanche-ops-instance-role-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances # to fetch tags
+                  - ec2:DescribeTags # to find network/resource information
+                  - ec2:DescribeVolumes # to wait for volume attachment
+                  - ec2:CreateTags
+                  - ec2:CreateVolume # to create volume if not exists
+                  - ec2:AttachVolume
+                  - ec2:DetachVolume # to fail fast in case of spot instance-action
+                  - ec2:TerminateInstances # to fail fast in case of spot instance-action
+                # restrict this better
+                # ref. https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_ec2_ebs-owner.html
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt # to generate TLS key and encrypt
+                  - kms:GenerateDataKey* # to encrypt TLS key
+                  - kms:DescribeKey # to describe the CMK
+                Resource: { Ref: KmsCmkArn }
+              - Effect: Allow
+                Action:
+                  - s3:List*
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject # to download artifacts
+                  - s3:PutObject # to upload generated TLS keys
+                Resource:
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref ClusterId,
+                        "/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref ClusterId,
+                        "/bootstrap/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref ClusterId,
+                        "/pki/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref ClusterId,
+                        "/discover/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref ClusterId,
+                        "/backups/*",
+                      ],
+                    ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref ClusterId,
+                        "/events/*",
+                      ],
+                    ]
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:PutRetentionPolicy
+                Resource: "*"
+        - Fn::If:
+            - HasS3BucketDbBackupName
+            - PolicyName: avalanche-ops-instance-role-policy-for-db-backup
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - s3:GetObject # to download backups
+                    Resource:
+                      - !Join [
+                          "",
+                          [
+                            !Sub "arn:${AWS::Partition}:s3:::",
+                            !Ref S3BucketDbBackupName,
+                            "/*",
+                          ],
+                        ]
+            - !Ref AWS::NoValue
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Join ["-", [!Ref ClusterId, "instance-profile"]]
+      Path: "/"
+      Roles:
+        - !Ref InstanceRole
+
+  #####################################
+  # VPC
+  #####################################
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref ClusterId, "igw"]]
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref ClusterId, "vpc"]]
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn:
+      - VPC
+      - InternetGateway
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+    Metadata:
+      Comment: Public Subnet 1
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ]
+      CidrBlock: !Ref PublicSubnetCidr1
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref ClusterId, "public-subnet-1"]]
+        - Key: Network
+          Value: Public
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+    Metadata:
+      Comment: Public Subnet 2
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ]
+      CidrBlock: !Ref PublicSubnetCidr2
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref ClusterId, "public-subnet-2"]]
+        - Key: Network
+          Value: Public
+
+  PublicSubnet3:
+    Condition: HasMoreThan2Azs
+    Type: AWS::EC2::Subnet
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+    Metadata:
+      Comment: Public Subnet 3
+    Properties:
+      AvailabilityZone: !Select [2, !GetAZs ]
+      CidrBlock: !Ref PublicSubnetCidr3
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref ClusterId, "public-subnet-3"]]
+        - Key: Network
+          Value: Public
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn:
+      - VPC
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref ClusterId, "public-round-table"]]
+        - Key: Network
+          Value: Public
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+      - PublicSubnet1
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+      - PublicSubnet2
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet3RouteTableAssociation:
+    Condition: HasMoreThan2Azs
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+      - PublicSubnet3
+    Properties:
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref PublicRouteTable
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn:
+      - VPC
+      - VPCGatewayAttachment
+    Properties:
+      GroupName: !Join ["-", [!Ref ClusterId, "security-group"]]
+      GroupDescription: Secured communication
+      VpcId: !Ref VPC
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-ingress.html
+  SshIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref IngressIpv4Range
+
+  # TODO: can this be more strict
+  HttpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref HttpPort
+      ToPort: !Ref HttpPort
+      CidrIp: !Ref IngressIpv4Range
+
+  # TODO: can this be more strict
+  StakingIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref StakingPort
+      ToPort: !Ref StakingPort
+      CidrIp: !Ref IngressIpv4Range
+
+  # TODO: can this be more strict
+  # allow all outbound traffic
+  Egress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: "-1"
+      FromPort: "1"
+      ToPort: "65535"
+      CidrIp: "0.0.0.0/0"
+
+  #####################################
+  # ASG
+  #####################################
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
+  # takes 3-minute
+  NLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: network
+      # load balancer name '...' cannot be longer than '32' characters
+      Name: !Join ["-", [!Ref ClusterId, "nlb"]]
+      Subnets:
+        Fn::If:
+          - HasMoreThan2Azs
+          - [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]
+          - [!Ref PublicSubnet1, !Ref PublicSubnet2]
+      # load balancer name '...' cannot be longer than '32' characters
+      Tags:
+        - { Key: Name, Value: !Sub "${ClusterId}-nlb" }
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
+  NLBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      # Target group name '...' cannot be longer than '32' characters
+      Name: !Join ["-", [!Ref ClusterId, "tg"]]
+      # Health check enabled must be true for target groups
+      # with target type 'instance'
+      HealthCheckEnabled: true
+      HealthCheckProtocol: TCP
+      Protocol: TCP
+      TargetType: instance
+      VpcId: !Ref VPC
+      Port: !Ref NlbHttpPort
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
+  NLBListenerTcp:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref NLB
+      Port: !Ref NlbHttpPort
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NLBTargetGroup
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
+  ASGLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName:
+        !Join ["-", [!Ref ClusterId, !Ref NodeKind, !Ref Arch]]
+      LaunchTemplateData:
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
+        IamInstanceProfile:
+          Arn: !GetAtt InstanceProfile.Arn
+        ImageId:
+          Fn::If:
+            - HasImageId
+            - !Ref ImageId
+            - !Ref ImageIdSsmParameter
+        KeyName: !Ref Ec2KeyPairName
+
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html#cfn-ec2-launchtemplate-blockdevicemapping-ebs-volumesize
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping-ebs.html
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/RootDeviceStorage.html
+        BlockDeviceMappings:
+          # mounted to "/dev/root"
+          - DeviceName: "/dev/sda1"
+            Ebs:
+              VolumeType: gp3
+              VolumeSize: 200
+
+        Monitoring:
+          Enabled: true
+
+        # need this for public DNS + SSH access
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeleteOnTermination: true
+            DeviceIndex: 0
+            Groups:
+              - !Ref SecurityGroup
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - { Key: Name, Value: !Sub "${ClusterId}-${NodeKind}-${Arch}" }
+
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
+        # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
+        # /var/log/cloud-init-output.log
+        # takes about 3-minute
+        UserData:
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash
+              set -xeu
+
+              export DEBIAN_FRONTEND=noninteractive
+              sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
+              && sudo apt-get install -yq \
+                  curl wget unzip zip gzip tar libssl-dev \
+                  python3-pip python-setuptools zsh
+
+              curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
+              unzip awscli.v2.zip
+              sudo ./aws/install
+              /usr/local/bin/aws --version
+
+              # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
+              sudo snap install amazon-ssm-agent --classic
+              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
+              mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
+              cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
+              [Service]
+              Restart=always
+              RestartSec=60s
+              EOF
+              sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
+
+              # for outputs:
+              # sudo vi /var/log/cloud-init-output.log
+              #
+              # TODO: support ARM64
+              wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
+              mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
+              chmod +x /tmp/aws-volume-provisioner
+              /tmp/aws-volume-provisioner \
+                --log-level=info \
+                --kind-tag=aws-volume-provisioner \
+                --id-tag=${ClusterId} \
+                --volume-type=${VolumeType} \
+                --volume-size=${VolumeSize} \
+                --volume-iops=${VolumeIops} \
+                --volume-throughput=${VolumeThroughput} \
+                --ebs-device-name=/dev/xvdb \
+                --block-device-name=/dev/nvme1n1 \
+                --filesystem-name=ext4 \
+                --mount-directory-path=/data
+
+              if [[ ${AvalanchedDownloadSource} == "github" ]]; then
+                # TODO: support ARM64
+                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
+                mv ./avalanched-aws.x86_64-unknown-linux-gnu /tmp/avalanched
+                chmod +x /tmp/avalanched
+                sudo mv /tmp/avalanched /usr/local/bin/avalanched
+              else
+                aws s3 cp s3://${S3BucketName}/${ClusterId}/bootstrap/install/avalanched /tmp/avalanched
+                chmod +x /tmp/avalanched
+                sudo mv /tmp/avalanched /usr/local/bin/avalanched
+              fi;
+              mkdir -p /var/log/avalanche
+              chmod 755 /var/log/avalanche
+
+              cat > /tmp/avalanched.service <<EOF
+              [Unit]
+              Description=Avalanched (avalanche agent)
+
+              [Service]
+              Type=exec
+              TimeoutStartSec=300
+              Restart=on-failure
+              RestartSec=5s
+              LimitNOFILE=40000
+              ExecStart=/usr/local/bin/avalanched ${AvalanchedFlag}
+              StandardOutput=append:/var/log/avalanched.log
+              StandardError=append:/var/log/avalanched.log
+
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+              sudo mv /tmp/avalanched.service /etc/systemd/system/avalanched.service
+              sudo systemctl daemon-reload
+              sudo systemctl enable avalanched.service
+              sudo systemctl start --no-block avalanched.service
+
+              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
+              mkdir -p /tmp/install-cloudwatch-logs
+              pushd /tmp/install-cloudwatch-logs
+              wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
+              sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
+              popd
+
+              # enough time for "avalanched" to initialize cloudwatch configuration
+              sleep 10
+              echo "wait until /opt/aws/amazon-cloudwatch-agent/bin/config.json is written by avalanched"
+              while [[ ! -s /opt/aws/amazon-cloudwatch-agent/bin/config.json ]]
+                do
+                echo "waiting for /opt/aws/amazon-cloudwatch-agent/bin/config.json creation"
+                sleep 5
+              done
+
+              cat /opt/aws/amazon-cloudwatch-agent/bin/config.json
+              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
+              mkdir -p /etc/systemd/system/amazon-cloudwatch-agent.service.d
+              cat <<EOF > /etc/systemd/system/amazon-cloudwatch-agent.service.d/10-restart-always.conf
+              [Service]
+              Restart=always
+              RestartSec=60s
+              EOF
+
+              # TODO: signal instance ready
+              # NOT WORKING; "print 'revision: %(revno)s' % version_info"
+              # curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
+              # pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+              # if [[ $? -ne 0 ]]; then
+              #   /usr/local/bin/cfn-signal --resource AutoScalingGroup \
+              #     --stack ${AWS::StackName} \
+              #     --region ${AWS::Region} \
+              #     --success false
+              # else
+              #   /usr/local/bin/cfn-signal -e $? --resource AutoScalingGroup \
+              #     --stack ${AWS::StackName} \
+              #     --region ${AWS::Region}
+              # fi
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: !Ref AsgMinInstancesInService
+        MaxBatchSize: 1
+        SuspendProcesses:
+          - HealthCheck
+          - ReplaceUnhealthy
+          - AZRebalance
+          - AlarmNotification
+          - ScheduledActions
+    Properties:
+      AutoScalingGroupName:
+        !Join ["-", [!Ref ClusterId, !Ref NodeKind, !Ref Arch]]
+      MinSize: !Ref AsgMinSize
+      MaxSize: !Ref AsgMaxSize
+      DesiredCapacity: !Ref AsgDesiredCapacity
+      # just use one AZ for better static provisioning
+      VPCZoneIdentifier:
+        !Ref PublicSubnet1
+        # Fn::If:
+        #   - HasMoreThan2Azs
+        #   - [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]
+        #   - [!Ref PublicSubnet1, !Ref PublicSubnet2]
+      TargetGroupARNs: !Ref NLBTargetGroup
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 120
+      MetricsCollection:
+        - Granularity: "1Minute"
+      Tags:
+        # we can either propagate these information
+        # via tags, avalanched CLI flags, avalanche-ops spec, etc.
+        # use tags for relatively static configurations
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: !Join ["-", [!Ref ClusterId, !Ref NodeKind, !Ref Arch]]
+        - Key: ID
+          PropagateAtLaunch: true
+          Value: !Ref ClusterId
+        - Key: NETWORK_ID
+          PropagateAtLaunch: true
+          Value: !Ref NetworkId
+        - Key: ARCH_TYPE
+          PropagateAtLaunch: true
+          Value: amd64
+        - Key: OS_TYPE
+          PropagateAtLaunch: true
+          Value: linux
+        - Key: ASG_SPOT_INSTANCE
+          PropagateAtLaunch: true
+          Value: !Ref AsgSpotInstance
+        - Key: NODE_KIND
+          PropagateAtLaunch: true
+          Value: !Ref NodeKind
+        - Key: KMS_CMK_ARN
+          PropagateAtLaunch: true
+          Value: !Ref KmsCmkArn
+        - Key: AAD_TAG
+          PropagateAtLaunch: true
+          Value: !Ref AadTag
+        - Key: S3_BUCKET_NAME
+          PropagateAtLaunch: true
+          Value: !Ref S3BucketName
+        - Key: CLOUDWATCH_CONFIG_FILE_PATH
+          PropagateAtLaunch: true
+          Value: /opt/aws/amazon-cloudwatch-agent/bin/config.json
+        - Key: AVALANCHEUP_SPEC_PATH
+          PropagateAtLaunch: true
+          Value: /data/avalancheup.yaml
+        - Key: AVALANCHED_BIN_PATH
+          PropagateAtLaunch: true
+          Value: /usr/local/bin/avalanched
+        - Key: AVALANCHE_BIN_PATH
+          PropagateAtLaunch: true
+          Value: /usr/local/bin/avalanche
+        - Key: AVALANCHE_DATA_VOLUME_PATH
+          PropagateAtLaunch: true
+          Value: /data
+        - Key: AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME
+          PropagateAtLaunch: true
+          Value: /dev/xvdb
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
+      MixedInstancesPolicy:
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-instancesdistribution.html
+        InstancesDistribution:
+          OnDemandAllocationStrategy: "prioritized"
+        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplate.html
+        LaunchTemplate:
+          LaunchTemplateSpecification:
+            LaunchTemplateId: !Ref ASGLaunchTemplate
+            Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+          # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplateoverrides.html
+          Overrides:
+            - InstanceType: !Select [0, !Ref InstanceTypes]
+            - Fn::If:
+                - Has2InstanceTypes
+                - InstanceType: !Select [1, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has3InstanceTypes
+                - InstanceType: !Select [2, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has4InstanceTypes
+                - InstanceType: !Select [3, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+
+Outputs:
+  InstanceRoleArn:
+    Value: !GetAtt InstanceRole.Arn
+    Description: Role ARN
+
+  InstanceProfileArn:
+    Value: !GetAtt InstanceProfile.Arn
+    Description: Instance profile ARN
+
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
+
+  SecurityGroupId:
+    Description: Security group ID
+    Value: !Ref SecurityGroup
+
+  PublicSubnetIds:
+    Description: All public subnet IDs in the VPC
+    Value:
+      Fn::If:
+        - HasMoreThan2Azs
+        - !Join [
+            ",",
+            [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3],
+          ]
+        - !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+
+  # same as "AutoScalingGroupName"
+  AsgLogicalId:
+    Value: !Ref ASG
+
+  NlbArn:
+    Value: !Ref NLB
+
+  NlbTargetGroupArn:
+    Value: !Ref NLBTargetGroup
+
+  NlbDnsName:
+    Value: !GetAtt NLB.DNSName
