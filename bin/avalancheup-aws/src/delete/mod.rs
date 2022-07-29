@@ -443,7 +443,7 @@ pub fn execute(
                 .build(),
             Filter::builder()
                 .set_name(Some(String::from("tag:Id")))
-                .set_values(Some(vec![spec.id.clone()]))
+                .set_values(Some(vec![spec.id]))
                 .build(),
         ];
         let volumes = rt
