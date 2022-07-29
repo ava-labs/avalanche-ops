@@ -1344,6 +1344,10 @@ async fn monitor_spot_instance_action(
                         Ok(_) => {}
                         Err(e) => log::warn!("failed systemctl disable command {}", e),
                     }
+                    match command_manager::run("sync") {
+                        Ok(_) => {}
+                        Err(e) => log::warn!("failed sync command {}", e),
+                    }
 
                     // enough time for avalanche process to gracefully shut down
                     sleep(Duration::from_secs(15)).await;
