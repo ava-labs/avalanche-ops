@@ -639,7 +639,7 @@ async fn install_avalanche_from_github(
         None
     };
 
-    let (binary_path, _) = avalanche_installer::avalanchego::download(arch, os).await?;
+    let (binary_path, _) = avalanche_installer::avalanchego::download_latest(arch, os).await?;
     fs::copy(&binary_path, avalanche_bin_path)?;
 
     let plugins_dir = avalanche_installer::avalanchego::get_plugins_dir(avalanche_bin_path);
