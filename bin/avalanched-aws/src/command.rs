@@ -41,8 +41,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         if opts.lite_mode {
             let avalanchego_config =
                 write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
-            let coreth_config =
-                write_default_coreth_config(&avalanchego_config.chain_config_dir.clone())?;
+            let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
 
             (avalanchego_config, coreth_config, true)
         } else {
@@ -461,11 +460,7 @@ async fn fetch_tags(
                 fetched_tags.os_type = v.to_string();
             }
             "ASG_SPOT_INSTANCE" => {
-                fetched_tags.asg_spot_instance = if v.to_string().to_lowercase().eq("true") {
-                    true
-                } else {
-                    false
-                };
+                fetched_tags.asg_spot_instance = v.to_string().to_lowercase().eq("true");
             }
             "NODE_KIND" => {
                 fetched_tags.node_kind = if v.to_string().eq("anchor") {
@@ -628,24 +623,24 @@ async fn install_avalanche_from_github(
 ) -> io::Result<()> {
     log::info!("STEP: installing Avalanche from github...");
 
-    let arch = if arch_type.to_string() == "amd64" {
+    let arch = if arch_type == "amd64" {
         Some(avalanche_installer::avalanchego::Arch::Amd64)
     } else {
         None
     };
-    let os = if os_type.to_string() == "linux" {
+    let os = if os_type == "linux" {
         Some(avalanche_installer::avalanchego::Os::Linux)
     } else {
         None
     };
 
-    let (binary_path, _) = avalanche_installer::avalanchego::download(arch, os).await?;
+    let (binary_path, _) = avalanche_installer::avalanchego::download_latest(arch, os).await?;
     fs::copy(&binary_path, avalanche_bin_path)?;
 
     let plugins_dir = avalanche_installer::avalanchego::get_plugins_dir(avalanche_bin_path);
     if !Path::new(&plugins_dir).exists() {
         log::info!("creating '{}' directory for plugins", plugins_dir);
-        fs::create_dir_all(plugins_dir.clone())?;
+        fs::create_dir_all(plugins_dir)?;
     };
 
     Ok(())
@@ -677,7 +672,7 @@ async fn install_avalanche_from_s3(
 
         compress_manager::unpack_file(
             &tmp_avalanche_bin_compressed_path,
-            &avalanche_bin_path,
+            avalanche_bin_path,
             compress_manager::Decoder::Zstd,
         )?;
 
@@ -967,7 +962,6 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
 
     let mut avalanchego_genesis_template = spec
         .avalanchego_genesis_template
-        .clone()
         .expect("unexpected None avalanchego_genesis_template for custom network");
     avalanchego_genesis_template.initial_stakers = Some(initial_stakers);
     avalanchego_genesis_template.sync(&avalanchego_genesis_path)?;
@@ -1166,7 +1160,7 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
     log::info!("STEP: checking liveness...");
 
     loop {
-        let ret = api_health::spawn_check(&ep, true).await;
+        let ret = api_health::spawn_check(ep, true).await;
         match ret {
             Ok(res) => {
                 if res.healthy.is_some() && res.healthy.unwrap() {
@@ -1265,7 +1259,7 @@ async fn publish_node_info_ready_loop(
         match s3::spawn_put_object(
             s3_manager.clone(),
             &node_info_path,
-            &s3_bucket.to_string(),
+            &s3_bucket,
             &node_info_ready_s3_key,
         )
         .await

@@ -9,7 +9,7 @@ name = "avalanched-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-installer = "0.0.3"
+avalanche-installer = "0.0.4"
 avalanche-sdk = { version = "0.0.17", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.24", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
