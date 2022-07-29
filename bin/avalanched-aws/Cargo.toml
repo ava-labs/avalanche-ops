@@ -18,7 +18,7 @@ aws-manager = "0.0.11"
 aws-sdk-cloudwatch = "0.16.0"
 aws-sdk-ec2 = "0.16.0"
 aws-sdk-s3 = "0.16.0"
-clap = { version = "3.2.14", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "3.2.15", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }
