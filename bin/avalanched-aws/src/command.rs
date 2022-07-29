@@ -1344,7 +1344,7 @@ async fn monitor_spot_instance_action(
                         Ok(_) => {}
                         Err(e) => log::warn!("failed systemctl disable command {}", e),
                     }
-                    match command_manager::run("sync") {
+                    match command_manager::run("sudo sync") {
                         Ok(_) => {}
                         Err(e) => log::warn!("failed sync command {}", e),
                     }
