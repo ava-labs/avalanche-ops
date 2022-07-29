@@ -65,7 +65,7 @@ impl Node {
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
-        let ret = serde_yaml::to_vec(self);
+        let ret = serde_yaml::to_string(self);
         let d = match ret {
             Ok(d) => d,
             Err(e) => {
@@ -76,7 +76,7 @@ impl Node {
             }
         };
         let mut f = File::create(file_path)?;
-        f.write_all(&d)?;
+        f.write_all(d.as_bytes())?;
 
         Ok(())
     }
@@ -104,7 +104,7 @@ impl Node {
     /// Encodes the object in YAML format, compresses, and apply base58.
     /// Used for shortening S3 file name.
     pub fn compress_base58(&self) -> io::Result<String> {
-        let d = match serde_yaml::to_vec(self) {
+        let d = match serde_yaml::to_string(self) {
             Ok(d) => d,
             Err(e) => {
                 return Err(Error::new(
@@ -113,7 +113,8 @@ impl Node {
                 ));
             }
         };
-        let compressed = compress_manager::pack(&d, compress_manager::Encoder::ZstdBase58(3))?;
+        let compressed =
+            compress_manager::pack(d.as_bytes(), compress_manager::Encoder::ZstdBase58(3))?;
         Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
     }
 
@@ -771,7 +772,7 @@ impl Spec {
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
-        let ret = serde_yaml::to_vec(self);
+        let ret = serde_yaml::to_string(self);
         let d = match ret {
             Ok(d) => d,
             Err(e) => {
@@ -782,7 +783,7 @@ impl Spec {
             }
         };
         let mut f = File::create(file_path)?;
-        f.write_all(&d)?;
+        f.write_all(d.as_bytes())?;
 
         Ok(())
     }
