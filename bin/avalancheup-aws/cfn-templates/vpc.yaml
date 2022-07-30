@@ -103,6 +103,9 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
 
+  # The instances must be in a subnet with outbound internet access.
+  # Can be a public subnet with an auto-assigned public ipv4 address.
+  # Or it can be a private subnet with a NAT Gateway.
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     DependsOn:

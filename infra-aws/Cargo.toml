@@ -11,7 +11,7 @@ aws-manager = "0.0.11"
 compress-manager = "0.0.2"
 log = "0.4.17"
 random-manager = "0.0.1"
-tokio = { version = "1.20.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.20.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
 cmp-manager = "0.0.1"
