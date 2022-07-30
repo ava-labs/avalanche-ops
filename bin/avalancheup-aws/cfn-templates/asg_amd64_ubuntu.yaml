@@ -596,7 +596,7 @@ Resources:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-instancesdistribution.html
         # https://ec2spotworkshops.com/launching_ec2_spot_instances/asg.html
         InstancesDistribution:
-          OnDemandAllocationStrategy: "prioritized"
+          OnDemandAllocationStrategy: "lowest-price"
           # minimum amount of the Auto Scaling group's capacity that must be fulfilled by On-Demand Instances
           OnDemandBaseCapacity: 0
           # percentages of On-Demand Instances and Spot Instances for your additional capacity beyond OnDemandBaseCapacity
