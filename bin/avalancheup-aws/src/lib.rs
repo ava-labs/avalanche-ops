@@ -862,13 +862,6 @@ impl Spec {
             ));
         }
 
-        if self.machine.use_spot_instance {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "machine.use_spot_instance not supported yet",
-            ));
-        }
-
         if let Some(v) = &self.install_artifacts.avalanched_bin {
             if !Path::new(v).exists() {
                 return Err(Error::new(

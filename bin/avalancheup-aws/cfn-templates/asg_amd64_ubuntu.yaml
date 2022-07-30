@@ -183,6 +183,13 @@ Parameters:
     MinValue: 1
     MaxValue: 1000
 
+  OnDemandPercentageAboveBaseCapacity:
+    Type: Number
+    Default: 100
+    MinValue: 0
+    MaxValue: 100
+    Description: 0 for Spot only. 100 for On-Demand only.
+
   NlbTargetGroupArn:
     Type: String
     Default: ""
@@ -583,11 +590,23 @@ Resources:
           PropagateAtLaunch: true
           Value: /dev/xvdb
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
+      # https://aws.amazon.com/getting-started/hands-on/ec2-auto-scaling-spot-instances/
       MixedInstancesPolicy:
+        # define balance between spot vs. on-demand
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-instancesdistribution.html
-        # TODO: support SpotAllocationStrategy: "lowest-price"
+        # https://ec2spotworkshops.com/launching_ec2_spot_instances/asg.html
         InstancesDistribution:
           OnDemandAllocationStrategy: "prioritized"
+          # minimum amount of the Auto Scaling group's capacity that must be fulfilled by On-Demand Instances
+          OnDemandBaseCapacity: 0
+          # percentages of On-Demand Instances and Spot Instances for your additional capacity beyond OnDemandBaseCapacity
+          # 20 specifies 20% On-Demand Instances, 80% Spot Instances
+          # If set to 0, only Spot Instances are used.
+          # If set to 100, only On-Demand Instances are used.
+          OnDemandPercentageAboveBaseCapacity: !Ref OnDemandPercentageAboveBaseCapacity
+          SpotAllocationStrategy: "lowest-price"
+          # number of Spot Instance pools across which to allocate your Spot Instances
+          SpotInstancePools: 3
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplate.html
         LaunchTemplate:
           LaunchTemplateSpecification:
