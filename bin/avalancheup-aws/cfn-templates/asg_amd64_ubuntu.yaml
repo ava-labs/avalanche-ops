@@ -173,7 +173,7 @@ Parameters:
   AsgDesiredCapacity:
     Type: Number
     Description: Desired size auto scaling group
-    Default: 5
+    Default: 1
     MinValue: 1
     MaxValue: 1000
 
@@ -211,7 +211,7 @@ Parameters:
 
   AvalanchedDownloadSource:
     Type: String
-    Default: ""
+    Default: "github"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
   AvalanchedFlag:
