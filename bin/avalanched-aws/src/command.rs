@@ -284,15 +284,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     check_liveness(&ep).await?;
 
     let mut handles = vec![
-        tokio::spawn(publish_node_info_ready_loop(
-            Arc::new(meta.ec2_instance_id.clone()),
-            tags.node_kind.clone(),
-            Arc::new(node_id.to_string()),
-            Arc::new(meta.public_ipv4.clone()),
-            Arc::clone(&s3_manager_arc),
-            Arc::new(tags.s3_bucket.clone()),
-            Arc::new(tags.avalancheup_spec_path.clone()),
-        )),
+        // publish metrics
         tokio::spawn(telemetry::metrics::avalanchego::fetch_loop(
             Arc::clone(&cloudwatch_manager_arc),
             Arc::new(tags.id.clone()),
@@ -301,6 +293,17 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             Arc::new(ep.to_string()),
         )),
     ];
+    if !opts.lite_mode {
+        handles.push(tokio::spawn(publish_node_info_ready_loop(
+            Arc::new(meta.ec2_instance_id.clone()),
+            tags.node_kind.clone(),
+            Arc::new(node_id.to_string()),
+            Arc::new(meta.public_ipv4.clone()),
+            Arc::clone(&s3_manager_arc),
+            Arc::new(tags.s3_bucket.clone()),
+            Arc::new(tags.avalancheup_spec_path.clone()),
+        )));
+    }
     if tags.asg_spot_instance {
         handles.push(tokio::spawn(monitor_spot_instance_action(
             Arc::clone(&ec2_manager_arc),
