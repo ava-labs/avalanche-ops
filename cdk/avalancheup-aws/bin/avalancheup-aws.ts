@@ -111,6 +111,10 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
     const paramNodeKind: cdk.CfnParameter = tmplAsg.getParameter('NodeKind');
     paramNodeKind.default = 'non-anchor';
 
+    // since we don't use S3 to upload avalanched binary
+    const paramAvalanchedDownloadSource: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedDownloadSource');
+    paramAvalanchedDownloadSource.default = 'github';
+
     // to skip s3 uploads for node discovery
     const paramAvalanchedFlag: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedFlag');
     paramAvalanchedFlag.default = '--lite-mode';
