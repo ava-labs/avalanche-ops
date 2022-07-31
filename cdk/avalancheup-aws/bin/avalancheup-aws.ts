@@ -2,90 +2,168 @@
 import 'source-map-support/register';
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
-import * as cfn_inc from 'aws-cdk-lib/cloudformation-include';
+import * as cfn_include from 'aws-cdk-lib/cloudformation-include';
+// import * as cfn_ec2 from 'aws-cdk-lib/aws-ec2';
 
-export class AvalancheupStack extends cdk.Stack {
+export class AvalancheupInstanceRoleStack extends cdk.Stack {
+  public readonly instanceRoleArn: cdk.CfnOutput;
+  public readonly instanceProfileArn: cdk.CfnOutput;
+
   constructor(scope: cdk.App, id: string, props: cdk.StackProps) {
     super(scope, id, props);
     console.log("CDK_ACCOUNT:", process.env.CDK_ACCOUNT);
     console.log("CDK_REGION:", process.env.CDK_REGION);
 
-    const tmpl = new cfn_inc.CfnInclude(this, `included-template-avalancheup-${process.env.AVALANCHEUP_ID || ''}`, {
-      templateFile: path.join('cfn-templates', 'avalancheup.yaml'),
-      parameters: {
-        'ClusterId': process.env.AVALANCHEUP_ID,
-        'KmsCmkArn': process.env.AVALANCHEUP_KMS_CMK_ARN,
-        'S3BucketName': process.env.AVALANCHEUP_S3_BUCKET_NAME,
-        'NetworkId': process.env.AVALANCHEUP_NETWORK_ID,
-        'AadTag': process.env.AVALANCHEUP_AAD_TAG,
-        'Ec2KeyPairName': process.env.AVALANCHEUP_EC2_KEY_PAIR_NAME,
-      },
+    // ref. https://docs.aws.amazon.com/cdk/api/v1/docs/cloudformation-include-readme.html#non-resource-template-elements
+    const tmplAsg = new cfn_include.CfnInclude(this, `included-template-instance-role-${process.env.CLUSTER_ID || ''}`, {
+      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'ec2_instance_role.yaml'),
     });
-    const clusterId = new cdk.CfnParameter(this, 'ClusterId', {
-      type: 'String',
-      description: 'ClusterId',
-      default: process.env.AVALANCHEUP_ID,
-    });
-    console.log('id 👉', clusterId.valueAsString);
 
-    const kmsCmkArn = new cdk.CfnParameter(this, 'KmsCmkArn', {
-      type: 'String',
-      description: 'KmsCmkArn',
-      default: process.env.AVALANCHEUP_KMS_CMK_ARN,
-    });
-    console.log('kmsCmkArn 👉', kmsCmkArn.valueAsString);
+    // mutate default parameters
+    const paramId: cdk.CfnParameter = tmplAsg.getParameter('Id');
+    paramId.default = process.env.ID;
 
-    const s3BucketName = new cdk.CfnParameter(this, 'S3BucketName', {
-      type: 'String',
-      description: 'S3BucketName',
-      default: process.env.AVALANCHEUP_S3_BUCKET_NAME,
-    });
-    console.log('s3BucketName 👉', s3BucketName.valueAsString);
+    const paramKmsCmkArn: cdk.CfnParameter = tmplAsg.getParameter('KmsCmkArn');
+    paramKmsCmkArn.default = process.env.KMS_CMK_ARN;
 
-    const networkId = new cdk.CfnParameter(this, 'NetworkId', {
-      type: 'Number',
-      description: 'NetworkId',
-      default: process.env.AVALANCHEUP_NETWORK_ID,
-    });
-    console.log('networkId 👉', networkId.valueAsNumber);
+    const paramS3BucketName: cdk.CfnParameter = tmplAsg.getParameter('S3BucketName');
+    paramS3BucketName.default = process.env.S3_BUCKET_NAME;
 
-    const aadTag = new cdk.CfnParameter(this, 'AadTag', {
-      type: 'String',
-      description: 'AadTag',
-      default: process.env.AVALANCHEUP_AAD_TAG,
-    });
-    console.log('aadTag 👉', aadTag.valueAsString);
+    this.instanceRoleArn = tmplAsg.getOutput('InstanceRoleArn');
+    this.instanceProfileArn = tmplAsg.getOutput('InstanceProfileArn');
+  }
+}
 
-    const ec2KeyPairName = new cdk.CfnParameter(this, 'Ec2KeyPairName', {
-      type: 'String',
-      description: 'Ec2KeyPairName',
-      default: process.env.AVALANCHEUP_EC2_KEY_PAIR_NAME,
-    });
-    console.log('ec2KeyPairName 👉', ec2KeyPairName.valueAsString);
+export class AvalancheupInstanceVpcStack extends cdk.Stack {
+  public readonly vpcId: cdk.CfnOutput;
+  public readonly securityGroupId: cdk.CfnOutput;
+  public readonly publicSubnetIds: cdk.CfnOutput;
 
-    new cdk.CfnOutput(this, "instanceProfileArn", {
-      value: tmpl.getOutput('InstanceProfileArn').logicalId,
-      exportName: "instanceProfileArn",
+  constructor(scope: cdk.App, id: string, props: cdk.StackProps) {
+    super(scope, id, props);
+
+    // ref. https://docs.aws.amazon.com/cdk/api/v1/docs/cloudformation-include-readme.html#non-resource-template-elements
+    const tmplVpc = new cfn_include.CfnInclude(this, `included-template-vpc-${process.env.CLUSTER_ID || ''}`, {
+      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'vpc.yaml'),
     });
-    new cdk.CfnOutput(this, "instanceRoleArn", {
-      value: tmpl.getOutput('InstanceRoleArn').logicalId,
-      exportName: "instanceRoleArn",
+
+    // mutate default parameters
+    const paramId: cdk.CfnParameter = tmplVpc.getParameter('Id');
+    paramId.default = process.env.ID;
+
+    this.vpcId = tmplVpc.getOutput('VpcId');
+    this.securityGroupId = tmplVpc.getOutput('SecurityGroupId');
+    this.publicSubnetIds = tmplVpc.getOutput('PublicSubnetIds');
+  }
+}
+
+interface AvalancheupAsgProps extends cdk.StackProps {
+  instanceRoleArn: String;
+  instanceProfileArn: String;
+  vpcId: String;
+  securityGroupId: String;
+  publicSubnetIds: String;
+}
+
+export class AvalancheupInstanceAsgStack extends cdk.Stack {
+  public readonly asgLogicalId: cdk.CfnOutput;
+
+  constructor(scope: cdk.App, id: string, props: AvalancheupAsgProps) {
+    super(scope, id, props);
+
+    // ref. https://docs.aws.amazon.com/cdk/api/v1/docs/cloudformation-include-readme.html#non-resource-template-elements
+    const tmplAsg = new cfn_include.CfnInclude(this, `included-template-asg-${process.env.CLUSTER_ID || ''}`, {
+      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'asg_amd64_ubuntu.yaml'),
     });
-    new cdk.CfnOutput(this, "nlbDnsName", {
-      value: tmpl.getOutput('NlbDnsName').logicalId,
-      exportName: "nlbDnsName",
-    });
+
+    // mutate default parameters
+    const paramId: cdk.CfnParameter = tmplAsg.getParameter('Id');
+    paramId.default = process.env.ID;
+
+    const paramKmsCmkArn: cdk.CfnParameter = tmplAsg.getParameter('KmsCmkArn');
+    paramKmsCmkArn.default = process.env.KMS_CMK_ARN;
+
+    const paramS3BucketName: cdk.CfnParameter = tmplAsg.getParameter('S3BucketName');
+    paramS3BucketName.default = process.env.S3_BUCKET_NAME;
+
+    const paramEc2KeyPairName: cdk.CfnParameter = tmplAsg.getParameter('Ec2KeyPairName');
+    paramEc2KeyPairName.default = process.env.EC2_KEY_PAIR_NAME;
+
+    const paramAadTag: cdk.CfnParameter = tmplAsg.getParameter('AadTag');
+    paramAadTag.default = process.env.AAD_TAG;
+
+    const paramInstanceProfileArn: cdk.CfnParameter = tmplAsg.getParameter('InstanceProfileArn');
+    paramInstanceProfileArn.default = process.env.INSTANCE_PROFILE_ARN;
+    // TODO: not working...
+    // paramInstanceProfileArn.default = props.instanceProfileArn.toString();
+
+    const paramPublicSubnetIds: cdk.CfnParameter = tmplAsg.getParameter('PublicSubnetIds');
+    paramPublicSubnetIds.default = process.env.PUBLIC_SUBNET_IDS;
+    // TODO: not working...
+    // paramPublicSubnetIds.default = props.publicSubnetIds.toString();
+
+    const paramSecurityGroupId: cdk.CfnParameter = tmplAsg.getParameter('SecurityGroupId');
+    paramSecurityGroupId.default = process.env.SECURITY_GROUP_ID;
+    // TODO: not working...
+    // paramSecurityGroupId.default = props.securityGroupId.toString();
+
+    // only support non-anchor nodes for now...
+    const paramNodeKind: cdk.CfnParameter = tmplAsg.getParameter('NodeKind');
+    paramNodeKind.default = 'non-anchor';
+
+    // to skip s3 uploads for node discovery
+    const paramAvalanchedFlag: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedFlag');
+    paramAvalanchedFlag.default = '--lite-mode';
+
+    // "mainnet" is 1, "fuji" is 5
+    const paramNetworkId: cdk.CfnParameter = tmplAsg.getParameter('NetworkId');
+    paramNetworkId.default = process.env.NETWORK_ID;
+
+    const paramNlbVpcId: cdk.CfnParameter = tmplAsg.getParameter('NlbVpcId');
+    paramNlbVpcId.default = process.env.NLB_VPC_ID;
+
+    // TODO: "AsgSpotInstance=true" and "OnDemandPercentageAboveBaseCapacity=0" for spot instance...
+
+    this.asgLogicalId = tmplAsg.getOutput('AsgLogicalId');
   }
 }
 
 const app = new cdk.App();
 
-new AvalancheupStack(app, 'avalancheup-stack', {
-  stackName: 'avalancheup-stack',
-  env: {
-    account: process.env.CDK_ACCOUNT || process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_REGION || process.env.CDK_DEFAULT_REGION
-  },
-});
+const instanceRoleStack = new AvalancheupInstanceRoleStack(app, 'avalancheup-aws-instance-role-stack',
+  {
+    stackName: 'avalancheup-aws-instance-role-stack',
+    env: {
+      account: process.env.CDK_ACCOUNT || process.env.CDK_DEFAULT_ACCOUNT,
+      region: process.env.CDK_REGION || process.env.CDK_DEFAULT_REGION
+    },
+  }
+);
+
+const vpcStack = new AvalancheupInstanceVpcStack(app, 'avalancheup-aws-vpc-stack',
+  {
+    stackName: 'avalancheup-aws-vpc-stack',
+    env: {
+      account: process.env.CDK_ACCOUNT || process.env.CDK_DEFAULT_ACCOUNT,
+      region: process.env.CDK_REGION || process.env.CDK_DEFAULT_REGION
+    },
+  }
+);
+
+const asgStack = new AvalancheupInstanceAsgStack(app, 'avalancheup-aws-asg-stack',
+  {
+    stackName: 'avalancheup-aws-asg-stack',
+    env: {
+      account: process.env.CDK_ACCOUNT || process.env.CDK_DEFAULT_ACCOUNT,
+      region: process.env.CDK_REGION || process.env.CDK_DEFAULT_REGION
+    },
+    instanceRoleArn: instanceRoleStack.instanceRoleArn.value.toString(),
+    instanceProfileArn: instanceRoleStack.instanceProfileArn.value.toString(),
+    vpcId: vpcStack.vpcId.value.toString(),
+    securityGroupId: vpcStack.securityGroupId.value.toString(),
+    publicSubnetIds: vpcStack.publicSubnetIds.value.toString(),
+  }
+);
+// asgStack.node.addDependency([instanceRoleStack, vpcStack]);
 
 app.synth();
