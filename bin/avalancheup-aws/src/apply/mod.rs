@@ -1354,46 +1354,52 @@ aws ssm start-session --region {} --target {}
         ResetColor
     )?;
 
-    println!();
-    println!("# run the following to download the generated certificates");
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Magenta),
-        Print(format!(
-            "aws --region {} s3 ls s3://{}/{}/pki/ --human-readable\n",
-            aws_resources.region, aws_resources.s3_bucket, spec.id
-        )),
-        ResetColor
-    )?;
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "$ ./scripts/build.release.sh
-
+    if let Some(nodes) = &spec.current_nodes {
+        println!();
+        println!("# run the following to download the generated certificates");
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Magenta),
+            Print(format!(
+                "aws --region {} s3 ls s3://{}/{}/pki/ --human-readable\n",
+                aws_resources.region, aws_resources.s3_bucket, spec.id
+            )),
+            ResetColor
+        )?;
+        let kms_cmk = aws_resources.kms_cmk_id.clone().unwrap();
+        for n in nodes.iter() {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "$ ./scripts/build.release.sh
 $ ./target/release/staking-key-cert-s3-downloader \\
 --log-level=info \\
---aws-region={} \\
---s3-bucket={} \\
---s3-key-tls-key={}/pki/NodeID-ABC.key.zstd.encrypted \\
---s3-key-tls-cert={}/pki/NodeID-ABC.crt.zstd.encrypted \\
---kms-cmk-id={} \\
---aad-tag='{}' \\
---tls-key-path=/tmp/NodeID-ABC.key \\
---tls-cert-path=/tmp/NodeID-ABC.crt
+--aws-region={aws_region} \\
+--s3-bucket={s3_buckeet} \\
+--s3-key-tls-key={id}/pki/{node_id}.key.zstd.encrypted \\
+--s3-key-tls-cert={id}/pki/{node_id}.crt.zstd.encrypted \\
+--kms-cmk-id={kms_cmk_id} \\
+--aad-tag='{aad_tag}' \\
+--tls-key-path=/tmp/{node_id}.key \\
+--tls-cert-path=/tmp/{node_id}.crt
 
-$ cat /tmp/NodeID-ABC.crt
+$ cat /tmp/{node_id}.crt
 
 ",
-            aws_resources.region,
-            aws_resources.s3_bucket,
-            spec.id,
-            spec.id,
-            aws_resources.kms_cmk_id.unwrap(),
-            spec.aad_tag,
-        )),
-        ResetColor
-    )?;
+                    aws_region = aws_resources.region,
+                    s3_buckeet = aws_resources.s3_bucket,
+                    id = spec.id,
+                    kms_cmk_id = kms_cmk,
+                    aad_tag = spec.aad_tag,
+                    node_id = n.node_id,
+                )),
+                ResetColor
+            )?;
+        }
+    } else {
+        log::warn!("no current nodes found in spec");
+    }
 
     if spec.subnet_evm_genesis.is_some() {
         let subnet_evm_genesis_file_path =

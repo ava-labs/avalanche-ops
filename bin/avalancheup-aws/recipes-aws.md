@@ -216,6 +216,8 @@ cd ${HOME}/avalanche-ops
 
 
 
+
+
 # to run with the latest binaries automatically downloaded
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -230,6 +232,8 @@ cd ${HOME}/avalanche-ops
 --network-name custom \
 --use-spot-instance \
 --avalanchego-log-level DEBUG
+
+
 
 
 
@@ -558,6 +562,12 @@ https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aw
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
 AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 
+
+
+
+
+
+
 # TODO: pre-generate subnet ID
 # replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
 # with real subnet ID from subnet-cli wizard
@@ -571,6 +581,26 @@ cd ${HOME}/avalanche-ops
 --avalanchego-log-level INFO \
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
 --enable-subnet-evm
+
+# TODO: pre-generate subnet ID
+# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
+# with real subnet ID from subnet-cli wizard
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--use-spot-instance \
+--network-name custom \
+--avalanchego-log-level DEBUG \
+--avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
+--enable-subnet-evm
+
+
+
+
+
+
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
@@ -746,6 +776,8 @@ cd ${HOME}/avalanche-ops
 
 
 
+
+
 # to download install artifacts on remote machines automatically
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -760,6 +792,8 @@ cd ${HOME}/avalanche-ops
 --network-name fuji \
 --use-spot-instance \
 --avalanchego-log-level INFO
+
+
 
 
 
