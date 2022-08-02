@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.62"
 
@@ -10,8 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-installer = "0.0.4"
-avalanche-sdk = { version = "0.0.17", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.24", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
+avalanche-sdk = { version = "0.0.18", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
+avalanche-types = { version = "0.0.25", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
 aws-manager = "0.0.12"
