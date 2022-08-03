@@ -1383,7 +1383,6 @@ $ ./target/release/staking-key-cert-s3-downloader \\
 --aad-tag='{aad_tag}' \\
 --tls-key-path=/tmp/{node_id}.key \\
 --tls-cert-path=/tmp/{node_id}.crt
-
 $ cat /tmp/{node_id}.crt
 
 ",
