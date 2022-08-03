@@ -602,9 +602,13 @@ cd ${HOME}/avalanche-ops
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
 --enable-subnet-evm
 
+# for performance tests
 # TODO: pre-generate subnet ID
 # replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
 # with real subnet ID from subnet-cli wizard
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+rm -rf ${HOME}/subnet-evm-test-keys
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
@@ -612,8 +616,10 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --use-spot-instance \
 --network-name custom \
---avalanchego-log-level DEBUG \
+--avalanchego-log-level INFO \
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
+--keys-to-generate 15 \
+--key-files-dir ${HOME}/subnet-evm-test-keys \
 --enable-subnet-evm
 
 

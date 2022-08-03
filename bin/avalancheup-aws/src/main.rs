@@ -44,6 +44,10 @@ fn main() {
                 // TODO: support this
                 use_spot_instance: sub_matches.is_present("USE_SPOT_INSTANCE"),
 
+                key_files_dir: sub_matches
+                    .value_of("KEY_FILES_DIR")
+                    .unwrap_or("")
+                    .to_string(),
                 aad_tag: sub_matches.value_of("AAD_TAG").unwrap().to_string(),
 
                 nlb_acm_certificate_arn: sub_matches

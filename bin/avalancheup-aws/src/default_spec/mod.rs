@@ -45,6 +45,14 @@ pub fn command() -> Command<'static> {
                 .default_value("0"),
         )
         .arg(
+            Arg::new("KEY_FILES_DIR")
+                .long("key-files-dir")
+                .help("Directory to write key files to")
+                .required(false)
+                .takes_value(true)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("USE_SPOT_INSTANCE")
                 .long("use-spot-instance")
                 .help("Sets to use EC2 spot instance")

@@ -13,7 +13,6 @@ use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node}
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
 use lazy_static::lazy_static;
-use log::info;
 use serde::{Deserialize, Serialize};
 use subnet_evm::genesis as subnet_evm_genesis;
 
@@ -60,7 +59,7 @@ impl Node {
     /// Saves the current anchor node to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
-        info!("syncing Node to '{}'", file_path);
+        log::info!("syncing Node to '{}'", file_path);
         let path = Path::new(file_path);
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
@@ -82,7 +81,7 @@ impl Node {
     }
 
     pub fn load(file_path: &str) -> io::Result<Self> {
-        info!("loading node from {}", file_path);
+        log::info!("loading node from {}", file_path);
 
         if !Path::new(file_path).exists() {
             return Err(Error::new(
@@ -170,9 +169,9 @@ http_endpoint: http://1.2.3.4:9650
     assert_eq!(node.http_endpoint, String::from("http://1.2.3.4:9650"));
 
     let encoded_yaml = node.encode_yaml().unwrap();
-    info!("node.encode_yaml: {}", encoded_yaml);
+    log::info!("node.encode_yaml: {}", encoded_yaml);
     let compressed = node.compress_base58().unwrap();
-    info!("node.compress_base64: {}", compressed);
+    log::info!("node.compress_base64: {}", compressed);
     let decompressed_node = Node::decompress_base58(compressed).unwrap();
     assert_eq!(node, decompressed_node);
 }
@@ -401,6 +400,7 @@ pub struct DefaultSpecOption {
     pub preferred_az_index: usize,
     pub use_spot_instance: bool,
 
+    pub key_files_dir: String,
     pub aad_tag: String,
 
     pub nlb_acm_certificate_arn: String,
@@ -614,6 +614,11 @@ impl Spec {
             use_spot_instance: opts.use_spot_instance,
         };
 
+        if !opts.key_files_dir.is_empty() {
+            log::info!("creating key-files-dir '{}'", opts.key_files_dir);
+            fs::create_dir_all(&opts.key_files_dir).unwrap();
+        }
+
         // existing network has only 1 pre-funded key "ewoq"
         let mut generated_seed_key_infos: Vec<hot::PrivateKeyInfoEntry> = Vec::new();
         let mut generated_seed_keys: Vec<hot::Key> = Vec::new();
@@ -629,9 +634,18 @@ impl Spec {
             let info = k
                 .private_key_info_entry(network_id)
                 .expect("unexpected to_info failure");
-            generated_seed_key_infos.push(info);
+            generated_seed_key_infos.push(info.clone());
 
             generated_seed_keys.push(k);
+
+            if !opts.key_files_dir.is_empty() {
+                // file name is eth address with 0x, contents are "private_key_hex"
+                let p = Path::new(&opts.key_files_dir).join(Path::new(&info.eth_address));
+                log::info!("writing key file {:?}", p);
+
+                let mut f = File::create(p).unwrap();
+                f.write_all(info.private_key_hex.as_bytes()).unwrap();
+            }
         }
 
         let avalanchego_genesis_template = {
@@ -767,7 +781,7 @@ impl Spec {
     /// Saves the current spec to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
-        info!("syncing Spec to '{}'", file_path);
+        log::info!("syncing Spec to '{}'", file_path);
         let path = Path::new(file_path);
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
@@ -789,7 +803,7 @@ impl Spec {
     }
 
     pub fn load(file_path: &str) -> io::Result<Self> {
-        info!("loading Spec from {}", file_path);
+        log::info!("loading Spec from {}", file_path);
 
         if !Path::new(file_path).exists() {
             return Err(Error::new(
@@ -810,7 +824,7 @@ impl Spec {
 
     /// Validates the spec.
     pub fn validate(&self) -> io::Result<()> {
-        info!("validating Spec");
+        log::info!("validating Spec");
 
         if self.id.is_empty() {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
@@ -975,7 +989,7 @@ fn test_spec() {
     for entry in fs::read_dir(plugins_dir).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
-        info!("read_dir: {:?}", path);
+        log::info!("read_dir: {:?}", path);
     }
 
     let id = random_manager::string(10);
@@ -1370,7 +1384,7 @@ fn test_storage_path() {
         },
     );
     let storage_path = p.encode();
-    info!("KeyPath: {}", storage_path);
+    log::info!("KeyPath: {}", storage_path);
 
     let node_parsed = StorageNamespace::parse_node_from_path(&storage_path).unwrap();
     assert_eq!(node, node_parsed);
@@ -1397,7 +1411,7 @@ impl NodeInfo {
     }
 
     pub fn sync(&self, file_path: String) -> io::Result<()> {
-        info!("syncing Info to '{}'", file_path);
+        log::info!("syncing Info to '{}'", file_path);
         let path = Path::new(&file_path);
         let parent_dir = path.parent().unwrap();
         fs::create_dir_all(parent_dir)?;
