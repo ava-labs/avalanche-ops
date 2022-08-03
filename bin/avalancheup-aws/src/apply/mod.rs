@@ -1372,7 +1372,8 @@ aws ssm start-session --region {} --target {}
                 stdout(),
                 SetForegroundColor(Color::Green),
                 Print(format!(
-                    "$ ./scripts/build.release.sh
+                    "
+$ ./scripts/build.release.sh
 $ ./target/release/staking-key-cert-s3-downloader \\
 --log-level=info \\
 --aws-region={aws_region} \\
@@ -1384,7 +1385,6 @@ $ ./target/release/staking-key-cert-s3-downloader \\
 --tls-key-path=/tmp/{node_id}.key \\
 --tls-cert-path=/tmp/{node_id}.crt
 $ cat /tmp/{node_id}.crt
-
 ",
                     aws_region = aws_resources.region,
                     s3_buckeet = aws_resources.s3_bucket,
