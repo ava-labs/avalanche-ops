@@ -780,7 +780,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .unwrap();
 
         let mut droplets: Vec<ec2::Droplet> = Vec::new();
-        let target_nodes = spec.machine.non_anchor_nodes;
+        let target_nodes = spec.machine.anchor_nodes.unwrap();
         for _ in 0..10 {
             // TODO: better retries
             log::info!(
