@@ -204,6 +204,8 @@ And go to CloudWatch Metrics to see the metrics being published from the `avalan
 
 ![demo9](./img/demo9.png)
 
+![demo10](./img/demo10.png)
+
 And go to S3 bucket to see the node certificate being published from the `avalanched`.
 
 ```bash
