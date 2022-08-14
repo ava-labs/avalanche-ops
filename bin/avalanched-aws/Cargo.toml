@@ -2,7 +2,7 @@
 name = "avalanched-aws"
 version = "0.1.2"
 edition = "2021"
-rust-version = "1.62"
+rust-version = "1.63"
 
 [[bin]]
 name = "avalanched-aws"
@@ -10,15 +10,15 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-installer = "0.0.4"
-avalanche-sdk = { version = "0.0.20", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.26", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
+avalanche-sdk = { version = "0.0.21", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
+avalanche-types = { version = "0.0.27", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = "0.0.12"
-aws-sdk-cloudwatch = "0.16.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-ec2 = "0.16.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-s3 = "0.16.0" # https://github.com/awslabs/aws-sdk-rust/releases
-clap = { version = "3.2.16", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+aws-manager = "0.0.13"
+aws-sdk-cloudwatch = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-ec2 = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-s3 = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
+clap = { version = "3.2.17", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }
