@@ -9,8 +9,8 @@ name = "avalancheup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-sdk = { version = "0.0.20" } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.26", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
+avalanche-sdk = { version = "0.0.21" } # https://crates.io/crates/avalanche-sdk
+avalanche-types = { version = "0.0.27", features = ["jsonrpc", "metrics"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 aws-manager = "0.0.13"
 aws-sdk-cloudformation = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
