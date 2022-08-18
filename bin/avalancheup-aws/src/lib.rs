@@ -1035,6 +1035,7 @@ avalanchego_config:
   db-dir: /data
   log-dir: /var/log/avalanche
   log-level: INFO
+  log-format: json
   http-port: 9650
   http-host: 0.0.0.0
   http-tls-enabled: false
@@ -1055,11 +1056,22 @@ avalanchego_config:
   chain-config-dir: /data/avalanche-configs/chains
   subnet-config-dir: /data/avalanche-configs/subnets
   profile-dir: /var/log/avalanche-profile/avalanche
+  throttler-inbound-node-max-at-large-bytes: 2097152
+  throttler-inbound-at-large-alloc-size: 6291456
 
 coreth_config:
   coreth-admin-api-enabled: true
   metrics-enabled: true
   log-level: "info"
+  log-json-format: true
+  eth-apis:
+  - eth
+  - eth-filter
+  - net
+  - web3
+  - internal-eth
+  - internal-blockchain
+  - internal-transaction
 
 
 "#,
