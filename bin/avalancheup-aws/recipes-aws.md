@@ -40,7 +40,7 @@ For instance, to download the latest `avalanchego` release:
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
@@ -186,21 +186,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -273,21 +273,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -323,21 +323,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -385,21 +385,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -439,21 +439,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -490,21 +490,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -537,10 +537,13 @@ Install the following:
 See ["install `subnet-evm` in the custom network"](./example-aws.md#optional-install-subnet-evm-in-the-custom-network) for demo.
 
 ```bash
-cd ${HOME}/go/src/github.com/ava-labs/subnet-cli
-go install -v .
-subnet-cli create VMID subnetevm
-# srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
+rm -rf ${HOME}/go/src/github.com/ava-labs/avalanchego/build
+cd ${HOME}/go/src/github.com/ava-labs/avalanchego
+CC=x86_64-linux-musl-gcc \
+CXX=x86_64-linux-musl-g++ \
+CGO_ENABLED=1 \
+STATIC_COMPILATION=1 \
+GOOS=linux GOARCH=amd64 ./scripts/build.sh
 
 cd ${HOME}/go/src/github.com/ava-labs/subnet-evm
 CC=x86_64-linux-musl-gcc \
@@ -549,6 +552,13 @@ CGO_ENABLED=1 \
 STATIC_COMPILATION=1 \
 GOOS=linux GOARCH=amd64 ./scripts/build.sh \
 ${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
+```
+
+```bash
+cd ${HOME}/go/src/github.com/ava-labs/subnet-cli
+go install -v .
+subnet-cli create VMID subnetevm
+# srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
 ```
 
 ```bash
@@ -566,30 +576,29 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 
 
 
 
-
-# TODO: pre-generate subnet ID
-# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
+#####
+# replace "REPLACE_ME"
 # with real subnet ID from subnet-cli wizard
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -599,12 +608,12 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
---avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
+--avalanchego-whitelisted-subnets REPLACE_ME \
 --enable-subnet-evm
 
-# for performance tests
-# TODO: pre-generate subnet ID
-# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
+#####
+# or to run performance tests
+# replace "REPLACE_ME"
 # with real subnet ID from subnet-cli wizard
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
@@ -617,19 +626,17 @@ cd ${HOME}/avalanche-ops
 --use-spot-instance \
 --network-name custom \
 --avalanchego-log-level INFO \
---avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
---keys-to-generate 15 \
+--avalanchego-whitelisted-subnets REPLACE_ME \
+--keys-to-generate 30 \
 --key-files-dir ${HOME}/subnet-evm-test-keys \
 --enable-subnet-evm
 
+# e.g., adjust gas limit
+# https://www.rapidtables.com/convert/number/hex-to-decimal.html
+# 1000000
+# 0xF4240
 
-
-
-
-
-
-cd ${HOME}/avalanche-ops
-./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
+# this will print out the list of commands to create resources
 ```
 
 ```bash
@@ -640,8 +647,6 @@ cd ${HOME}/avalanche-ops
 --delete-s3-objects \
 --delete-ebs-volumes \
 --spec-file-path [YOUR_SPEC_PATH]
-
-# to keep s3 objects + cloudwatch logs
 ```
 
 Once the custom network is created, run the following commands to get the test key, RPC endpoints, and node IDs:
@@ -666,46 +671,11 @@ cat /tmp/test.key
 cat [YOUR_SPEC_PATH] | grep http_rpc:
 ```
 
-```bash
-# this will spend 2,000 AVAX
-# for custom networks, anchor nodes are already validate primary network
-# so, only non-anchor nodes will be added as validators
-subnet-cli add validator \
---enable-prompt \
---private-key-path=/tmp/test.key \
---public-uri=[HTTP_RPC] \
---node-ids="..." \
---stake-amount=2000000000000 \
---validate-reward-fee-percent=2
-
-subnet-cli wizard \
---enable-prompt \
---public-uri=[HTTP_RPC] \
---private-key-path=/tmp/test.key \
---vm-genesis-path=.../aops-custom-202203-h35WM6.subnet-evm.genesis.json \
---vm-id=srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \
---chain-name=subnetevm \
---node-ids="..."
-```
-
 `apply` command will output the following. Use the following to get access to each EC2 instance:
 
 ```bash
 chmod 400 /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key
-# instance 'i-05f6c2cc7e7d619fc' (running, us-west-2a)
-ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@18.236.145.200
-aws ssm start-session --region us-west-2 --target i-05f6c2cc7e7d619fc
-# instance 'i-081a2e02547a9b1fb' (running, us-west-2b)
-ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@34.221.104.130
-aws ssm start-session --region us-west-2 --target i-081a2e02547a9b1fb
-
-chmod 400 /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key
-# instance 'i-0f738acc6c0ecdf1c' (running, us-west-2b)
-ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@52.37.128.232
-aws ssm start-session --region us-west-2 --target i-0f738acc6c0ecdf1c
-# instance 'i-073a5a49d0f92a111' (pending, us-west-2c)
-ssh -o "StrictHostKeyChecking no" -i /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key ubuntu@34.221.58.58
-aws ssm start-session --region us-west-2 --target i-073a5a49d0f92a111
+# ...
 ```
 
 ```bash
@@ -716,7 +686,7 @@ sudo systemctl cat avalanche
 # to replace the avalanche configuration
 sudo cat /data/avalanche-configs/config.json
 cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
-sed -i -- 's/hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf/2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7/g' /tmp/avalanche.config.json
+sed -i -- 's/REPLACE_ME/2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7/g' /tmp/avalanche.config.json
 cat /tmp/avalanche.config.json
 sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
@@ -726,34 +696,25 @@ sudo tail -200 /var/log/avalanche/avalanche.log | grep 2S6hhvrG4yKsyNngETcph9Rfm
 
 # to check the status
 sudo find /var/log/avalanche/
-sudo tail -f /var/log/avalanche/avalanche.log
+sudo tail /var/log/avalanche/avalanche.log
+```
 
-# when "XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK" is the blockchain ID
+> 2022-08-17T12:00:04.041-0700	info	client/p.go:497	creating blockchain	{"subnetId": "2cGHaEMbdPUdTJQjKhaxi8TPYeFCmwBAW1iqzFzY3KvBU6b4xG", "chainName": "subnetevm", "vmId": "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", "createBlockchainTxFee": 100000000}
+created blockchain "55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1" (took 179.72724ms)
+
+```bash
+# when "55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1" is the blockchain ID
 # for instance, the subnet-cli will return
-# created blockchain "XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK" (took 179.72724ms)
+# created blockchain "55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1" (took 179.72724ms)
 cat [YOUR_SPEC_PATH] | grep metamask_rpc:
 
 # use the blockchain ID for metamask RPC
-# for example, use the public IP of the validator node
-http://[PUBLIC_IP]:9650/ext/bc/XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK/rpc
-[HTTP_RPC]/ext/bc/XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK/rpc
+# or use the public IP of the validator node
+http://[PUBLIC-DNS]:9650/ext/bc/55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1/rpc
 
 # check the logs
-sudo tail -f /var/log/avalanche/XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK.log
+sudo tail /var/log/avalanche/55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1.log
 ```
-
-References
-- https://github.com/ava-labs/subnet-evm#run-subnet-cli-wizard
-- https://github.com/ava-labs/subnet-evm/blob/v0.1.1/scripts/run.sh
-- https://github.com/ava-labs/subnet-evm/blob/v0.1.1/runner/main.go
-
-TODOs
-- Support native P-chain API calls from `avalancheup`.
-  - Create subnet.
-  - Add subnet validator.
-  - Create blockchain.
-- Support subnet ID creation.
-- Support dynamic subnet whitelisting.
 
 ### Fuji network with NO initial database state
 
@@ -774,21 +735,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -878,21 +839,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -930,21 +891,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.7.16
+VERSION=1.7.17
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.7.16
+VERSION=1.7.17
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
