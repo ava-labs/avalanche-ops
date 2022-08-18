@@ -83,6 +83,8 @@ pub struct Config {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_level: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_json_format: Option<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offline_pruning_enabled: Option<bool>,
@@ -113,6 +115,7 @@ pub const DEFAULT_PROFILE_MAX_FILES: i64 = 5;
 
 pub const DEFAULT_METRICS_ENABLED: bool = true;
 pub const DEFAULT_LOG_LEVEL: &str = "info";
+pub const DEFAULT_LOG_JSON_FORMAT: bool = true;
 
 impl Default for Config {
     fn default() -> Self {
@@ -127,7 +130,15 @@ impl Config {
             coreth_admin_api_enabled: Some(DEFAULT_CORETH_ADMIN_API_ENABLED),
             coreth_admin_api_dir: None,
 
-            eth_apis: None,
+            eth_apis: Some(vec![
+                "eth".to_string(),
+                "eth-filter".to_string(),
+                "net".to_string(),
+                "web3".to_string(),
+                "internal-eth".to_string(),
+                "internal-blockchain".to_string(),
+                "internal-transaction".to_string(),
+            ]),
 
             continuous_profiler_dir: None,
             continuous_profiler_frequency: None,
@@ -161,6 +172,7 @@ impl Config {
             tx_regossip_max_size: None,
 
             log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
+            log_json_format: Some(DEFAULT_LOG_JSON_FORMAT),
 
             offline_pruning_enabled: None,
             offline_pruning_bloom_filter_size: None,
