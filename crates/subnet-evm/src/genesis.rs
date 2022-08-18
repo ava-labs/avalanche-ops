@@ -28,6 +28,8 @@ pub struct Genesis {
 
     /// Make sure this is set equal to "ChainConfig.FeeConfig.gas_limit".
     /// ref. https://github.com/ava-labs/subnet-evm/pull/63
+    ///
+    /// Use https://www.rapidtables.com/convert/number/decimal-to-hex.html to convert.
     #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub gas_limit: BigInt,
     #[serde(with = "big_num_manager::serde_format::big_int_hex")]
@@ -53,7 +55,6 @@ pub struct Genesis {
     pub number: BigInt,
     #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub gas_used: BigInt,
-
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_hash: Option<String>,
     #[serde(rename = "baseFeePerGas", skip_serializing_if = "Option::is_none")]
@@ -260,10 +261,12 @@ impl Default for FeeConfig {
     }
 }
 
+pub const DEFAULT_GAS_LIMIT: u64 = 20000000;
+
 impl FeeConfig {
     pub fn default() -> Self {
         Self {
-            gas_limit: Some(20000000),
+            gas_limit: Some(DEFAULT_GAS_LIMIT),
             target_block_rate: Some(2),
 
             min_base_fee: Some(1000000000),
