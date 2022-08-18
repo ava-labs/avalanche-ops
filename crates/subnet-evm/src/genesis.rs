@@ -89,8 +89,11 @@ impl Genesis {
             timestamp: BigInt::default(),
             extra_data: Some(String::from("0x00")),
 
-            gas_limit: big_num_manager::from_hex_to_big_int("0x1312D00")
-                .expect("failed to parse big_int"),
+            // 8-million, same as C-chain
+            // ref. https://www.rapidtables.com/convert/number/decimal-to-hex.html
+            // ref. https://www.rapidtables.com/convert/number/hex-to-decimal.html
+            gas_limit: big_num_manager::from_hex_to_big_int("0x7A1200")
+                .expect("failed from_hex_to_big_int"),
 
             difficulty: BigInt::default(),
             mix_hash: Some(String::from(
@@ -261,7 +264,10 @@ impl Default for FeeConfig {
     }
 }
 
-pub const DEFAULT_GAS_LIMIT: u64 = 20000000;
+/// 8-million, same as C-chain
+/// ref. https://www.rapidtables.com/convert/number/decimal-to-hex.html
+/// ref. https://www.rapidtables.com/convert/number/hex-to-decimal.html
+pub const DEFAULT_GAS_LIMIT: u64 = 8000000;
 
 impl FeeConfig {
     pub fn default() -> Self {
@@ -269,13 +275,13 @@ impl FeeConfig {
             gas_limit: Some(DEFAULT_GAS_LIMIT),
             target_block_rate: Some(2),
 
-            min_base_fee: Some(1000000000),
-            target_gas: Some(100000000),
-            base_fee_change_denominator: Some(48),
+            min_base_fee: Some(25000000000),
+            target_gas: Some(15000000),
+            base_fee_change_denominator: Some(36),
 
             min_block_gas_cost: Some(0),
-            max_block_gas_cost: Some(10000000),
-            block_gas_cost_step: Some(500000),
+            max_block_gas_cost: Some(1000000),
+            block_gas_cost_step: Some(200000),
         }
     }
 }
