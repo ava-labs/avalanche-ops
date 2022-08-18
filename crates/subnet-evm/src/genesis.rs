@@ -28,7 +28,10 @@ pub struct Genesis {
 
     /// Make sure this is set equal to "ChainConfig.FeeConfig.gas_limit".
     /// ref. https://github.com/ava-labs/subnet-evm/pull/63
-    pub gas_limit: u64,
+    ///
+    /// Use https://www.rapidtables.com/convert/number/decimal-to-hex.html to convert.
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
+    pub gas_limit: BigInt,
     #[serde(with = "big_num_manager::serde_format::big_int_hex")]
     pub difficulty: BigInt,
 
@@ -48,10 +51,10 @@ pub struct Genesis {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub airdrop_amount: Option<String>,
 
-    /// These fields are used for consensus tests. Please don't use them
-    /// in actual genesis blocks.
-    pub number: Option<u64>,
-    pub gas_used: Option<u64>,
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
+    pub number: BigInt,
+    #[serde(with = "big_num_manager::serde_format::big_int_hex")]
+    pub gas_used: BigInt,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_hash: Option<String>,
     #[serde(rename = "baseFeePerGas", skip_serializing_if = "Option::is_none")]
@@ -64,8 +67,6 @@ pub struct Genesis {
 /// "0x52B7D2DCC80CD2E4000000" is "100000000000000000000000000" (100,000,000 AVAX).
 /// ref. https://www.rapidtables.com/convert/number/hex-to-decimal.html
 pub const DEFAULT_INITIAL_AMOUNT: &str = "0x52B7D2DCC80CD2E4000000";
-
-pub const DEFAULT_GAS_LIMIT: u64 = 20000000;
 
 impl Default for Genesis {
     fn default() -> Self {
@@ -88,7 +89,8 @@ impl Genesis {
             timestamp: BigInt::default(),
             extra_data: Some(String::from("0x00")),
 
-            gas_limit: DEFAULT_GAS_LIMIT,
+            gas_limit: big_num_manager::from_hex_to_big_int("0x1312D00")
+                .expect("failed to parse big_int"),
 
             difficulty: BigInt::default(),
             mix_hash: Some(String::from(
@@ -101,8 +103,8 @@ impl Genesis {
             airdrop_hash: None,
             airdrop_amount: None,
 
-            number: None,
-            gas_used: None,
+            number: BigInt::default(),
+            gas_used: BigInt::default(),
             parent_hash: Some(String::from(
                 "0x0000000000000000000000000000000000000000000000000000000000000000",
             )),
@@ -259,6 +261,8 @@ impl Default for FeeConfig {
     }
 }
 
+pub const DEFAULT_GAS_LIMIT: u64 = 20000000;
+
 impl FeeConfig {
     pub fn default() -> Self {
         Self {
@@ -381,10 +385,12 @@ fn test_parse() {
         "nonce": "0x0",
         "timestamp": "0x0",
         "extraData": "0x00",
-        "gasLimit": 20000000,
+        "gasLimit": "0x1312D00",
         "difficulty": "0x0",
         "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "coinbase": "0x0000000000000000000000000000000000000000",
+        "number": "0x0",
+        "gasUsed": "0x0",
         "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
 }
 "#,
