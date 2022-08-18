@@ -47,6 +47,10 @@ pub struct Config {
     /// e.g., "INFO", "FATAL", "DEBUG", "VERBO", etc..
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_level: Option<String>,
+    /// "avalanchego" logging format.
+    /// e.g., "json", etc..
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_format: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_display_level: Option<String>,
 
@@ -193,6 +197,7 @@ pub const DEFAULT_DB_DIR: &str = "/data";
 /// ref. See "cfn-templates/avalanche-node/asg_amd64_ubuntu.yaml" "ASGLaunchTemplate"
 pub const DEFAULT_LOG_DIR: &str = "/var/log/avalanche";
 pub const DEFAULT_LOG_LEVEL: &str = "INFO";
+pub const DEFAULT_LOG_FORMAT: &str = "json";
 
 /// Default HTTP port.
 /// NOTE: keep default value in sync with "avalanchego/config/flags.go".
@@ -238,6 +243,9 @@ pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/data/avalanche-configs/subnets";
 /// MUST BE a valid path in remote host machine.
 pub const DEFAULT_PROFILE_DIR: &str = "/var/log/avalanche-profile/avalanche";
 
+pub const DEFAULT_THROTTLER_INBOUND_AT_LARGE_ALLOC_SIZE: u64 = 6291456;
+pub const DEFAULT_THROTTLER_INBOUND_NODE_MAX_AT_LARGE_BYTES: u64 = 2097152;
+
 impl Default for Config {
     fn default() -> Self {
         Self::default()
@@ -260,6 +268,7 @@ impl Config {
             db_dir: String::from(DEFAULT_DB_DIR),
             log_dir: String::from(DEFAULT_LOG_DIR),
             log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
+            log_format: Some(String::from(DEFAULT_LOG_FORMAT)),
             log_display_level: None,
 
             http_port: DEFAULT_HTTP_PORT,
@@ -310,9 +319,13 @@ impl Config {
             profile_continuous_freq: None,
             profile_continuous_max_files: None,
 
-            throttler_inbound_at_large_alloc_size: None,
+            throttler_inbound_at_large_alloc_size: Some(
+                DEFAULT_THROTTLER_INBOUND_AT_LARGE_ALLOC_SIZE,
+            ),
             throttler_inbound_validator_alloc_size: None,
-            throttler_inbound_node_max_at_large_bytes: None,
+            throttler_inbound_node_max_at_large_bytes: Some(
+                DEFAULT_THROTTLER_INBOUND_NODE_MAX_AT_LARGE_BYTES,
+            ),
 
             throttler_outbound_at_large_alloc_size: None,
             throttler_outbound_validator_alloc_size: None,
@@ -334,6 +347,7 @@ impl Config {
             db_dir: String::from(DEFAULT_DB_DIR),
             log_dir: String::from(DEFAULT_LOG_DIR),
             log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
+            log_format: Some(String::from(DEFAULT_LOG_FORMAT)),
             log_display_level: None,
 
             http_port: DEFAULT_HTTP_PORT,
@@ -384,9 +398,13 @@ impl Config {
             profile_continuous_freq: None,
             profile_continuous_max_files: None,
 
-            throttler_inbound_at_large_alloc_size: None,
+            throttler_inbound_at_large_alloc_size: Some(
+                DEFAULT_THROTTLER_INBOUND_AT_LARGE_ALLOC_SIZE,
+            ),
             throttler_inbound_validator_alloc_size: None,
-            throttler_inbound_node_max_at_large_bytes: None,
+            throttler_inbound_node_max_at_large_bytes: Some(
+                DEFAULT_THROTTLER_INBOUND_NODE_MAX_AT_LARGE_BYTES,
+            ),
 
             throttler_outbound_at_large_alloc_size: None,
             throttler_outbound_validator_alloc_size: None,
@@ -408,6 +426,7 @@ impl Config {
             db_dir: String::from(DEFAULT_DB_DIR),
             log_dir: String::from(DEFAULT_LOG_DIR),
             log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
+            log_format: Some(String::from(DEFAULT_LOG_FORMAT)),
             log_display_level: None,
 
             http_port: DEFAULT_HTTP_PORT,
@@ -458,9 +477,13 @@ impl Config {
             profile_continuous_freq: None,
             profile_continuous_max_files: None,
 
-            throttler_inbound_at_large_alloc_size: None,
+            throttler_inbound_at_large_alloc_size: Some(
+                DEFAULT_THROTTLER_INBOUND_AT_LARGE_ALLOC_SIZE,
+            ),
             throttler_inbound_validator_alloc_size: None,
-            throttler_inbound_node_max_at_large_bytes: None,
+            throttler_inbound_node_max_at_large_bytes: Some(
+                DEFAULT_THROTTLER_INBOUND_NODE_MAX_AT_LARGE_BYTES,
+            ),
 
             throttler_outbound_at_large_alloc_size: None,
             throttler_outbound_validator_alloc_size: None,

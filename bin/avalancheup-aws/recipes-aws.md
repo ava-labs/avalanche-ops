@@ -728,16 +728,18 @@ sudo tail -200 /var/log/avalanche/avalanche.log | grep 2S6hhvrG4yKsyNngETcph9Rfm
 sudo find /var/log/avalanche/
 sudo tail -f /var/log/avalanche/avalanche.log
 
-# when "tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8" is the blockchain ID
+# when "XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK" is the blockchain ID
+# for instance, the subnet-cli will return
+# created blockchain "XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK" (took 179.72724ms)
 cat [YOUR_SPEC_PATH] | grep metamask_rpc:
 
 # use the blockchain ID for metamask RPC
 # for example, use the public IP of the validator node
-http://[PUBLIC_IP]:9650/ext/bc/tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8/rpc
-[HTTP_RPC]/ext/bc/tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8/rpc
+http://[PUBLIC_IP]:9650/ext/bc/XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK/rpc
+[HTTP_RPC]/ext/bc/XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK/rpc
 
 # check the logs
-sudo tail -f /var/log/avalanche/tCgnabTBM7511ySaLqBQMdGtJF2VuG5Jidiu5ma2BDiV7nXp8.log
+sudo tail -f /var/log/avalanche/XFKg4behShGcwxwkoWPto12yYZynZ6qCUVZTAAaS6pV8zTtK.log
 ```
 
 References
