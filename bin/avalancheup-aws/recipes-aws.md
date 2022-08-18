@@ -598,7 +598,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 
 #####
-# replace "REPLACE_ME"
+# replace "REPLACEME"
 # with real subnet ID from subnet-cli wizard
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -608,12 +608,12 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
---avalanchego-whitelisted-subnets REPLACE_ME \
+--avalanchego-whitelisted-subnets REPLACEME \
 --enable-subnet-evm
 
 #####
 # or to run performance tests
-# replace "REPLACE_ME"
+# replace "REPLACEME"
 # with real subnet ID from subnet-cli wizard
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
@@ -626,7 +626,7 @@ cd ${HOME}/avalanche-ops
 --use-spot-instance \
 --network-name custom \
 --avalanchego-log-level INFO \
---avalanchego-whitelisted-subnets REPLACE_ME \
+--avalanchego-whitelisted-subnets REPLACEME \
 --keys-to-generate 30 \
 --key-files-dir ${HOME}/subnet-evm-test-keys \
 --enable-subnet-evm
@@ -686,7 +686,7 @@ sudo systemctl cat avalanche
 # to replace the avalanche configuration
 sudo cat /data/avalanche-configs/config.json
 cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
-sed -i -- 's/REPLACE_ME/2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7/g' /tmp/avalanche.config.json
+sed -i -- 's/REPLACEME/2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7/g' /tmp/avalanche.config.json
 cat /tmp/avalanche.config.json
 sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
