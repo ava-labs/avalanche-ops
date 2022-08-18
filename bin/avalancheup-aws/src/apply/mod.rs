@@ -1206,7 +1206,7 @@ aws ssm start-session --region {} --target {}
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: listing all nodes based on S3 keys...\n\n"),
+        Print("\n\n\nSTEP: listing all node objects based on S3 keys...\n\n"),
         ResetColor
     )?;
     for node in current_nodes.iter() {
@@ -1453,17 +1453,25 @@ $ cat /tmp/{node_id}.crt
         let nodes = spec.current_nodes.expect("unexpected None current_nodes");
         let mut all_node_ids: Vec<String> = Vec::new();
         for node in nodes.iter() {
-            all_node_ids.push(node.clone().node_id);
+            let node_id = node.clone().node_id;
+            all_node_ids.push(node_id);
         }
 
-        for node_id in all_node_ids.iter() {
+        for node in nodes.iter() {
+            // "anchor" node in the custom network is already validating the primary network
+            if node.kind == "anchor" {
+                continue;
+            }
+
+            let node_id = node.clone().node_id;
+
             println!();
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
                 Print(format!(
                     "subnet-cli add validator \\\n--enable-prompt \\\n--private-key-path=/tmp/test.key \\\n--public-uri={} \\\n--stake-amount=2000000000000 \\\n--validate-reward-fee-percent=2 \\\n--node-ids=\"{}\"\n",
-                    http_rpc, *node_id
+                    http_rpc, node_id
                 )),
                 ResetColor
             )?;
