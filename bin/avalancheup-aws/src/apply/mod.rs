@@ -1206,7 +1206,7 @@ aws ssm start-session --region {} --target {}
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: listing all nodes based on S3 keys...\n"),
+        Print("\n\n\nSTEP: listing all nodes based on S3 keys...\n\n"),
         ResetColor
     )?;
     for node in current_nodes.iter() {
