@@ -689,13 +689,16 @@ impl Spec {
             }
         };
 
+        // [year][month][date]-[system host-based id]
+        let s3_bucket = format!(
+            "avalanche-ops-{}-{}-{}",
+            id_manager::time::timestamp(6),
+            id_manager::system::string(10),
+            opts.region
+        );
         let mut aws_resources = aws::Resources {
             region: opts.region,
-            s3_bucket: format!(
-                "avalanche-ops-{}-{}",
-                id_manager::time::timestamp(6),
-                id_manager::system::string(10)
-            ), // [year][month][date]-[system host-based id]
+            s3_bucket,
             ..aws::Resources::default()
         };
         if !opts.nlb_acm_certificate_arn.is_empty() {
