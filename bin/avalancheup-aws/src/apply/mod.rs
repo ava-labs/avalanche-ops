@@ -708,7 +708,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
 
         // add 5-minute for ELB creation
-        let mut wait_secs = 300 + 60 * desired_capacity as u64;
+        let mut wait_secs = 500 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -781,7 +781,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
         let mut droplets: Vec<ec2::Droplet> = Vec::new();
         let target_nodes = spec.machine.anchor_nodes.unwrap();
-        for _ in 0..10 {
+        for _ in 0..20 {
             // TODO: better retries
             log::info!(
                 "fetching all droplets for anchor-node SSH access (target nodes {})",
@@ -994,7 +994,7 @@ aws ssm start-session --region {} --target {}
         ))
         .unwrap();
 
-        let mut wait_secs = 300 + 60 * desired_capacity as u64;
+        let mut wait_secs = 500 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
@@ -1073,7 +1073,7 @@ aws ssm start-session --region {} --target {}
 
         let mut droplets: Vec<ec2::Droplet> = Vec::new();
         let target_nodes = spec.machine.non_anchor_nodes;
-        for _ in 0..10 {
+        for _ in 0..20 {
             // TODO: better retries
             log::info!(
                 "fetching all droplets for non-anchor node SSH access (target nodes {})",

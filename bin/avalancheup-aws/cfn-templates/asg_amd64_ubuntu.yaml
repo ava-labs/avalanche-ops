@@ -420,10 +420,10 @@ Resources:
               wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
               mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
               chmod +x /tmp/aws-volume-provisioner
-              # --initial-wait-random-seconds=70 to prevent EBS volume provision contentions
+              # --initial-wait-random-seconds=140 to prevent EBS volume provision contentions
               /tmp/aws-volume-provisioner \
                 --log-level=info \
-                --initial-wait-random-seconds=70 \
+                --initial-wait-random-seconds=140 \
                 --kind-tag=aws-volume-provisioner \
                 --id-tag=${Id} \
                 --volume-type=${VolumeType} \
