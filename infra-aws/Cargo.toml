@@ -5,12 +5,16 @@ edition = "2021"
 rust-version = "1.63"
 
 [dependencies]
-avalanche-sdk = { version = "0.0.21", features = ["cloudwatch"] } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.27", features = [] }
-aws-manager = "0.0.14"
+avalanche-types = { version = "0.0.28" } # https://crates.io/crates/avalanche-types
+aws-manager = "0.0.15"
+aws-sdk-cloudwatch = "0.17.0"
+chrono = "0.4.22"
 compress-manager = "0.0.2"
+http-manager = "0.0.1"
 log = "0.4.17"
+prometheus-manager = "0.0.4"
 random-manager = "0.0.1"
+regex = "1.6.0"
 tokio = { version = "1.20.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
