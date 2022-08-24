@@ -15,8 +15,31 @@ use aws_manager::{
 };
 use aws_sdk_ec2::model::{Filter, Tag, Volume};
 use infra_aws::{certs, telemetry};
+use lazy_static::lazy_static;
 use tokio::time::{sleep, Duration};
 
+lazy_static! {
+    static ref REGEXES: Vec<String> = vec![
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_accepted[\s\S]*$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_built$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_rejected[\s\S]*$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_db_batch_put_count$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_db_batch_put_sum$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_last_accepted_height$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_failure$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_requests$".to_string(),
+        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_success$".to_string(),
+        r"^avalanche_[C|P|X]_benchlist_benched_num$".to_string(),
+        r"^avalanche_[C|P]_blks_accepted[\s\S]*$".to_string(),
+        r"^avalanche_[C|P]_blks_accepted[\s\S]*$".to_string(),
+        r"^avalanche_[C|P|X]_db_get_count$".to_string(),
+        r"^avalanche_[C|P|X]_db_read_size_sum$".to_string(),
+        r"^avalanche_[C|P|X]_db_write_size_sum$".to_string(),
+        r"^avalanche_[C|P|X]_polls_[\s\S]*$".to_string(),
+    ];
+}
+
+/// TODO: make these more idempotent, workable with restarts
 pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -260,7 +283,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         }
     }
 
-    start_avalanche_systemd_service(
+    stop_and_start_avalanche_systemd_service(
         &tags.avalanche_bin_path,
         &avalanchego_config,
         &coreth_config,
@@ -291,6 +314,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             Duration::from_secs(120),
             Duration::from_secs(60),
             Arc::new(ep.to_string()),
+            Arc::new(REGEXES.to_vec()),
         )),
     ];
     if !opts.lite_mode {
@@ -1086,7 +1110,7 @@ async fn discover_ready_anchor_nodes_from_s3(
     Ok((bootstrap_ids, bootstrap_ips))
 }
 
-fn start_avalanche_systemd_service(
+fn stop_and_start_avalanche_systemd_service(
     avalanche_bin_path: &str,
     avalanchego_config: &avalanchego::config::Config,
     coreth_config: &coreth::config::Config,
@@ -1152,6 +1176,13 @@ WantedBy=multi-user.target",
     )?;
 
     command_manager::run("sudo systemctl daemon-reload")?;
+
+    // in case it's already running
+    match command_manager::run("sudo systemctl stop avalanche.service") {
+        Ok(_) => {}
+        Err(e) => log::warn!("failed to stop {}", e),
+    };
+
     command_manager::run("sudo systemctl disable avalanche.service")?;
     command_manager::run("sudo systemctl enable avalanche.service")?;
     command_manager::run("sudo systemctl restart --no-block avalanche.service")?;
