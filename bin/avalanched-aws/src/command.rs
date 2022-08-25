@@ -72,7 +72,11 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
                 metrics_rules,
             )
         };
-    metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
+    if !Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
+        metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
+    } else {
+        log::warn!("skipping writing avalanche-telemetry-cloudwatch rules file (already exists)")
+    }
 
     if download_avalanchego_from_github {
         install_avalanche_from_github(
