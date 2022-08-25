@@ -14,7 +14,10 @@ use aws_manager::{
     s3,
 };
 use aws_sdk_ec2::model::{Filter, Tag, Volume};
-use infra_aws::{certs, telemetry};
+use infra_aws::{
+    certs,
+    telemetry::{self, metrics::avalanchego::Rules},
+};
 use tokio::time::{sleep, Duration};
 
 /// TODO: make these more idempotent, workable with restarts
@@ -38,45 +41,36 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     )
     .await?;
 
-    let (
-        mut avalanchego_config,
-        coreth_config,
-        download_avalanchego_from_github,
-        metrics_scrape_regexes,
-    ) = if opts.use_default_config {
-        let avalanchego_config =
-            write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
-        let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
+    let (mut avalanchego_config, coreth_config, download_avalanchego_from_github, metrics_rules) =
+        if opts.use_default_config {
+            let avalanchego_config =
+                write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
+            let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
 
-        (
-            avalanchego_config,
-            coreth_config,
-            true,
-            avalancheup_aws::DEFAULT_METRICS_REGEXES.to_vec(),
-        )
-    } else {
-        let spec = download_spec(
-            Arc::clone(&s3_manager_arc),
-            &tags.s3_bucket,
-            &tags.id,
-            &meta.public_ipv4,
-            &tags.avalancheup_spec_path,
-        )
-        .await?;
-        write_coreth_config_from_spec(&spec)?;
-
-        let metrics = if let Some(mm) = spec.metrics {
-            mm.scrape_regexes
+            (avalanchego_config, coreth_config, true, Rules::default())
         } else {
-            avalancheup_aws::DEFAULT_METRICS_REGEXES.to_vec()
+            let spec = download_spec(
+                Arc::clone(&s3_manager_arc),
+                &tags.s3_bucket,
+                &tags.id,
+                &meta.public_ipv4,
+                &tags.avalancheup_spec_path,
+            )
+            .await?;
+            write_coreth_config_from_spec(&spec)?;
+
+            let metrics_rules = if let Some(mm) = spec.metrics_rules {
+                mm
+            } else {
+                Rules::default()
+            };
+            (
+                spec.avalanchego_config.clone(),
+                spec.coreth_config.clone(),
+                spec.install_artifacts.avalanchego_bin.is_none(),
+                metrics_rules,
+            )
         };
-        (
-            spec.avalanchego_config.clone(),
-            spec.coreth_config.clone(),
-            spec.install_artifacts.avalanchego_bin.is_none(),
-            metrics,
-        )
-    };
 
     if download_avalanchego_from_github {
         install_avalanche_from_github(
@@ -305,7 +299,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         Duration::from_secs(120),
         Duration::from_secs(60),
         Arc::new(ep.to_string()),
-        Arc::new(metrics_scrape_regexes.to_vec()),
+        Arc::new(metrics_rules.filters),
     ))];
     if !opts.skip_publish_node_info {
         handles.push(tokio::spawn(publish_node_info_ready_loop(
