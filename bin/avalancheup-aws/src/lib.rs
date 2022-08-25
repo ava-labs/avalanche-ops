@@ -12,7 +12,7 @@ use std::{
 use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
-use infra_aws::telemetry::metrics::avalanchego::Rules;
+use infra_aws::telemetry::metrics;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use subnet_evm::genesis as subnet_evm_genesis;
@@ -263,7 +263,7 @@ pub struct Spec {
     pub endpoints: Option<Endpoints>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metrics_rules: Option<Rules>,
+    pub metrics_rules: Option<prometheus_manager::Rules>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -774,7 +774,7 @@ impl Spec {
             current_nodes: None,
             endpoints: None,
 
-            metrics_rules: Some(Rules::default()),
+            metrics_rules: Some(metrics::avalanchego::default_rules()),
         }
     }
 

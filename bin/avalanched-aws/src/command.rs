@@ -16,7 +16,7 @@ use aws_manager::{
 use aws_sdk_ec2::model::{Filter, Tag, Volume};
 use infra_aws::{
     certs,
-    telemetry::{self, metrics::avalanchego::Rules},
+    telemetry::{self, metrics},
 };
 use tokio::time::{sleep, Duration};
 
@@ -47,7 +47,12 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
                 write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
             let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
 
-            (avalanchego_config, coreth_config, true, Rules::default())
+            (
+                avalanchego_config,
+                coreth_config,
+                true,
+                metrics::avalanchego::default_rules(),
+            )
         } else {
             let spec = download_spec(
                 Arc::clone(&s3_manager_arc),
@@ -62,7 +67,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             let metrics_rules = if let Some(mm) = spec.metrics_rules {
                 mm
             } else {
-                Rules::default()
+                metrics::avalanchego::default_rules()
             };
             (
                 spec.avalanchego_config.clone(),
@@ -299,7 +304,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         Duration::from_secs(120),
         Duration::from_secs(60),
         Arc::new(ep.to_string()),
-        Arc::new(metrics_rules.filters),
+        Arc::new(metrics_rules),
     ))];
     if !opts.skip_publish_node_info {
         handles.push(tokio::spawn(publish_node_info_ready_loop(

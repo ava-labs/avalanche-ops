@@ -7,34 +7,17 @@ use aws_sdk_cloudwatch::{
 };
 use chrono::Utc;
 use rust_embed::RustEmbed;
-use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 
-/// Represents metrics rules.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Rules {
-    pub filters: Vec<prometheus_manager::Filter>,
-}
+pub fn default_rules() -> prometheus_manager::Rules {
+    #[derive(RustEmbed)]
+    #[folder = "artifacts/"]
+    #[prefix = "artifacts/"]
+    struct Asset;
 
-impl Default for Rules {
-    fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl Rules {
-    pub fn default() -> Self {
-        #[derive(RustEmbed)]
-        #[folder = "artifacts/"]
-        #[prefix = "artifacts/"]
-        struct Asset;
-
-        let filters_raw = Asset::get("artifacts/default.metrics.filters.yaml").unwrap();
-        let filters_raw = std::str::from_utf8(filters_raw.data.as_ref()).unwrap();
-        let filters: Vec<prometheus_manager::Filter> = serde_yaml::from_str(filters_raw).unwrap();
-        Self { filters }
-    }
+    let filters_raw = Asset::get("artifacts/default.metrics.filters.yaml").unwrap();
+    let filters_raw = std::str::from_utf8(filters_raw.data.as_ref()).unwrap();
+    serde_yaml::from_str(filters_raw).unwrap()
 }
 
 /// Periodically collects the "avalanchego" metrics
@@ -47,7 +30,7 @@ pub async fn fetch_loop(
     interval: Duration,
 
     avalanchego_rpc_endpoint: Arc<String>,
-    metrics_filters: Arc<Vec<prometheus_manager::Filter>>,
+    metrics_rules: Arc<prometheus_manager::Rules>,
 ) {
     log::info!(
         "fetching AvalancheGo metrics with initial wait {:?}",
@@ -84,13 +67,13 @@ pub async fn fetch_loop(
                 continue;
             }
         };
-        let cur_metrics = match prometheus_manager::match_all_by_filters(
+        let cur_metrics = match prometheus_manager::match_all_by_rules(
             &s.metrics,
-            metrics_filters.as_ref().clone(),
+            metrics_rules.as_ref().clone(),
         ) {
             Ok(v) => v,
             Err(e) => {
-                log::warn!("failed match_all_by_filters {}, retrying...", e);
+                log::warn!("failed match_all_by_rules {}, retrying...", e);
                 continue;
             }
         };
