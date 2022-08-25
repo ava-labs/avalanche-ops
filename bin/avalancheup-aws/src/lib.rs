@@ -221,7 +221,7 @@ pub struct Spec {
     pub install_artifacts: InstallArtifacts,
 
     /// Flag to pass to the "avalanched" command-line interface
-    /// (e.g., "--lite-mode").
+    /// (e.g., "--skip_publish_node_info").
     pub avalanched_config: avalanched::Flags,
 
     /// Represents the configuration for "avalanchego".
@@ -434,7 +434,8 @@ pub struct DefaultSpecOption {
     pub install_artifacts_plugins_dir: String,
 
     pub avalanched_log_level: String,
-    pub avalanched_lite_mode: bool,
+    pub avalanched_use_default_config: bool,
+    pub avalanched_skip_publish_node_info: bool,
 
     pub avalanchego_log_level: String,
     pub avalanchego_whitelisted_subnets: String,
@@ -583,7 +584,8 @@ impl Spec {
 
         let avalanched_config = avalanched::Flags {
             log_level: opts.avalanched_log_level,
-            lite_mode: opts.avalanched_lite_mode,
+            use_default_config: opts.avalanched_use_default_config,
+            skip_publish_node_info: opts.avalanched_skip_publish_node_info,
         };
 
         let mut avalanchego_config = match network_id {
@@ -1074,7 +1076,8 @@ install_artifacts:
 
 avalanched_config:
   log_level: info
-  lite_mode: true
+  use_default_config: false
+  skip_publish_node_info: false
 
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
@@ -1168,7 +1171,8 @@ coreth_config:
 
         avalanched_config: avalanched::Flags {
             log_level: String::from("info"),
-            lite_mode: true,
+            use_default_config: false,
+            skip_publish_node_info: false,
         },
 
         avalanchego_config,
