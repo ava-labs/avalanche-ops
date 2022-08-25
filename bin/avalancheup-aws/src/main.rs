@@ -72,7 +72,10 @@ fn main() {
                     .value_of("AVALANCHED_LOG_LEVEL")
                     .unwrap_or("info")
                     .to_string(),
-                avalanched_lite_mode: sub_matches.is_present("AVALANCHED_LITE_MODE"),
+                avalanched_use_default_config: sub_matches
+                    .is_present("AVALANCHED_USE_DEFAULT_CONFIG"),
+                avalanched_skip_publish_node_info: sub_matches
+                    .is_present("AVALANCHED_SKIP_PUBLISH_NODE_INFO"),
 
                 avalanchego_log_level: sub_matches
                     .value_of("AVALANCHEGO_LOG_LEVEL")

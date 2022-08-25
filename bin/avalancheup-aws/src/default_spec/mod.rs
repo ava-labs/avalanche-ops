@@ -132,9 +132,17 @@ pub fn command() -> Command<'static> {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("AVALANCHED_LITE_MODE") 
-                .long("avalanched-lite-mode")
-                .help("Sets the lite-mode for 'avalanched'")
+            Arg::new("AVALANCHED_USE_DEFAULT_CONFIG") 
+                .long("avalanched-use-default-config")
+                .help("Sets to use default config (for CDK)")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AVALANCHED_SKIP_PUBLISH_NODE_INFO") 
+                .long("avalanched-skip-publish-node-info")
+                .help("Sets to skip publishing node info(for CDK)")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),

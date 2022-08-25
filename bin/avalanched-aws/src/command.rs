@@ -43,7 +43,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         coreth_config,
         download_avalanchego_from_github,
         metrics_scrape_regexes,
-    ) = if opts.lite_mode {
+    ) = if opts.use_default_config {
         let avalanchego_config =
             write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
         let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
@@ -205,8 +205,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         }
     }
 
-    if !opts.lite_mode
-        && avalanchego_config.is_custom_network()
+    if avalanchego_config.is_custom_network()
         && avalanchego_config.genesis.is_some()
         && !Path::new(&avalanchego_config.clone().genesis.unwrap()).exists()
     // check "exists" for idempotency
@@ -308,7 +307,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         Arc::new(ep.to_string()),
         Arc::new(metrics_scrape_regexes.to_vec()),
     ))];
-    if !opts.lite_mode {
+    if !opts.skip_publish_node_info {
         handles.push(tokio::spawn(publish_node_info_ready_loop(
             Arc::new(meta.ec2_instance_id.clone()),
             tags.node_kind.clone(),

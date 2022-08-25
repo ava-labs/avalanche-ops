@@ -792,7 +792,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 ```
 
-### Fuji network with NO initial database state, with "avalanched-aws --lite-mode"
+### Fuji network with NO initial database state, with "avalanched-aws" lite mode
 
 This will sync from peer (rather than downloading from S3):
 
@@ -811,7 +811,8 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---avalanched-lite-mode \
+--avalanched-use-default-config \
+--avalanched-skip-publish-node-info \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO
