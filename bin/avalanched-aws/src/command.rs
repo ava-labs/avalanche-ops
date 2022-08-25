@@ -18,27 +18,6 @@ use infra_aws::{certs, telemetry};
 use lazy_static::lazy_static;
 use tokio::time::{sleep, Duration};
 
-lazy_static! {
-    static ref REGEXES: Vec<String> = vec![
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_accepted[\s\S]*$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_built$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_rejected[\s\S]*$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_db_batch_put_count$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_db_batch_put_sum$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_last_accepted_height$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_failure$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_requests$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_success$".to_string(),
-        r"^avalanche_[C|P|X]_benchlist_benched_num$".to_string(),
-        r"^avalanche_[C|P]_blks_accepted[\s\S]*$".to_string(),
-        r"^avalanche_[C|P]_blks_accepted[\s\S]*$".to_string(),
-        r"^avalanche_[C|P|X]_db_get_count$".to_string(),
-        r"^avalanche_[C|P|X]_db_read_size_sum$".to_string(),
-        r"^avalanche_[C|P|X]_db_write_size_sum$".to_string(),
-        r"^avalanche_[C|P|X]_polls_[\s\S]*$".to_string(),
-    ];
-}
-
 /// TODO: make these more idempotent, workable with restarts
 pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -60,30 +39,45 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     )
     .await?;
 
-    let (mut avalanchego_config, coreth_config, download_avalanchego_from_github) =
-        if opts.lite_mode {
-            let avalanchego_config =
-                write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
-            let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
+    let (
+        mut avalanchego_config,
+        coreth_config,
+        download_avalanchego_from_github,
+        metrics_scrape_regexes,
+    ) = if opts.lite_mode {
+        let avalanchego_config =
+            write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
+        let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
 
-            (avalanchego_config, coreth_config, true)
+        (
+            avalanchego_config,
+            coreth_config,
+            true,
+            avalancheup_aws::DEFAULT_METRICS_REGEXES.to_vec(),
+        )
+    } else {
+        let spec = download_spec(
+            Arc::clone(&s3_manager_arc),
+            &tags.s3_bucket,
+            &tags.id,
+            &meta.public_ipv4,
+            &tags.avalancheup_spec_path,
+        )
+        .await?;
+        write_coreth_config_from_spec(&spec)?;
+
+        let metrics = if let Some(mm) = spec.metrics {
+            mm.scrape_regexes
         } else {
-            let spec = download_spec(
-                Arc::clone(&s3_manager_arc),
-                &tags.s3_bucket,
-                &tags.id,
-                &meta.public_ipv4,
-                &tags.avalancheup_spec_path,
-            )
-            .await?;
-            write_coreth_config_from_spec(&spec)?;
-
-            (
-                spec.avalanchego_config.clone(),
-                spec.coreth_config.clone(),
-                spec.install_artifacts.avalanchego_bin.is_none(),
-            )
+            avalancheup_aws::DEFAULT_METRICS_REGEXES.to_vec()
         };
+        (
+            spec.avalanchego_config.clone(),
+            spec.coreth_config.clone(),
+            spec.install_artifacts.avalanchego_bin.is_none(),
+            metrics,
+        )
+    };
 
     if download_avalanchego_from_github {
         install_avalanche_from_github(
@@ -306,17 +300,15 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     );
     check_liveness(&ep).await?;
 
-    let mut handles = vec![
-        // publish metrics
-        tokio::spawn(telemetry::metrics::avalanchego::fetch_loop(
-            Arc::clone(&cloudwatch_manager_arc),
-            Arc::new(tags.id.clone()),
-            Duration::from_secs(120),
-            Duration::from_secs(60),
-            Arc::new(ep.to_string()),
-            Arc::new(REGEXES.to_vec()),
-        )),
-    ];
+    // publish metrics
+    let mut handles = vec![tokio::spawn(telemetry::metrics::avalanchego::fetch_loop(
+        Arc::clone(&cloudwatch_manager_arc),
+        Arc::new(tags.id.clone()),
+        Duration::from_secs(120),
+        Duration::from_secs(60),
+        Arc::new(ep.to_string()),
+        Arc::new(metrics_scrape_regexes.to_vec()),
+    ))];
     if !opts.lite_mode {
         handles.push(tokio::spawn(publish_node_info_ready_loop(
             Arc::new(meta.ec2_instance_id.clone()),
