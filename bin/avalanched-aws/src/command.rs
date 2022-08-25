@@ -15,7 +15,6 @@ use aws_manager::{
 };
 use aws_sdk_ec2::model::{Filter, Tag, Volume};
 use infra_aws::{certs, telemetry};
-use lazy_static::lazy_static;
 use tokio::time::{sleep, Duration};
 
 /// TODO: make these more idempotent, workable with restarts
