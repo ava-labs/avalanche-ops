@@ -1,0 +1,51 @@
+filters:
+  - regex: ^avalanche_network_peers$
+  - regex: ^avalanche_network_peers_subnet$
+  - regex: ^avalanche_network_times_(connected|disconnected)$
+  - regex: ^avalanche_network_(version|ping|pong|(push|pull)_query|put|peerlist)_(received|sent|failed)$
+  - regex: ^avalanche_network_node_uptime_(rewarding_stake|weighted_average)$
+  - regex: ^avalanche_network_inbound_conn_throttler_(allowed|rate_limited)$
+  - regex: ^avalanche_network_throttler_outbound_acquire_(failures|successes)$
+  - regex: ^avalanche_process_(max|open)_fds$
+  - regex: ^avalanche_process_(resident|virtual)_memory_bytes$
+
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_blks_(accepted|rejected|built|processing)[\s\S]*$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_vm_metervm_parse_block_(count|sum)$
+  - regex: ^avalanche_(C|P|X)_benchlist_benched_num$
+  - regex: ^avalanche_(C|P|X)_polls_[\s\S]*$
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_handler_get_accepted_(count|sum)$
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_last_accepted_height$
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_polls_successful$
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_(failure|requests|success)$
+
+  - regex: ^avalanche_db_(put|delete|compact|get|batch_(write|put))_(count|sum)$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_db_(put|delete|compact|get|batch_(write|put))_(count|sum)$
+
+  - regex: ^avalanche_X_whitelist_[\s\S]*$
+
+  # "summary" type does not need to specify labels
+  # this matches all quantiles (0.5, 0.75, 0.95, 0.99, 0.999, 0.9999)
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_duration_all$
+
+  # "counter" type supports either exact match, or sub-match
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_grpc_client_handled_total$
+    # for instance, here missing grpc_method="*"
+    # but via sub-match, all possible method values evaluate to true
+    labels:
+      grpc_code: OK
+      grpc_service: rpcdb.Database
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_grpc_client_handled_total$
+    # exact match
+    labels:
+      grpc_code: OK
+      grpc_method: SendAppGossip
+      grpc_service: appsender.AppSender
+      grpc_type: unary
+
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_grpc_client_started_total$
+    labels:
+      grpc_service: rpcdb.Database
+  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_grpc_client_started_total$
+    labels:
+      grpc_method: SendAppGossip
+      grpc_service: appsender.AppSender

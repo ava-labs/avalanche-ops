@@ -6,8 +6,19 @@ use aws_sdk_cloudwatch::{
     types::DateTime as SmithyDateTime,
 };
 use chrono::Utc;
-use regex::RegexSet;
+use rust_embed::RustEmbed;
 use tokio::time::{sleep, Duration};
+
+pub fn default_rules() -> prometheus_manager::Rules {
+    #[derive(RustEmbed)]
+    #[folder = "artifacts/"]
+    #[prefix = "artifacts/"]
+    struct Asset;
+
+    let filters_raw = Asset::get("artifacts/default.metrics.filters.yaml").unwrap();
+    let filters_raw = std::str::from_utf8(filters_raw.data.as_ref()).unwrap();
+    serde_yaml::from_str(filters_raw).unwrap()
+}
 
 /// Periodically collects the "avalanchego" metrics
 /// and uploads them to cloudwatch.
@@ -19,16 +30,13 @@ pub async fn fetch_loop(
     interval: Duration,
 
     avalanchego_rpc_endpoint: Arc<String>,
-    metrics_regexes: Arc<Vec<String>>,
+    metrics_rules: Arc<prometheus_manager::Rules>,
 ) {
     log::info!(
         "fetching AvalancheGo metrics with initial wait {:?}",
         initial_wait
     );
     sleep(initial_wait).await;
-
-    let regexes = metrics_regexes.as_ref();
-    let regex_set: RegexSet = RegexSet::new(regexes).unwrap();
 
     let cloudwatch_manager: &cloudwatch::Manager = cloudwatch_manager.as_ref();
     loop {
@@ -59,7 +67,16 @@ pub async fn fetch_loop(
                 continue;
             }
         };
-        let cur_metrics = prometheus_manager::match_name_set_all(&s.metrics, regex_set.clone());
+        let cur_metrics = match prometheus_manager::match_all_by_rules(
+            &s.metrics,
+            metrics_rules.as_ref().clone(),
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                log::warn!("failed match_all_by_rules {}, retrying...", e);
+                continue;
+            }
+        };
 
         let mut data = vec![];
         for mv in cur_metrics {

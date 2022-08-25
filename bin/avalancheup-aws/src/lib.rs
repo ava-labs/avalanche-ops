@@ -12,6 +12,7 @@ use std::{
 use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
+use infra_aws::telemetry::metrics;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use subnet_evm::genesis as subnet_evm_genesis;
@@ -262,7 +263,7 @@ pub struct Spec {
     pub endpoints: Option<Endpoints>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metrics: Option<Metrics>,
+    pub metrics_rules: Option<prometheus_manager::Rules>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -371,27 +372,6 @@ pub struct InstallArtifacts {
     /// with remote machiens.
     #[serde(default)]
     pub plugins_dir: Option<String>,
-}
-
-/// Represents each anchor/non-anchor node.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Metrics {
-    pub scrape_regexes: Vec<String>,
-}
-
-impl Default for Metrics {
-    fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl Metrics {
-    pub fn default() -> Self {
-        Self {
-            scrape_regexes: DEFAULT_METRICS_REGEXES.to_vec(),
-        }
-    }
 }
 
 /// Represents the CloudFormation stack name.
@@ -548,25 +528,6 @@ lazy_static! {
         String::from("m6g.2xlarge"),
         String::from("r6g.2xlarge"),
         String::from("t4g.2xlarge"),
-    ];
-
-    pub static ref DEFAULT_METRICS_REGEXES: Vec<String> = vec![
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_accepted[\s\S]*$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_built$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_blks_rejected[\s\S]*$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_db_batch_put_count$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_db_batch_put_sum$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_last_accepted_height$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_failure$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_requests$".to_string(),
-        r"^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_success$".to_string(),
-        r"^avalanche_[C|P|X]_benchlist_benched_num$".to_string(),
-        r"^avalanche_[C|P]_blks_accepted[\s\S]*$".to_string(),
-        r"^avalanche_[C|P]_blks_accepted[\s\S]*$".to_string(),
-        r"^avalanche_[C|P|X]_db_get_count$".to_string(),
-        r"^avalanche_[C|P|X]_db_read_size_sum$".to_string(),
-        r"^avalanche_[C|P|X]_db_write_size_sum$".to_string(),
-        r"^avalanche_[C|P|X]_polls_[\s\S]*$".to_string(),
     ];
 }
 
@@ -813,7 +774,7 @@ impl Spec {
             current_nodes: None,
             endpoints: None,
 
-            metrics: Some(Metrics::default()),
+            metrics_rules: Some(metrics::avalanchego::default_rules()),
         }
     }
 
@@ -1186,7 +1147,7 @@ coreth_config:
         current_nodes: None,
         endpoints: None,
 
-        metrics: None,
+        metrics_rules: None,
     };
 
     assert_eq!(cfg, orig);
