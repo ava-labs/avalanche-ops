@@ -12,8 +12,8 @@ use std::{
 use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
-use infra_aws::telemetry::metrics;
 use lazy_static::lazy_static;
+use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 use subnet_evm::genesis as subnet_evm_genesis;
 
@@ -531,6 +531,17 @@ lazy_static! {
     ];
 }
 
+pub fn default_rules() -> prometheus_manager::Rules {
+    #[derive(RustEmbed)]
+    #[folder = "artifacts/"]
+    #[prefix = "artifacts/"]
+    struct Asset;
+
+    let filters_raw = Asset::get("artifacts/default.metrics.rules.yaml").unwrap();
+    let filters_raw = std::str::from_utf8(filters_raw.data.as_ref()).unwrap();
+    serde_yaml::from_str(filters_raw).unwrap()
+}
+
 impl Spec {
     /// Creates a default Status based on the network ID.
     /// For custom networks, it generates the "keys" number of keys
@@ -774,7 +785,7 @@ impl Spec {
             current_nodes: None,
             endpoints: None,
 
-            metrics_rules: Some(metrics::avalanchego::default_rules()),
+            metrics_rules: Some(default_rules()),
         }
     }
 
@@ -1233,6 +1244,7 @@ pub enum StorageNamespace {
     PluginsDir(String),
 
     PkiKeyDir(String),
+    MetricsRules(String),
 
     /// before db downloads
     DiscoverProvisioningAnchorNodesDir(String),
@@ -1276,6 +1288,9 @@ impl StorageNamespace {
 
             StorageNamespace::PkiKeyDir(id) => {
                 format!("{}/pki", id)
+            }
+            StorageNamespace::MetricsRules(id) => {
+                format!("{}/avalanche-telemetry-cloudwatch.rules.yaml", id)
             }
 
             StorageNamespace::DiscoverProvisioningAnchorNodesDir(id) => {

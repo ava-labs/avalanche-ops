@@ -296,6 +296,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             Print("\n\n\nSTEP: create KMS key\n"),
             ResetColor
         )?;
+
         let key = rt
             .block_on(kms_manager.create_key(format!("{}-cmk", spec.id).as_str()))
             .unwrap();
@@ -324,8 +325,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             SetForegroundColor(Color::Green),
             Print("\n\n\nSTEP: create EC2 key pair\n"),
             ResetColor
-        )
-        .unwrap();
+        )?;
+
         let ec2_key_path = get_ec2_key_path(spec_file_path);
         rt.block_on(ec2_manager.create_key_pair(
             aws_resources.ec2_key_name.clone().unwrap().as_str(),
@@ -370,6 +371,24 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             Arc::new(spec_file_path.to_string()),
             Arc::new(aws_resources.s3_bucket.clone()),
             Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        ))
+        .unwrap();
+    }
+
+    if let Some(metrics_rules) = &spec.metrics_rules {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: uploading metrics rules\n"),
+            ResetColor
+        )?;
+
+        let metrics_rules_file_path = random_manager::tmp_path(10, None).unwrap();
+        metrics_rules.sync(&metrics_rules_file_path).unwrap();
+        rt.block_on(s3_manager.put_object(
+            Arc::new(metrics_rules_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(avalancheup_aws::StorageNamespace::MetricsRules(spec.id.clone()).encode()),
         ))
         .unwrap();
     }
