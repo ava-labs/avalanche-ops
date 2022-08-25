@@ -35,7 +35,7 @@ impl ConfigManager {
         log::info!("syncing CloudWatch configuration JSON file");
 
         let mut log_collect_list = vec![
-            // e.g., collect all .log files in the /var/log/avalanche tree
+            // e.g., collect all .log files in the "/var/log/avalanche" tree
             cloudwatch::Collect {
                 log_group_name: self.id.clone(),
                 log_stream_name: format!("{{instance_id}}-{}-all-logs", self.node_kind.as_str()),

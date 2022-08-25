@@ -9,15 +9,12 @@ use std::{
 use avalanche_sdk::health as api_health;
 use avalanche_types::{genesis as avalanchego_genesis, node};
 use aws_manager::{
-    self, cloudwatch, ec2,
+    self, ec2,
     kms::{self, envelope},
     s3,
 };
 use aws_sdk_ec2::model::{Filter, Tag, Volume};
-use infra_aws::{
-    certs,
-    telemetry::{self, metrics},
-};
+use infra_aws::{certs, telemetry};
 use tokio::time::{sleep, Duration};
 
 /// TODO: make these more idempotent, workable with restarts
@@ -33,7 +30,6 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     let aws_creds = load_aws_credential(&meta.region).await?;
     let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
     let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
-    let cloudwatch_manager_arc = Arc::new(aws_creds.cw_manager.clone());
 
     let tags = fetch_tags(
         Arc::clone(&ec2_manager_arc),
@@ -51,7 +47,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
                 avalanchego_config,
                 coreth_config,
                 true,
-                metrics::avalanchego::default_rules(),
+                avalancheup_aws::default_rules(),
             )
         } else {
             let spec = download_spec(
@@ -67,7 +63,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             let metrics_rules = if let Some(mm) = spec.metrics_rules {
                 mm
             } else {
-                metrics::avalanchego::default_rules()
+                avalancheup_aws::default_rules()
             };
             (
                 spec.avalanchego_config.clone(),
@@ -76,6 +72,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
                 metrics_rules,
             )
         };
+    metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
 
     if download_avalanchego_from_github {
         install_avalanche_from_github(
@@ -279,6 +276,12 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         &avalanchego_config,
         &coreth_config,
     )?;
+    stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
+        &tags.avalanche_telemetry_cloudwatch_bin_path,
+        &tags.avalanche_telemetry_cloudwatch_rules_file_path,
+        &tags.id,
+        avalanchego_config.http_port,
+    )?;
 
     let http_scheme = {
         if avalanchego_config.http_tls_enabled.is_some()
@@ -298,14 +301,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     check_liveness(&ep).await?;
 
     // publish metrics
-    let mut handles = vec![tokio::spawn(telemetry::metrics::avalanchego::fetch_loop(
-        Arc::clone(&cloudwatch_manager_arc),
-        Arc::new(tags.id.clone()),
-        Duration::from_secs(120),
-        Duration::from_secs(60),
-        Arc::new(ep.to_string()),
-        Arc::new(metrics_rules),
-    ))];
+    let mut handles = vec![];
     if !opts.skip_publish_node_info {
         handles.push(tokio::spawn(publish_node_info_ready_loop(
             Arc::new(meta.ec2_instance_id.clone()),
@@ -389,7 +385,6 @@ struct AwsCreds {
     ec2_manager: ec2::Manager,
     kms_manager: kms::Manager,
     s3_manager: s3::Manager,
-    cw_manager: cloudwatch::Manager,
 }
 
 async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
@@ -400,13 +395,11 @@ async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
-    let cw_manager = cloudwatch::Manager::new(&shared_config);
 
     Ok(AwsCreds {
         ec2_manager,
         kms_manager,
         s3_manager,
-        cw_manager,
     })
 }
 
@@ -422,6 +415,8 @@ struct Tags {
     aad_tag: String,
     s3_bucket: String,
     cloudwatch_config_file_path: String,
+    avalanche_telemetry_cloudwatch_bin_path: String,
+    avalanche_telemetry_cloudwatch_rules_file_path: String,
     avalancheup_spec_path: String,
     avalanched_bin_path: String,
     avalanche_bin_path: String,
@@ -451,6 +446,8 @@ async fn fetch_tags(
         aad_tag: String::new(),
         s3_bucket: String::new(),
         cloudwatch_config_file_path: String::new(),
+        avalanche_telemetry_cloudwatch_bin_path: String::new(),
+        avalanche_telemetry_cloudwatch_rules_file_path: String::new(),
         avalancheup_spec_path: String::new(),
         avalanched_bin_path: String::new(),
         avalanche_bin_path: String::new(),
@@ -497,6 +494,12 @@ async fn fetch_tags(
             "CLOUDWATCH_CONFIG_FILE_PATH" => {
                 fetched_tags.cloudwatch_config_file_path = v.to_string();
             }
+            "AVALANCHE_TELEMETRY_CLOUDWATCH_BIN_PATH" => {
+                fetched_tags.avalanche_telemetry_cloudwatch_bin_path = v.to_string();
+            }
+            "AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH" => {
+                fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path = v.to_string();
+            }
             "AVALANCHEUP_SPEC_PATH" => {
                 fetched_tags.avalancheup_spec_path = v.to_string();
             }
@@ -528,6 +531,12 @@ async fn fetch_tags(
     assert!(!fetched_tags.aad_tag.is_empty());
     assert!(!fetched_tags.s3_bucket.is_empty());
     assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
+    assert!(!fetched_tags
+        .avalanche_telemetry_cloudwatch_bin_path
+        .is_empty());
+    assert!(!fetched_tags
+        .avalanche_telemetry_cloudwatch_rules_file_path
+        .is_empty());
     assert!(!fetched_tags.avalancheup_spec_path.is_empty());
     assert!(!fetched_tags.avalanched_bin_path.is_empty());
     assert!(!fetched_tags.avalanche_bin_path.is_empty());
@@ -1135,7 +1144,7 @@ fn stop_and_start_avalanche_systemd_service(
     //
     // NOTE: remove "StandardOutput" and "StandardError" since we already
     // wildcard all log files in "/var/log/avalanche" (a lot of duplicates)
-    let avalanche_service_file_contents = format!(
+    let service_file_contents = format!(
         "[Unit]
 Description=avalanche node
 
@@ -1155,14 +1164,11 @@ WantedBy=multi-user.target",
         avalanchego_config.clone().config_file.unwrap(),
     );
 
-    let mut avalanche_service_file = tempfile::NamedTempFile::new()?;
-    avalanche_service_file.write_all(avalanche_service_file_contents.as_bytes())?;
+    let mut service_file = tempfile::NamedTempFile::new()?;
+    service_file.write_all(service_file_contents.as_bytes())?;
 
-    let avalanche_service_file_path = avalanche_service_file.path().to_str().unwrap();
-    fs::copy(
-        avalanche_service_file_path,
-        "/etc/systemd/system/avalanche.service",
-    )?;
+    let service_file_path = service_file.path().to_str().unwrap();
+    fs::copy(service_file_path, "/etc/systemd/system/avalanche.service")?;
 
     command_manager::run("sudo systemctl daemon-reload")?;
 
@@ -1175,6 +1181,69 @@ WantedBy=multi-user.target",
     command_manager::run("sudo systemctl disable avalanche.service")?;
     command_manager::run("sudo systemctl enable avalanche.service")?;
     command_manager::run("sudo systemctl restart --no-block avalanche.service")?;
+
+    Ok(())
+}
+
+fn stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
+    avalanche_telemetry_cloudwatch_bin_path: &str,
+    avalanche_telemetry_cloudwatch_rules_file_path: &str,
+    namespace: &str,
+    http_port: u32,
+) -> io::Result<()> {
+    log::info!("STEP: setting up and starting avalanche-telemetry-cloudwatch systemd service...");
+
+    // don't use "Type=notify"
+    // as "avalanchego" currently does not do anything specific to systemd
+    // ref. "expected that the service sends a notification message via sd_notify"
+    // ref. https://www.freedesktop.org/software/systemd/man/systemd.service.html
+    //
+    // NOTE: remove "StandardOutput" and "StandardError" since we already
+    // wildcard all log files in "/var/log/avalanche" (a lot of duplicates)
+    let service_file_contents = format!(
+        "[Unit]
+Description=avalanche-telemetry-cloudwatch
+
+[Service]
+Type=exec
+TimeoutStartSec=300
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+ExecStart={} --log-level=info --initial-wait-seconds=10 --fetch-interval-seconds=60 --rules-file-path={} --namespace={} --rpc-endpoint=http://localhost:{}
+StandardOutput=append:/var/log/avalanche/avalanche-telemetry-cloudwatch.log
+StandardError=append:/var/log/avalanche/avalanche-telemetry-cloudwatch.log
+
+[Install]
+WantedBy=multi-user.target",
+        avalanche_telemetry_cloudwatch_bin_path,
+        avalanche_telemetry_cloudwatch_rules_file_path,
+        namespace,
+        http_port,
+    );
+
+    let mut service_file = tempfile::NamedTempFile::new()?;
+    service_file.write_all(service_file_contents.as_bytes())?;
+
+    let service_file_path = service_file.path().to_str().unwrap();
+    fs::copy(
+        service_file_path,
+        "/etc/systemd/system/avalanche-telemetry-cloudwatch.service",
+    )?;
+
+    command_manager::run("sudo systemctl daemon-reload")?;
+
+    // in case it's already running
+    match command_manager::run("sudo systemctl stop avalanche-telemetry-cloudwatch.service") {
+        Ok(_) => {}
+        Err(e) => log::warn!("failed to stop {}", e),
+    };
+
+    command_manager::run("sudo systemctl disable avalanche-telemetry-cloudwatch.service")?;
+    command_manager::run("sudo systemctl enable avalanche-telemetry-cloudwatch.service")?;
+    command_manager::run(
+        "sudo systemctl restart --no-block avalanche-telemetry-cloudwatch.service",
+    )?;
 
     Ok(())
 }

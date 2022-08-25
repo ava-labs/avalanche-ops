@@ -449,6 +449,10 @@ Resources:
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
 
+              wget https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu
+              mv ./avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu /usr/local/bin/avalanche-telemetry-cloudwatch
+              chmod +x /usr/local/bin/avalanche-telemetry-cloudwatch
+
               cat > /tmp/avalanched.service <<EOF
               [Unit]
               Description=Avalanched (avalanche agent)
@@ -579,6 +583,12 @@ Resources:
         - Key: CLOUDWATCH_CONFIG_FILE_PATH
           PropagateAtLaunch: true
           Value: /opt/aws/amazon-cloudwatch-agent/bin/config.json
+        - Key: AVALANCHE_TELEMETRY_CLOUDWATCH_BIN_PATH
+          PropagateAtLaunch: true
+          Value: /usr/local/bin/avalanche-telemetry-cloudwatch
+        - Key: AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH
+          PropagateAtLaunch: true
+          Value: /data/avalanche-telemetry-cloudwatch.rules.yaml
         - Key: AVALANCHEUP_SPEC_PATH
           PropagateAtLaunch: true
           Value: /data/avalancheup.yaml
