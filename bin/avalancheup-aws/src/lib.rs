@@ -693,11 +693,22 @@ impl Spec {
                 genesis.alloc = Some(subnet_evm_seed_allocs);
 
                 let mut chain_config = subnet_evm_genesis::ChainConfig::default();
-                let allow_list = subnet_evm_genesis::ContractDeployerAllowListConfig {
+
+                chain_config.contract_deployer_allow_list_config =
+                    Some(subnet_evm_genesis::ContractDeployerAllowListConfig {
+                        allow_list_admins: Some(admin_addresses.clone()),
+                        ..subnet_evm_genesis::ContractDeployerAllowListConfig::default()
+                    });
+                chain_config.contract_native_minter_config =
+                    Some(subnet_evm_genesis::ContractNativeMinterConfig {
+                        allow_list_admins: Some(admin_addresses.clone()),
+                        ..subnet_evm_genesis::ContractNativeMinterConfig::default()
+                    });
+                chain_config.fee_manager_config = Some(subnet_evm_genesis::FeeManagerConfig {
                     allow_list_admins: Some(admin_addresses),
-                    ..subnet_evm_genesis::ContractDeployerAllowListConfig::default()
-                };
-                chain_config.contract_deployer_allow_list_config = Some(allow_list);
+                    ..subnet_evm_genesis::FeeManagerConfig::default()
+                });
+
                 genesis.config = Some(chain_config);
 
                 Some(genesis)

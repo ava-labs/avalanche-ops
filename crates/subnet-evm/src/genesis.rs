@@ -41,7 +41,9 @@ pub struct Genesis {
     pub coinbase: Option<String>,
 
     /// MUST BE ordered by its key in order for all nodes to have the same JSON outputs.
+    /// And expressed as hex strings with the canonical 0x prefix.
     /// ref. https://doc.rust-lang.org/std/collections/index.html#use-a-btreemap-when
+    /// ref. https://docs.avax.network/subnets/customize-a-subnet#setting-the-genesis-allocation
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alloc: Option<BTreeMap<String, AllocAccount>>,
 
@@ -189,8 +191,18 @@ pub struct ChainConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_fee_recipients: Option<bool>,
 
+    /// ref. https://docs.avax.network/subnets/customize-a-subnet
     #[serde(skip_serializing_if = "Option::is_none")]
     pub contract_deployer_allow_list_config: Option<ContractDeployerAllowListConfig>,
+    /// ref. https://docs.avax.network/subnets/customize-a-subnet
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contract_native_minter_config: Option<ContractNativeMinterConfig>,
+    /// ref. https://docs.avax.network/subnets/customize-a-subnet
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tx_allow_list_config: Option<TxAllowListConfig>,
+    /// ref. https://docs.avax.network/subnets/customize-a-subnet
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fee_manager_config: Option<FeeManagerConfig>,
 }
 
 impl Default for ChainConfig {
@@ -228,6 +240,9 @@ impl ChainConfig {
             allow_fee_recipients: None,
 
             contract_deployer_allow_list_config: Some(ContractDeployerAllowListConfig::default()),
+            contract_native_minter_config: Some(ContractNativeMinterConfig::default()),
+            tx_allow_list_config: Some(TxAllowListConfig::default()),
+            fee_manager_config: Some(FeeManagerConfig::default()),
         }
     }
 }
@@ -269,11 +284,13 @@ impl Default for FeeConfig {
 /// ref. https://www.rapidtables.com/convert/number/hex-to-decimal.html
 pub const DEFAULT_GAS_LIMIT: u64 = 8000000;
 
+pub const DEFAULT_TARGET_BLOCK_RATE: u64 = 2;
+
 impl FeeConfig {
     pub fn default() -> Self {
         Self {
             gas_limit: Some(DEFAULT_GAS_LIMIT),
-            target_block_rate: Some(2),
+            target_block_rate: Some(DEFAULT_TARGET_BLOCK_RATE),
 
             min_base_fee: Some(25000000000),
             target_gas: Some(15000000),
@@ -287,13 +304,20 @@ impl FeeConfig {
 }
 
 /// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/contract_deployer_allow_list.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/upgradeable.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/params/precompile_config.go
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ContractDeployerAllowListConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub block_timestamp: Option<u64>,
     #[serde(rename = "adminAddresses", skip_serializing_if = "Option::is_none")]
     pub allow_list_admins: Option<Vec<String>>,
+
+    /// Timestamp for the upgrade.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_timestamp: Option<u64>,
+    /// Set to "true" for the upgrade to deactivate the precompile and reset its storage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable: Option<bool>,
 }
 
 impl Default for ContractDeployerAllowListConfig {
@@ -305,8 +329,108 @@ impl Default for ContractDeployerAllowListConfig {
 impl ContractDeployerAllowListConfig {
     pub fn default() -> Self {
         Self {
-            block_timestamp: Some(0),
             allow_list_admins: None,
+            block_timestamp: Some(0),
+            disable: Some(false),
+        }
+    }
+}
+
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/contract_native_minter.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/upgradeable.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/params/precompile_config.go
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractNativeMinterConfig {
+    #[serde(rename = "adminAddresses", skip_serializing_if = "Option::is_none")]
+    pub allow_list_admins: Option<Vec<String>>,
+
+    /// Timestamp for the upgrade.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_timestamp: Option<u64>,
+    /// Set to "true" for the upgrade to deactivate the precompile and reset its storage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable: Option<bool>,
+}
+
+impl Default for ContractNativeMinterConfig {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl ContractNativeMinterConfig {
+    pub fn default() -> Self {
+        Self {
+            allow_list_admins: None,
+            block_timestamp: Some(0),
+            disable: Some(false),
+        }
+    }
+}
+
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/tx_allow_list.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/upgradeable.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/params/precompile_config.go
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TxAllowListConfig {
+    #[serde(rename = "adminAddresses", skip_serializing_if = "Option::is_none")]
+    pub allow_list_admins: Option<Vec<String>>,
+
+    /// Timestamp for the upgrade.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_timestamp: Option<u64>,
+    /// Set to "true" for the upgrade to deactivate the precompile and reset its storage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable: Option<bool>,
+}
+
+impl Default for TxAllowListConfig {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl TxAllowListConfig {
+    pub fn default() -> Self {
+        Self {
+            allow_list_admins: None,
+            block_timestamp: Some(0),
+            disable: Some(false),
+        }
+    }
+}
+
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/fee_config_manager.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/precompile/upgradeable.go
+/// ref. https://github.com/ava-labs/subnet-evm/blob/master/params/precompile_config.go
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FeeManagerConfig {
+    #[serde(rename = "adminAddresses", skip_serializing_if = "Option::is_none")]
+    pub allow_list_admins: Option<Vec<String>>,
+
+    /// Timestamp for the upgrade.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_timestamp: Option<u64>,
+    /// Set to "true" for the upgrade to deactivate the precompile and reset its storage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable: Option<bool>,
+}
+
+impl Default for FeeManagerConfig {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl FeeManagerConfig {
+    pub fn default() -> Self {
+        Self {
+            allow_list_admins: None,
+            block_timestamp: Some(0),
+            disable: Some(false),
         }
     }
 }
