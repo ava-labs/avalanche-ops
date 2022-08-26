@@ -331,7 +331,7 @@ impl ContractDeployerAllowListConfig {
         Self {
             allow_list_admins: None,
             block_timestamp: Some(0),
-            disable: Some(false),
+            disable: None,
         }
     }
 }
@@ -364,7 +364,7 @@ impl ContractNativeMinterConfig {
         Self {
             allow_list_admins: None,
             block_timestamp: Some(0),
-            disable: Some(false),
+            disable: None,
         }
     }
 }
@@ -397,7 +397,7 @@ impl TxAllowListConfig {
         Self {
             allow_list_admins: None,
             block_timestamp: Some(0),
-            disable: Some(false),
+            disable: None,
         }
     }
 }
@@ -430,7 +430,7 @@ impl FeeManagerConfig {
         Self {
             allow_list_admins: None,
             block_timestamp: Some(0),
-            disable: Some(false),
+            disable: None,
         }
     }
 }
@@ -505,7 +505,10 @@ fn test_parse() {
                 "targetBlockRate": 2,
                 "blockGasCostStep": 200000
             },
-            "contractDeployerAllowListConfig": { "blockTimestamp": 0 }
+            "contractDeployerAllowListConfig": { "blockTimestamp": 0 },
+            "contractNativeMinterConfig": { "blockTimestamp": 0 },
+            "txAllowListConfig": { "blockTimestamp": 0 },
+            "feeManagerConfig": { "blockTimestamp": 0 }
         },
         "alloc": {
             "6f0f6DA1852857d7789f68a28bba866671f3880D": {
