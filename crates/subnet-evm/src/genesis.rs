@@ -239,10 +239,10 @@ impl ChainConfig {
             fee_config: Some(FeeConfig::default()),
             allow_fee_recipients: None,
 
-            contract_deployer_allow_list_config: Some(ContractDeployerAllowListConfig::default()),
-            contract_native_minter_config: Some(ContractNativeMinterConfig::default()),
-            tx_allow_list_config: Some(TxAllowListConfig::default()),
-            fee_manager_config: Some(FeeManagerConfig::default()),
+            contract_deployer_allow_list_config: None,
+            contract_native_minter_config: None,
+            tx_allow_list_config: None,
+            fee_manager_config: None,
         }
     }
 }
@@ -504,11 +504,7 @@ fn test_parse() {
                 "maxBlockGasCost": 1000000,
                 "targetBlockRate": 2,
                 "blockGasCostStep": 200000
-            },
-            "contractDeployerAllowListConfig": { "blockTimestamp": 0 },
-            "contractNativeMinterConfig": { "blockTimestamp": 0 },
-            "txAllowListConfig": { "blockTimestamp": 0 },
-            "feeManagerConfig": { "blockTimestamp": 0 }
+            }
         },
         "alloc": {
             "6f0f6DA1852857d7789f68a28bba866671f3880D": {
