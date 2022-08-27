@@ -27,7 +27,7 @@ id-manager = "0.0.1"
 lazy_static = "1.4.0"
 log = "0.4.17"
 prefix-manager = "0.0.2"
-prometheus-manager = "0.0.10"
+prometheus-manager = "0.0.11"
 random-manager = "0.0.1"
 rust-embed = "6.4.0"
 serde = { version = "1.0.144", features = ["derive"] }
