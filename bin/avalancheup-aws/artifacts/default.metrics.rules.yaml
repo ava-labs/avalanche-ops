@@ -11,12 +11,11 @@ filters:
 
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_blks_(accepted|rejected|built|processing)[\s\S]*$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_vm_metervm_parse_block_(count|sum)$
-  - regex: ^avalanche_(C|P|X)_benchlist_benched_num$
-  - regex: ^avalanche_(C|P|X)_polls_[\s\S]*$
-  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_handler_get_accepted_(count|sum)$
-  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_last_accepted_height$
-  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_polls_successful$
-  - regex: ^avalanche_(([0-9a-zA-Z]+)+){40,}_vm_eth_rpc_(failure|requests|success)$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_benchlist_benched_num$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_polls_[\s\S]*$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_(app_gossip|get_accepted|gossip_request)_(count|sum)$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_last_accepted_height$
+  - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_rpc_(failure|requests|success)$
 
   - regex: ^avalanche_db_(put|delete|compact|get|batch_(write|put))_(count|sum)$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_db_(put|delete|compact|get|batch_(write|put))_(count|sum)$
