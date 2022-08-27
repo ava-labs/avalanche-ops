@@ -66,9 +66,10 @@ pub struct Genesis {
 /// On the X-Chain, one AVAX is 10^9  units.
 /// On the P-Chain, one AVAX is 10^9  units.
 /// On the C-Chain, one AVAX is 10^18 units.
-/// "0x52B7D2DCC80CD2E4000000" is "100000000000000000000000000" (100,000,000 AVAX).
+/// "0x204FCE5E3E25026110000000" is "10000000000000000000000000000" (10,000,000,000 AVAX).
+/// ref. https://www.rapidtables.com/convert/number/decimal-to-hex.html
 /// ref. https://www.rapidtables.com/convert/number/hex-to-decimal.html
-pub const DEFAULT_INITIAL_AMOUNT: &str = "0x52B7D2DCC80CD2E4000000";
+pub const DEFAULT_INITIAL_AMOUNT: &str = "0x204FCE5E3E25026110000000";
 
 impl Default for Genesis {
     fn default() -> Self {
@@ -508,7 +509,7 @@ fn test_parse() {
         },
         "alloc": {
             "6f0f6DA1852857d7789f68a28bba866671f3880D": {
-                "balance": "0x52B7D2DCC80CD2E4000000"
+                "balance": "0x204FCE5E3E25026110000000"
             }
         },
         "nonce": "0x0",
