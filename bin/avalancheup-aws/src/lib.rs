@@ -434,6 +434,10 @@ pub struct DefaultSpecOption {
 
     pub enable_subnet_evm: bool,
 
+    pub auto_contract_deployer_allow_list_config: bool,
+    pub auto_contract_native_minter_config: bool,
+    pub auto_fee_manager_config: bool,
+
     pub spec_file_path: String,
 }
 
@@ -694,20 +698,26 @@ impl Spec {
 
                 let mut chain_config = subnet_evm_genesis::ChainConfig::default();
 
-                chain_config.contract_deployer_allow_list_config =
-                    Some(subnet_evm_genesis::ContractDeployerAllowListConfig {
-                        allow_list_admins: Some(admin_addresses.clone()),
-                        ..subnet_evm_genesis::ContractDeployerAllowListConfig::default()
+                if opts.auto_contract_deployer_allow_list_config {
+                    chain_config.contract_deployer_allow_list_config =
+                        Some(subnet_evm_genesis::ContractDeployerAllowListConfig {
+                            allow_list_admins: Some(admin_addresses.clone()),
+                            ..subnet_evm_genesis::ContractDeployerAllowListConfig::default()
+                        });
+                }
+                if opts.auto_contract_native_minter_config {
+                    chain_config.contract_native_minter_config =
+                        Some(subnet_evm_genesis::ContractNativeMinterConfig {
+                            allow_list_admins: Some(admin_addresses.clone()),
+                            ..subnet_evm_genesis::ContractNativeMinterConfig::default()
+                        });
+                }
+                if opts.auto_fee_manager_config {
+                    chain_config.fee_manager_config = Some(subnet_evm_genesis::FeeManagerConfig {
+                        allow_list_admins: Some(admin_addresses),
+                        ..subnet_evm_genesis::FeeManagerConfig::default()
                     });
-                chain_config.contract_native_minter_config =
-                    Some(subnet_evm_genesis::ContractNativeMinterConfig {
-                        allow_list_admins: Some(admin_addresses.clone()),
-                        ..subnet_evm_genesis::ContractNativeMinterConfig::default()
-                    });
-                chain_config.fee_manager_config = Some(subnet_evm_genesis::FeeManagerConfig {
-                    allow_list_admins: Some(admin_addresses),
-                    ..subnet_evm_genesis::FeeManagerConfig::default()
-                });
+                }
 
                 genesis.config = Some(chain_config);
 

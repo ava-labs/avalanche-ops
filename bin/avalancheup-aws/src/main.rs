@@ -117,6 +117,12 @@ fn main() {
 
                 enable_subnet_evm: sub_matches.is_present("ENABLE_SUBNET_EVM"),
 
+                auto_contract_deployer_allow_list_config: sub_matches
+                    .is_present("AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
+                auto_contract_native_minter_config: sub_matches
+                    .is_present("AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
+                auto_fee_manager_config: sub_matches.is_present("AUTO_FEE_MANAGER_CONFIG"),
+
                 spec_file_path: sub_matches
                     .value_of("SPEC_FILE_PATH")
                     .unwrap_or("")

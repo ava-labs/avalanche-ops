@@ -261,6 +261,30 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG")
+                .long("auto-contract-deployer-allow-list-config")
+                .help("Sets to auto-populate subnet-evm allow list config")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AUTO_CONTRACT_NATIVE_MINTER_CONFIG")
+                .long("auto-contract-native-minter-config")
+                .help("Sets to auto-populate subnet-evm native minter config")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("AUTO_FEE_MANAGER_CONFIG")
+                .long("auto-fee-manager-config")
+                .help("Sets to auto-populate subnet-evm fee manager config")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
