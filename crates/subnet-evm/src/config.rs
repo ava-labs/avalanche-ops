@@ -147,6 +147,8 @@ impl Config {
                 "internal-public-eth".to_string(),
                 "internal-public-blockchain".to_string(),
                 "internal-public-transaction-pool".to_string(),
+                "internal-public-tx-pool".to_string(),
+                "internal-public-debug".to_string(),
             ]),
 
             continuous_profiler_dir: None,
