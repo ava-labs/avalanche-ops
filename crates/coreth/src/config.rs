@@ -10,8 +10,13 @@ use serde::{Deserialize, Serialize};
 
 /// To be persisted in "chain_config_dir".
 /// ref. https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config
-/// ref. https://github.com/ava-labs/coreth/blob/v0.8.6/plugin/evm/config.go
+/// ref. https://github.com/ava-labs/coreth/blob/v0.8.16/plugin/evm/config.go
 /// ref. https://serde.rs/container-attrs.html
+///
+/// If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+/// the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json
+/// ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
+///
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Config {
@@ -148,7 +153,7 @@ impl Config {
             rpc_tx_fee_cap: None,
 
             preimages_enabled: None,
-            pruning_enabled: None,
+            pruning_enabled: Some(true),
             snapshot_async: None,
             snapshot_verification_enabled: None,
 

@@ -15,7 +15,7 @@ use coreth::config as coreth_config;
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use subnet_evm::genesis as subnet_evm_genesis;
+use subnet_evm::{config as subnet_evm_config, genesis as subnet_evm_genesis};
 
 /// Represents each anchor/non-anchor node.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -245,6 +245,8 @@ pub struct Spec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_genesis: Option<subnet_evm_genesis::Genesis>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subnet_evm_config: Option<subnet_evm_config::Config>,
 
     /// Generated key info with locked P-chain balance with
     /// initial stake duration in genesis.
@@ -682,7 +684,7 @@ impl Spec {
             Some(generated_seed_key_infos[0].clone());
         let generated_seed_private_keys = Some(generated_seed_key_infos[1..].to_vec());
 
-        let subnet_evm_genesis = {
+        let (subnet_evm_genesis, subnet_evm_config) = {
             if opts.enable_subnet_evm {
                 let mut subnet_evm_seed_allocs = BTreeMap::new();
                 let mut admin_addresses: Vec<String> = Vec::new();
@@ -693,11 +695,11 @@ impl Spec {
                     );
                     admin_addresses.push(key_info.eth_address.clone());
                 }
+
                 let mut genesis = subnet_evm_genesis::Genesis::default();
                 genesis.alloc = Some(subnet_evm_seed_allocs);
 
                 let mut chain_config = subnet_evm_genesis::ChainConfig::default();
-
                 if opts.auto_contract_deployer_allow_list_config {
                     chain_config.contract_deployer_allow_list_config =
                         Some(subnet_evm_genesis::ContractDeployerAllowListConfig {
@@ -718,12 +720,13 @@ impl Spec {
                         ..subnet_evm_genesis::FeeManagerConfig::default()
                     });
                 }
-
                 genesis.config = Some(chain_config);
 
-                Some(genesis)
+                let subnet_evm_config = subnet_evm_config::Config::default();
+
+                (Some(genesis), Some(subnet_evm_config))
             } else {
-                None
+                (None, None)
             }
         };
 
@@ -799,6 +802,7 @@ impl Spec {
             avalanchego_genesis_template,
 
             subnet_evm_genesis,
+            subnet_evm_config,
 
             generated_seed_private_key_with_locked_p_chain_balance,
             generated_seed_private_keys,
@@ -916,6 +920,14 @@ impl Spec {
                     "'machine.non_anchor_nodes' must be 1 (set to {}) in order to maximize the benefit of static EBS provision per AZ",
                     self.machine.non_anchor_nodes
                 ),
+            ));
+        }
+
+        if self.subnet_evm_config.is_some() && self.avalanchego_config.whitelisted_subnets.is_none()
+        {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "'subnet_evm_config' is some but 'avalanchego_config.whitelisted_subnets' is none",
             ));
         }
 
@@ -1173,6 +1185,7 @@ coreth_config:
         avalanchego_genesis_template: None,
 
         subnet_evm_genesis: None,
+        subnet_evm_config: None,
 
         generated_seed_private_key_with_locked_p_chain_balance: None,
         generated_seed_private_keys: None,
