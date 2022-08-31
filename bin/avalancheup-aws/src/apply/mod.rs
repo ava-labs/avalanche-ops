@@ -1523,7 +1523,7 @@ $ cat /tmp/{node_id}.crt
             stdout(),
             SetForegroundColor(Color::Green),
             Print(format!(
-                "mkdir -p {} && cp {} {} && cat {}\n",
+                "sudo mkdir -p {} && sudo cp {} {} && cat {}\n",
                 dir2.display(),
                 path1.display(),
                 path2.display(),

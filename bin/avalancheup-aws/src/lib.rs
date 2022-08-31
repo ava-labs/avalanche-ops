@@ -1118,6 +1118,7 @@ avalanchego_config:
 coreth_config:
   coreth-admin-api-enabled: true
   metrics-enabled: true
+  pruning-enabled: true
   log-level: "info"
   log-json-format: true
   eth-apis:
