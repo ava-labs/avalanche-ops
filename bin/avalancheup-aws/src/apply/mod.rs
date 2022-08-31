@@ -1419,12 +1419,10 @@ $ cat /tmp/{node_id}.crt
         log::warn!("no current nodes found in spec");
     }
 
-    if spec.subnet_evm_genesis.is_some() {
+    if let Some(subnet_evm_genesis) = &spec.subnet_evm_genesis {
         let subnet_evm_genesis_file_path =
             dir_manager::home::named(&spec.id, Some(".subnet-evm.genesis.json"));
-        let subnet_evm_genesis = spec
-            .subnet_evm_genesis
-            .expect("unexpected None subnet_evm_genesis");
+
         println!();
         subnet_evm_genesis
             .sync(&subnet_evm_genesis_file_path)
@@ -1504,6 +1502,42 @@ $ cat /tmp/{node_id}.crt
                 "subnet-cli wizard \\\n--enable-prompt \\\n--private-key-path=/tmp/test.key \\\n--public-uri={} \\\n--vm-genesis-path={} \\\n--vm-id=srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\\n--chain-name=subnetevm \\\n--node-ids=\"{}\"\n",
                 http_rpc, subnet_evm_genesis_file_path, all_node_ids.join(",")
             )),
+            ResetColor
+        )?;
+    }
+
+    if spec.subnet_evm_config.is_some() {
+        let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
+        let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
+        let path1 = Path::new(&chain_config_dir)
+            .join(whitelisted_subnet)
+            .join("config.json");
+        let dir2 = Path::new(&chain_config_dir).join("CREATED_BLOCKCHAIN_ID");
+        let path2 = Path::new(&chain_config_dir)
+            .join("CREATED_BLOCKCHAIN_ID")
+            .join("config.json");
+
+        println!();
+        println!("# [optional] run the following in remote machines to install subnet-evm config");
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "mkdir -p {} && cp {} {} && cat {}\n",
+                dir2.display(),
+                path1.display(),
+                path2.display(),
+                path2.display()
+            )),
+            ResetColor
+        )?;
+
+        println!();
+        println!("# [optional] start the avalanche process to reload the chain config");
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("sudo systemctl restart --no-block avalanche.service\n"),
             ResetColor
         )?;
     }

@@ -27,5 +27,6 @@ infra-aws = { path = "../../infra-aws" }
 lazy_static = "1.4.0"
 log = "0.4.17"
 random-manager = "0.0.1"
+subnet-evm = { path = "../../crates/subnet-evm" }
 tempfile = "3.3.0"
 tokio = { version = "1.20.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases

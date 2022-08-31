@@ -237,6 +237,7 @@ pub const DEFAULT_API_HEALTH_ENABLED: bool = true;
 pub const DEFAULT_API_IPCS_ENABLED: bool = true;
 
 /// ref. https://github.com/ava-labs/avalanchego/blob/v1.7.18/config/flags.go#L35-L52
+/// ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
 pub const DEFAULT_CHAIN_CONFIG_DIR: &str = "/data/avalanche-configs/chains";
 pub const DEFAULT_SUBNET_CONFIG_DIR: &str = "/data/avalanche-configs/subnets";
 
