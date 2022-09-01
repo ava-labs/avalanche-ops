@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 rust-version = "1.63"
 
@@ -18,7 +18,7 @@ aws-manager = "0.0.16"
 aws-sdk-cloudwatch = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
-clap = { version = "3.2.18", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "3.2.19", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }
