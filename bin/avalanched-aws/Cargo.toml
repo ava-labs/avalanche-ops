@@ -14,11 +14,11 @@ avalanche-sdk = { version = "0.0.22" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.29", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = "0.0.15"
-aws-sdk-cloudwatch = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-ec2 = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-s3 = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
-clap = { version = "3.2.17", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+aws-manager = "0.0.16"
+aws-sdk-cloudwatch = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-ec2 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-s3 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
+clap = { version = "3.2.18", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }
