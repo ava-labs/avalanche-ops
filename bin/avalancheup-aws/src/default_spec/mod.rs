@@ -261,24 +261,33 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG")
-                .long("auto-contract-deployer-allow-list-config")
+            Arg::new("SUBNET_EVM_GAS_LIMIT")
+                .long("subnet-evm-gas-limit")
+                .help("Sets subnet-evm gas limit")
+                .required(false)
+                .takes_value(true)
+                .default_value("8000000")
+                .allow_invalid_utf8(false),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG")
+                .long("subnet-evm-auto-contract-deployer-allow-list-config")
                 .help("Sets to auto-populate subnet-evm allow list config")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AUTO_CONTRACT_NATIVE_MINTER_CONFIG")
-                .long("auto-contract-native-minter-config")
+            Arg::new("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG")
+                .long("subnet-evm-auto-contract-native-minter-config")
                 .help("Sets to auto-populate subnet-evm native minter config")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AUTO_FEE_MANAGER_CONFIG")
-                .long("auto-fee-manager-config")
+            Arg::new("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG")
+                .long("subnet-evm-auto-fee-manager-config")
                 .help("Sets to auto-populate subnet-evm fee manager config")
                 .required(false)
                 .takes_value(false)

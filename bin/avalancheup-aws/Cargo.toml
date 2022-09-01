@@ -16,6 +16,7 @@ aws-manager = "0.0.15"
 aws-sdk-cloudformation = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.17.0" # https://github.com/awslabs/aws-sdk-rust/releases
+big-num-manager = "0.0.1"
 clap = { version = "3.2.17", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }

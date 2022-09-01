@@ -27,6 +27,9 @@ fn main() {
             let preferred_az_index = sub_matches.value_of("PREFERRED_AZ_INDEX").unwrap_or("0");
             let preferred_az_index = preferred_az_index.parse::<usize>().unwrap();
 
+            let subnet_evm_gas_limit = sub_matches.value_of("SUBNET_EVM_GAS_LIMIT").unwrap_or("0");
+            let subnet_evm_gas_limit = subnet_evm_gas_limit.parse::<u64>().unwrap();
+
             let opt = avalancheup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .value_of("LOG_LEVEL")
@@ -117,11 +120,13 @@ fn main() {
 
                 enable_subnet_evm: sub_matches.is_present("ENABLE_SUBNET_EVM"),
 
-                auto_contract_deployer_allow_list_config: sub_matches
-                    .is_present("AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
-                auto_contract_native_minter_config: sub_matches
-                    .is_present("AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
-                auto_fee_manager_config: sub_matches.is_present("AUTO_FEE_MANAGER_CONFIG"),
+                subnet_evm_gas_limit,
+                subnet_evm_auto_contract_deployer_allow_list_config: sub_matches
+                    .is_present("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
+                subnet_evm_auto_contract_native_minter_config: sub_matches
+                    .is_present("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
+                subnet_evm_auto_fee_manager_config: sub_matches
+                    .is_present("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG"),
 
                 spec_file_path: sub_matches
                     .value_of("SPEC_FILE_PATH")
