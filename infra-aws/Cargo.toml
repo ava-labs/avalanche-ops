@@ -14,8 +14,8 @@ http-manager = "0.0.1"
 log = "0.4.17"
 random-manager = "0.0.1"
 rust-embed = "6.4.0"
-serde_yaml = "0.9.10" # https://github.com/dtolnay/serde-yaml/releases
-tokio = { version = "1.20.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+serde_yaml = "0.9.11" # https://github.com/dtolnay/serde-yaml/releases
+tokio = { version = "1.21.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
 cmp-manager = "0.0.1"
