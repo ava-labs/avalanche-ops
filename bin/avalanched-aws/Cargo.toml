@@ -18,7 +18,7 @@ aws-manager = "0.0.16"
 aws-sdk-cloudwatch = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
-clap = { version = "3.2.19", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "3.2.20", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }
@@ -29,4 +29,4 @@ log = "0.4.17"
 random-manager = "0.0.1"
 subnet-evm = { path = "../../crates/subnet-evm" }
 tempfile = "3.3.0"
-tokio = { version = "1.20.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.21.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
