@@ -68,7 +68,6 @@ Contributions are welcome!
 - Support mainnet fork
 - Failure injection testing
 - Stress testing
-- Avalanche metrics collection
 - Better Avalanche node health checks
 - Support ARM
 - Support Raspberry Pi
