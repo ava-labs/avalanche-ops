@@ -1,5 +1,5 @@
 
-**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.1.6**
+**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.1.8**
 
 ## Example: set up custom network on AWS
 
@@ -155,14 +155,16 @@ To look at the `subnet-vm` logs:
 
 ![example-aws/44](./img/example-aws/44.png)
 
+![example-aws/45](./img/example-aws/45.png)
+
 <hr>
 
 To shut down the network, run `avalancheup-aws delete` command:
 
-![example-aws/45](./img/example-aws/45.png)
-
 ![example-aws/46](./img/example-aws/46.png)
 
 ![example-aws/47](./img/example-aws/47.png)
+
+![example-aws/48](./img/example-aws/48.png)
 
 <hr>
