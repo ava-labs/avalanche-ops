@@ -10,8 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-installer = "0.0.5"
-avalanche-sdk = { version = "0.0.22" } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.29", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
+avalanche-sdk = { version = "0.0.23" } # https://crates.io/crates/avalanche-sdk
+avalanche-types = { version = "0.0.30", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
 aws-manager = "0.0.17"
