@@ -225,4 +225,24 @@ impl Config {
 
         Ok(())
     }
+
+    pub fn load(file_path: &str) -> io::Result<Self> {
+        info!("loading coreth config from {}", file_path);
+
+        if !Path::new(file_path).exists() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("file {} does not exists", file_path),
+            ));
+        }
+
+        let f = File::open(&file_path).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", file_path, e),
+            )
+        })?;
+        serde_json::from_reader(f)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid JSON: {}", e)))
+    }
 }
