@@ -556,7 +556,7 @@ impl Config {
     }
 
     pub fn load(file_path: &str) -> io::Result<Self> {
-        info!("loading config from {}", file_path);
+        info!("loading avalanchego config from {}", file_path);
 
         if !Path::new(file_path).exists() {
             return Err(Error::new(

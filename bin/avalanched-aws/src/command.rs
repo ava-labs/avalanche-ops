@@ -583,7 +583,18 @@ async fn download_spec(
     .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
 
     let mut spec = avalancheup_aws::Spec::load(&tmp_spec_file_path)?;
-    spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
+
+    if let Some(config_file) = &spec.avalanchego_config.config_file {
+        if Path::new(&config_file).exists() {
+            log::info!("config-file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", config_file);
+            spec.avalanchego_config = avalanchego::config::Config::load(&config_file)?;
+            spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
+        } else {
+            spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
+        }
+    } else {
+        spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
+    }
     spec.avalanchego_config.sync(None)?;
 
     fs::copy(&tmp_spec_file_path, &avalancheup_spec_path)?;
@@ -603,6 +614,14 @@ fn write_default_avalanche_config(
         5 => avalanchego::config::Config::default_fuji(),
         _ => avalanchego::config::Config::default_custom(),
     };
+
+    if let Some(config_file) = &avalanchego_config.config_file {
+        if Path::new(&config_file).exists() {
+            log::info!("config-file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", config_file);
+            return avalanchego::config::Config::load(&config_file);
+        };
+    }
+
     avalanchego_config.network_id = network_id;
     avalanchego_config.public_ip = Some(public_ipv4.to_string());
     avalanchego_config.sync(None)?;
@@ -619,6 +638,10 @@ fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::con
 
     let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
     let chain_config_c_path = Path::new(chain_config_dir).join("C").join("config.json");
+    if chain_config_c_path.exists() {
+        log::info!("C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
+        return coreth::config::Config::load(chain_config_c_path.display().to_string().as_str());
+    };
 
     default_config.sync(&tmp_path)?;
     fs::copy(&tmp_path, &chain_config_c_path)?;
@@ -642,16 +665,20 @@ fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()>
     // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
     // ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
     let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
-    let chain_config_path = Path::new(&chain_config_dir).join("C").join("config.json");
+    let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
+    if chain_config_c_path.exists() {
+        log::info!("C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
+        return Ok(());
+    };
 
     spec.coreth_config.sync(&tmp_path)?;
 
-    fs::copy(&tmp_path, &chain_config_path)?;
+    fs::copy(&tmp_path, &chain_config_c_path)?;
     fs::remove_file(&tmp_path)?;
 
     log::info!(
         "saved coreth config file to {:?}",
-        chain_config_path.as_os_str()
+        chain_config_c_path.as_os_str()
     );
 
     Ok(())
