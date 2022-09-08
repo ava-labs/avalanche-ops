@@ -169,7 +169,7 @@ For example:
 
 ```bash
 cd ${HOME}/avalanche-ops/cdk/avalancheup-aws
-export PUBLIC_SUBNET_IDS='subnet-06ce3c98602516acc,subnet-03c083786012c6fd3,subnet-05cecdb698fe3d08a';
+export PUBLIC_SUBNET_IDS='subnet-0fbebd0c4c9b5b279,subnet-0639ef980e9b04daa,subnet-08342c679e80f033f';
 CDK_REGION=us-west-2 \
 CDK_ACCOUNT=931867039610 \
 ID=my-cluster-id \
@@ -178,9 +178,9 @@ S3_BUCKET_NAME=avalancheup-aws-test-bucket-with-cdk \
 EC2_KEY_PAIR_NAME=avalancheup-aws-test-ec2-key-with-cdk \
 AAD_TAG=my-add-tag \
 INSTANCE_PROFILE_ARN=arn:aws:iam::931867039610:instance-profile/my-cluster-id-instance-profile \
-SECURITY_GROUP_ID=sg-0cadbe3e451d96ae3 \
+SECURITY_GROUP_ID=sg-0563ba3fe3bed012b \
 NETWORK_ID=5 \
-NLB_VPC_ID=vpc-0cb407f61ef5f743b \
+NLB_VPC_ID=vpc-095b0c9cc6ce9ba55 \
 npx cdk deploy avalancheup-aws-asg-stack
 ```
 
