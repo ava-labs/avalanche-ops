@@ -917,6 +917,15 @@ cd ${HOME}/avalanche-ops
 --network-name mainnet \
 --avalanchego-log-level INFO
 
+
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--network-name mainnet \
+--use-spot-instance \
+--avalanchego-log-level INFO
+
+
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws apply --spec-file-path [YOUR_SPEC_PATH]
 ```
