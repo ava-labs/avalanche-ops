@@ -1132,6 +1132,7 @@ coreth_config:
   pruning-enabled: true
   log-level: "info"
   log-json-format: true
+  state-sync-enabled: true
   eth-apis:
   - eth
   - eth-filter
