@@ -185,7 +185,7 @@ impl Config {
 
             max_outbound_active_requests: None,
 
-            state_sync_enabled: None,
+            state_sync_enabled: Some(true),
             state_sync_metrics_enabled: None,
             state_sync_server_trie_cache: None,
             state_sync_ids: None,
