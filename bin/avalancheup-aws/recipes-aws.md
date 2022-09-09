@@ -156,6 +156,34 @@ avalancheup-aws delete --spec-file-path spec.yaml
 - If `avalancheup-aws default-spec --spec-file-path` is **non-empty**, test ID is set based on the file name.
 - If `avalancheup-aws default-spec --spec-file-path` is **not specified (empty)**, test ID is auto-generated.
 
+### Cheapest way to run a validator
+
+```bash
+cd ${HOME}/avalanche-ops
+./scripts/build.release.sh
+
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--network-name fuji \
+--use-spot-instance \
+--disable-nlb \
+--avalanchego-log-level INFO
+```
+
+```bash
+cd ${HOME}/avalanche-ops
+./scripts/build.release.sh
+
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--network-name mainnet \
+--use-spot-instance \
+--disable-nlb \
+--avalanchego-log-level INFO
+```
+
 ### Custom network with NO initial database state
 
 ```bash
