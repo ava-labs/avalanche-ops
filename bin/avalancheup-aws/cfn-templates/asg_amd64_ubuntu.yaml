@@ -277,6 +277,7 @@ Conditions:
   # for both anchor- and non-anchor nodes
   CreateNlb:
     Fn::And:
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
       - Condition: NlbDisabledFalse
       - Condition: NlbTargetGroupArnEmpty
 
@@ -284,6 +285,7 @@ Conditions:
   # for both anchor- and non-anchor nodes
   HasNlbAcmCertificateArn:
     Fn::And:
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
       - Condition: CreateNlb
       - Fn::Not:
           - Condition: NlbAcmCertificateArnEmpty
