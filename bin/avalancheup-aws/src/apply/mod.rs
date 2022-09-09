@@ -1295,7 +1295,7 @@ aws ssm start-session --region {} --target {}
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n"),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
         ResetColor
     )?;
     // TODO: check "/ext/info"
@@ -1325,10 +1325,7 @@ aws ssm start-session --region {} --target {}
 
         spec.endpoints = Some(dns_endpoints.clone());
 
-        println!(
-            "\n{}",
-            spec.endpoints.clone().unwrap().encode_yaml().unwrap()
-        );
+        println!("{}", spec.endpoints.clone().unwrap().encode_yaml().unwrap());
     }
 
     spec.sync(spec_file_path)?;
