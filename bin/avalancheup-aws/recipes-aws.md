@@ -242,6 +242,7 @@ cd ${HOME}/avalanche-ops
 --network-name custom \
 --use-spot-instance \
 --disable-nlb \
+--volume-size-in-gb 300 \
 --avalanchego-log-level INFO
 ```
 
@@ -252,6 +253,7 @@ cd ${HOME}/avalanche-ops
 --network-name fuji \
 --use-spot-instance \
 --disable-nlb \
+--volume-size-in-gb 400 \
 --avalanchego-log-level INFO
 ```
 
@@ -262,6 +264,7 @@ cd ${HOME}/avalanche-ops
 --network-name mainnet \
 --use-spot-instance \
 --disable-nlb \
+--volume-size-in-gb 500 \
 --avalanchego-log-level INFO
 ```
 
