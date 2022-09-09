@@ -258,7 +258,7 @@ Conditions:
       - Ref: InstanceTypesCount
       - 4
 
-  NlbDisabledFalse:
+  NlbEnabled:
     Fn::Equals:
       - Ref: NlbDisabled
       - "false"
@@ -278,7 +278,7 @@ Conditions:
   CreateNlb:
     Fn::And:
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
-      - Condition: NlbDisabledFalse
+      - Condition: NlbEnabled
       - Condition: NlbTargetGroupArnEmpty
 
   # only create 1 HTTPs listener once
@@ -493,9 +493,6 @@ Resources:
               sudo systemctl enable avalanched.service
               sudo systemctl start --no-block avalanched.service
 
-              # TODO: download metrics spec
-              # TODO: set and run telemetry agent
-
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
               mkdir -p /tmp/install-cloudwatch-logs
               pushd /tmp/install-cloudwatch-logs
@@ -560,7 +557,7 @@ Resources:
             - CreateNlb
             - !Ref NLBTargetGroup
             - Fn::If:
-                - NlbDisabledFalse
+                - NlbEnabled
                 - !Ref NlbTargetGroupArn
                 - !Ref AWS::NoValue
       HealthCheckType: EC2

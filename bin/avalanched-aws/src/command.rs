@@ -846,7 +846,10 @@ fn create_cloudwatch_config(
 
         config_file_path: cloudwatch_config_file_path.to_string(),
     };
-    cw_config_manager.sync(Some(vec![String::from("/var/log/avalanched.log")]))
+    cw_config_manager.sync(Some(vec![
+        String::from("/var/log/avalanched.log"),
+        String::from("/var/log/avalanche-telemetry-cloudwatch.log"),
+    ]))
 }
 
 async fn find_attached_volume(
@@ -1294,8 +1297,8 @@ Restart=always
 RestartSec=5s
 LimitNOFILE=40000
 ExecStart={} --log-level=info --initial-wait-seconds=10 --fetch-interval-seconds=60 --rules-file-path={} --namespace={} --rpc-endpoint=http://localhost:{}
-StandardOutput=append:/var/log/avalanche/avalanche-telemetry-cloudwatch.log
-StandardError=append:/var/log/avalanche/avalanche-telemetry-cloudwatch.log
+StandardOutput=append:/var/log/avalanche-telemetry-cloudwatch.log
+StandardError=append:/var/log/avalanche-telemetry-cloudwatch.log
 
 [Install]
 WantedBy=multi-user.target",

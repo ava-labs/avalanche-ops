@@ -51,7 +51,7 @@ impl ConfigManager {
 
         if let Some(v) = log_files {
             for f in v {
-                // "/var/log/avalanched.log" becomes "avalanched.log"
+                // e.g., "/var/log/avalanched.log" becomes "avalanched.log"
                 let fname = Path::new(&f)
                     .file_name()
                     .unwrap()
