@@ -258,26 +258,35 @@ Conditions:
       - Ref: InstanceTypesCount
       - 4
 
+  NlbDisabledFalse:
+    Fn::Equals:
+      - Ref: NlbDisabled
+      - "false"
+
+  NlbTargetGroupArnEmpty:
+    Fn::Equals:
+      - Ref: NlbTargetGroupArn
+      - ""
+
+  NlbAcmCertificateArnEmpty:
+    Fn::Equals:
+      - Ref: NlbAcmCertificateArn
+      - ""
+
   # only create 1 NLB once
   # for both anchor- and non-anchor nodes
   CreateNlb:
     Fn::And:
-      - Fn::Equals:
-          - Ref: NlbTargetGroupArn
-          - ""
-      - Fn::Equals:
-          - Ref: NlbDisabled
-          - "false"
+      - Condition: NlbDisabledFalse
+      - Condition: NlbTargetGroupArnEmpty
 
   # only create 1 HTTPs listener once
   # for both anchor- and non-anchor nodes
   HasNlbAcmCertificateArn:
     Fn::And:
-      - CreateNlb
+      - Condition: CreateNlb
       - Fn::Not:
-          - Fn::Equals:
-              - Ref: NlbAcmCertificateArn
-              - ""
+          - Condition: NlbAcmCertificateArnEmpty
 
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
@@ -549,9 +558,7 @@ Resources:
             - CreateNlb
             - !Ref NLBTargetGroup
             - Fn::If:
-                - Fn::Equals:
-                    - Ref: NlbDisabled
-                    - "false"
+                - NlbDisabledFalse
                 - !Ref NlbTargetGroupArn
                 - !Ref AWS::NoValue
       HealthCheckType: EC2
