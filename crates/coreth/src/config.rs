@@ -122,6 +122,9 @@ pub const DEFAULT_METRICS_ENABLED: bool = true;
 pub const DEFAULT_LOG_LEVEL: &str = "info";
 pub const DEFAULT_LOG_JSON_FORMAT: bool = true;
 
+/// ref. https://docs.avax.network/nodes/maintain/run-offline-pruning
+pub const DEFAULT_OFFLINE_PRUNING_DATA_DIR: &str = "/data/c-chain-offline-pruning";
+
 impl Default for Config {
     fn default() -> Self {
         Self::default()
@@ -179,9 +182,9 @@ impl Config {
             log_level: Some(String::from(DEFAULT_LOG_LEVEL)),
             log_json_format: Some(DEFAULT_LOG_JSON_FORMAT),
 
-            offline_pruning_enabled: None,
+            offline_pruning_enabled: Some(false),
             offline_pruning_bloom_filter_size: None,
-            offline_pruning_data_directory: None,
+            offline_pruning_data_directory: Some(String::from(DEFAULT_OFFLINE_PRUNING_DATA_DIR)),
 
             max_outbound_active_requests: None,
 
