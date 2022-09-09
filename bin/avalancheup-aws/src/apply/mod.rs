@@ -1326,7 +1326,7 @@ aws ssm start-session --region {} --target {}
         spec.endpoints = Some(dns_endpoints.clone());
 
         println!(
-            "\n{}\n",
+            "\n{}",
             spec.endpoints.clone().unwrap().encode_yaml().unwrap()
         );
     }
