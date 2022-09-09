@@ -134,7 +134,7 @@ pub fn command() -> Command<'static> {
                 .help("Sets initial volume size in GB")
                 .required(false)
                 .takes_value(true)
-                .default_value("500")
+                .default_value("300")
                 .allow_invalid_utf8(false),
         )
         .arg(
