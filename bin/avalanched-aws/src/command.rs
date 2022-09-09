@@ -86,32 +86,41 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         log::warn!("skipping writing avalanche-telemetry-cloudwatch rules file (already exists)")
     }
 
-    if download_avalanchego_from_github {
-        install_avalanche_from_github(
-            &tags.os_type.clone(),
-            &tags.arch_type.clone(),
-            &tags.avalanche_bin_path.clone(),
-        )
-        .await?;
+    // do not overwrite "avalanchego" binary
+    if !Path::new(&tags.avalanche_bin_path).exists() {
+        if download_avalanchego_from_github {
+            install_avalanche_from_github(
+                &tags.os_type.clone(),
+                &tags.arch_type.clone(),
+                &tags.avalanche_bin_path.clone(),
+            )
+            .await?;
+        } else {
+            install_avalanche_from_s3(
+                Arc::clone(&s3_manager_arc),
+                &tags.s3_bucket,
+                &tags.id,
+                &tags.avalanche_bin_path.clone(),
+            )
+            .await?;
+        }
     } else {
-        install_avalanche_from_s3(
-            Arc::clone(&s3_manager_arc),
-            &tags.s3_bucket,
-            &tags.id,
-            &tags.avalanche_bin_path.clone(),
-        )
-        .await?;
+        log::warn!("skipping downloading avalanche binary (already exists)")
     }
 
-    create_cloudwatch_config(
-        &tags.id,
-        tags.node_kind.clone(),
-        &avalanchego_config.log_dir,
-        true,
-        true,
-        &tags.avalanche_data_volume_path,
-        &tags.cloudwatch_config_file_path,
-    )?;
+    if !Path::new(&tags.cloudwatch_config_file_path).exists() {
+        create_cloudwatch_config(
+            &tags.id,
+            tags.node_kind.clone(),
+            &avalanchego_config.log_dir,
+            true,
+            true,
+            &tags.avalanche_data_volume_path,
+            &tags.cloudwatch_config_file_path,
+        )?;
+    } else {
+        log::warn!("skipping writing cloudwatch config (already exists)")
+    }
 
     let attached_volume = find_attached_volume(
         Arc::clone(&ec2_manager_arc),
@@ -177,39 +186,37 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             }
             if tag_exists {
                 log::warn!(
-                    "volume '{}' already has NODE_ID tag -- skipping creating tags",
-                    attached_volume_id
-                );
-            } else {
-                // assume all data from EBS are never lost
-                // and since we persist and retain ever generated certs
-                // in the mounted dir, we can safely assume "create tags"
-                // will only be called once per volume
-                // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
-                log::info!(
-                    "creating NODE_ID tag to the EBS volume '{}'",
-                    attached_volume_id
-                );
-                let ec2_cli = aws_creds.ec2_manager.clone().client();
-                ec2_cli
-                    .create_tags()
-                    .resources(attached_volume_id)
-                    .tags(
-                        Tag::builder()
-                            .key(String::from("NODE_ID"))
-                            .value(node_id.to_string())
-                            .build(),
-                    )
-                    .send()
-                    .await
-                    .map_err(|e| {
-                        Error::new(ErrorKind::Other, format!("failed create_tags {}", e))
-                    })?;
-                log::info!(
-                    "added node Id tag to the EBS volume '{}'",
+                    "volume '{}' already has NODE_ID tag -- overwriting tags",
                     attached_volume_id
                 );
             }
+
+            // assume all data from EBS are never lost
+            // and since we persist and retain ever generated certs
+            // in the mounted dir, we can safely assume "create tags"
+            // will only be called once per volume
+            // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
+            log::info!(
+                "creating NODE_ID tag to the EBS volume '{}'",
+                attached_volume_id
+            );
+            let ec2_cli = aws_creds.ec2_manager.clone().client();
+            ec2_cli
+                .create_tags()
+                .resources(attached_volume_id)
+                .tags(
+                    Tag::builder()
+                        .key(String::from("NODE_ID"))
+                        .value(node_id.to_string())
+                        .build(),
+                )
+                .send()
+                .await
+                .map_err(|e| Error::new(ErrorKind::Other, format!("failed create_tags {}", e)))?;
+            log::info!(
+                "added node Id tag to the EBS volume '{}'",
+                attached_volume_id
+            );
         }
     }
 
@@ -617,7 +624,7 @@ fn write_default_avalanche_config(
 
     if let Some(config_file) = &avalanchego_config.config_file {
         if Path::new(&config_file).exists() {
-            log::info!("config-file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", config_file);
+            log::info!("avalanchego config-file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", config_file);
             return avalanchego::config::Config::load(&config_file);
         };
     }
@@ -639,7 +646,7 @@ fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::con
     let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
     let chain_config_c_path = Path::new(chain_config_dir).join("C").join("config.json");
     if chain_config_c_path.exists() {
-        log::info!("C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
+        log::info!("coreth C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
         return coreth::config::Config::load(chain_config_c_path.display().to_string().as_str());
     };
 
@@ -847,6 +854,7 @@ fn create_cloudwatch_config(
         config_file_path: cloudwatch_config_file_path.to_string(),
     };
     cw_config_manager.sync(Some(vec![
+        String::from("/var/log/cloud-init-output.log"),
         String::from("/var/log/avalanched.log"),
         String::from("/var/log/avalanche-telemetry-cloudwatch.log"),
     ]))
