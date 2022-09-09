@@ -44,8 +44,8 @@ fn main() {
                 region: sub_matches.value_of("REGION").unwrap().to_string(),
                 preferred_az_index,
 
-                // TODO: support this
                 use_spot_instance: sub_matches.is_present("USE_SPOT_INSTANCE"),
+                disable_nlb: sub_matches.is_present("DISABLE_NLB"),
 
                 key_files_dir: sub_matches
                     .value_of("KEY_FILES_DIR")

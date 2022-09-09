@@ -61,6 +61,14 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("DISABLE_NLB")
+                .long("disable-nlb")
+                .help("Sets to disable NLB")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("AAD_TAG")
                 .long("aad-tag")
                 .short('a')

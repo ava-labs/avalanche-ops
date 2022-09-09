@@ -218,6 +218,8 @@ cd ${HOME}/avalanche-ops
 
 
 
+
+
 # to run with the latest binaries automatically downloaded
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
@@ -225,13 +227,21 @@ cd ${HOME}/avalanche-ops
 --network-name custom \
 --avalanchego-log-level DEBUG
 
-# to run with the latest binaries automatically downloaded
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name custom \
 --use-spot-instance \
 --avalanchego-log-level DEBUG
+
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--network-name custom \
+--use-spot-instance \
+--disable-nlb \
+--avalanchego-log-level DEBUG
+
 
 
 
@@ -631,6 +641,28 @@ cd ${HOME}/avalanche-ops
 --key-files-dir ${HOME}/subnet-evm-test-keys \
 --enable-subnet-evm
 
+#####
+# or to run performance tests
+# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
+# with real subnet ID from subnet-cli wizard
+# and disable NLB
+AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
+AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
+rm -rf ${HOME}/subnet-evm-test-keys
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
+--install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--use-spot-instance \
+--disable-nlb \
+--network-name custom \
+--avalanchego-log-level INFO \
+--avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
+--keys-to-generate 30 \
+--key-files-dir ${HOME}/subnet-evm-test-keys \
+--enable-subnet-evm
+
 # e.g., adjust gas limit
 # https://www.rapidtables.com/convert/number/hex-to-decimal.html
 # 1000000
@@ -923,6 +955,14 @@ cd ${HOME}/avalanche-ops
 --region us-west-2 \
 --network-name mainnet \
 --use-spot-instance \
+--avalanchego-log-level INFO
+
+cd ${HOME}/avalanche-ops
+./target/release/avalancheup-aws default-spec \
+--region us-west-2 \
+--network-name mainnet \
+--use-spot-instance \
+--disable-nlb \
 --avalanchego-log-level INFO
 
 
