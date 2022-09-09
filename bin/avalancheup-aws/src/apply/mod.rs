@@ -714,6 +714,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ));
         };
 
+        let disable_nlb = spec.machine.disable_nlb;
+        if disable_nlb {
+            asg_anchor_params.push(build_param("NlbDisabled", "true"));
+        } else {
+            asg_anchor_params.push(build_param("NlbDisabled", "false"));
+        }
+
         rt.block_on(cloudformation_manager.create_stack(
             cloudformation_asg_anchor_nodes_stack_name.as_str(),
             None,
@@ -772,25 +779,37 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ));
         }
         if aws_resources.cloudformation_asg_nlb_arn.is_none() {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "aws_resources.cloudformation_asg_nlb_arn not found",
-            ));
+            if spec.machine.disable_nlb {
+                log::info!("NLB is disabled so empty NLB ARN...");
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_arn not found",
+                ));
+            }
         }
         if aws_resources
             .cloudformation_asg_nlb_target_group_arn
             .is_none()
         {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
-            ));
+            if spec.machine.disable_nlb {
+                log::info!("NLB is disabled so empty NLB target group ARN...");
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
+                ));
+            }
         }
         if aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "aws_resources.cloudformation_asg_nlb_dns_name not found",
-            ));
+            if spec.machine.disable_nlb {
+                log::info!("NLB is disabled so empty NLB DNS name...");
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_dns_name not found",
+                ));
+            }
         }
 
         let asg_name = aws_resources
@@ -983,22 +1002,29 @@ aws ssm start-session --region {} --target {}
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
-        if need_to_create_nlb {
-            if aws_resources.nlb_acm_certificate_arn.is_some() {
-                asg_non_anchor_params.push(build_param(
-                    "NlbAcmCertificateArn",
-                    &aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
-                ));
-            };
+
+        let disable_nlb = spec.machine.disable_nlb;
+        if disable_nlb {
+            asg_non_anchor_params.push(build_param("NlbDisabled", "true"));
         } else {
-            // already created for anchor nodes
-            asg_non_anchor_params.push(build_param(
-                "NlbTargetGroupArn",
-                &aws_resources
-                    .cloudformation_asg_nlb_target_group_arn
-                    .clone()
-                    .unwrap(),
-            ));
+            asg_non_anchor_params.push(build_param("NlbDisabled", "false"));
+            if need_to_create_nlb {
+                if aws_resources.nlb_acm_certificate_arn.is_some() {
+                    asg_non_anchor_params.push(build_param(
+                        "NlbAcmCertificateArn",
+                        &aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
+                    ));
+                };
+            } else {
+                // NLB already created for anchor nodes
+                asg_non_anchor_params.push(build_param(
+                    "NlbTargetGroupArn",
+                    &aws_resources
+                        .cloudformation_asg_nlb_target_group_arn
+                        .clone()
+                        .unwrap(),
+                ));
+            }
         }
 
         rt.block_on(cloudformation_manager.create_stack(
@@ -1061,25 +1087,37 @@ aws ssm start-session --region {} --target {}
         }
         if need_to_create_nlb {
             if aws_resources.cloudformation_asg_nlb_arn.is_none() {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_arn not found",
-                ));
+                if spec.machine.disable_nlb {
+                    log::info!("NLB is disabled so empty NLB ARN...");
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "aws_resources.cloudformation_asg_nlb_arn not found",
+                    ));
+                }
             }
             if aws_resources
                 .cloudformation_asg_nlb_target_group_arn
                 .is_none()
             {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
-                ));
+                if spec.machine.disable_nlb {
+                    log::info!("NLB is disabled so empty NLB target group ARN...");
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
+                    ));
+                }
             }
             if aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_dns_name not found",
-                ));
+                if spec.machine.disable_nlb {
+                    log::info!("NLB is disabled so empty NLB DNS name...");
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "aws_resources.cloudformation_asg_nlb_dns_name not found",
+                    ));
+                }
             }
         }
         spec.aws_resources = Some(aws_resources.clone());
@@ -1232,19 +1270,20 @@ aws ssm start-session --region {} --target {}
         println!("{}", node.encode_yaml().unwrap());
     }
 
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n"),
-        ResetColor
-    )?;
-    let dns_name = aws_resources.cloudformation_asg_nlb_dns_name.unwrap();
-    let http_port = spec.avalanchego_config.http_port;
+    let rpc_hosts = if let Some(dns_name) = &aws_resources.cloudformation_asg_nlb_dns_name {
+        vec![dns_name.clone()]
+    } else {
+        let mut eps = Vec::new();
+        for n in current_nodes.iter() {
+            eps.push(current_nodes[0].public_ip.clone())
+        }
+        eps
+    };
 
+    let http_port = spec.avalanchego_config.http_port;
     let nlb_https_enabled = aws_resources.nlb_acm_certificate_arn.is_some();
     let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
         && spec.avalanchego_config.http_tls_enabled.unwrap();
-
     let (scheme_for_dns, port_for_dns) = {
         if nlb_https_enabled || https_enabled {
             ("https", 443)
@@ -1253,6 +1292,12 @@ aws ssm start-session --region {} --target {}
         }
     };
 
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n"),
+        ResetColor
+    )?;
     // TODO: check "/ext/info"
     // TODO: check "/ext/bc/C/rpc"
     // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
@@ -1261,18 +1306,31 @@ aws ssm start-session --region {} --target {}
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
-    let mut dns_endpoints = avalancheup_aws::Endpoints::default();
-    let http_rpc = format!("{}://{}:{}", scheme_for_dns, dns_name, port_for_dns);
-    dns_endpoints.http_rpc = Some(http_rpc.clone());
-    dns_endpoints.http_rpc_x = Some(format!("{}/ext/bc/X", http_rpc));
-    dns_endpoints.http_rpc_p = Some(format!("{}/ext/bc/P", http_rpc));
-    dns_endpoints.http_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-    dns_endpoints.metrics = Some(format!("{}/ext/metrics", http_rpc));
-    dns_endpoints.health = Some(format!("{}/ext/health", http_rpc));
-    dns_endpoints.liveness = Some(format!("{}/ext/health/liveness", http_rpc));
-    dns_endpoints.metamask_rpc = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-    dns_endpoints.websocket = Some(format!("ws://{}:{}/ext/bc/C/rpc", dns_name, port_for_dns));
-    spec.endpoints = Some(dns_endpoints.clone());
+    let mut http_rpcs = Vec::new();
+    for host in rpc_hosts.iter() {
+        let mut dns_endpoints = avalancheup_aws::Endpoints::default();
+
+        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+        http_rpcs.push(http_rpc.clone());
+
+        dns_endpoints.http_rpc = Some(http_rpc.clone());
+        dns_endpoints.http_rpc_x = Some(format!("{}/ext/bc/X", http_rpc));
+        dns_endpoints.http_rpc_p = Some(format!("{}/ext/bc/P", http_rpc));
+        dns_endpoints.http_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
+        dns_endpoints.metrics = Some(format!("{}/ext/metrics", http_rpc));
+        dns_endpoints.health = Some(format!("{}/ext/health", http_rpc));
+        dns_endpoints.liveness = Some(format!("{}/ext/health/liveness", http_rpc));
+        dns_endpoints.metamask_rpc = Some(format!("{}/ext/bc/C/rpc", http_rpc));
+        dns_endpoints.websocket = Some(format!("ws://{}:{}/ext/bc/C/rpc", host, port_for_dns));
+
+        spec.endpoints = Some(dns_endpoints.clone());
+
+        println!(
+            "\n{}\n",
+            spec.endpoints.clone().unwrap().encode_yaml().unwrap()
+        );
+    }
+
     spec.sync(spec_file_path)?;
     rt.block_on(s3_manager.put_object(
         Arc::new(spec_file_path.to_string()),
@@ -1280,35 +1338,33 @@ aws ssm start-session --region {} --target {}
         Arc::new(avalancheup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
     ))
     .expect("failed put_object ConfigFile");
-    println!();
 
-    println!("{}", dns_endpoints.encode_yaml().unwrap());
-    println!();
-
-    let mut success = false;
-    for _ in 0..10_u8 {
-        let ret = rt.block_on(api_health::check(Arc::new(http_rpc.clone()), true));
-        match ret {
-            Ok(res) => {
-                if res.healthy.is_some() && res.healthy.unwrap() {
-                    success = true;
-                    log::info!("health/liveness check success for {}", http_rpc);
-                    break;
+    for http_rpc in http_rpcs {
+        let mut success = false;
+        for _ in 0..10_u8 {
+            let ret = rt.block_on(api_health::check(Arc::new(http_rpc.clone()), true));
+            match ret {
+                Ok(res) => {
+                    if res.healthy.is_some() && res.healthy.unwrap() {
+                        success = true;
+                        log::info!("health/liveness check success for {}", http_rpc);
+                        break;
+                    }
                 }
-            }
-            Err(e) => {
-                log::warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
-            }
-        };
-
-        thread::sleep(Duration::from_secs(10));
-    }
-    if !success {
-        log::warn!(
-            "health/liveness check failed for network id {}",
-            &spec.avalanchego_config.network_id
-        );
-        return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
+                Err(e) => {
+                    log::warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
+                }
+            };
+            thread::sleep(Duration::from_secs(10));
+        }
+        if !success {
+            log::warn!(
+                "health/liveness check failed on {} for network id {}",
+                http_rpc,
+                &spec.avalanchego_config.network_id
+            );
+            return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
+        }
     }
 
     let mut uris: Vec<String> = vec![];

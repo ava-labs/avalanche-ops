@@ -190,6 +190,12 @@ Parameters:
     MaxValue: 100
     Description: 0 for Spot only. 100 for On-Demand only.
 
+  NlbDisabled:
+    AllowedValues: [true, false]
+    Default: false
+    Type: String
+    Description: true to disable NLB and use IPs
+
   NlbTargetGroupArn:
     Type: String
     Default: ""
@@ -254,19 +260,20 @@ Conditions:
 
   # only create 1 NLB once
   # for both anchor- and non-anchor nodes
-  EmptyNlbTargetGroupArn:
-    Fn::Equals:
-      - Ref: NlbTargetGroupArn
-      - ""
+  CreateNlb:
+    Fn::And:
+      - Fn::Equals:
+          - Ref: NlbTargetGroupArn
+          - ""
+      - Fn::Equals:
+          - Ref: NlbDisabled
+          - "false"
 
   # only create 1 HTTPs listener once
   # for both anchor- and non-anchor nodes
   HasNlbAcmCertificateArn:
     Fn::And:
-      # EmptyNlbTargetGroupArn
-      - Fn::Equals:
-          - Ref: NlbTargetGroupArn
-          - ""
+      - CreateNlb
       - Fn::Not:
           - Fn::Equals:
               - Ref: NlbAcmCertificateArn
@@ -277,7 +284,7 @@ Resources:
   # takes 3-minute
   NLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Condition: EmptyNlbTargetGroupArn
+    Condition: CreateNlb
     Properties:
       Type: network
       # load balancer name '...' cannot be longer than '32' characters
@@ -290,7 +297,7 @@ Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
   NLBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Condition: EmptyNlbTargetGroupArn
+    Condition: CreateNlb
     Properties:
       # Target group name '...' cannot be longer than '32' characters
       Name: !Join ["-", [!Ref Id, "tg"]]
@@ -309,7 +316,7 @@ Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
   NLBListenerTcp:
     Type: AWS::ElasticLoadBalancingV2::Listener
-    Condition: EmptyNlbTargetGroupArn
+    Condition: CreateNlb
     Properties:
       LoadBalancerArn: !Ref NLB
       Port: !Ref NlbHttpPort
@@ -539,9 +546,14 @@ Resources:
       VPCZoneIdentifier: !Ref PublicSubnetIds
       TargetGroupARNs:
         - Fn::If:
-            - EmptyNlbTargetGroupArn
+            - CreateNlb
             - !Ref NLBTargetGroup
-            - !Ref NlbTargetGroupArn
+            - Fn::If:
+                - Fn::Equals:
+                    - Ref: NlbDisabled
+                    - "false"
+                - !Ref NlbTargetGroupArn
+                - !Ref AWS::NoValue
       HealthCheckType: EC2
       HealthCheckGracePeriod: 120
       MetricsCollection:
@@ -649,13 +661,13 @@ Outputs:
     Value: !Ref ASG
 
   NlbArn:
-    Condition: EmptyNlbTargetGroupArn
+    Condition: CreateNlb
     Value: !Ref NLB
 
   NlbTargetGroupArn:
-    Condition: EmptyNlbTargetGroupArn
+    Condition: CreateNlb
     Value: !Ref NLBTargetGroup
 
   NlbDnsName:
-    Condition: EmptyNlbTargetGroupArn
+    Condition: CreateNlb
     Value: !GetAtt NLB.DNSName

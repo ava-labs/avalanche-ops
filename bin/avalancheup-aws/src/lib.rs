@@ -340,6 +340,8 @@ pub struct Machine {
     pub instance_types: Vec<String>,
     #[serde(default)]
     pub use_spot_instance: bool,
+    #[serde(default)]
+    pub disable_nlb: bool,
 }
 
 /// Represents artifacts for installation, to be shared with
@@ -405,6 +407,7 @@ pub struct DefaultSpecOption {
     pub region: String,
     pub preferred_az_index: usize,
     pub use_spot_instance: bool,
+    pub disable_nlb: bool,
 
     pub key_files_dir: String,
     pub aad_tag: String,
@@ -636,6 +639,7 @@ impl Spec {
             instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
 
             use_spot_instance: opts.use_spot_instance,
+            disable_nlb: opts.disable_nlb,
         };
 
         if !opts.key_files_dir.is_empty() {
@@ -1084,6 +1088,7 @@ machine:
   - c5.large
   - r5.large
   - t3.large
+  disable_nlb: false
 
 install_artifacts:
   avalanched_bin: {}
@@ -1179,6 +1184,7 @@ coreth_config:
                 String::from("t3.large"),
             ],
             use_spot_instance: false,
+            disable_nlb: false,
         },
 
         install_artifacts: InstallArtifacts {
