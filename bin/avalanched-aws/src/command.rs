@@ -17,7 +17,6 @@ use aws_sdk_ec2::model::{Filter, Tag, Volume};
 use infra_aws::{certs, telemetry};
 use tokio::time::{sleep, Duration};
 
-/// TODO: make these more idempotent, workable with restarts
 pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -1211,9 +1210,14 @@ fn stop_and_start_avalanche_systemd_service(
     if let Some(v) = &avalanchego_config.profile_dir {
         fs::create_dir_all(v)?;
     }
+
     if let Some(v) = &coreth_config.continuous_profiler_dir {
         fs::create_dir_all(v)?;
     }
+    if let Some(v) = &coreth_config.offline_pruning_data_directory {
+        fs::create_dir_all(v)?;
+    }
+
     if let Some(cfg) = &subnet_evm_config {
         if let Some(v) = &cfg.continuous_profiler_dir {
             fs::create_dir_all(v)?;

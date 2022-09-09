@@ -1173,6 +1173,8 @@ avalanchego_config:
 
 coreth_config:
   coreth-admin-api-enabled: true
+  offline-pruning-enabled: false
+  offline-pruning-data-directory: /data/c-chain-offline-pruning
   metrics-enabled: true
   pruning-enabled: true
   log-level: "info"
