@@ -1274,8 +1274,8 @@ aws ssm start-session --region {} --target {}
         vec![dns_name.clone()]
     } else {
         let mut eps = Vec::new();
-        for n in current_nodes.iter() {
-            eps.push(current_nodes[0].public_ip.clone())
+        for node in current_nodes.iter() {
+            eps.push(node.public_ip.clone())
         }
         eps
     };
