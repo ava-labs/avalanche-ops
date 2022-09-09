@@ -3,6 +3,8 @@
 
 ![Github Actions](https://github.com/ava-labs/avalanche-ops/actions/workflows/test-and-release.yml/badge.svg)
 
+See https://talks.gyuho.dev/avalanche-aws-2022q3.html for slides.
+
 # Avalanche Ops
 
 A **single command to launch Avalanche nodes from scratch that joins any network of choice (e.g., test, fuji, main) or create a custom Avalanche network**. Provisions all resources required to run a node or network with recommended setups (configurable).
