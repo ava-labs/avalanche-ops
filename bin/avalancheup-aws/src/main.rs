@@ -24,6 +24,9 @@ fn main() {
             let keys_to_generate = sub_matches.value_of("KEYS_TO_GENERATE").unwrap_or("");
             let keys_to_generate = keys_to_generate.parse::<usize>().unwrap();
 
+            let volume_size_in_gb = sub_matches.value_of("VOLUME_SIZE_IN_GB").unwrap_or("0");
+            let volume_size_in_gb = volume_size_in_gb.parse::<u32>().unwrap();
+
             let preferred_az_index = sub_matches.value_of("PREFERRED_AZ_INDEX").unwrap_or("0");
             let preferred_az_index = preferred_az_index.parse::<usize>().unwrap();
 
@@ -46,6 +49,7 @@ fn main() {
 
                 use_spot_instance: sub_matches.is_present("USE_SPOT_INSTANCE"),
                 disable_nlb: sub_matches.is_present("DISABLE_NLB"),
+                volume_size_in_gb,
 
                 key_files_dir: sub_matches
                     .value_of("KEY_FILES_DIR")

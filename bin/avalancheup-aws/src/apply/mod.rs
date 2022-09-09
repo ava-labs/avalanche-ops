@@ -619,20 +619,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ));
     }
 
-    // mainnet/* requires higher volume size
-    // TODO: make this configurable
-    if spec.avalanchego_config.is_mainnet() {
-        let param = build_param("VolumeSize", "1024");
-        asg_parameters.push(param);
-    } else if !spec.avalanchego_config.is_custom_network() {
-        // fuji/*
-        let param = build_param("VolumeSize", "600");
-        asg_parameters.push(param);
-    } else {
-        // custom network does not need that much...
-        let param = build_param("VolumeSize", "400");
-        asg_parameters.push(param);
-    }
+    asg_parameters.push(build_param(
+        "VolumeSize",
+        format!("{}", spec.machine.volume_size_in_gb).as_str(),
+    ));
 
     asg_parameters.push(build_param("Arch", &spec.machine.arch));
     if !spec.machine.instance_types.is_empty() {

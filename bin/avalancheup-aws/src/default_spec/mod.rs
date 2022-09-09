@@ -129,6 +129,15 @@ pub fn command() -> Command<'static> {
                 .default_value("5"), // ref. "avalancheup_aws::DEFAULT_KEYS_TO_GENERATE"
         )
         .arg(
+            Arg::new("VOLUME_SIZE_IN_GB")
+                .long("volume-size-in-gb")
+                .help("Sets initial volume size in GB")
+                .required(false)
+                .takes_value(true)
+                .default_value("500")
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("AVALANCHED_LOG_LEVEL") 
                 .long("avalanched-log-level")
                 .help("Sets the log level for 'avalanched'")
