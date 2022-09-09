@@ -156,6 +156,78 @@ avalancheup-aws delete --spec-file-path spec.yaml
 - If `avalancheup-aws default-spec --spec-file-path` is **non-empty**, test ID is set based on the file name.
 - If `avalancheup-aws default-spec --spec-file-path` is **not specified (empty)**, test ID is auto-generated.
 
+### Updates
+
+```bash
+# update "avalanched"
+sudo systemctl stop avalanched.service
+sudo systemctl disable avalanched.service
+
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
+-o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
+
+chmod +x /tmp/avalanched-aws.x86_64-unknown-linux-gnu
+/tmp/avalanched-aws.x86_64-unknown-linux-gnu --version
+
+sudo mv /tmp/avalanched-aws.x86_64-unknown-linux-gnu /usr/local/bin/avalanched
+/usr/local/bin/avalanched --help
+
+sudo systemctl enable avalanched.service
+sudo systemctl restart --no-block avalanched.service
+
+sudo tail /var/log/avalanched.log
+sudo tail -f /var/log/avalanched.log
+```
+
+```bash
+# update "avalanche-telemetry-cloudwatch"
+sudo systemctl stop avalanche-telemetry-cloudwatch.service
+sudo systemctl disable avalanche-telemetry-cloudwatch.service
+
+curl -L \
+https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu \
+-o /tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu
+
+chmod +x /tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu
+/tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu --version
+
+sudo mv /tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu /usr/local/bin/avalanche-telemetry-cloudwatch
+/usr/local/bin/avalanche-telemetry-cloudwatch --help
+
+sudo systemctl enable avalanche-telemetry-cloudwatch.service
+sudo systemctl restart --no-block avalanche-telemetry-cloudwatch.service
+
+sudo tail /var/log/avalanche-telemetry-cloudwatch.log
+sudo tail -f /var/log/avalanche-telemetry-cloudwatch.log
+```
+
+```bash
+# update "avalanchego"
+sudo systemctl stop avalanche.service
+sudo systemctl disable avalanche.service
+
+# https://github.com/ava-labs/avalanchego/releases
+VERSION=1.8.5
+DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
+rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
+curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
+tar xzvf /tmp/avalanchego.tar.gz -C /tmp
+find /tmp/avalanchego-v${VERSION}
+
+chmod +x /tmp/avalanchego-v${VERSION}/avalanchego
+/tmp/avalanchego-v${VERSION}/avalanchego --version
+
+sudo mv /tmp/avalanchego-v${VERSION}/avalanchego /usr/local/bin/avalanche
+/usr/local/bin/avalanche --help
+
+sudo systemctl enable avalanche.service
+sudo systemctl restart --no-block avalanche.service
+
+sudo tail /var/log/avalanche/avalanche.log
+sudo tail -f /var/log/avalanche/avalanche.log
+```
+
 ### Cheapest way to set up a network or validator
 
 ```bash
