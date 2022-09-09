@@ -342,6 +342,12 @@ pub struct Machine {
     pub use_spot_instance: bool,
     #[serde(default)]
     pub disable_nlb: bool,
+
+    /// Initial EBS volume size in GB.
+    /// Can be resized with no downtime.
+    /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html
+    #[serde(default)]
+    pub volume_size_in_gb: u32,
 }
 
 /// Represents artifacts for installation, to be shared with
@@ -408,6 +414,7 @@ pub struct DefaultSpecOption {
     pub preferred_az_index: usize,
     pub use_spot_instance: bool,
     pub disable_nlb: bool,
+    pub volume_size_in_gb: u32,
 
     pub key_files_dir: String,
     pub aad_tag: String,
@@ -630,18 +637,6 @@ impl Spec {
                 ),
             };
 
-        let machine = Machine {
-            anchor_nodes,
-            non_anchor_nodes,
-
-            // TODO: support "arm64"
-            arch: ARCH_AMD64.to_string(),
-            instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
-
-            use_spot_instance: opts.use_spot_instance,
-            disable_nlb: opts.disable_nlb,
-        };
-
         if !opts.key_files_dir.is_empty() {
             log::info!("creating key-files-dir '{}'", opts.key_files_dir);
             fs::create_dir_all(&opts.key_files_dir).unwrap();
@@ -801,6 +796,50 @@ impl Spec {
         if opts.coreth_state_sync_metrics_enabled {
             coreth_config.state_sync_metrics_enabled = Some(true);
         }
+
+        let state_sync_enabled = if let Some(b) = coreth_config.state_sync_enabled {
+            b
+        } else {
+            false
+        };
+        let volume_size_in_gb = if opts.volume_size_in_gb > 0 {
+            opts.volume_size_in_gb
+        } else {
+            if avalanchego_config.is_mainnet() {
+                if state_sync_enabled {
+                    500
+                } else {
+                    1024
+                }
+            } else if !avalanchego_config.is_custom_network() {
+                // fuji/*
+                if state_sync_enabled {
+                    250
+                } else {
+                    600
+                }
+            } else {
+                if state_sync_enabled {
+                    200
+                } else {
+                    400
+                }
+            }
+        };
+
+        let machine = Machine {
+            anchor_nodes,
+            non_anchor_nodes,
+
+            // TODO: support "arm64"
+            arch: ARCH_AMD64.to_string(),
+            instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
+
+            use_spot_instance: opts.use_spot_instance,
+            disable_nlb: opts.disable_nlb,
+
+            volume_size_in_gb,
+        };
 
         Self {
             id,
@@ -1089,6 +1128,7 @@ machine:
   - r5.large
   - t3.large
   disable_nlb: false
+  volume_size_in_gb: 500
 
 install_artifacts:
   avalanched_bin: {}
@@ -1185,6 +1225,7 @@ coreth_config:
             ],
             use_spot_instance: false,
             disable_nlb: false,
+            volume_size_in_gb: 500,
         },
 
         install_artifacts: InstallArtifacts {
