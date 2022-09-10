@@ -9,7 +9,7 @@ use std::{
 use avalanche_sdk::health as api_health;
 use avalanche_types::{genesis as avalanchego_genesis, node};
 use aws_manager::{
-    self, ec2,
+    self, autoscaling, ec2,
     kms::{self, envelope},
     s3,
 };
@@ -28,6 +28,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
 
     let aws_creds = load_aws_credential(&meta.region).await?;
     let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
+    let asg_manager_arc = Arc::new(aws_creds.asg_manager.clone());
     let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
 
     let tags = fetch_tags(
@@ -335,6 +336,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     if tags.asg_spot_instance {
         handles.push(tokio::spawn(monitor_spot_instance_action(
             Arc::clone(&ec2_manager_arc),
+            Arc::clone(&asg_manager_arc),
             Arc::new(meta.ec2_instance_id.clone()),
             Arc::new(attached_volume_id.to_string()),
         )));
@@ -402,6 +404,7 @@ async fn fetch_metadata() -> io::Result<Metadata> {
 #[derive(Debug, Clone)]
 struct AwsCreds {
     ec2_manager: ec2::Manager,
+    asg_manager: autoscaling::Manager,
     kms_manager: kms::Manager,
     s3_manager: s3::Manager,
 }
@@ -412,11 +415,13 @@ async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
     let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
 
     let ec2_manager = ec2::Manager::new(&shared_config);
+    let asg_manager = autoscaling::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
 
     Ok(AwsCreds {
         ec2_manager,
+        asg_manager,
         kms_manager,
         s3_manager,
     })
@@ -1457,16 +1462,7 @@ async fn publish_node_info_ready_loop(
             Ok(_) => {}
             Err(e) => {
                 log::warn!("failed spawn_put_object {}", e);
-                sleep(Duration::from_secs(5)).await;
-                continue;
-            }
-        }
-
-        match fs::remove_file(&node_info_path) {
-            Ok(_) => {}
-            Err(e) => {
-                log::warn!("failed to remove_file {}", e);
-                sleep(Duration::from_secs(5)).await;
+                sleep(Duration::from_secs(10)).await;
                 continue;
             }
         }
@@ -1478,11 +1474,14 @@ async fn publish_node_info_ready_loop(
 
 async fn monitor_spot_instance_action(
     ec2_manager: Arc<ec2::Manager>,
+    asg_manager: Arc<autoscaling::Manager>,
     ec2_instance_id: Arc<String>,
     attached_volume_id: Arc<String>,
 ) {
     let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
     let ec2_cli = ec2_manager.client();
+
+    let asg_manager: &autoscaling::Manager = asg_manager.as_ref();
 
     loop {
         log::info!(
@@ -1519,6 +1518,20 @@ async fn monitor_spot_instance_action(
                     }
                 };
                 if need_terminate {
+                    log::warn!(
+                        "setting the instance {} to 'Unhealthy'",
+                        ec2_instance_id.as_str()
+                    );
+                    match asg_manager
+                        .set_instance_health(ec2_instance_id.as_str(), "Unhealthy")
+                        .await
+                    {
+                        Ok(_) => {
+                            log::info!("successfully set instance health");
+                        }
+                        Err(e) => log::warn!("failed to set instance health {}", e),
+                    }
+
                     log::warn!("stopping avalanche service before instance termination...");
                     match command_manager::run("sudo systemctl stop avalanche.service") {
                         Ok(_) => {}
@@ -1534,7 +1547,7 @@ async fn monitor_spot_instance_action(
                     }
 
                     // enough time for avalanche process to gracefully shut down
-                    sleep(Duration::from_secs(15)).await;
+                    sleep(Duration::from_secs(7)).await;
 
                     // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DetachVolume.html
                     log::warn!("detaching EBS volume before instance termination...");
@@ -1550,7 +1563,7 @@ async fn monitor_spot_instance_action(
                             log::info!("successfully detached volume {:?}", v);
                             sleep(Duration::from_secs(10)).await;
                         }
-                        Err(e) => log::warn!("failed detach_volume {}", e),
+                        Err(e) => log::warn!("failed to detach volume {}", e),
                     }
 
                     log::warn!("terminating the instance...");
@@ -1564,15 +1577,14 @@ async fn monitor_spot_instance_action(
                             log::info!("successfully terminated instance {:?}", v);
                             return;
                         }
-                        Err(e) => log::warn!("failed terminate instance {}", e),
+                        Err(e) => log::warn!("failed to terminate instance {}", e),
                     }
                 }
             }
 
             Err(e) => {
-                log::warn!("failed fetch_spot_instance_action {} -- likely no spot instance-action event yet", e);
+                log::debug!("failed fetch_spot_instance_action {} -- likely no spot instance-action event yet", e);
                 sleep(Duration::from_secs(5)).await;
-                continue;
             }
         }
 

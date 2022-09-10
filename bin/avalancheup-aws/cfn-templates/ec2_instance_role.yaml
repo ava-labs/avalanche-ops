@@ -73,6 +73,7 @@ Resources:
                   - ec2:CreateVolume # to create volume if not exists
                   - ec2:AttachVolume
                   - ec2:DetachVolume # to fail fast in case of spot instance-action
+                  - autoscaling:SetInstanceHealth # to fail fast to mark the local instance "Unhealthy"
                   - ec2:TerminateInstances # to fail fast in case of spot instance-action
                 # restrict this better
                 # ref. https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_ec2_ebs-owner.html

@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 rust-version = "1.63"
 
@@ -14,7 +14,7 @@ avalanche-sdk = { version = "0.0.23" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.30", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = "0.0.17"
+aws-manager = "0.0.18"
 aws-sdk-cloudwatch = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.18.0" # https://github.com/awslabs/aws-sdk-rust/releases
