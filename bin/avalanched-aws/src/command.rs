@@ -1547,7 +1547,7 @@ async fn monitor_spot_instance_action(
                     }
 
                     // enough time for avalanche process to gracefully shut down
-                    sleep(Duration::from_secs(7)).await;
+                    sleep(Duration::from_secs(5)).await;
 
                     // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DetachVolume.html
                     log::warn!("detaching EBS volume before instance termination...");
@@ -1584,7 +1584,6 @@ async fn monitor_spot_instance_action(
 
             Err(e) => {
                 log::debug!("failed fetch_spot_instance_action {} -- likely no spot instance-action event yet", e);
-                sleep(Duration::from_secs(5)).await;
             }
         }
 
