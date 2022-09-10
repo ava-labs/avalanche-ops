@@ -1534,15 +1534,15 @@ async fn monitor_spot_instance_action(
 
                     log::warn!("stopping avalanche service before instance termination...");
                     match command_manager::run("sudo systemctl stop avalanche.service") {
-                        Ok(_) => {}
+                        Ok(_) => log::info!("successfully stopped avalanche service"),
                         Err(e) => log::warn!("failed systemctl stop command {}", e),
                     }
                     match command_manager::run("sudo systemctl disable avalanche.service") {
-                        Ok(_) => {}
+                        Ok(_) => log::info!("successfully disabled avalanche service"),
                         Err(e) => log::warn!("failed systemctl disable command {}", e),
                     }
                     match command_manager::run("sudo sync") {
-                        Ok(_) => {}
+                        Ok(_) => log::info!("successfully ran 'sudo sync'"),
                         Err(e) => log::warn!("failed sync command {}", e),
                     }
 
