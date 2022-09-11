@@ -333,6 +333,10 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             Arc::new(tags.avalancheup_spec_path.clone()),
         )));
     }
+
+    // assume the tag value is static
+    // assume we don't change on-demand to spot, or vice versa
+    // if someone changes, tag needs to be updated manually and restart avalanched
     if tags.asg_spot_instance {
         handles.push(tokio::spawn(monitor_spot_instance_action(
             Arc::clone(&ec2_manager_arc),

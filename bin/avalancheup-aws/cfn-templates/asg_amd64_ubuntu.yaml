@@ -159,14 +159,14 @@ Parameters:
   AsgMinSize:
     Type: Number
     Description: Minimum size auto scaling group
-    Default: 0
+    Default: 1
     MinValue: 0
     MaxValue: 1000
 
   AsgMaxSize:
     Type: Number
     Description: Maximum size auto scaling group
-    Default: 10
+    Default: 1
     MinValue: 1
     MaxValue: 1000
 
@@ -179,8 +179,8 @@ Parameters:
 
   AsgSpotInstance:
     Type: String
-    AllowedValues: ["true", "false"]
-    Default: "false"
+    AllowedValues: [true, false]
+    Default: false
     Description: Set to "true" if the EC2 instance is set up with spot instance.
 
   OnDemandPercentageAboveBaseCapacity:
@@ -191,9 +191,9 @@ Parameters:
     Description: 0 for Spot only. 100 for On-Demand only.
 
   NlbDisabled:
+    Type: String
     AllowedValues: [true, false]
     Default: false
-    Type: String
     Description: true to disable NLB and use IPs
 
   NlbTargetGroupArn:

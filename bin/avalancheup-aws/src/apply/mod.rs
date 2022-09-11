@@ -697,6 +697,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
+        asg_anchor_params.push(build_param(
+            "AsgMaxSize",
+            format!("{}", desired_capacity).as_str(),
+        ));
+
         if aws_resources.nlb_acm_certificate_arn.is_some() {
             asg_anchor_params.push(build_param(
                 "NlbAcmCertificateArn",
@@ -990,6 +995,10 @@ aws ssm start-session --region {} --target {}
 
         asg_non_anchor_params.push(build_param(
             "AsgDesiredCapacity",
+            format!("{}", desired_capacity).as_str(),
+        ));
+        asg_non_anchor_params.push(build_param(
+            "AsgMaxSize",
             format!("{}", desired_capacity).as_str(),
         ));
 
