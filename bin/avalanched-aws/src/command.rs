@@ -596,16 +596,15 @@ async fn download_spec(
     let mut spec = avalancheup_aws::Spec::load(&tmp_spec_file_path)?;
 
     if let Some(config_file) = &spec.avalanchego_config.config_file {
+        // if exists, load the existing one in case manually updated
         if Path::new(&config_file).exists() {
             log::info!("config-file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", config_file);
             spec.avalanchego_config = avalanchego::config::Config::load(&config_file)?;
-            spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
-        } else {
-            spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
         }
-    } else {
-        spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
     }
+
+    // always overwrite public-ip flag in case of EC2 instance replacement
+    spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
     spec.avalanchego_config.sync(None)?;
 
     fs::copy(&tmp_spec_file_path, &avalancheup_spec_path)?;
@@ -634,6 +633,8 @@ fn write_default_avalanche_config(
     }
 
     avalanchego_config.network_id = network_id;
+
+    // always overwrite public-ip flag in case of EC2 instance replacement
     avalanchego_config.public_ip = Some(public_ipv4.to_string());
     avalanchego_config.sync(None)?;
 
@@ -645,16 +646,16 @@ fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::con
 
     fs::create_dir_all(Path::new(chain_config_dir).join("C"))?;
 
-    let default_config = coreth::config::Config::default();
+    let coreth_config = coreth::config::Config::default();
 
-    let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
     let chain_config_c_path = Path::new(chain_config_dir).join("C").join("config.json");
     if chain_config_c_path.exists() {
         log::info!("coreth C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
         return coreth::config::Config::load(chain_config_c_path.display().to_string().as_str());
     };
 
-    default_config.sync(&tmp_path)?;
+    let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
+    coreth_config.sync(&tmp_path)?;
     fs::copy(&tmp_path, &chain_config_c_path)?;
     fs::remove_file(&tmp_path)?;
 
@@ -663,7 +664,7 @@ fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::con
         chain_config_c_path.as_os_str()
     );
 
-    Ok(default_config)
+    Ok(coreth_config)
 }
 
 fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
@@ -675,15 +676,14 @@ fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()>
     // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
     // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
     // ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
-    let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
     let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
     if chain_config_c_path.exists() {
         log::info!("C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
         return Ok(());
     };
 
+    let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
     spec.coreth_config.sync(&tmp_path)?;
-
     fs::copy(&tmp_path, &chain_config_c_path)?;
     fs::remove_file(&tmp_path)?;
 
@@ -1531,6 +1531,13 @@ async fn monitor_spot_instance_action(
                         }
                         Err(e) => log::warn!("failed to set instance health {}", e),
                     }
+
+                    // ASG may take minutes to detect "Unhealthy" to launch a new instance
+                    // sleep some time to minimize the downtime
+                    // if we just stop and terminate without sleep,
+                    // asg may take up to 2 minutes to replace the instance
+                    // ref. https://aws.amazon.com/ec2/autoscaling/faqs/
+                    sleep(Duration::from_secs(15)).await;
 
                     log::warn!("stopping avalanche service before instance termination...");
                     match command_manager::run("sudo systemctl stop avalanche.service") {
