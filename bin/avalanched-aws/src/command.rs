@@ -1522,6 +1522,8 @@ async fn monitor_spot_instance_action(
                     }
                 };
                 if need_terminate {
+                    // manually set instance health to speed up ASG Unhealthy replacement
+                    // e.g., "taken out of service in response to a user health-check"
                     log::warn!(
                         "setting the instance {} to 'Unhealthy'",
                         ec2_instance_id.as_str()
@@ -1541,7 +1543,10 @@ async fn monitor_spot_instance_action(
                     // if we just stop and terminate without sleep,
                     // asg may take up to 2 minutes to replace the instance
                     // ref. https://aws.amazon.com/ec2/autoscaling/faqs/
-                    sleep(Duration::from_secs(15)).await;
+                    //
+                    // NOTE: actually ASG can terminate as fast as in 13-second
+                    // just wait 10 seconds
+                    sleep(Duration::from_secs(10)).await;
 
                     log::warn!("stopping avalanche service before instance termination...");
                     match command_manager::run("sudo systemctl stop avalanche.service") {
@@ -1558,7 +1563,7 @@ async fn monitor_spot_instance_action(
                     }
 
                     // enough time for avalanche process to gracefully shut down
-                    sleep(Duration::from_secs(5)).await;
+                    sleep(Duration::from_secs(3)).await;
 
                     // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DetachVolume.html
                     log::warn!("detaching EBS volume before instance termination...");
