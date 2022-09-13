@@ -1544,9 +1544,9 @@ async fn monitor_spot_instance_action(
                     // asg may take up to 2 minutes to replace the instance
                     // ref. https://aws.amazon.com/ec2/autoscaling/faqs/
                     //
-                    // NOTE: actually ASG can terminate as fast as in 13-second
-                    // just wait 10 seconds
-                    sleep(Duration::from_secs(10)).await;
+                    // NOTE: actually ASG can terminate as fast as in 5 seconds
+                    // just wait 8 seconds in case it takes longer than 10 seconds
+                    sleep(Duration::from_secs(8)).await;
 
                     log::warn!("stopping avalanche service before instance termination...");
                     match command_manager::run("sudo systemctl stop avalanche.service") {
@@ -1563,7 +1563,7 @@ async fn monitor_spot_instance_action(
                     }
 
                     // enough time for avalanche process to gracefully shut down
-                    sleep(Duration::from_secs(3)).await;
+                    sleep(Duration::from_secs(1)).await;
 
                     // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DetachVolume.html
                     log::warn!("detaching EBS volume before instance termination...");
