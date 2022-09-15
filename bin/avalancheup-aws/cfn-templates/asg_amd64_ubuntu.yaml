@@ -149,6 +149,13 @@ Parameters:
     Default: 500
     Description: The throughput to provision for a gp3 volume, with a maximum of 1,000 MiB/s.
 
+  VolumeProvisionerInitialWaitRandomSeconds:
+    Type: Number
+    Default: 140
+    MinValue: 0
+    MaxValue: 500
+    Description: Only set non-zero if multiple instances may compete for the same EBS volume in the same zone.
+
   AsgMinInstancesInService:
     Type: Number
     Description: Minimum instances in service for update.
@@ -441,7 +448,7 @@ Resources:
               # --initial-wait-random-seconds=140 to prevent EBS volume provision contentions
               /tmp/aws-volume-provisioner \
                 --log-level=info \
-                --initial-wait-random-seconds=140 \
+                --initial-wait-random-seconds=${VolumeProvisionerInitialWaitRandomSeconds} \
                 --kind-tag=aws-volume-provisioner \
                 --id-tag=${Id} \
                 --volume-type=${VolumeType} \

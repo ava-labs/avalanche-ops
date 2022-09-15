@@ -682,7 +682,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let mut asg_anchor_params = asg_parameters.clone();
         asg_anchor_params.push(build_param("NodeKind", "anchor"));
 
-        let is_spot_instance = spec.machine.use_spot_instance;
+        let is_spot_instance =
+            spec.machine.use_spot_instance && !spec.machine.disable_spot_instance_for_anchor_nodes;
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
         asg_anchor_params.push(build_param(
             "AsgSpotInstance",
@@ -981,6 +982,16 @@ aws ssm start-session --region {} --target {}
         // must deep-copy as shared with other node kind
         let mut asg_non_anchor_params = asg_parameters.clone();
         asg_non_anchor_params.push(build_param("NodeKind", "non-anchor"));
+
+        // no competing volume provisioner in the same zone
+        // TODO: if one manually updates the capacity,
+        // this value is not valid... may cause contentions in EBS volume provision
+        if spec.machine.non_anchor_nodes == 1 {
+            asg_non_anchor_params.push(build_param(
+                "VolumeProvisionerInitialWaitRandomSeconds",
+                "10",
+            ));
+        }
 
         let is_spot_instance = spec.machine.use_spot_instance;
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };

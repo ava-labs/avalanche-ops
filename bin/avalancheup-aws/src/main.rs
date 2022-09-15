@@ -48,6 +48,8 @@ fn main() {
                 preferred_az_index,
 
                 use_spot_instance: sub_matches.is_present("USE_SPOT_INSTANCE"),
+                disable_spot_instance_for_anchor_nodes: sub_matches
+                    .is_present("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
                 disable_nlb: sub_matches.is_present("DISABLE_NLB"),
                 volume_size_in_gb,
 

@@ -61,6 +61,14 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES")
+                .long("disable-spot-instance-for-anchor-nodes")
+                .help("Sets to disable spot instance for anchor nodes")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("DISABLE_NLB")
                 .long("disable-nlb")
                 .help("Sets to disable NLB")

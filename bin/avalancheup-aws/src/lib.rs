@@ -341,6 +341,8 @@ pub struct Machine {
     #[serde(default)]
     pub use_spot_instance: bool,
     #[serde(default)]
+    pub disable_spot_instance_for_anchor_nodes: bool,
+    #[serde(default)]
     pub disable_nlb: bool,
 
     /// Initial EBS volume size in GB.
@@ -413,6 +415,7 @@ pub struct DefaultSpecOption {
     pub region: String,
     pub preferred_az_index: usize,
     pub use_spot_instance: bool,
+    pub disable_spot_instance_for_anchor_nodes: bool,
     pub disable_nlb: bool,
     pub volume_size_in_gb: u32,
 
@@ -836,6 +839,7 @@ impl Spec {
             instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
 
             use_spot_instance: opts.use_spot_instance,
+            disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
             disable_nlb: opts.disable_nlb,
 
             volume_size_in_gb,
@@ -1115,6 +1119,7 @@ aws_resources:
   region: us-west-2
   preferred_az_index: 2
   use_spot_instance: false
+  disable_spot_instance_for_anchor_nodes: false
   s3_bucket: {}
   instance_system_logs: true
   instance_system_metrics: true
@@ -1226,6 +1231,7 @@ coreth_config:
                 String::from("t3.large"),
             ],
             use_spot_instance: false,
+            disable_spot_instance_for_anchor_nodes: false,
             disable_nlb: false,
             volume_size_in_gb: 500,
         },
