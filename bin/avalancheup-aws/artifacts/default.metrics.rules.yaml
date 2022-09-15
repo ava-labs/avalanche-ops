@@ -5,6 +5,7 @@ filters:
   - regex: ^avalanche_network_peers[\s\S]*$ # covers "avalanche_network_peers_subnet" with subnetID label
   - regex: ^avalanche_network_times_(connected|disconnected)$
   - regex: ^avalanche_network_accept_failed$
+  - regex: ^avalanche_network_(codec|proto_codec)[\s\S]*$ # covers "avalanche_network_codec_push_query_decompress_time_sum"*
   - regex: ^avalanche_network_(version|ping|pong|(push|pull)_query|put|peerlist)_(received|sent|failed)$
   - regex: ^avalanche_network_node_uptime_(rewarding_stake|weighted_average)$
   - regex: ^avalanche_network_inbound_conn_throttler_(allowed|rate_limited)$
