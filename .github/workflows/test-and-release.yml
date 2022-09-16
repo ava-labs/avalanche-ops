@@ -69,11 +69,13 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      
+
+      # or use "abelfodil/protoc-action@v1"
       # https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
-      - uses: abelfodil/protoc-action@v1
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
         with:
-          protoc-version: "3.19.4"
+          version: "3.x"
 
       - name: Check Rust version
         run: rustc --version
@@ -127,10 +129,12 @@ jobs:
         with:
           cache-on-failure: true
 
+      # or use "abelfodil/protoc-action@v1"
       # https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
-      - uses: abelfodil/protoc-action@v1
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
         with:
-          protoc-version: "3.19.4"
+          version: "3.x"
 
       # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
       - name: Apple M1 setup
