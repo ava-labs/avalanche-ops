@@ -76,6 +76,7 @@ jobs:
         uses: arduino/setup-protoc@v1
         with:
           version: "3.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check Rust version
         run: rustc --version
@@ -135,6 +136,7 @@ jobs:
         uses: arduino/setup-protoc@v1
         with:
           version: "3.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
       - name: Apple M1 setup
