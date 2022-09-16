@@ -69,6 +69,12 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
+      
+      # https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
+      - uses: abelfodil/protoc-action@v1
+        with:
+          protoc-version: "3.19.4"
+
       - name: Check Rust version
         run: rustc --version
       - uses: Swatinem/rust-cache@v1
@@ -120,6 +126,11 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
+
+      # https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
+      - uses: abelfodil/protoc-action@v1
+        with:
+          protoc-version: "3.19.4"
 
       # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
       - name: Apple M1 setup
