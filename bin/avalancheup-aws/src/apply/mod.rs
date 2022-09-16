@@ -1338,7 +1338,7 @@ aws ssm start-session --region {} --target {}
         dns_endpoints.health = Some(format!("{}/ext/health", http_rpc));
         dns_endpoints.liveness = Some(format!("{}/ext/health/liveness", http_rpc));
         dns_endpoints.metamask_rpc = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-        dns_endpoints.websocket = Some(format!("ws://{}:{}/ext/bc/C/rpc", host, port_for_dns));
+        dns_endpoints.websocket = Some(format!("ws://{}:{}/ext/bc/C/ws", host, port_for_dns));
 
         spec.endpoints = Some(dns_endpoints.clone());
 
