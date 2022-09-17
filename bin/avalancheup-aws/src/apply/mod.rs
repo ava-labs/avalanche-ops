@@ -698,9 +698,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
+
+        // for CFN template updates
+        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
+        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
         asg_anchor_params.push(build_param(
             "AsgMaxSize",
-            format!("{}", desired_capacity + 1).as_str(), // for CFN template updates
+            format!("{}", desired_capacity + 1).as_str(),
         ));
 
         if aws_resources.nlb_acm_certificate_arn.is_some() {
@@ -1015,9 +1019,13 @@ aws ssm start-session --region {} --target {}
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
         ));
+
+        // for CFN template updates
+        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
+        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
         asg_non_anchor_params.push(build_param(
             "AsgMaxSize",
-            format!("{}", desired_capacity + 1).as_str(), // for CFN template updates
+            format!("{}", desired_capacity + 1).as_str(),
         ));
 
         let disable_nlb = spec.machine.disable_nlb;
