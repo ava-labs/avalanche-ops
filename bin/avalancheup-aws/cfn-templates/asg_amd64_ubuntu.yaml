@@ -173,7 +173,7 @@ Parameters:
   AsgMaxSize:
     Type: Number
     Description: Maximum size auto scaling group
-    Default: 1
+    Default: 2
     MinValue: 1
     MaxValue: 1000
 

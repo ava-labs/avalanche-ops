@@ -700,7 +700,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ));
         asg_anchor_params.push(build_param(
             "AsgMaxSize",
-            format!("{}", desired_capacity).as_str(),
+            format!("{}", desired_capacity + 1).as_str(), // for CFN template updates
         ));
 
         if aws_resources.nlb_acm_certificate_arn.is_some() {
@@ -1017,7 +1017,7 @@ aws ssm start-session --region {} --target {}
         ));
         asg_non_anchor_params.push(build_param(
             "AsgMaxSize",
-            format!("{}", desired_capacity).as_str(),
+            format!("{}", desired_capacity + 1).as_str(), // for CFN template updates
         ));
 
         let disable_nlb = spec.machine.disable_nlb;
