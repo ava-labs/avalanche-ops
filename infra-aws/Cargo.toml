@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.63"
 
 [dependencies]
-avalanche-types = "0.0.32" # https://crates.io/crates/avalanche-types
+avalanche-types = "0.0.33" # https://crates.io/crates/avalanche-types
 aws-manager = "0.0.18"
 aws-sdk-cloudwatch = "0.18.0"
 chrono = "0.4.22"
