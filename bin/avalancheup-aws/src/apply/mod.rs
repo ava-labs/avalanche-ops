@@ -682,6 +682,20 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let mut asg_anchor_params = asg_parameters.clone();
         asg_anchor_params.push(build_param("NodeKind", "anchor"));
 
+        if let Some(anchor_nodes) = &spec.machine.anchor_nodes {
+            if *anchor_nodes == 1 {
+                asg_anchor_params.push(build_param(
+                    "VolumeProvisionerInitialWaitRandomSeconds",
+                    "10",
+                ));
+            } else if *anchor_nodes <= 3 {
+                asg_anchor_params.push(build_param(
+                    "VolumeProvisionerInitialWaitRandomSeconds",
+                    "50",
+                ));
+            }
+        }
+
         let is_spot_instance =
             spec.machine.use_spot_instance && !spec.machine.disable_spot_instance_for_anchor_nodes;
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
