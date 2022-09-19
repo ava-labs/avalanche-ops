@@ -41,10 +41,10 @@ impl ConfigManager {
                 log_stream_name: format!("{{instance_id}}-{}-all-logs", self.node_kind.as_str()),
                 file_path: format!("{}/**.log", self.log_dir),
 
-                // TODO: replace this with log rotation
-                auto_removal: Some(false),
+                // If a log continuously writes to a single file, it is not removed.
+                auto_removal: Some(true),
+                retention_in_days: Some(5),
 
-                retention_in_days: Some(7),
                 ..cloudwatch::Collect::default()
             },
         ];
@@ -70,7 +70,8 @@ impl ConfigManager {
                     file_path: f,
 
                     auto_removal: Some(true),
-                    retention_in_days: Some(7),
+                    retention_in_days: Some(5),
+
                     ..cloudwatch::Collect::default()
                 });
             }
@@ -83,7 +84,7 @@ impl ConfigManager {
                 log_stream_name: format!("{{instance_id}}-{}-syslog", self.node_kind.as_str()),
                 file_path: String::from("/var/log/syslog"),
                 auto_removal: Some(true),
-                retention_in_days: Some(7),
+                retention_in_days: Some(5),
                 ..cloudwatch::Collect::default()
             });
             // to check device layer logs
@@ -92,7 +93,7 @@ impl ConfigManager {
                 log_stream_name: format!("{{instance_id}}-{}-dmesg", self.node_kind.as_str()),
                 file_path: String::from("/var/log/dmesg"),
                 auto_removal: Some(true),
-                retention_in_days: Some(7),
+                retention_in_days: Some(5),
                 ..cloudwatch::Collect::default()
             });
         }
