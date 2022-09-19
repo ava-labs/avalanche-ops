@@ -1002,6 +1002,18 @@ aws ssm start-session --region {} --target {}
                     "10",
                 ));
             }
+        } else if spec.machine.non_anchor_nodes <= 3 {
+            if !spec.avalanchego_config.is_custom_network() {
+                asg_non_anchor_params.push(build_param(
+                    "VolumeProvisionerInitialWaitRandomSeconds",
+                    "20",
+                ));
+            } else {
+                asg_non_anchor_params.push(build_param(
+                    "VolumeProvisionerInitialWaitRandomSeconds",
+                    "50",
+                ));
+            }
         }
 
         let is_spot_instance = spec.machine.use_spot_instance;
