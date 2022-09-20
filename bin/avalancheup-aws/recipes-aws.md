@@ -203,6 +203,11 @@ sudo tail -f /var/log/avalanche-telemetry-cloudwatch.log
 ```
 
 ```bash
+# update "AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH" for rules
+vi /data/avalanche-telemetry-cloudwatch.rules.yaml
+```
+
+```bash
 # update "avalanchego"
 sudo systemctl stop avalanche.service
 sudo systemctl disable avalanche.service

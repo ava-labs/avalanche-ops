@@ -6,7 +6,7 @@ filters:
   - regex: ^avalanche_network_times_(connected|disconnected)$
   - regex: ^avalanche_network_accept_failed$
   - regex: ^avalanche_network_(codec|proto_codec)[\s\S]*$ # covers "avalanche_network_codec_push_query_decompress_time_sum"*
-  - regex: ^avalanche_network_(version|ping|pong|(push|pull)_query|put|peerlist)_(received|sent|failed)$
+  - regex: ^avalanche_network_(get|get_ancestors|version|ping|pong|(push|pull)_query|put|peerlist)_(received|sent|failed)[\s\S]*$ # "avalanche_network_get_received" and "avalanche_network_get_received_bytes"
   - regex: ^avalanche_network_node_uptime_(rewarding_stake|weighted_average)$
   - regex: ^avalanche_network_inbound_conn_throttler_(allowed|rate_limited)$
   - regex: ^avalanche_network_throttler_outbound_acquire_(failures|successes)$
@@ -19,9 +19,10 @@ filters:
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_vm_metervm_parse_block_(count|sum)$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_benchlist_benched_num$
   - regex: ^avalanche_(P|(([0-9a-zA-Z]+)+){40,})_vm_percent_connected[\s\S]*$ # covers "vm_percent_connected_subnet" with subnetID label
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blocked|blockers)$ # "avalanche_C_blocked" and "avalanche_C_blockers" for "Consensus Dependencies"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_polls_[\s\S]*$ # "Percentage of Successful Polls"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blks|txs)_polls_[\s\S]*$ # "Average Number of Polls Before Accept"
-  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_(chits|chits_v2|app_gossip|get_accepted|gossip_request|query_failed)_(count|sum)$ # "Percentage of Successful Queries"
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_(chits|app_gossip|get|get_accepted|get_ancestors|gossip_request|query_failed)_(count|sum)$ # "Percentage of Successful Queries"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_unprocessed_msgs_len$ # "Unprocessed Messages"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_last_accepted_height$
   - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_rpc_(failure|requests|success)$
