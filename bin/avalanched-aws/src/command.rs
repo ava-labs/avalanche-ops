@@ -1359,6 +1359,29 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
     log::info!("STEP: checking liveness...");
 
     loop {
+        match command_manager::run("sudo tail -10 /var/log/avalanche/avalanche.log") {
+            Ok(out) => {
+                println!(
+                    "\n'/var/log/avalanche/avalanche.log' stdout:\n\n{}\n",
+                    out.0
+                );
+                println!("'/var/log/avalanche/avalanche.log' stderr:\n\n{}\n", out.1);
+            }
+            Err(e) => log::warn!("failed to check log file: {}", e),
+        }
+
+        println!();
+
+        match command_manager::run("sudo journalctl -u avalanche.service --lines=10 --no-pager") {
+            Ok(out) => {
+                println!("\n'avalanche.service' stdout:\n\n{}\n", out.0);
+                println!("'avalanche.service' stderr:\n\n{}\n", out.1);
+            }
+            Err(e) => log::warn!("failed to check journalctl: {}", e),
+        }
+
+        println!();
+
         let ret = api_health::spawn_check(ep, true).await;
         match ret {
             Ok(res) => {
@@ -1372,19 +1395,6 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
             }
         };
         sleep(Duration::from_secs(30)).await;
-
-        let out = command_manager::run("sudo tail -10 /var/log/avalanche/avalanche.log")?;
-        println!(
-            "\n'/var/log/avalanche/avalanche.log' stdout:\n\n{}\n",
-            out.0
-        );
-        println!("'/var/log/avalanche/avalanche.log' stderr:\n\n{}\n", out.1);
-
-        println!();
-        let out =
-            command_manager::run("sudo journalctl -u avalanche.service --lines=10 --no-pager")?;
-        println!("\n'avalanche.service' stdout:\n\n{}\n", out.0);
-        println!("'avalanche.service' stderr:\n\n{}\n", out.1);
     }
 
     Ok(())
