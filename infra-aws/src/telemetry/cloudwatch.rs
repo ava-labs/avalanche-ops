@@ -38,11 +38,12 @@ impl ConfigManager {
             // e.g., collect all .log files in the "/var/log/avalanche" tree
             cloudwatch::Collect {
                 log_group_name: self.id.clone(),
-                log_stream_name: format!("{{instance_id}}-{}-all-logs", self.node_kind.as_str()),
+                log_stream_name: format!("{{instance_id}}-{}-all", self.node_kind.as_str()),
                 file_path: format!("{}/**.log", self.log_dir),
 
-                // If a log continuously writes to a single file, it is not removed.
-                auto_removal: Some(true),
+                // set to true to autoremove
+                // (If a log continuously writes to a single file, it is not removed.)
+                auto_removal: Some(false),
                 retention_in_days: Some(5),
 
                 ..cloudwatch::Collect::default()
@@ -69,6 +70,7 @@ impl ConfigManager {
 
                     file_path: f,
 
+                    // If a log continuously writes to a single file, it is not removed.
                     auto_removal: Some(true),
                     retention_in_days: Some(5),
 
@@ -83,8 +85,11 @@ impl ConfigManager {
                 log_group_name: self.id.clone(),
                 log_stream_name: format!("{{instance_id}}-{}-syslog", self.node_kind.as_str()),
                 file_path: String::from("/var/log/syslog"),
+
+                // If a log continuously writes to a single file, it is not removed.
                 auto_removal: Some(true),
                 retention_in_days: Some(5),
+
                 ..cloudwatch::Collect::default()
             });
             // to check device layer logs
@@ -92,8 +97,11 @@ impl ConfigManager {
                 log_group_name: self.id.clone(),
                 log_stream_name: format!("{{instance_id}}-{}-dmesg", self.node_kind.as_str()),
                 file_path: String::from("/var/log/dmesg"),
+
+                // If a log continuously writes to a single file, it is not removed.
                 auto_removal: Some(true),
                 retention_in_days: Some(5),
+
                 ..cloudwatch::Collect::default()
             });
         }
