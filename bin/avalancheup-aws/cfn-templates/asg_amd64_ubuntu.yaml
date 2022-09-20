@@ -445,7 +445,9 @@ Resources:
               wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
               mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
               chmod +x /tmp/aws-volume-provisioner
-              # --initial-wait-random-seconds=140 to prevent EBS volume provision contentions
+              /tmp/aws-volume-provisioner --version
+
+              # --initial-wait-random-seconds=X to prevent EBS volume provision contentions
               /tmp/aws-volume-provisioner \
                 --log-level=info \
                 --initial-wait-random-seconds=${VolumeProvisionerInitialWaitRandomSeconds} \
@@ -471,12 +473,16 @@ Resources:
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               fi;
+              /usr/local/bin/avalanched --version
+
+              # for logs
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
 
               wget https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu
               mv ./avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu /usr/local/bin/avalanche-telemetry-cloudwatch
               chmod +x /usr/local/bin/avalanche-telemetry-cloudwatch
+              /usr/local/bin/avalanche-telemetry-cloudwatch --version
 
               cat > /tmp/avalanched.service <<EOF
               [Unit]

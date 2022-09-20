@@ -40,6 +40,7 @@ async fn main() {
         )
         .get_matches();
 
+    println!("{} version: {}", APP_NAME, crate_version!());
     let opts = flags::Options {
         log_level: matches.value_of("LOG_LEVEL").unwrap_or("info").to_string(),
         use_default_config: matches.is_present("USE_DEFAULT_CONFIG"),
