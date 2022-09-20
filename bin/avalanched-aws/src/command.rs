@@ -1359,6 +1359,8 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
     log::info!("STEP: checking liveness...");
 
     loop {
+        // if cloudwatch log config sets "auto_removal" to true
+        // this file might have been garbage collected!
         match command_manager::run("sudo tail -10 /var/log/avalanche/avalanche.log") {
             Ok(out) => {
                 println!(
