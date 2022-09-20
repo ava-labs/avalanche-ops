@@ -1367,7 +1367,7 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
                 );
                 println!("'/var/log/avalanche/avalanche.log' stderr:\n\n{}\n", out.1);
             }
-            Err(e) => log::warn!("failed to check log file: {}", e),
+            Err(e) => log::warn!("failed to check /var/log/avalanche/avalanche.log: {}", e),
         }
 
         println!();
@@ -1377,7 +1377,7 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
                 println!("\n'avalanche.service' stdout:\n\n{}\n", out.0);
                 println!("'avalanche.service' stderr:\n\n{}\n", out.1);
             }
-            Err(e) => log::warn!("failed to check journalctl: {}", e),
+            Err(e) => log::warn!("failed to check journalctl avalanche.service: {}", e),
         }
 
         println!();
@@ -1391,9 +1391,10 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
                 }
             }
             Err(e) => {
-                log::warn!("health/liveness check failed ({:?})", e);
+                log::warn!("health/liveness check failed ({:?}) -- retrying...", e);
             }
         };
+
         sleep(Duration::from_secs(30)).await;
     }
 
