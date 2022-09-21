@@ -11,6 +11,6 @@ fi
 cargo install cargo-udeps --locked
 
 # TODO: re-enable
-cargo +nightly udeps --all-targets || true
+cargo +nightly udeps --all-targets
 
 echo "ALL SUCCESS!"
