@@ -50,6 +50,15 @@ jobs:
           override: true
       - name: Check Rust version
         run: rustc --version
+
+      # or use "abelfodil/protoc-action@v1"
+      # ref. https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: "3.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
@@ -69,17 +78,17 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
+      - name: Check Rust version
+        run: rustc --version
 
       # or use "abelfodil/protoc-action@v1"
-      # https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
+      # ref. https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
       - name: Install protoc
         uses: arduino/setup-protoc@v1
         with:
           version: "3.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check Rust version
-        run: rustc --version
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true

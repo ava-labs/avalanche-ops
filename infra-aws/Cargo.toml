@@ -5,12 +5,12 @@ edition = "2021"
 rust-version = "1.63"
 
 [dependencies]
-avalanche-types = "0.0.33" # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.35" } # https://crates.io/crates/avalanche-types
 aws-manager = "0.0.19"
 aws-sdk-cloudwatch = "0.19.0"
 chrono = "0.4.22"
 compress-manager = "0.0.2"
-http-manager = "0.0.2"
+http-manager = "0.0.3"
 log = "0.4.17"
 random-manager = "0.0.1"
 rust-embed = "6.4.1"
