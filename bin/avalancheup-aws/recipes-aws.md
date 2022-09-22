@@ -40,7 +40,7 @@ For instance, to download the latest `avalanchego` release:
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
@@ -159,10 +159,6 @@ avalancheup-aws delete --spec-file-path spec.yaml
 ### Updates
 
 ```bash
-# update "avalanched"
-sudo systemctl stop avalanched.service
-sudo systemctl disable avalanched.service
-
 curl -L \
 https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu \
 -o /tmp/avalanched-aws.x86_64-unknown-linux-gnu
@@ -170,8 +166,16 @@ https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aw
 chmod +x /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 /tmp/avalanched-aws.x86_64-unknown-linux-gnu --version
 
+
+
+
+
+# update "avalanched"
+sudo systemctl stop avalanched.service
+sudo systemctl disable avalanched.service
+
 sudo mv /tmp/avalanched-aws.x86_64-unknown-linux-gnu /usr/local/bin/avalanched
-/usr/local/bin/avalanched --help
+/usr/local/bin/avalanched --version
 
 sudo systemctl enable avalanched.service
 sudo systemctl restart --no-block avalanched.service
@@ -181,10 +185,6 @@ sudo tail -f /var/log/avalanched.log
 ```
 
 ```bash
-# update "avalanche-telemetry-cloudwatch"
-sudo systemctl stop avalanche-telemetry-cloudwatch.service
-sudo systemctl disable avalanche-telemetry-cloudwatch.service
-
 curl -L \
 https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu \
 -o /tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu
@@ -192,8 +192,16 @@ https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanc
 chmod +x /tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu
 /tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu --version
 
+
+
+
+
+# update "avalanche-telemetry-cloudwatch"
+sudo systemctl stop avalanche-telemetry-cloudwatch.service
+sudo systemctl disable avalanche-telemetry-cloudwatch.service
+
 sudo mv /tmp/avalanche-telemetry-cloudwatch-aws.x86_64-unknown-linux-gnu /usr/local/bin/avalanche-telemetry-cloudwatch
-/usr/local/bin/avalanche-telemetry-cloudwatch --help
+/usr/local/bin/avalanche-telemetry-cloudwatch --version
 
 sudo systemctl enable avalanche-telemetry-cloudwatch.service
 sudo systemctl restart --no-block avalanche-telemetry-cloudwatch.service
@@ -208,12 +216,8 @@ vi /data/avalanche-telemetry-cloudwatch.rules.yaml
 ```
 
 ```bash
-# update "avalanchego"
-sudo systemctl stop avalanche.service
-sudo systemctl disable avalanche.service
-
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
@@ -223,8 +227,16 @@ find /tmp/avalanchego-v${VERSION}
 chmod +x /tmp/avalanchego-v${VERSION}/avalanchego
 /tmp/avalanchego-v${VERSION}/avalanchego --version
 
+
+
+
+
+# update "avalanchego"
+sudo systemctl stop avalanche.service
+sudo systemctl disable avalanche.service
+
 sudo mv /tmp/avalanchego-v${VERSION}/avalanchego /usr/local/bin/avalanche
-/usr/local/bin/avalanche --help
+/usr/local/bin/avalanche --version
 
 sudo systemctl enable avalanche.service
 sudo systemctl restart --no-block avalanche.service
@@ -303,21 +315,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -400,21 +412,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -450,21 +462,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -512,21 +524,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -566,21 +578,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -617,21 +629,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -703,21 +715,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 
@@ -884,21 +896,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -988,21 +1000,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
@@ -1040,21 +1052,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.8.5
+VERSION=1.8.6
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.8.5
+VERSION=1.8.6
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
