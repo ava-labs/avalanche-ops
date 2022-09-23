@@ -1339,7 +1339,7 @@ WantedBy=multi-user.target",
 
     // in case it's already running
     match command_manager::run("sudo systemctl stop avalanche-telemetry-cloudwatch.service") {
-        Ok(_) => {}
+        Ok(_) => log::info!("sucessfully stopped avalanche-telemetry-cloudwatch.service"),
         Err(e) => log::warn!("failed to stop {}", e),
     };
 
