@@ -276,40 +276,33 @@ pub fn execute(
             .unwrap();
     }
 
-    if aws_resources
-        .cloudformation_asg_non_anchor_nodes_logical_id
-        .is_some()
-    {
-        thread::sleep(Duration::from_secs(2));
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete ASG for non-anchor nodes\n"),
-            ResetColor
-        )?;
+    // delete no matter what, in case node provision failed
+    thread::sleep(Duration::from_secs(2));
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\n\nSTEP: confirming delete ASG for non-anchor nodes\n"),
+        ResetColor
+    )?;
 
-        let asg_non_anchor_nodes_stack_name =
-            aws_resources.cloudformation_asg_non_anchor_nodes.unwrap();
+    let asg_non_anchor_nodes_stack_name =
+        aws_resources.cloudformation_asg_non_anchor_nodes.unwrap();
 
-        let desired_capacity = spec.machine.non_anchor_nodes;
-        let mut wait_secs = 300 + 60 * desired_capacity as u64;
-        if wait_secs > MAX_WAIT_SECONDS {
-            wait_secs = MAX_WAIT_SECONDS;
-        }
-        rt.block_on(cloudformation_manager.poll_stack(
-            asg_non_anchor_nodes_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(wait_secs),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+    let desired_capacity = spec.machine.non_anchor_nodes;
+    let mut wait_secs = 300 + 60 * desired_capacity as u64;
+    if wait_secs > MAX_WAIT_SECONDS {
+        wait_secs = MAX_WAIT_SECONDS;
     }
+    rt.block_on(cloudformation_manager.poll_stack(
+        asg_non_anchor_nodes_stack_name.as_str(),
+        StackStatus::DeleteComplete,
+        Duration::from_secs(wait_secs),
+        Duration::from_secs(30),
+    ))
+    .unwrap();
 
-    if spec.machine.anchor_nodes.unwrap_or(0) > 0
-        && aws_resources
-            .cloudformation_asg_anchor_nodes_logical_id
-            .is_some()
-    {
+    if spec.machine.anchor_nodes.unwrap_or(0) > 0 {
+        // delete no matter what, in case node provision failed
         thread::sleep(Duration::from_secs(2));
         execute!(
             stdout(),
