@@ -2,7 +2,7 @@
 name = "coreth"
 version = "0.0.0"
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.64"
 publish = true
 description = "Avalanche coreth configuration"
 license = "BSD-3-Clause"

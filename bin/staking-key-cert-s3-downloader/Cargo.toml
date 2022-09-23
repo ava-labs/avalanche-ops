@@ -2,10 +2,10 @@
 name = "staking-key-cert-s3-downloader"
 version = "0.2.6"
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.64"
 
 [dependencies]
-aws-manager = "0.0.19"
+aws-manager = "0.19.0"
 clap = { version = "3.2.22", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.9.1"
 infra-aws = { path = "../../infra-aws" }
