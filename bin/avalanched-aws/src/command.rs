@@ -320,19 +320,16 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
     );
     check_liveness(&ep).await?;
 
-    // publish metrics
-    let mut handles = vec![];
-    if !opts.skip_publish_node_info {
-        handles.push(tokio::spawn(publish_node_info_ready_loop(
-            Arc::new(meta.ec2_instance_id.clone()),
-            tags.node_kind.clone(),
-            Arc::new(node_id.to_string()),
-            Arc::new(meta.public_ipv4.clone()),
-            Arc::clone(&s3_manager_arc),
-            Arc::new(tags.s3_bucket.clone()),
-            Arc::new(tags.avalancheup_spec_path.clone()),
-        )));
-    }
+    let mut handles = vec![tokio::spawn(publish_node_info_ready_loop(
+        Arc::new(meta.ec2_instance_id.clone()),
+        tags.node_kind.clone(),
+        Arc::new(node_id.to_string()),
+        Arc::new(meta.public_ipv4.clone()),
+        Arc::clone(&s3_manager_arc),
+        Arc::new(tags.s3_bucket.clone()),
+        Arc::new(tags.avalancheup_spec_path.clone()),
+        opts.publish_periodic_node_info,
+    ))];
 
     // assume the tag value is static
     // assume we don't change on-demand to spot, or vice versa
@@ -1148,10 +1145,10 @@ async fn discover_ready_anchor_nodes_from_s3(
         .machine
         .anchor_nodes
         .expect("unexpected None machine.anchor_nodes for custom network");
+
     let s3_key_prefix = s3::append_slash(
         &avalancheup_aws::StorageNamespace::DiscoverReadyAnchorNodesDir(spec.id.clone()).encode(),
     );
-
     let s3_manager: &s3::Manager = s3_manager.as_ref();
     let mut objects: Vec<aws_sdk_s3::model::Object>;
     loop {
@@ -1413,6 +1410,7 @@ async fn publish_node_info_ready_loop(
     s3_manager: Arc<s3::Manager>,
     s3_bucket: Arc<String>,
     avalancheup_spec_path: Arc<String>,
+    publish_periodic_node_info: bool,
 ) {
     log::info!("STEP: publishing node info for its readiness...");
 
@@ -1466,8 +1464,6 @@ async fn publish_node_info_ready_loop(
 
     let s3_manager: &s3::Manager = s3_manager.as_ref();
     loop {
-        log::info!("posting node info ready for {}", node_info.local_node.kind);
-
         match s3::spawn_put_object(
             s3_manager.clone(),
             &node_info_path,
@@ -1476,12 +1472,19 @@ async fn publish_node_info_ready_loop(
         )
         .await
         {
-            Ok(_) => {}
+            Ok(_) => log::info!(
+                "successfully published node info for node kind {}",
+                node_info.local_node.kind
+            ),
             Err(e) => {
                 log::warn!("failed spawn_put_object {}", e);
                 sleep(Duration::from_secs(10)).await;
                 continue;
             }
+        }
+
+        if !publish_periodic_node_info {
+            break;
         }
 
         log::info!("sleeping 10-min for next 'publish_node_info_ready_loop'");

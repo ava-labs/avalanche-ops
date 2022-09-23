@@ -117,7 +117,7 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
 
     // to skip s3 uploads for node discovery
     const paramAvalanchedFlag: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedFlag');
-    paramAvalanchedFlag.default = '--use-default-config --skip-publish-node-info';
+    paramAvalanchedFlag.default = '--use-default-config';
 
     // "mainnet" is 1, "fuji" is 5
     const paramNetworkId: cdk.CfnParameter = tmplAsg.getParameter('NetworkId');

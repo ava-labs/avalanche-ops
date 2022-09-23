@@ -972,7 +972,6 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --avalanched-use-default-config \
---avalanched-skip-publish-node-info \
 --install-artifacts-avalanched-bin ${AVALANCHED_BIN_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO

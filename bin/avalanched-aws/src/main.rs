@@ -31,9 +31,9 @@ async fn main() {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("SKIP_PUBLISH_NODE_INFO")
-                .long("skip-publish-node-info")
-                .help("Enables to skip publishing node info (useful for CDK integration)")
+            Arg::new("PUBLISH_PERIODIC_NODE_INFO")
+                .long("publish-periodic-node-info")
+                .help("Enables to periodically publish ready node information to S3")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),
@@ -44,7 +44,7 @@ async fn main() {
     let opts = flags::Options {
         log_level: matches.value_of("LOG_LEVEL").unwrap_or("info").to_string(),
         use_default_config: matches.is_present("USE_DEFAULT_CONFIG"),
-        skip_publish_node_info: matches.is_present("SKIP_PUBLISHING_NODE_INFO"),
+        publish_periodic_node_info: matches.is_present("PUBLISH_PERIODIC_NODE_INFO"),
     };
     command::execute(opts).await.unwrap();
 }

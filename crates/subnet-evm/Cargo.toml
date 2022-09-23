@@ -14,7 +14,7 @@ readme = "README.md"
 big-num-manager = "0.0.1"
 log = "0.4.17"
 num-bigint = "0.4.3"
-serde = { version = "1.0.144", features = ["derive"] }
+serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.85" # https://github.com/serde-rs/json/releases
 
 [dev-dependencies]

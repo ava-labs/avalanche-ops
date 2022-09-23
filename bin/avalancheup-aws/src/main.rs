@@ -83,8 +83,8 @@ fn main() {
                     .to_string(),
                 avalanched_use_default_config: sub_matches
                     .is_present("AVALANCHED_USE_DEFAULT_CONFIG"),
-                avalanched_skip_publish_node_info: sub_matches
-                    .is_present("AVALANCHED_SKIP_PUBLISH_NODE_INFO"),
+                avalanched_publish_periodic_node_info: sub_matches
+                    .is_present("AVALANCHED_PUBLISH_PERIODIC_NODE_INFO"),
 
                 avalanchego_log_level: sub_matches
                     .value_of("AVALANCHEGO_LOG_LEVEL")
