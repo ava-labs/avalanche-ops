@@ -221,8 +221,7 @@ pub struct Spec {
     /// Install artifacts to share with remote machines.
     pub install_artifacts: InstallArtifacts,
 
-    /// Flag to pass to the "avalanched" command-line interface
-    /// (e.g., "--skip_publish_node_info").
+    /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: avalanched::Flags,
 
     /// Represents the configuration for "avalanchego".
@@ -1143,7 +1142,7 @@ install_artifacts:
 avalanched_config:
   log_level: info
   use_default_config: false
-  skip_publish_node_info: false
+  publish_periodic_node_info: false
 
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
