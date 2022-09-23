@@ -430,7 +430,7 @@ pub struct DefaultSpecOption {
 
     pub avalanched_log_level: String,
     pub avalanched_use_default_config: bool,
-    pub avalanched_skip_publish_node_info: bool,
+    pub avalanched_publish_periodic_node_info: bool,
 
     pub avalanchego_log_level: String,
     pub avalanchego_whitelisted_subnets: String,
@@ -577,7 +577,7 @@ impl Spec {
         let avalanched_config = avalanched::Flags {
             log_level: opts.avalanched_log_level,
             use_default_config: opts.avalanched_use_default_config,
-            skip_publish_node_info: opts.avalanched_skip_publish_node_info,
+            publish_periodic_node_info: opts.avalanched_publish_periodic_node_info,
         };
 
         let mut avalanchego_config = match network_id {
@@ -1245,7 +1245,7 @@ coreth_config:
         avalanched_config: avalanched::Flags {
             log_level: String::from("info"),
             use_default_config: false,
-            skip_publish_node_info: false,
+            publish_periodic_node_info: false,
         },
 
         avalanchego_config,

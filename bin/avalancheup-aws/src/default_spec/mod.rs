@@ -165,9 +165,9 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
-            Arg::new("AVALANCHED_SKIP_PUBLISH_NODE_INFO") 
-                .long("avalanched-skip-publish-node-info")
-                .help("Sets to skip publishing node info(for CDK)")
+            Arg::new("AVALANCHED_PUBLISH_PERIODIC_NODE_INFO") 
+                .long("avalanched-publish-periodic-node-info")
+                .help("Sets to periodically publish node info to S3")
                 .required(false)
                 .takes_value(false)
                 .allow_invalid_utf8(false),
