@@ -1278,7 +1278,7 @@ WantedBy=multi-user.target",
 
     // in case it's already running
     match command_manager::run("sudo systemctl stop avalanche.service") {
-        Ok(_) => {}
+        Ok(_) => log::info!("successfully stopped avalanche.service"),
         Err(e) => log::warn!("failed to stop {}", e),
     };
 
@@ -1487,9 +1487,11 @@ async fn publish_node_info_ready_loop(
             break;
         }
 
-        log::info!("sleeping 10-min for next 'publish_node_info_ready_loop'");
+        log::info!("sleeping 10-min for next publish loop");
         sleep(Duration::from_secs(600)).await;
     }
+
+    log::info!("successfully completed node info publish");
 }
 
 async fn monitor_spot_instance_action(

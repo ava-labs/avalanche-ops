@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 pub struct Flags {
     pub log_level: String,
     pub use_default_config: bool,
-    pub publish_periodic_node_info: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_periodic_node_info: Option<bool>,
 }
 
 impl Flags {
@@ -15,8 +16,10 @@ impl Flags {
         if self.use_default_config {
             s.push_str(" --use-default-config");
         }
-        if self.publish_periodic_node_info {
-            s.push_str(" --publish-periodic-node-info");
+        if let Some(v) = &self.publish_periodic_node_info {
+            if *v {
+                s.push_str(" --publish-periodic-node-info");
+            }
         }
         s
     }

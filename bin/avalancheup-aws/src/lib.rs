@@ -573,11 +573,14 @@ impl Spec {
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
-        let avalanched_config = avalanched::Flags {
+        let mut avalanched_config = avalanched::Flags {
             log_level: opts.avalanched_log_level,
             use_default_config: opts.avalanched_use_default_config,
-            publish_periodic_node_info: opts.avalanched_publish_periodic_node_info,
+            publish_periodic_node_info: None,
         };
+        if opts.avalanched_publish_periodic_node_info {
+            avalanched_config.publish_periodic_node_info = Some(true);
+        }
 
         let mut avalanchego_config = match network_id {
             1 => avalanchego_config::Config::default_main(),
@@ -1244,7 +1247,7 @@ coreth_config:
         avalanched_config: avalanched::Flags {
             log_level: String::from("info"),
             use_default_config: false,
-            publish_periodic_node_info: false,
+            publish_periodic_node_info: Some(false),
         },
 
         avalanchego_config,

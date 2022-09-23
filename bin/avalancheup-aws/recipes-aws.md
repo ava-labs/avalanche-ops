@@ -171,6 +171,7 @@ chmod +x /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 
 
 # update "avalanched"
+# it runs "sudo systemctl stop avalanche.service" and "restart"
 sudo systemctl stop avalanched.service
 sudo systemctl disable avalanched.service
 
