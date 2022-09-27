@@ -287,9 +287,9 @@ pub struct Endpoints {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub liveness: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metamask_rpc: Option<String>,
+    pub metamask_rpc_c: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub websocket: Option<String>,
+    pub websocket_rpc_c: Option<String>,
 }
 
 impl Default for Endpoints {
@@ -308,8 +308,8 @@ impl Endpoints {
             metrics: None,
             health: None,
             liveness: None,
-            metamask_rpc: None,
-            websocket: None,
+            metamask_rpc_c: None,
+            websocket_rpc_c: None,
         }
     }
 
