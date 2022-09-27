@@ -1308,7 +1308,7 @@ fn stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
     http_port: u32,
     metrics_fetch_interval_seconds: u64,
 ) -> io::Result<()> {
-    log::info!("STEP: setting up and starting avalanche-telemetry-cloudwatch systemd service...");
+    log::info!("STEP: setting up and starting avalanche-telemetry-cloudwatch systemd service with namespace {} and fetch interval seconds {}", namespace, metrics_fetch_interval_seconds);
 
     // don't use "Type=notify"
     // as "avalanchego" currently does not do anything specific to systemd
