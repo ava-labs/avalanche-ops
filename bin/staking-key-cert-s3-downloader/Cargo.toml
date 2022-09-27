@@ -10,4 +10,4 @@ clap = { version = "3.2.22", features = ["cargo", "derive"] } # https://github.c
 env_logger = "0.9.1"
 infra-aws = { path = "../../infra-aws" }
 log = "0.4.17"
-tokio = { version = "1.21.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.21.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
