@@ -77,6 +77,14 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("DISABLE_LOGS_AUTO_REMOVAL")
+                .long("disable-logs-auto-removal")
+                .help("Sets to disable CloudWatch logs auto removal")
+                .required(false)
+                .takes_value(false)
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("AAD_TAG")
                 .long("aad-tag")
                 .short('a')

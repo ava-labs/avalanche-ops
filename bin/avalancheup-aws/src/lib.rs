@@ -343,6 +343,9 @@ pub struct Machine {
     pub disable_spot_instance_for_anchor_nodes: bool,
     #[serde(default)]
     pub disable_nlb: bool,
+    /// Set "true" to disable CloudWatch log auto removal.
+    #[serde(default)]
+    pub disable_logs_auto_removal: bool,
 
     /// Initial EBS volume size in GB.
     /// Can be resized with no downtime.
@@ -416,6 +419,7 @@ pub struct DefaultSpecOption {
     pub use_spot_instance: bool,
     pub disable_spot_instance_for_anchor_nodes: bool,
     pub disable_nlb: bool,
+    pub disable_logs_auto_removal: bool,
     pub volume_size_in_gb: u32,
 
     pub key_files_dir: String,
@@ -843,6 +847,7 @@ impl Spec {
             use_spot_instance: opts.use_spot_instance,
             disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
             disable_nlb: opts.disable_nlb,
+            disable_logs_auto_removal: opts.disable_logs_auto_removal,
 
             volume_size_in_gb,
         };
@@ -1135,6 +1140,7 @@ machine:
   - r5.large
   - t3.large
   disable_nlb: false
+  disable_logs_auto_removal: false
   volume_size_in_gb: 500
 
 install_artifacts:
@@ -1235,6 +1241,7 @@ coreth_config:
             use_spot_instance: false,
             disable_spot_instance_for_anchor_nodes: false,
             disable_nlb: false,
+            disable_logs_auto_removal: false,
             volume_size_in_gb: 500,
         },
 

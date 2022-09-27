@@ -580,30 +580,35 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ),
     ]);
 
-    let all_public_subnet_ids = aws_resources
+    let public_subnet_ids = aws_resources
         .cloudformation_vpc_public_subnet_ids
         .clone()
         .unwrap();
     if spec.avalanchego_config.is_custom_network() {
-        log::info!(
-            "custom network, so setting 'PublicSubnetIds' parameter with multiple subnets {:?}",
-            all_public_subnet_ids
-        );
-
-        // custom network is for testing, for ok to allow multi-AZ
-        asg_parameters.push(build_param(
-            "PublicSubnetIds",
-            &aws_resources
-                .cloudformation_vpc_public_subnet_ids
-                .clone()
-                .unwrap()
-                .join(","),
-        ));
+        let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
+        if anchor_nodes + spec.machine.non_anchor_nodes > 3 {
+            // custom network is for testing, for ok to allow multi-AZ
+            log::info!(
+                "custom network, so setting 'PublicSubnetIds' parameter with multiple subnets {:?}",
+                public_subnet_ids
+            );
+            asg_parameters.push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
+        } else {
+            // only <=3 nodes so 2 AZs are enough
+            log::info!(
+                "custom network but deploy with only two AZ {:?}",
+                public_subnet_ids
+            );
+            asg_parameters.push(build_param(
+                "PublicSubnetIds",
+                &public_subnet_ids[..2].join(","),
+            ));
+        }
     } else {
         log::info!(
             "network {}, so choosing only 1 public subnet Id '{}' for 'PublicSubnetIds' parameter",
             spec.avalanchego_config.network_id,
-            all_public_subnet_ids[aws_resources.preferred_az_index]
+            public_subnet_ids[aws_resources.preferred_az_index]
         );
 
         // only use 1 AZ for main/fuji net
@@ -615,7 +620,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         // TODO: support AZ choose
         asg_parameters.push(build_param(
             "PublicSubnetIds",
-            &all_public_subnet_ids[aws_resources.preferred_az_index],
+            &public_subnet_ids[aws_resources.preferred_az_index],
         ));
     }
 

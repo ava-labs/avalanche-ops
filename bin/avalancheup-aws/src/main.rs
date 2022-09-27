@@ -51,6 +51,7 @@ fn main() {
                 disable_spot_instance_for_anchor_nodes: sub_matches
                     .is_present("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
                 disable_nlb: sub_matches.is_present("DISABLE_NLB"),
+                disable_logs_auto_removal: sub_matches.is_present("DISABLE_LOGS_AUTO_REMOVAL"),
                 volume_size_in_gb,
 
                 key_files_dir: sub_matches

@@ -31,7 +31,7 @@ pub struct ConfigManager {
 impl ConfigManager {
     /// Set "log_files" to track extra log files via CloudWatch.
     /// e.g., "/var/log/avalanched.log"
-    pub fn sync(&self, log_files: Option<Vec<String>>) -> io::Result<()> {
+    pub fn sync(&self, logs_auto_removal: bool, log_files: Option<Vec<String>>) -> io::Result<()> {
         log::info!("syncing CloudWatch configuration JSON file");
 
         let mut log_collect_list = vec![
@@ -41,9 +41,8 @@ impl ConfigManager {
                 log_stream_name: format!("{{instance_id}}-{}-all", self.node_kind.as_str()),
                 file_path: format!("{}/**.log", self.log_dir),
 
-                // set to true to autoremove
-                // (If a log continuously writes to a single file, it is not removed.)
-                auto_removal: Some(false),
+                // If a log continuously writes to a single file, it is not removed.
+                auto_removal: Some(logs_auto_removal),
                 retention_in_days: Some(5),
 
                 ..cloudwatch::Collect::default()
@@ -51,9 +50,9 @@ impl ConfigManager {
         ];
 
         if let Some(v) = log_files {
-            for f in v {
+            for file_path in v {
                 // e.g., "/var/log/avalanched.log" becomes "avalanched.log"
-                let fname = Path::new(&f)
+                let fname = Path::new(&file_path)
                     .file_name()
                     .unwrap()
                     .to_os_string()
@@ -68,10 +67,10 @@ impl ConfigManager {
                         fname
                     ),
 
-                    file_path: f,
+                    file_path,
 
                     // If a log continuously writes to a single file, it is not removed.
-                    auto_removal: Some(true),
+                    auto_removal: Some(logs_auto_removal),
                     retention_in_days: Some(5),
 
                     ..cloudwatch::Collect::default()
@@ -87,7 +86,7 @@ impl ConfigManager {
                 file_path: String::from("/var/log/syslog"),
 
                 // If a log continuously writes to a single file, it is not removed.
-                auto_removal: Some(true),
+                auto_removal: Some(logs_auto_removal),
                 retention_in_days: Some(5),
 
                 ..cloudwatch::Collect::default()
@@ -99,7 +98,7 @@ impl ConfigManager {
                 file_path: String::from("/var/log/dmesg"),
 
                 // If a log continuously writes to a single file, it is not removed.
-                auto_removal: Some(true),
+                auto_removal: Some(logs_auto_removal),
                 retention_in_days: Some(5),
 
                 ..cloudwatch::Collect::default()

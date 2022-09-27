@@ -43,6 +43,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         subnet_evm_config,
         download_avalanchego_from_github,
         metrics_rules,
+        logs_auto_removal,
     ) = if opts.use_default_config {
         let avalanchego_config =
             write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
@@ -54,6 +55,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             None,
             true,
             avalancheup_aws::default_rules(),
+            true,
         )
     } else {
         let spec = download_spec(
@@ -78,6 +80,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             spec.subnet_evm_config.clone(),
             spec.install_artifacts.avalanchego_bin.is_none(),
             metrics_rules,
+            !spec.machine.disable_logs_auto_removal,
         )
     };
     if !Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
@@ -112,6 +115,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         create_cloudwatch_config(
             &tags.id,
             tags.node_kind.clone(),
+            logs_auto_removal,
             &avalanchego_config.log_dir,
             true,
             true,
@@ -838,6 +842,7 @@ async fn install_avalanche_from_s3(
 fn create_cloudwatch_config(
     id: &str,
     node_kind: node::Kind,
+    log_auto_removal: bool,
     avalanche_logs_dir: &str,
     instance_system_logs: bool,
     instance_system_metrics: bool,
@@ -858,11 +863,14 @@ fn create_cloudwatch_config(
 
         config_file_path: cloudwatch_config_file_path.to_string(),
     };
-    cw_config_manager.sync(Some(vec![
-        String::from("/var/log/cloud-init-output.log"),
-        String::from("/var/log/avalanched.log"),
-        String::from("/var/log/avalanche-telemetry-cloudwatch.log"),
-    ]))
+    cw_config_manager.sync(
+        log_auto_removal,
+        Some(vec![
+            String::from("/var/log/cloud-init-output.log"),
+            String::from("/var/log/avalanched.log"),
+            String::from("/var/log/avalanche-telemetry-cloudwatch.log"),
+        ]),
+    )
 }
 
 async fn find_attached_volume(
