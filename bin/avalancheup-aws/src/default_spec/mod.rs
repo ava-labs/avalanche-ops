@@ -85,6 +85,15 @@ pub fn command() -> Command<'static> {
                 .allow_invalid_utf8(false),
         )
         .arg(
+            Arg::new("METRICS_FETCH_INTERVAL_SECONDS")
+                .long("metrics-fetch-interval-seconds")
+                .help("Sets the avalanche-telemetry-cloudwatch fetch interval in seconds")
+                .required(false)
+                .takes_value(true)
+                .default_value("300")
+                .allow_invalid_utf8(false),
+        )
+        .arg(
             Arg::new("AAD_TAG")
                 .long("aad-tag")
                 .short('a')

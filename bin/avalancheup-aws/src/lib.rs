@@ -224,6 +224,16 @@ pub struct Spec {
     /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: avalanched::Flags,
 
+    /// Set "true" to disable NLB.
+    #[serde(default)]
+    pub disable_nlb: bool,
+    /// Set "true" to disable CloudWatch log auto removal.
+    #[serde(default)]
+    pub disable_logs_auto_removal: bool,
+    /// Interval in seconds to fetch metrics.
+    #[serde(default)]
+    pub metrics_fetch_interval_seconds: u64,
+
     /// Represents the configuration for "avalanchego".
     /// Set as if run in remote machines.
     /// For instance, "config-file" must be the path valid
@@ -341,11 +351,6 @@ pub struct Machine {
     pub use_spot_instance: bool,
     #[serde(default)]
     pub disable_spot_instance_for_anchor_nodes: bool,
-    #[serde(default)]
-    pub disable_nlb: bool,
-    /// Set "true" to disable CloudWatch log auto removal.
-    #[serde(default)]
-    pub disable_logs_auto_removal: bool,
 
     /// Initial EBS volume size in GB.
     /// Can be resized with no downtime.
@@ -418,9 +423,11 @@ pub struct DefaultSpecOption {
     pub preferred_az_index: usize,
     pub use_spot_instance: bool,
     pub disable_spot_instance_for_anchor_nodes: bool,
+    pub volume_size_in_gb: u32,
+
     pub disable_nlb: bool,
     pub disable_logs_auto_removal: bool,
-    pub volume_size_in_gb: u32,
+    pub metrics_fetch_interval_seconds: u64,
 
     pub key_files_dir: String,
     pub aad_tag: String,
@@ -846,8 +853,6 @@ impl Spec {
 
             use_spot_instance: opts.use_spot_instance,
             disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
-            disable_nlb: opts.disable_nlb,
-            disable_logs_auto_removal: opts.disable_logs_auto_removal,
 
             volume_size_in_gb,
         };
@@ -861,6 +866,10 @@ impl Spec {
             install_artifacts,
 
             avalanched_config,
+
+            disable_nlb: opts.disable_nlb,
+            disable_logs_auto_removal: opts.disable_logs_auto_removal,
+            metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
 
             avalanchego_config,
             coreth_config,
@@ -1139,8 +1148,6 @@ machine:
   - c5.large
   - r5.large
   - t3.large
-  disable_nlb: false
-  disable_logs_auto_removal: false
   volume_size_in_gb: 500
 
 install_artifacts:
@@ -1152,6 +1159,9 @@ avalanched_config:
   log_level: info
   use_default_config: false
   publish_periodic_node_info: false
+
+disable_nlb: false
+disable_logs_auto_removal: false
 
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
@@ -1240,8 +1250,6 @@ coreth_config:
             ],
             use_spot_instance: false,
             disable_spot_instance_for_anchor_nodes: false,
-            disable_nlb: false,
-            disable_logs_auto_removal: false,
             volume_size_in_gb: 500,
         },
 
@@ -1256,6 +1264,10 @@ coreth_config:
             use_default_config: false,
             publish_periodic_node_info: Some(false),
         },
+
+        disable_nlb: false,
+        disable_logs_auto_removal: false,
+        metrics_fetch_interval_seconds: 0,
 
         avalanchego_config,
         coreth_config: coreth_config::Config::default(),

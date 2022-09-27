@@ -44,6 +44,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         download_avalanchego_from_github,
         metrics_rules,
         logs_auto_removal,
+        metrics_fetch_interval_seconds,
     ) = if opts.use_default_config {
         let avalanchego_config =
             write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
@@ -56,6 +57,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             true,
             avalancheup_aws::default_rules(),
             true,
+            300,
         )
     } else {
         let spec = download_spec(
@@ -80,7 +82,8 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             spec.subnet_evm_config.clone(),
             spec.install_artifacts.avalanchego_bin.is_none(),
             metrics_rules,
-            !spec.machine.disable_logs_auto_removal,
+            !spec.disable_logs_auto_removal,
+            spec.metrics_fetch_interval_seconds,
         )
     };
     if !Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
@@ -305,6 +308,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         &tags.avalanche_telemetry_cloudwatch_rules_file_path,
         &tags.id,
         avalanchego_config.http_port,
+        metrics_fetch_interval_seconds,
     )?;
 
     let http_scheme = {
@@ -1302,6 +1306,7 @@ fn stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
     avalanche_telemetry_cloudwatch_rules_file_path: &str,
     namespace: &str,
     http_port: u32,
+    metrics_fetch_interval_seconds: u64,
 ) -> io::Result<()> {
     log::info!("STEP: setting up and starting avalanche-telemetry-cloudwatch systemd service...");
 
@@ -1322,7 +1327,7 @@ TimeoutStartSec=300
 Restart=always
 RestartSec=5s
 LimitNOFILE=40000
-ExecStart={} --log-level=info --initial-wait-seconds=10 --fetch-interval-seconds=60 --rules-file-path={} --namespace={} --rpc-endpoint=http://localhost:{}
+ExecStart={} --log-level=info --initial-wait-seconds=10 --rules-file-path={} --namespace={} --rpc-endpoint=http://localhost:{} --fetch-interval-seconds={}
 StandardOutput=append:/var/log/avalanche-telemetry-cloudwatch.log
 StandardError=append:/var/log/avalanche-telemetry-cloudwatch.log
 
@@ -1332,6 +1337,7 @@ WantedBy=multi-user.target",
         avalanche_telemetry_cloudwatch_rules_file_path,
         namespace,
         http_port,
+        metrics_fetch_interval_seconds,
     );
 
     let mut service_file = tempfile::NamedTempFile::new()?;

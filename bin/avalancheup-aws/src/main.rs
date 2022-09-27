@@ -27,6 +27,12 @@ fn main() {
             let volume_size_in_gb = sub_matches.value_of("VOLUME_SIZE_IN_GB").unwrap_or("0");
             let volume_size_in_gb = volume_size_in_gb.parse::<u32>().unwrap();
 
+            let metrics_fetch_interval_seconds = sub_matches
+                .value_of("METRICS_FETCH_INTERVAL_SECONDS")
+                .unwrap_or("300");
+            let metrics_fetch_interval_seconds =
+                metrics_fetch_interval_seconds.parse::<u64>().unwrap();
+
             let preferred_az_index = sub_matches.value_of("PREFERRED_AZ_INDEX").unwrap_or("0");
             let preferred_az_index = preferred_az_index.parse::<usize>().unwrap();
 
@@ -50,9 +56,12 @@ fn main() {
                 use_spot_instance: sub_matches.is_present("USE_SPOT_INSTANCE"),
                 disable_spot_instance_for_anchor_nodes: sub_matches
                     .is_present("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
+
+                volume_size_in_gb,
+
                 disable_nlb: sub_matches.is_present("DISABLE_NLB"),
                 disable_logs_auto_removal: sub_matches.is_present("DISABLE_LOGS_AUTO_REMOVAL"),
-                volume_size_in_gb,
+                metrics_fetch_interval_seconds,
 
                 key_files_dir: sub_matches
                     .value_of("KEY_FILES_DIR")
