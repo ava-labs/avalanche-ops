@@ -76,6 +76,11 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
         } else {
             avalancheup_aws::default_rules()
         };
+        let metrics_fetch_interval_seconds = if spec.metrics_fetch_interval_seconds > 0 {
+            spec.metrics_fetch_interval_seconds
+        } else {
+            300
+        };
         (
             spec.avalanchego_config.clone(),
             spec.coreth_config.clone(),
@@ -83,7 +88,7 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             spec.install_artifacts.avalanchego_bin.is_none(),
             metrics_rules,
             !spec.disable_logs_auto_removal,
-            spec.metrics_fetch_interval_seconds,
+            metrics_fetch_interval_seconds,
         )
     };
     if !Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
