@@ -1341,15 +1341,14 @@ aws ssm start-session --region {} --target {}
         println!("{}", node.encode_yaml().unwrap());
     }
 
-    let rpc_hosts = if let Some(dns_name) = &aws_resources.cloudformation_asg_nlb_dns_name {
+    let mut rpc_hosts = if let Some(dns_name) = &aws_resources.cloudformation_asg_nlb_dns_name {
         vec![dns_name.clone()]
     } else {
-        let mut eps = Vec::new();
-        for node in current_nodes.iter() {
-            eps.push(node.public_ip.clone())
-        }
-        eps
+        Vec::new()
     };
+    for node in current_nodes.iter() {
+        rpc_hosts.push(node.public_ip.clone())
+    }
 
     let http_port = spec.avalanchego_config.http_port;
     let nlb_https_enabled = aws_resources.nlb_acm_certificate_arn.is_some();
