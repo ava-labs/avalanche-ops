@@ -189,7 +189,7 @@ pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10; // TODO: allow higher number?
 /// "1" is better in order to choose only one AZ for static EBS provision.
 /// If one wants to run multiple nodes, it should create multiple groups
 /// of avalanche ops clusters.
-pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 1;
+pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
 pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
 pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20; // TODO: allow higher number?
 
