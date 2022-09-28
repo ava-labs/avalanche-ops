@@ -747,12 +747,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ))
         .unwrap();
 
-        // add 5-minute for ELB creation
-        let mut wait_secs = 500 + 60 * desired_capacity as u64;
+        // add 5-minute for ELB creation + volume provisioner
+        let mut wait_secs = 700 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
-        thread::sleep(Duration::from_secs(30));
+        thread::sleep(Duration::from_secs(60));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
                 cloudformation_asg_anchor_nodes_stack_name.as_str(),
@@ -1109,11 +1109,12 @@ aws ssm start-session --region {} --target {}
         ))
         .unwrap();
 
-        let mut wait_secs = 500 + 60 * desired_capacity as u64;
+        // add 5-minute for ELB creation + volume provisioner
+        let mut wait_secs = 700 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
-        thread::sleep(Duration::from_secs(30));
+        thread::sleep(Duration::from_secs(60));
         let stack = rt
             .block_on(cloudformation_manager.poll_stack(
                 cloudformation_asg_non_anchor_nodes_stack_name.as_str(),
