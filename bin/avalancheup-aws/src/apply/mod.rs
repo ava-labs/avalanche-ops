@@ -580,50 +580,6 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ),
     ]);
 
-    let public_subnet_ids = aws_resources
-        .cloudformation_vpc_public_subnet_ids
-        .clone()
-        .unwrap();
-    if spec.avalanchego_config.is_custom_network() {
-        let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
-        if anchor_nodes + spec.machine.non_anchor_nodes > 3 {
-            // custom network is for testing, for ok to allow multi-AZ
-            log::info!(
-                "custom network, so setting 'PublicSubnetIds' parameter with multiple subnets {:?}",
-                public_subnet_ids
-            );
-            asg_parameters.push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
-        } else {
-            // only <=3 nodes so 2 AZs are enough
-            log::info!(
-                "custom network but deploy with only two AZ {:?}",
-                public_subnet_ids
-            );
-            asg_parameters.push(build_param(
-                "PublicSubnetIds",
-                &public_subnet_ids[..2].join(","),
-            ));
-        }
-    } else {
-        log::info!(
-            "network {}, so choosing only 1 public subnet Id '{}' for 'PublicSubnetIds' parameter",
-            spec.avalanchego_config.network_id,
-            public_subnet_ids[aws_resources.preferred_az_index]
-        );
-
-        // only use 1 AZ for main/fuji net
-        // to maximize the static EBS provision
-        //
-        // one can create multiple avalancheup for multi-AZ deployments
-        // or manually update the ASG.VPCZoneIdentifier for fallbacks
-        //
-        // TODO: support AZ choose
-        asg_parameters.push(build_param(
-            "PublicSubnetIds",
-            &public_subnet_ids[aws_resources.preferred_az_index],
-        ));
-    }
-
     asg_parameters.push(build_param(
         "VolumeSize",
         format!("{}", spec.machine.volume_size_in_gb).as_str(),
@@ -653,6 +609,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         "AvalanchedFlag",
         &spec.avalanched_config.to_flags(),
     ));
+
+    let public_subnet_ids = aws_resources
+        .cloudformation_vpc_public_subnet_ids
+        .clone()
+        .unwrap();
 
     // TODO: support bootstrap from existing DB for anchor nodes
     let mut current_nodes: Vec<avalancheup_aws::Node> = Vec::new();
@@ -693,11 +654,44 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     "VolumeProvisionerInitialWaitRandomSeconds",
                     "10",
                 ));
-            } else if *anchor_nodes <= 3 {
+
+                log::info!(
+                    "using single subnet {} for {} anchor node",
+                    public_subnet_ids[aws_resources.preferred_az_index],
+                    *anchor_nodes
+                );
+                asg_anchor_params.push(build_param(
+                    "PublicSubnetIds",
+                    &public_subnet_ids[aws_resources.preferred_az_index],
+                ));
+            } else if *anchor_nodes < 3 {
                 asg_anchor_params.push(build_param(
                     "VolumeProvisionerInitialWaitRandomSeconds",
-                    "50",
+                    "20",
                 ));
+
+                log::info!(
+                    "using single subnet {} for {} anchor nodes",
+                    public_subnet_ids[aws_resources.preferred_az_index],
+                    *anchor_nodes
+                );
+                asg_anchor_params.push(build_param(
+                    "PublicSubnetIds",
+                    &public_subnet_ids[aws_resources.preferred_az_index],
+                ));
+            } else {
+                asg_anchor_params.push(build_param(
+                    "VolumeProvisionerInitialWaitRandomSeconds",
+                    "150",
+                ));
+
+                log::info!(
+                    "using multiple subnets {:?} for {} anchor nodes",
+                    public_subnet_ids,
+                    *anchor_nodes
+                );
+                asg_anchor_params
+                    .push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
             }
         }
 
@@ -1010,29 +1004,47 @@ aws ssm start-session --region {} --target {}
         // TODO: if one manually updates the capacity,
         // this value is not valid... may cause contentions in EBS volume provision
         if spec.machine.non_anchor_nodes == 1 {
-            if !spec.avalanchego_config.is_custom_network() {
-                asg_non_anchor_params.push(build_param(
-                    "VolumeProvisionerInitialWaitRandomSeconds",
-                    "5",
-                ));
-            } else {
-                asg_non_anchor_params.push(build_param(
-                    "VolumeProvisionerInitialWaitRandomSeconds",
-                    "10",
-                ));
-            }
-        } else if spec.machine.non_anchor_nodes <= 3 {
-            if !spec.avalanchego_config.is_custom_network() {
-                asg_non_anchor_params.push(build_param(
-                    "VolumeProvisionerInitialWaitRandomSeconds",
-                    "20",
-                ));
-            } else {
-                asg_non_anchor_params.push(build_param(
-                    "VolumeProvisionerInitialWaitRandomSeconds",
-                    "50",
-                ));
-            }
+            asg_non_anchor_params.push(build_param(
+                "VolumeProvisionerInitialWaitRandomSeconds",
+                "10",
+            ));
+
+            log::info!(
+                "using single subnet {} for 1 non-anchor node",
+                public_subnet_ids[aws_resources.preferred_az_index],
+            );
+            asg_non_anchor_params.push(build_param(
+                "PublicSubnetIds",
+                &public_subnet_ids[aws_resources.preferred_az_index],
+            ));
+        } else if spec.machine.non_anchor_nodes < 3 {
+            asg_non_anchor_params.push(build_param(
+                "VolumeProvisionerInitialWaitRandomSeconds",
+                "20",
+            ));
+
+            log::info!(
+                "using single subnet {} for {} non-anchor nodes",
+                public_subnet_ids[aws_resources.preferred_az_index],
+                spec.machine.non_anchor_nodes
+            );
+            asg_non_anchor_params.push(build_param(
+                "PublicSubnetIds",
+                &public_subnet_ids[aws_resources.preferred_az_index],
+            ));
+        } else {
+            asg_non_anchor_params.push(build_param(
+                "VolumeProvisionerInitialWaitRandomSeconds",
+                "150",
+            ));
+
+            log::info!(
+                "using multiple subnets {:?} for {} non-anchor nodes",
+                public_subnet_ids,
+                spec.machine.non_anchor_nodes
+            );
+            asg_non_anchor_params
+                .push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
         }
 
         let is_spot_instance = spec.machine.use_spot_instance;

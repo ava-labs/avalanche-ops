@@ -151,7 +151,7 @@ Parameters:
 
   VolumeProvisionerInitialWaitRandomSeconds:
     Type: Number
-    Default: 140
+    Default: 150
     MinValue: 0
     MaxValue: 500
     Description: Only set non-zero if multiple instances may compete for the same EBS volume in the same zone.
