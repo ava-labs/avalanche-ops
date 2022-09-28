@@ -42,7 +42,8 @@ impl ConfigManager {
                 file_path: format!("{}/**.log", self.log_dir),
 
                 // If a log continuously writes to a single file, it is not removed.
-                auto_removal: Some(logs_auto_removal),
+                // TODO: subnet VM logs are disappearing with this...
+                auto_removal: Some(false),
                 retention_in_days: Some(5),
 
                 ..cloudwatch::Collect::default()
