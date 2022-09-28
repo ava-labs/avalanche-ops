@@ -9,11 +9,12 @@ use aws_manager::{
 use infra_aws::certs;
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
+    println!("starting {} with {:?}", crate::APP_NAME, opts);
+
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
-    log::info!("starting {}", crate::APP_NAME);
 
     let aws_creds = load_aws_credential(&opts.aws_region).await?;
     let envelope_manager = envelope::Manager::new(

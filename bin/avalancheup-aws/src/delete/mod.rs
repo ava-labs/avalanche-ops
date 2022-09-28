@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 
 pub const NAME: &str = "delete";
 
-pub fn command() -> Command<'static> {
+pub fn command() -> Command {
     Command::new(NAME)
         .about("Deletes resources based on configuration")
         .arg(
@@ -30,10 +30,8 @@ pub fn command() -> Command<'static> {
                 .short('l')
                 .help("Sets the log level")
                 .required(false)
-                .takes_value(true)
-                .possible_value("debug")
-                .possible_value("info")
-                .allow_invalid_utf8(false)
+                .num_args(1)
+                .value_parser(["debug", "info"])
                 .default_value("info"),
         )
         .arg(
@@ -42,8 +40,7 @@ pub fn command() -> Command<'static> {
                 .short('s')
                 .help("The spec file to load")
                 .required(true)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
+                .num_args(1),
         )
         .arg(
             Arg::new("SKIP_PROMPT")
@@ -51,40 +48,35 @@ pub fn command() -> Command<'static> {
                 .short('s')
                 .help("Skips prompt mode")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
         .arg(
             Arg::new("DELETE_CLOUDWATCH_LOG_GROUP")
                 .long("delete-cloudwatch-log-group")
                 .help("Enables to delete CloudWatch log group")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
         .arg(
             Arg::new("DELETE_S3_OBJECTS")
                 .long("delete-s3-objects")
                 .help("Enables to delete S3 objects")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
         .arg(
             Arg::new("DELETE_S3_BUCKET")
                 .long("delete-s3-bucket")
                 .help("Enables delete S3 bucket (use with caution!)")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
         .arg(
             Arg::new("DELETE_EBS_VOLUMES")
                 .long("delete-ebs-volumes")
                 .help("Enables delete orphaned EBS volumes (use with caution!)")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
 }
 

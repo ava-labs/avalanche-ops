@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::flags;
 use avalanche_sdk::health as api_health;
 use avalanche_types::{genesis as avalanchego_genesis, node};
 use aws_manager::{
@@ -18,12 +19,13 @@ use aws_sdk_ec2::model::{Filter, Tag, Volume};
 use infra_aws::{certs, telemetry};
 use tokio::time::{sleep, Duration};
 
-pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
+pub async fn execute(opts: flags::Options) -> io::Result<()> {
+    println!("starting {} with {:?}", crate::APP_NAME, opts);
+
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
-    log::info!("starting {}", crate::APP_NAME);
 
     let meta = fetch_metadata().await?;
 
