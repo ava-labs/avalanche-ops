@@ -1137,6 +1137,9 @@ async fn download_genesis_from_ready_anchor_nodes(
 /// combined list of bootstrap Ids and Ips.
 /// mainnet/other pre-defined test nets have hard-coded anchor nodes
 /// thus no need for anchor nodes.
+/// Assume new anchor nodes statically remap existing node Ids
+/// but overwrites the S3 key with new IP.
+/// TODO: delete old/terminated instances that were anchor nodes.
 async fn discover_ready_anchor_nodes_from_s3(
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
