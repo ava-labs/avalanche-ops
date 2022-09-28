@@ -664,25 +664,26 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     "PublicSubnetIds",
                     &public_subnet_ids[aws_resources.preferred_az_index],
                 ));
-            } else if *anchor_nodes < 3 {
+            } else if *anchor_nodes == 2 {
                 asg_anchor_params.push(build_param(
                     "VolumeProvisionerInitialWaitRandomSeconds",
                     "20",
                 ));
 
                 log::info!(
-                    "using single subnet {} for {} anchor nodes",
-                    public_subnet_ids[aws_resources.preferred_az_index],
+                    "using two subnets {} and {} for {} anchor nodes",
+                    public_subnet_ids[0],
+                    public_subnet_ids[1],
                     *anchor_nodes
                 );
                 asg_anchor_params.push(build_param(
                     "PublicSubnetIds",
-                    &public_subnet_ids[aws_resources.preferred_az_index],
+                    &public_subnet_ids[..2].join(","),
                 ));
             } else {
                 asg_anchor_params.push(build_param(
                     "VolumeProvisionerInitialWaitRandomSeconds",
-                    "150",
+                    "200",
                 ));
 
                 log::info!(
@@ -1017,25 +1018,26 @@ aws ssm start-session --region {} --target {}
                 "PublicSubnetIds",
                 &public_subnet_ids[aws_resources.preferred_az_index],
             ));
-        } else if spec.machine.non_anchor_nodes < 3 {
+        } else if spec.machine.non_anchor_nodes == 2 {
             asg_non_anchor_params.push(build_param(
                 "VolumeProvisionerInitialWaitRandomSeconds",
                 "20",
             ));
 
             log::info!(
-                "using single subnet {} for {} non-anchor nodes",
-                public_subnet_ids[aws_resources.preferred_az_index],
+                "using two subnets {} and {} for {} non-anchor nodes",
+                public_subnet_ids[0],
+                public_subnet_ids[1],
                 spec.machine.non_anchor_nodes
             );
             asg_non_anchor_params.push(build_param(
                 "PublicSubnetIds",
-                &public_subnet_ids[aws_resources.preferred_az_index],
+                &public_subnet_ids[..2].join(","),
             ));
         } else {
             asg_non_anchor_params.push(build_param(
                 "VolumeProvisionerInitialWaitRandomSeconds",
-                "150",
+                "200",
             ));
 
             log::info!(
