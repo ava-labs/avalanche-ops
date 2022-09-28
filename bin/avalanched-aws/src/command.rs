@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     os::unix::fs::PermissionsExt,
@@ -277,7 +278,18 @@ pub async fn execute(opts: crate::flags::Options) -> io::Result<()> {
             )
             .await?;
 
+            // "anchor_asg_name" MUST BE SAME AS THE ONE IN CLOUDFORMATION
+            // e.g.,
+            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+            let anchor_asg_name = format!(
+                "{}-{}-{}",
+                tags.id,
+                node::Kind::Anchor.as_str(),
+                tags.arch_type
+            );
             let (bootstrap_ids, bootstrap_ips) = discover_ready_anchor_nodes_from_s3(
+                Arc::clone(&ec2_manager_arc),
+                anchor_asg_name.as_str(),
                 Arc::clone(&s3_manager_arc),
                 &tags.s3_bucket,
                 &tags.avalancheup_spec_path,
@@ -1138,9 +1150,10 @@ async fn download_genesis_from_ready_anchor_nodes(
 /// mainnet/other pre-defined test nets have hard-coded anchor nodes
 /// thus no need for anchor nodes.
 /// Assume new anchor nodes statically remap existing node Ids
-/// but overwrites the S3 key with new IP.
-/// TODO: delete old/terminated instances that were anchor nodes.
+/// and publish itself with the new S3 key that has a new IP.
 async fn discover_ready_anchor_nodes_from_s3(
+    ec2_manager: Arc<ec2::Manager>,
+    anchor_asg_name: &str,
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
     avalancheup_spec_path: &str,
@@ -1202,12 +1215,40 @@ async fn discover_ready_anchor_nodes_from_s3(
     // but to make sure, sort in lexicographical order
     s3_keys.sort();
 
+    // now delete old/terminated instances that were anchor nodes
+    let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
+    let droplets = ec2_manager
+        .list_asg(&anchor_asg_name)
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
+    let mut running_machine_ids = HashSet::new();
+    for d in droplets.iter() {
+        log::info!("found droplet {} in anchor node ASG", d.instance_id);
+        running_machine_ids.insert(d.instance_id.clone());
+    }
+
     let mut bootstrap_ids: Vec<String> = vec![];
     let mut bootstrap_ips: Vec<String> = vec![];
     for s3_key in s3_keys.iter() {
         // just parse the s3 key name
         // to reduce "s3_manager.get_object" call volume
         let ready_anchor_node = avalancheup_aws::StorageNamespace::parse_node_from_path(s3_key)?;
+
+        let machine_id = ready_anchor_node.machine_id;
+        if !running_machine_ids.contains(&machine_id) {
+            log::warn!(
+                "ready anchor node '{}' but machine id {} not found in ASG",
+                ready_anchor_node.node_id,
+                machine_id
+            );
+            continue;
+        }
+
+        log::info!(
+            "ready anchor node '{}' and machine id {} found in ASG",
+            ready_anchor_node.node_id,
+            machine_id
+        );
 
         bootstrap_ids.push(ready_anchor_node.node_id);
 
