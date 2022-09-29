@@ -24,7 +24,7 @@ filters:
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blks|txs)_polls_[\s\S]*$ # "Average Number of Polls Before Accept"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_(chits|app_gossip|get|get_accepted|get_ancestors|gossip_request|query_failed)_(count|sum)$ # "Percentage of Successful Queries"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_unprocessed_msgs_len$ # "Unprocessed Messages"
-  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_last_accepted_height$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_last_accepted_(height|timestamp)$
   - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_rpc_(failure|requests|success)$
 
   - regex: ^avalanche_db_(put|delete|compact|get|batch_(write|put))_(count|sum)$

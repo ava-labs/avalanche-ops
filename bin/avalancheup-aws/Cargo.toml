@@ -17,7 +17,7 @@ aws-sdk-cloudformation = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/rele
 aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 big-num-manager = "0.0.1"
-clap = { version = "4.0.2", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.0.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }
 crossterm = "0.25.0"
@@ -28,7 +28,7 @@ id-manager = "0.0.1"
 lazy_static = "1.4.0"
 log = "0.4.17"
 prefix-manager = "0.0.2"
-prometheus-manager = "0.0.13"
+prometheus-manager = "0.0.14"
 random-manager = "0.0.1"
 rust-embed = "6.4.1"
 serde = { version = "1.0.145", features = ["derive"] }
