@@ -16,10 +16,8 @@ async fn main() {
                 .short('l')
                 .help("Sets the log level")
                 .required(false)
-                .takes_value(true)
-                .possible_value("debug")
-                .possible_value("info")
-                .allow_invalid_utf8(false)
+                .num_args(1)
+                 .value_parser(["debug", "info"])
                 .default_value("info"),
         )
         .arg(
@@ -27,24 +25,25 @@ async fn main() {
                 .long("use-default-config")
                 .help("Enables to use the default config without downloading the spec from S3 (useful for CDK integration)")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
         .arg(
             Arg::new("PUBLISH_PERIODIC_NODE_INFO")
                 .long("publish-periodic-node-info")
                 .help("Enables to periodically publish ready node information to S3")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
         .get_matches();
 
     println!("{} version: {}", APP_NAME, crate_version!());
     let opts = flags::Options {
-        log_level: matches.value_of("LOG_LEVEL").unwrap_or("info").to_string(),
-        use_default_config: matches.is_present("USE_DEFAULT_CONFIG"),
-        publish_periodic_node_info: matches.is_present("PUBLISH_PERIODIC_NODE_INFO"),
+        log_level: matches
+            .get_one::<String>("LOG_LEVEL")
+            .unwrap_or(&String::from("info"))
+            .clone(),
+        use_default_config: matches.get_flag("USE_DEFAULT_CONFIG"),
+        publish_periodic_node_info: matches.get_flag("PUBLISH_PERIODIC_NODE_INFO"),
     };
     command::execute(opts).await.unwrap();
 }

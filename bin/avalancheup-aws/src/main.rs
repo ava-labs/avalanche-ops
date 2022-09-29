@@ -21,155 +21,176 @@ fn main() {
 
     match matches.subcommand() {
         Some((default_spec::NAME, sub_matches)) => {
-            let keys_to_generate = sub_matches.value_of("KEYS_TO_GENERATE").unwrap_or("");
-            let keys_to_generate = keys_to_generate.parse::<usize>().unwrap();
+            let keys_to_generate = sub_matches
+                .get_one::<usize>("KEYS_TO_GENERATE")
+                .unwrap_or(&5)
+                .clone();
 
-            let volume_size_in_gb = sub_matches.value_of("VOLUME_SIZE_IN_GB").unwrap_or("0");
-            let volume_size_in_gb = volume_size_in_gb.parse::<u32>().unwrap();
+            let volume_size_in_gb = sub_matches
+                .get_one::<u32>("VOLUME_SIZE_IN_GB")
+                .unwrap_or(&300)
+                .clone();
 
             let metrics_fetch_interval_seconds = sub_matches
-                .value_of("METRICS_FETCH_INTERVAL_SECONDS")
-                .unwrap_or("300");
-            let metrics_fetch_interval_seconds =
-                metrics_fetch_interval_seconds.parse::<u64>().unwrap();
+                .get_one::<u64>("METRICS_FETCH_INTERVAL_SECONDS")
+                .unwrap_or(&300)
+                .clone();
 
-            let preferred_az_index = sub_matches.value_of("PREFERRED_AZ_INDEX").unwrap_or("0");
-            let preferred_az_index = preferred_az_index.parse::<usize>().unwrap();
+            let preferred_az_index = sub_matches
+                .get_one::<usize>("PREFERRED_AZ_INDEX")
+                .unwrap_or(&0)
+                .clone();
 
-            let subnet_evm_gas_limit = sub_matches.value_of("SUBNET_EVM_GAS_LIMIT").unwrap_or("0");
-            let subnet_evm_gas_limit = subnet_evm_gas_limit.parse::<u64>().unwrap();
+            let subnet_evm_gas_limit = sub_matches
+                .get_one::<u64>("SUBNET_EVM_GAS_LIMIT")
+                .unwrap_or(&8000000)
+                .clone();
 
             let opt = avalancheup_aws::DefaultSpecOption {
                 log_level: sub_matches
-                    .value_of("LOG_LEVEL")
-                    .unwrap_or("info")
-                    .to_string(),
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
                 network_name: sub_matches
-                    .value_of("NETWORK_NAME")
-                    .unwrap_or("")
-                    .to_string(),
+                    .get_one::<String>("NETWORK_NAME")
+                    .unwrap_or(&String::new())
+                    .clone(),
                 keys_to_generate,
 
-                region: sub_matches.value_of("REGION").unwrap().to_string(),
+                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 preferred_az_index,
 
-                use_spot_instance: sub_matches.is_present("USE_SPOT_INSTANCE"),
+                use_spot_instance: sub_matches.get_flag("USE_SPOT_INSTANCE"),
                 disable_spot_instance_for_anchor_nodes: sub_matches
-                    .is_present("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
+                    .get_flag("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
 
                 volume_size_in_gb,
 
-                disable_nlb: sub_matches.is_present("DISABLE_NLB"),
-                disable_logs_auto_removal: sub_matches.is_present("DISABLE_LOGS_AUTO_REMOVAL"),
+                disable_nlb: sub_matches.get_flag("DISABLE_NLB"),
+                disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
                 metrics_fetch_interval_seconds,
 
                 key_files_dir: sub_matches
-                    .value_of("KEY_FILES_DIR")
-                    .unwrap_or("")
+                    .get_one::<String>("KEY_FILES_DIR")
+                    .unwrap_or(&String::new())
                     .to_string(),
-                aad_tag: sub_matches.value_of("AAD_TAG").unwrap().to_string(),
+                aad_tag: sub_matches
+                    .get_one::<String>("AAD_TAG")
+                    .unwrap()
+                    .to_string(),
 
                 nlb_acm_certificate_arn: sub_matches
-                    .value_of("NLB_ACM_CERTIFICATE_ARN")
-                    .unwrap_or("")
+                    .get_one::<String>("NLB_ACM_CERTIFICATE_ARN")
+                    .unwrap_or(&String::new())
                     .to_string(),
 
                 install_artifacts_avalanched_bin: sub_matches
-                    .value_of("INSTALL_ARTIFACTS_AVALANCHED_BIN")
-                    .unwrap_or("")
+                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHED_BIN")
+                    .unwrap_or(&String::new())
                     .to_string(),
                 install_artifacts_avalanche_bin: sub_matches
-                    .value_of("INSTALL_ARTIFACTS_AVALANCHE_BIN")
-                    .unwrap_or("")
+                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_BIN")
+                    .unwrap_or(&String::new())
                     .to_string(),
                 install_artifacts_plugins_dir: sub_matches
-                    .value_of("INSTALL_ARTIFACTS_PLUGINS_DIR")
-                    .unwrap_or("")
+                    .get_one::<String>("INSTALL_ARTIFACTS_PLUGINS_DIR")
+                    .unwrap_or(&String::new())
                     .to_string(),
 
                 avalanched_log_level: sub_matches
-                    .value_of("AVALANCHED_LOG_LEVEL")
-                    .unwrap_or("info")
+                    .get_one::<String>("AVALANCHED_LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
                     .to_string(),
                 avalanched_use_default_config: sub_matches
-                    .is_present("AVALANCHED_USE_DEFAULT_CONFIG"),
+                    .get_flag("AVALANCHED_USE_DEFAULT_CONFIG"),
                 avalanched_publish_periodic_node_info: sub_matches
-                    .is_present("AVALANCHED_PUBLISH_PERIODIC_NODE_INFO"),
+                    .get_flag("AVALANCHED_PUBLISH_PERIODIC_NODE_INFO"),
 
                 avalanchego_log_level: sub_matches
-                    .value_of("AVALANCHEGO_LOG_LEVEL")
-                    .unwrap_or("INFO")
-                    .to_string(),
+                    .get_one::<String>("AVALANCHEGO_LOG_LEVEL")
+                    .unwrap_or(&String::from("INFO"))
+                    .clone(),
                 avalanchego_whitelisted_subnets: sub_matches
-                    .value_of("AVALANCHEGO_WHITELISTED_SUBNETS")
-                    .unwrap_or("")
-                    .to_string(),
-                avalanchego_http_tls_enabled: sub_matches
-                    .is_present("AVALANCHEGO_HTTP_TLS_ENABLED"),
+                    .get_one::<String>("AVALANCHEGO_WHITELISTED_SUBNETS")
+                    .unwrap_or(&String::new())
+                    .clone(),
+                avalanchego_http_tls_enabled: sub_matches.get_flag("AVALANCHEGO_HTTP_TLS_ENABLED"),
                 avalanchego_state_sync_ids: sub_matches
-                    .value_of("AVALANCHEGO_STATE_SYNC_IDS")
-                    .unwrap_or("")
-                    .to_string(),
+                    .get_one::<String>("AVALANCHEGO_STATE_SYNC_IDS")
+                    .unwrap_or(&String::new())
+                    .clone(),
                 avalanchego_state_sync_ips: sub_matches
-                    .value_of("AVALANCHEGO_STATE_SYNC_IPS")
-                    .unwrap_or("")
-                    .to_string(),
+                    .get_one::<String>("AVALANCHEGO_STATE_SYNC_IPS")
+                    .unwrap_or(&String::new())
+                    .clone(),
                 avalanchego_profile_continuous_enabled: sub_matches
-                    .is_present("AVALANCHEGO_PROFILE_CONTINUOUS_ENABLED"),
+                    .get_flag("AVALANCHEGO_PROFILE_CONTINUOUS_ENABLED"),
                 avalanchego_profile_continuous_freq: sub_matches
-                    .value_of("AVALANCHEGO_PROFILE_CONTINUOUS_FREQ")
-                    .unwrap_or("")
-                    .to_string(),
+                    .get_one::<String>("AVALANCHEGO_PROFILE_CONTINUOUS_FREQ")
+                    .unwrap_or(&String::new())
+                    .clone(),
                 avalanchego_profile_continuous_max_files: sub_matches
-                    .value_of("AVALANCHEGO_PROFILE_CONTINUOUS_MAX_FILES")
-                    .unwrap_or("")
-                    .to_string(),
+                    .get_one::<String>("AVALANCHEGO_PROFILE_CONTINUOUS_MAX_FILES")
+                    .unwrap_or(&String::new())
+                    .clone(),
 
-                coreth_metrics_enabled: sub_matches.is_present("CORETH_METRICS_ENABLED"),
+                coreth_metrics_enabled: sub_matches.get_flag("CORETH_METRICS_ENABLED"),
                 coreth_continuous_profiler_enabled: sub_matches
-                    .is_present("CORETH_CONTINUOUS_PROFILER_ENABLED"),
+                    .get_flag("CORETH_CONTINUOUS_PROFILER_ENABLED"),
                 coreth_offline_pruning_enabled: sub_matches
-                    .is_present("CORETH_OFFLINE_PRUNING_ENABLED"),
-                coreth_state_sync_enabled: sub_matches.is_present("CORETH_STATE_SYNC_ENABLED"),
+                    .get_flag("CORETH_OFFLINE_PRUNING_ENABLED"),
+                coreth_state_sync_enabled: sub_matches.get_flag("CORETH_STATE_SYNC_ENABLED"),
                 coreth_state_sync_metrics_enabled: sub_matches
-                    .is_present("CORETH_STATE_SYNC_METRICS_ENABLED"),
+                    .get_flag("CORETH_STATE_SYNC_METRICS_ENABLED"),
 
-                enable_subnet_evm: sub_matches.is_present("ENABLE_SUBNET_EVM"),
+                enable_subnet_evm: sub_matches.get_flag("ENABLE_SUBNET_EVM"),
 
                 subnet_evm_gas_limit,
                 subnet_evm_auto_contract_deployer_allow_list_config: sub_matches
-                    .is_present("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
+                    .get_flag("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
                 subnet_evm_auto_contract_native_minter_config: sub_matches
-                    .is_present("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
+                    .get_flag("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
                 subnet_evm_auto_fee_manager_config: sub_matches
-                    .is_present("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG"),
+                    .get_flag("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG"),
 
                 spec_file_path: sub_matches
-                    .value_of("SPEC_FILE_PATH")
-                    .unwrap_or("")
-                    .to_string(),
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
             };
             default_spec::execute(opt).expect("failed to execute 'default-spec'");
         }
 
         Some((apply::NAME, sub_matches)) => {
             apply::execute(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.is_present("SKIP_PROMPT"),
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap()
+                    .clone(),
+                sub_matches.get_flag("SKIP_PROMPT"),
             )
             .expect("failed to execute 'apply'");
         }
 
         Some((delete::NAME, sub_matches)) => {
             delete::execute(
-                sub_matches.value_of("LOG_LEVEL").unwrap_or("info"),
-                sub_matches.value_of("SPEC_FILE_PATH").unwrap(),
-                sub_matches.is_present("DELETE_CLOUDWATCH_LOG_GROUP"),
-                sub_matches.is_present("DELETE_S3_OBJECTS"),
-                sub_matches.is_present("DELETE_S3_BUCKET"),
-                sub_matches.is_present("DELETE_EBS_VOLUMES"),
-                sub_matches.is_present("SKIP_PROMPT"),
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap()
+                    .clone(),
+                sub_matches.get_flag("DELETE_CLOUDWATCH_LOG_GROUP"),
+                sub_matches.get_flag("DELETE_S3_OBJECTS"),
+                sub_matches.get_flag("DELETE_S3_BUCKET"),
+                sub_matches.get_flag("DELETE_EBS_VOLUMES"),
+                sub_matches.get_flag("SKIP_PROMPT"),
             )
             .expect("failed to execute 'delete'");
         }

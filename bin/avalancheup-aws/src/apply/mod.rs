@@ -31,7 +31,7 @@ use tokio::runtime::Runtime;
 
 pub const NAME: &str = "apply";
 
-pub fn command() -> Command<'static> {
+pub fn command() -> Command {
     Command::new(NAME)
         .about("Applies/creates resources based on configuration")
         .arg(
@@ -40,10 +40,8 @@ pub fn command() -> Command<'static> {
                 .short('l')
                 .help("Sets the log level")
                 .required(false)
-                .takes_value(true)
-                .possible_value("debug")
-                .possible_value("info")
-                .allow_invalid_utf8(false)
+                .num_args(1)
+                .value_parser(["debug", "info"])
                 .default_value("info"),
         )
         .arg(
@@ -52,8 +50,7 @@ pub fn command() -> Command<'static> {
                 .short('s')
                 .help("The spec file to load and update")
                 .required(true)
-                .takes_value(true)
-                .allow_invalid_utf8(false),
+                .num_args(1),
         )
         .arg(
             Arg::new("SKIP_PROMPT")
@@ -61,8 +58,7 @@ pub fn command() -> Command<'static> {
                 .short('s')
                 .help("Skips prompt mode")
                 .required(false)
-                .takes_value(false)
-                .allow_invalid_utf8(false),
+                .num_args(0),
         )
 }
 
