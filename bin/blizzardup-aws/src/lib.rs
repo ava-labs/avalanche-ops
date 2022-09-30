@@ -38,6 +38,7 @@ pub struct Spec {
     /// Flag to pass to the "blizzard" command-line interface.
     pub blizzard_spec: blizzard::Spec,
 
+    #[serde(default)]
     pub generated_private_keys: Vec<hot::PrivateKeyInfoEntry>,
 }
 
