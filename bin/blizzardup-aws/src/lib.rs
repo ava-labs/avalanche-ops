@@ -36,70 +36,12 @@ pub struct Spec {
     pub install_artifacts: InstallArtifacts,
 
     /// Flag to pass to the "blizzard" command-line interface.
-    pub blizzard_flags: blizzard::Flags,
+    pub blizzard_spec: blizzard::Spec,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub generated_private_key_faucet: Option<hot::PrivateKeyInfoEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub generated_private_keys: Option<Vec<hot::PrivateKeyInfoEntry>>,
-
-    pub rpc_endpoints: Vec<Endpoints>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Endpoints {
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc_x: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc_p: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc_c: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc_subnet_evm: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metrics: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub health: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub liveness: Option<String>,
-}
-
-impl Default for Endpoints {
-    fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl Endpoints {
-    pub fn default() -> Self {
-        Self {
-            http_rpc: None,
-            http_rpc_x: None,
-            http_rpc_p: None,
-            http_rpc_c: None,
-            http_rpc_subnet_evm: None,
-            metrics: None,
-            health: None,
-            liveness: None,
-        }
-    }
-
-    /// Converts to string in YAML format.
-    pub fn encode_yaml(&self) -> io::Result<String> {
-        match serde_yaml::to_string(&self) {
-            Ok(s) => Ok(s),
-            Err(e) => Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to serialize Endpoints to YAML {}", e),
-            )),
-        }
-    }
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -259,9 +201,12 @@ lazy_static! {
 impl Spec {
     /// Creates a default spec.
     pub fn default_aws(opts: DefaultSpecOption) -> Self {
-        let blizzard_flags = blizzard::Flags {
+        let blizzard_spec = blizzard::Spec {
             log_level: opts.blizzard_log_level,
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
+
+            // TODO: configure via flags
+            rpc_endpoints: Vec::new(),
         };
 
         let id = {
@@ -346,12 +291,10 @@ impl Spec {
             machine,
             install_artifacts,
 
-            blizzard_flags,
+            blizzard_spec,
 
             generated_private_key_faucet,
             generated_private_keys,
-
-            rpc_endpoints: Vec::new(),
         }
     }
 
@@ -503,11 +446,10 @@ machine:
 install_artifacts:
   blizzard_bin: {}
 
-blizzard_flags:
+blizzard_spec:
   log_level: info
   metrics_push_interval_seconds: 60
-
-rpc_endpoints: []
+  rpc_endpoints: []
 
 "#,
         id, bucket, blizzard_bin,
@@ -546,15 +488,14 @@ rpc_endpoints: []
             blizzard_bin: Some(blizzard_bin.to_string()),
         },
 
-        blizzard_flags: blizzard::Flags {
+        blizzard_spec: blizzard::Spec {
             log_level: String::from("info"),
             metrics_push_interval_seconds: 60,
+            rpc_endpoints: Vec::new(),
         },
 
         generated_private_key_faucet: None,
         generated_private_keys: None,
-
-        rpc_endpoints: Vec::new(),
     };
 
     assert_eq!(cfg, orig);
