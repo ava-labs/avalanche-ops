@@ -213,7 +213,7 @@ impl Spec {
             log_level: opts.blizzard_log_level,
             network_id: opts.network_id,
             rpc_endpoints,
-            load_kinds: vec![String::from("x"), String::from("c")],
+            load_kinds: opts.blizzard_load_kinds,
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
         };
 
