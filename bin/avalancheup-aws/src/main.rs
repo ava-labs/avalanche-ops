@@ -11,7 +11,7 @@ const APP_NAME: &str = "avalancheup-aws";
 fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
-        .about("Avalancheup control plane on AWS")
+        .about("AvalancheUp control plane on AWS (requires avalanched)")
         .subcommands(vec![
             default_spec::command(),
             apply::command(),
