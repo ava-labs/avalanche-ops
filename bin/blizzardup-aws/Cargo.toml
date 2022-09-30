@@ -4,4 +4,11 @@ version = "0.0.0"
 edition = "2021"
 rust-version = "1.64"
 
+[[bin]]
+name = "blizzardup-aws"
+path = "src/main.rs"
+
 [dependencies]
+clap = { version = "4.0.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+env_logger = "0.9.1"
+serde = { version = "1.0.145", features = ["derive"] }
