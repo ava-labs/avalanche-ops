@@ -1402,7 +1402,7 @@ aws ssm start-session --region {} --target {}
     ))
     .expect("failed put_object ConfigFile");
 
-    for http_rpc in http_rpcs {
+    for http_rpc in http_rpcs.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
             let ret = rt.block_on(api_health::check(Arc::new(http_rpc.clone()), true));
@@ -1514,7 +1514,7 @@ aws ssm start-session --region {} --target {}
 $ ./scripts/build.release.sh
 $ ./target/release/staking-key-cert-s3-downloader \\
 --log-level=info \\
---aws-region={aws_region} \\
+--region={region} \\
 --s3-bucket={s3_buckeet} \\
 --s3-key-tls-key={id}/pki/{node_id}.key.zstd.encrypted \\
 --s3-key-tls-cert={id}/pki/{node_id}.crt.zstd.encrypted \\
@@ -1524,7 +1524,7 @@ $ ./target/release/staking-key-cert-s3-downloader \\
 --tls-cert-path=/tmp/{node_id}.crt
 $ cat /tmp/{node_id}.crt
 ",
-                    aws_region = aws_resources.region,
+                    region = aws_resources.region,
                     s3_buckeet = aws_resources.s3_bucket,
                     id = spec.id,
                     kms_cmk_id = kms_cmk,
@@ -1657,6 +1657,57 @@ $ cat /tmp/{node_id}.crt
             stdout(),
             SetForegroundColor(Color::Green),
             Print("sudo systemctl restart --no-block avalanche.service\n"),
+            ResetColor
+        )?;
+    }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::DarkGreen),
+        Print(format!(
+            "
+$ ./scripts/build.release.sh
+$ ./target/release/blizzardup-aws \\
+--log-level=info \\
+--keys-to-generate=50 \\
+--region={region} \\
+--use-spot-instance \\
+--network-id={network_id} \\
+--nodes=3 \\
+--blizzard-log-level=info \\
+--blizzard-http-rpcs={blizzard_http_rpcs} \\
+--blizzard-load-kinds=x,c
+",
+            region = aws_resources.region,
+            network_id = spec.avalanchego_config.network_id,
+            blizzard_http_rpcs = http_rpcs.clone().join(","),
+        )),
+        ResetColor
+    )?;
+    if spec.subnet_evm_config.is_some() {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::DarkGreen),
+            Print(format!(
+                "
+$ ./scripts/build.release.sh
+$ ./target/release/blizzardup-aws \\
+--log-level=info \\
+--keys-to-generate=50 \\
+--region={region} \\
+--use-spot-instance \\
+--network-id={network_id} \\
+--nodes=3 \\
+--blizzard-log-level=info \\
+--blizzard-http-rpcs={blizzard_http_rpcs} \\
+--blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
+--blizzard-load-kinds=subnet-evm
+",
+                region = aws_resources.region,
+                network_id = spec.avalanchego_config.network_id,
+                blizzard_http_rpcs = http_rpcs.clone().join(","),
+                subnet_evm_blockchain_id = "2nBBjWJEiBFjUbDjEvVY9a7XhhtTRzdTWToC9LssJuzHq3LdMv",
+            )),
             ResetColor
         )?;
     }

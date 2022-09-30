@@ -1,5 +1,5 @@
 mod aws;
-mod blizzard;
+pub mod blizzard;
 
 use std::{
     fs::{self, File},
@@ -95,7 +95,6 @@ impl StackName {
 pub struct DefaultSpecOption {
     pub log_level: String,
 
-    pub key_files_dir: String,
     pub keys_to_generate: usize,
 
     pub region: String,
@@ -106,9 +105,10 @@ pub struct DefaultSpecOption {
 
     pub install_artifacts_blizzard_bin: String,
     pub blizzard_log_level: String,
-    pub blizzard_metrics_push_interval_seconds: u64,
     pub blizzard_http_rpcs: Vec<String>,
     pub blizzard_subnet_evm_blockchain_id: Option<String>,
+    pub blizzard_load_kinds: Vec<String>,
+    pub blizzard_metrics_push_interval_seconds: u64,
 
     pub spec_file_path: String,
 }
@@ -215,6 +215,7 @@ impl Spec {
             log_level: opts.blizzard_log_level,
             network_id: opts.network_id,
             rpc_endpoints,
+            load_kinds: vec![String::from("x"), String::from("c")],
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
         };
 
@@ -226,11 +227,6 @@ impl Spec {
                 id_manager::time::with_prefix("blizzard")
             }
         };
-
-        if !opts.key_files_dir.is_empty() {
-            log::info!("creating key-files-dir '{}'", opts.key_files_dir);
-            fs::create_dir_all(&opts.key_files_dir).unwrap();
-        }
 
         // existing network has only 1 pre-funded key "ewoq"
         let mut generated_key_infos: Vec<hot::PrivateKeyInfoEntry> = Vec::new();
@@ -250,15 +246,6 @@ impl Spec {
             generated_key_infos.push(info.clone());
 
             generated_keys.push(k);
-
-            if !opts.key_files_dir.is_empty() {
-                // file name is eth address with 0x, contents are "private_key_hex"
-                let p = Path::new(&opts.key_files_dir).join(Path::new(&info.eth_address));
-                log::info!("writing key file {:?}", p);
-
-                let mut f = File::create(p).unwrap();
-                f.write_all(info.private_key_hex.as_bytes()).unwrap();
-            }
         }
 
         let generated_private_key_faucet = Some(generated_key_infos[0].clone());
@@ -459,6 +446,7 @@ blizzard_spec:
   log_level: info
   network_id: 99999
   rpc_endpoints: []
+  load_kinds: ["x", "c"]
   metrics_push_interval_seconds: 60
 
 "#,
@@ -502,6 +490,7 @@ blizzard_spec:
             log_level: String::from("info"),
             network_id: 99999,
             rpc_endpoints: Vec::new(),
+            load_kinds: vec![String::from("x"), String::from("c")],
             metrics_push_interval_seconds: 60,
         },
 

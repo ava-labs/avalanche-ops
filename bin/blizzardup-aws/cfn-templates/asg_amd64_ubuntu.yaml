@@ -377,9 +377,6 @@ Resources:
         - Key: BLIZZARDUP_SPEC_PATH
           PropagateAtLaunch: true
           Value: /data/blizzardup.yaml
-        - Key: BLIZZARD_BIN_PATH
-          PropagateAtLaunch: true
-          Value: /usr/local/bin/blizzard
 
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       # https://aws.amazon.com/getting-started/hands-on/ec2-auto-scaling-spot-instances/

@@ -5,9 +5,8 @@ use aws_manager::{
     kms::{self, envelope},
     s3,
 };
-use infra_aws::certs;
 
-/// cargo run --example certs
+/// cargo run --example cert-manager
 fn main() {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -33,12 +32,12 @@ fn main() {
 
     let s3_manager = s3::Manager::new(&shared_config);
     let s3_bucket = format!(
-        "infra-aws-examples-tests-certs-{}",
+        "certs-manager-tests-{}",
         random_manager::string(10).to_lowercase()
     );
     ab!(s3_manager.create_bucket(&s3_bucket)).unwrap();
 
-    let certs_manager = certs::Manager {
+    let certs_manager = certs_manager::Manager {
         envelope_manager,
         s3_manager: s3_manager.clone(),
         s3_bucket: s3_bucket.clone(),

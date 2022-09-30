@@ -26,11 +26,6 @@ fn main() {
                 .unwrap_or(&5)
                 .clone();
 
-            let blizzard_metrics_push_interval_seconds = sub_matches
-                .get_one::<u64>("BLIZZARD_METRICS_PUSH_INTERVAL_SECONDS")
-                .unwrap_or(&60)
-                .clone();
-
             let nodes = sub_matches.get_one::<usize>("NODES").unwrap_or(&2).clone();
             let network_id = sub_matches
                 .get_one::<u32>("NETWORK_ID")
@@ -58,16 +53,27 @@ fn main() {
                     Some(blizzard_subnet_evm_blockchain_id_str.clone())
                 };
 
+            let blizzard_load_kinds_str = sub_matches
+                .get_one::<String>("BLIZZARD_LOAD_KINDS")
+                .unwrap()
+                .clone();
+            let blizzard_load_kinds_str: Vec<&str> = blizzard_load_kinds_str.split(',').collect();
+            let mut blizzard_load_kinds: Vec<String> = Vec::new();
+            for lk in blizzard_load_kinds_str.iter() {
+                blizzard_load_kinds.push(lk.to_string());
+            }
+
+            let blizzard_metrics_push_interval_seconds = sub_matches
+                .get_one::<u64>("BLIZZARD_METRICS_PUSH_INTERVAL_SECONDS")
+                .unwrap_or(&60)
+                .clone();
+
             let opt = blizzardup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .clone(),
 
-                key_files_dir: sub_matches
-                    .get_one::<String>("KEY_FILES_DIR")
-                    .unwrap_or(&String::new())
-                    .to_string(),
                 keys_to_generate,
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
@@ -84,9 +90,10 @@ fn main() {
                     .get_one::<String>("BLIZZARD_LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .to_string(),
-                blizzard_metrics_push_interval_seconds,
                 blizzard_http_rpcs,
                 blizzard_subnet_evm_blockchain_id,
+                blizzard_load_kinds,
+                blizzard_metrics_push_interval_seconds,
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")

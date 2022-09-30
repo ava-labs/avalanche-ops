@@ -2,7 +2,7 @@
 #[derive(Debug)]
 pub struct Options {
     pub log_level: String,
-    pub aws_region: String,
+    pub region: String,
     pub s3_bucket: String,
     pub s3_key_tls_key: String,
     pub s3_key_tls_cert: String,

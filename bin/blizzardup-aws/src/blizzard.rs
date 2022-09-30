@@ -9,7 +9,9 @@ pub struct Spec {
     pub log_level: String,
     pub network_id: u32,
     pub rpc_endpoints: Vec<Endpoints>,
+    pub load_kinds: Vec<String>,
     pub metrics_push_interval_seconds: u64,
+    // TODO: set test run timeout
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -27,7 +29,6 @@ pub struct Endpoints {
     pub http_rpc_c: String,
     #[serde(default)]
     pub http_rpc_subnet_evm: Option<String>,
-
     #[serde(default)]
     pub metrics: String,
     #[serde(default)]
@@ -86,4 +87,67 @@ impl Endpoints {
     }
 }
 
-// TODO: define results sucess/failures
+/// Defines the node type.
+#[derive(
+    std::clone::Clone,
+    std::cmp::Eq,
+    std::cmp::Ord,
+    std::cmp::PartialEq,
+    std::cmp::PartialOrd,
+    std::fmt::Debug,
+    std::hash::Hash,
+)]
+pub enum LoadKind {
+    X,
+    C,
+    SubnetEvm,
+    Unknown(String),
+}
+
+impl std::convert::From<&str> for LoadKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "x" => LoadKind::X,
+            "c" => LoadKind::C,
+            "subnet-evm" => LoadKind::SubnetEvm,
+
+            other => LoadKind::Unknown(other.to_owned()),
+        }
+    }
+}
+
+impl std::str::FromStr for LoadKind {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(LoadKind::from(s))
+    }
+}
+
+impl LoadKind {
+    /// Returns the `&str` value of the enum member.
+    pub fn as_str(&self) -> &str {
+        match self {
+            LoadKind::X => "x",
+            LoadKind::C => "c",
+            LoadKind::SubnetEvm => "subnet-evm",
+
+            LoadKind::Unknown(s) => s.as_ref(),
+        }
+    }
+
+    /// Returns all the `&str` values of the enum members.
+    pub fn values() -> &'static [&'static str] {
+        &[
+            "x",          //
+            "c",          //
+            "subnet-evm", //
+        ]
+    }
+}
+
+impl AsRef<str> for LoadKind {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
