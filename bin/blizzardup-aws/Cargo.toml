@@ -17,6 +17,7 @@ aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 clap = { version = "4.0.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.25.0"
 dialoguer = "0.10.2"
+dir-manager = "0.0.1"
 env_logger = "0.9.1"
 id-manager = "0.0.1"
 lazy_static = "1.4.0"

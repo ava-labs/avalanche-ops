@@ -1,6 +1,10 @@
-use std::io::{self};
+use std::io::{self, stdout};
 
 use clap::{value_parser, Arg, Command};
+use crossterm::{
+    execute,
+    style::{Color, Print, ResetColor, SetForegroundColor},
+};
 
 pub const NAME: &str = "default-spec";
 
@@ -116,6 +120,65 @@ pub fn execute(opts: blizzardup_aws::DefaultSpecOption) -> io::Result<()> {
         env_logger::Env::default()
             .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
     );
+
+    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    env_logger::init_from_env(
+        env_logger::Env::default()
+            .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
+    );
+
+    let spec = blizzardup_aws::Spec::default_aws(opts.clone());
+    spec.validate()?;
+
+    let spec_file_path = {
+        if opts.spec_file_path.is_empty() {
+            dir_manager::home::named(&spec.id, Some(".yaml"))
+        } else {
+            opts.spec_file_path
+        }
+    };
+    spec.sync(&spec_file_path)?;
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Blue),
+        Print(format!("\nSaved spec: '{}'\n", spec_file_path)),
+        ResetColor
+    )?;
+    let spec_contents = spec.encode_yaml().expect("failed spec.encode_yaml");
+    println!("{}", spec_contents);
+
+    println!();
+    println!("# run the following to create resources");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Magenta),
+        Print(format!("cat {}\n", spec_file_path)),
+        ResetColor
+    )?;
+    let exec_path = std::env::current_exe().expect("unexpected None current_exe");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{} apply \\\n--spec-file-path {}\n",
+            exec_path.display(),
+            spec_file_path
+        )),
+        ResetColor
+    )?;
+    println!();
+    println!("# run the following to delete resources");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                    exec_path.display(),
+                    spec_file_path
+        )),
+        ResetColor
+    )?;
 
     Ok(())
 }
