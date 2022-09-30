@@ -45,10 +45,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     let handles = vec![
         // send loads asynchronously
-        tokio::spawn(send_loads(
-            spec.blizzard_spec.clone(),
-            Arc::clone(&cw_manager_arc),
-        )),
+        // TODO: send loads x and c in parallel
+        tokio::spawn(send_loads(spec.clone(), Arc::clone(&cw_manager_arc))),
     ];
 
     log::info!("STEP: blocking on handles via JoinHandle");
@@ -255,13 +253,10 @@ fn create_cloudwatch_config(
     )
 }
 
-async fn send_loads(
-    blizzard_spec: blizzardup_aws::blizzard::Spec,
-    cw_manager: Arc<cloudwatch::Manager>,
-) {
+async fn send_loads(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch::Manager>) {
     log::info!(
         "start sending loads to {} endpoints",
-        blizzard_spec.rpc_endpoints.len()
+        spec.blizzard_spec.rpc_endpoints.len()
     );
 
     let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
