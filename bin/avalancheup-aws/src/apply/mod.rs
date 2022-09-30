@@ -124,11 +124,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         && aws_resources.cloudformation_asg_anchor_nodes.is_none()
     {
         aws_resources.cloudformation_asg_anchor_nodes =
-            Some(avalancheup_aws::StackName::AsgBeaconNodes(spec.id.clone()).encode());
+            Some(avalancheup_aws::StackName::AsgAnchorNodes(spec.id.clone()).encode());
     }
     if aws_resources.cloudformation_asg_non_anchor_nodes.is_none() {
         aws_resources.cloudformation_asg_non_anchor_nodes =
-            Some(avalancheup_aws::StackName::AsgNonBeaconNodes(spec.id.clone()).encode());
+            Some(avalancheup_aws::StackName::AsgNonAnchorNodes(spec.id.clone()).encode());
     }
     if aws_resources
         .cloudwatch_avalanche_metrics_namespace
@@ -1374,22 +1374,22 @@ aws ssm start-session --region {} --target {}
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
     let mut http_rpcs = Vec::new();
     for host in rpc_hosts.iter() {
-        let mut dns_endpoints = avalancheup_aws::Endpoints::default();
+        let mut endpoints = avalancheup_aws::Endpoints::default();
 
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
         http_rpcs.push(http_rpc.clone());
 
-        dns_endpoints.http_rpc = Some(http_rpc.clone());
-        dns_endpoints.http_rpc_x = Some(format!("{}/ext/bc/X", http_rpc));
-        dns_endpoints.http_rpc_p = Some(format!("{}/ext/bc/P", http_rpc));
-        dns_endpoints.http_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-        dns_endpoints.metrics = Some(format!("{}/ext/metrics", http_rpc));
-        dns_endpoints.health = Some(format!("{}/ext/health", http_rpc));
-        dns_endpoints.liveness = Some(format!("{}/ext/health/liveness", http_rpc));
-        dns_endpoints.metamask_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-        dns_endpoints.websocket_rpc_c = Some(format!("ws://{}:{}/ext/bc/C/ws", host, port_for_dns));
+        endpoints.http_rpc = Some(http_rpc.clone());
+        endpoints.http_rpc_x = Some(format!("{}/ext/bc/X", http_rpc));
+        endpoints.http_rpc_p = Some(format!("{}/ext/bc/P", http_rpc));
+        endpoints.http_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
+        endpoints.metrics = Some(format!("{}/ext/metrics", http_rpc));
+        endpoints.health = Some(format!("{}/ext/health", http_rpc));
+        endpoints.liveness = Some(format!("{}/ext/health/liveness", http_rpc));
+        endpoints.metamask_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
+        endpoints.websocket_rpc_c = Some(format!("ws://{}:{}/ext/bc/C/ws", host, port_for_dns));
 
-        spec.endpoints = Some(dns_endpoints.clone());
+        spec.endpoints = Some(endpoints.clone());
 
         println!("{}", spec.endpoints.clone().unwrap().encode_yaml().unwrap());
     }

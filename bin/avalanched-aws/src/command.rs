@@ -128,8 +128,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             tags.node_kind.clone(),
             logs_auto_removal,
             &avalanchego_config.log_dir,
-            true,
-            true,
             &tags.avalanche_data_volume_path,
             &tags.cloudwatch_config_file_path,
         )?;
@@ -867,8 +865,6 @@ fn create_cloudwatch_config(
     node_kind: node::Kind,
     log_auto_removal: bool,
     avalanche_logs_dir: &str,
-    instance_system_logs: bool,
-    instance_system_metrics: bool,
     avalanche_data_volume_path: &str,
     cloudwatch_config_file_path: &str,
 ) -> io::Result<()> {
@@ -879,8 +875,8 @@ fn create_cloudwatch_config(
         node_kind,
         log_dir: avalanche_logs_dir.to_string(),
 
-        instance_system_logs,
-        instance_system_metrics,
+        instance_system_logs: true,
+        instance_system_metrics: true,
 
         data_volume_path: Some(avalanche_data_volume_path.to_string()),
 

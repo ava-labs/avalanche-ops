@@ -36,7 +36,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
-                .default_value("5"), // ref. "avalancheup_aws::DEFAULT_KEYS_TO_GENERATE"
+                .default_value("5"),
         )
         .arg(
             Arg::new("REGION")
