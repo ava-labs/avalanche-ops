@@ -46,8 +46,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let handles = vec![
         // send loads asynchronously
         tokio::spawn(send_loads(
-            Arc::clone(&cw_manager_arc),
             spec.blizzard_spec.clone(),
+            Arc::clone(&cw_manager_arc),
         )),
     ];
 
@@ -256,8 +256,8 @@ fn create_cloudwatch_config(
 }
 
 async fn send_loads(
-    cw_manager: Arc<cloudwatch::Manager>,
     blizzard_spec: blizzardup_aws::blizzard::Spec,
+    cw_manager: Arc<cloudwatch::Manager>,
 ) {
     log::info!(
         "start sending loads to {} endpoints",
@@ -265,6 +265,7 @@ async fn send_loads(
     );
 
     let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
+    // TODO: update load testing status in CloudWatch
 
     loop {
         log::info!("sending loads");
