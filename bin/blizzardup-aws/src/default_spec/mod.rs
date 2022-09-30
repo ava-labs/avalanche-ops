@@ -105,6 +105,13 @@ pub fn command() -> Command {
                 .default_value("http://localhost:9650"),
         )
         .arg(
+            Arg::new("BLIZZARD_SUBNET_EVM_BLOCKCHAIN_ID")
+                .long("blizzard-subnet-evm-blockchain-id")
+                .help("Blockchain Id for subnet-evm")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
@@ -115,12 +122,6 @@ pub fn command() -> Command {
 }
 
 pub fn execute(opts: blizzardup_aws::DefaultSpecOption) -> io::Result<()> {
-    // ref. https://github.com/env-logger-rs/env_logger/issues/47
-    env_logger::init_from_env(
-        env_logger::Env::default()
-            .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
-    );
-
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default()

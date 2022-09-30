@@ -47,6 +47,17 @@ fn main() {
                 blizzard_http_rpcs.push(rpc.to_string());
             }
 
+            let blizzard_subnet_evm_blockchain_id_str = sub_matches
+                .get_one::<String>("BLIZZARD_SUBNET_EVM_BLOCKCHAIN_ID")
+                .unwrap_or(&String::new())
+                .to_string();
+            let blizzard_subnet_evm_blockchain_id =
+                if blizzard_subnet_evm_blockchain_id_str.is_empty() {
+                    None
+                } else {
+                    Some(blizzard_subnet_evm_blockchain_id_str.clone())
+                };
+
             let opt = blizzardup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -75,6 +86,7 @@ fn main() {
                     .to_string(),
                 blizzard_metrics_push_interval_seconds,
                 blizzard_http_rpcs,
+                blizzard_subnet_evm_blockchain_id,
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")

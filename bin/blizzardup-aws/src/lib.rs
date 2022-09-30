@@ -108,6 +108,7 @@ pub struct DefaultSpecOption {
     pub blizzard_log_level: String,
     pub blizzard_metrics_push_interval_seconds: u64,
     pub blizzard_http_rpcs: Vec<String>,
+    pub blizzard_subnet_evm_blockchain_id: Option<String>,
 
     pub spec_file_path: String,
 }
@@ -202,12 +203,18 @@ lazy_static! {
 impl Spec {
     /// Creates a default spec.
     pub fn default_aws(opts: DefaultSpecOption) -> Self {
+        let mut rpc_endpoints: Vec<blizzard::Endpoints> = Vec::new();
+        for http_rpc in opts.blizzard_http_rpcs.iter() {
+            rpc_endpoints.push(blizzard::Endpoints::new(
+                http_rpc,
+                opts.blizzard_subnet_evm_blockchain_id.clone(),
+            ))
+        }
+
         let blizzard_spec = blizzard::Spec {
             log_level: opts.blizzard_log_level,
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
-
-            // TODO: configure via flags
-            rpc_endpoints: Vec::new(),
+            rpc_endpoints,
         };
 
         let id = {
