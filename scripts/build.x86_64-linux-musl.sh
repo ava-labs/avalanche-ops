@@ -13,6 +13,7 @@ cargo build \
 --release \
 --bin avalanched-aws \
 --bin avalancheup-aws \
+--bin blizzard-aws \
 --bin blizzardup-aws \
 --bin staking-key-cert-s3-downloader \
 --target x86_64-unknown-linux-musl

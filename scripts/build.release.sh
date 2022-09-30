@@ -11,6 +11,7 @@ cargo build \
 --release \
 --bin avalanched-aws \
 --bin avalancheup-aws \
+--bin blizzard-aws \
 --bin blizzardup-aws \
 --bin staking-key-cert-s3-downloader
 
@@ -20,6 +21,8 @@ cargo build \
 ./target/release/avalancheup-aws default-spec --help
 ./target/release/avalancheup-aws apply --help
 ./target/release/avalancheup-aws delete --help
+
+./target/release/blizzard-aws --help
 
 ./target/release/blizzardup-aws --help
 ./target/release/blizzardup-aws default-spec --help

@@ -174,7 +174,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin avalanched-aws --bin avalancheup-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader --target ${{ matrix.job.target }}
+          args: --release --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader --target ${{ matrix.job.target }}
 
       - name: Compress binaries
         id: release_artifacts
@@ -196,6 +196,12 @@ jobs:
             echo "::set-output name=file_name_avalancheup_aws::avalancheup-aws.${TARGET}"
             tar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
             echo "::set-output name=file_name_avalancheup_aws_tar_gz::avalancheup-aws_${TARGET}.tar.gz"
+
+            ./target/${TARGET}/release/blizzard-aws --help
+            cp ./target/${TARGET}/release/blizzard-aws blizzard-aws.${TARGET}
+            echo "::set-output name=file_name_blizzard_aws::blizzard-aws.${TARGET}"
+            tar -czvf blizzard-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
+            echo "::set-output name=file_name_blizzard_aws_tar_gz::blizzard-aws_${TARGET}.tar.gz"
 
             ./target/${TARGET}/release/blizzardup-aws --help
             cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
@@ -220,6 +226,11 @@ jobs:
             echo "::set-output name=file_name_avalancheup_aws::avalancheup-aws.${TARGET}"
             gtar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
             echo "::set-output name=file_name_avalancheup_aws_tar_gz::avalancheup-aws_${TARGET}.tar.gz"
+
+            cp ./target/${TARGET}/release/blizzard-aws blizzard-aws.${TARGET}
+            echo "::set-output name=file_name_blizzard_aws::blizzard-aws.${TARGET}"
+            gtar -czvf blizzard-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
+            echo "::set-output name=file_name_blizzard_aws_tar_gz::blizzard-aws_${TARGET}.tar.gz"
 
             cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
             echo "::set-output name=file_name_blizzardup_aws::blizzardup-aws.${TARGET}"
@@ -253,6 +264,8 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzard_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzard_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws }}
             ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader }}
@@ -275,6 +288,8 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzard_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzard_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws }}
             ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader }}
