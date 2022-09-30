@@ -390,7 +390,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .unwrap();
         let mut asg_parameters = Vec::from([
             build_param("Id", &spec.id),
-            build_param("NodeKind", "blizzard-worker"),
+            build_param("NodeKind", "worker"),
             build_param("S3BucketName", &aws_resources.s3_bucket),
             build_param(
                 "Ec2KeyPairName",

@@ -10,7 +10,7 @@ Parameters:
 
   NodeKind:
     Type: String
-    AllowedValues: ["blizzard-worker"]
+    AllowedValues: ["worker"]
     Description: Node kind.
 
   S3BucketName:
@@ -189,7 +189,7 @@ Resources:
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref Arch]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -226,7 +226,7 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-${Arch}" }
+              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${Arch}" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -337,7 +337,7 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref Arch]]
+      AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
@@ -352,7 +352,7 @@ Resources:
         # use tags for relatively static configurations
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Join ["-", [!Ref Id, !Ref Arch]]
+          Value: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id
