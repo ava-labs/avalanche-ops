@@ -67,14 +67,11 @@ pub struct Resources {
     /// None if mainnet.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg: Option<String>,
+    pub cloudformation_asg_blizzards: Option<String>,
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_logical_id: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudwatch_metrics_namespace: Option<String>,
+    pub cloudformation_asg_blizzards_logical_id: Option<String>,
 }
 
 impl Default for Resources {
@@ -103,10 +100,8 @@ impl Resources {
             cloudformation_vpc_security_group_id: None,
             cloudformation_vpc_public_subnet_ids: None,
 
-            cloudformation_asg: None,
-            cloudformation_asg_logical_id: None,
-
-            cloudwatch_metrics_namespace: None,
+            cloudformation_asg_blizzards: None,
+            cloudformation_asg_blizzards_logical_id: None,
         }
     }
 }

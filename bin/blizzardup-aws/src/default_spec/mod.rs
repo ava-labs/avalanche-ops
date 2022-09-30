@@ -50,6 +50,24 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("NETWORK_ID") 
+                .long("network-id")
+                .help("Sets the network Id")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u32))
+                .default_value("2000777"),
+        )
+        .arg(
+            Arg::new("NODES") 
+                .long("nodes")
+                .help("Sets the number of blizzards nodes to create")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("2"),
+        )
+        .arg(
             Arg::new("INSTALL_ARTIFACTS_BLIZZARD_BIN") 
                 .long("install-artifacts-blizzard-bin")
                 .help("Sets the Blizzard binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")

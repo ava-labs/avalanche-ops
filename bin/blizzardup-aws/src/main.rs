@@ -31,6 +31,12 @@ fn main() {
                 .unwrap_or(&60)
                 .clone();
 
+            let nodes = sub_matches.get_one::<usize>("NODES").unwrap_or(&2).clone();
+            let network_id = sub_matches
+                .get_one::<u32>("NETWORK_ID")
+                .unwrap_or(&2000777)
+                .clone();
+
             let opt = blizzardup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -46,11 +52,13 @@ fn main() {
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 use_spot_instance: sub_matches.get_flag("USE_SPOT_INSTANCE"),
 
+                nodes,
+                network_id,
+
                 install_artifacts_blizzard_bin: sub_matches
                     .get_one::<String>("INSTALL_ARTIFACTS_BLIZZARD_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-
                 blizzard_log_level: sub_matches
                     .get_one::<String>("BLIZZARD_LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
