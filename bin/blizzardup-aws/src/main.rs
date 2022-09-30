@@ -1,6 +1,7 @@
 mod apply;
 mod default_spec;
 mod delete;
+mod query;
 
 use clap::{crate_version, Command};
 
@@ -16,6 +17,7 @@ fn main() {
             default_spec::command(),
             apply::command(),
             delete::command(),
+            query::command(),
         ])
         .get_matches();
 
@@ -132,6 +134,20 @@ fn main() {
                 sub_matches.get_flag("DELETE_S3_OBJECTS"),
                 sub_matches.get_flag("DELETE_S3_BUCKET"),
                 sub_matches.get_flag("SKIP_PROMPT"),
+            )
+            .expect("failed to execute 'delete'");
+        }
+
+        Some((query::NAME, sub_matches)) => {
+            query::execute(
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap()
+                    .clone(),
             )
             .expect("failed to execute 'delete'");
         }
