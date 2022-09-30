@@ -22,13 +22,6 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("KEY_FILES_DIR")
-                .long("key-files-dir")
-                .help("Directory to write key files to")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
             Arg::new("KEYS_TO_GENERATE") 
                 .long("keys-to-generate")
                 .help("Sets the number of keys to generate")

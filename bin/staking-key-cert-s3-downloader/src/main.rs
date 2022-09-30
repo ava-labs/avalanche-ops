@@ -39,8 +39,8 @@ $ staking-key-cert-s3-downloader \
                 .default_value("info"),
         )
         .arg(
-            Arg::new("AWS_REGION")
-                .long("aws-region")
+            Arg::new("REGION")
+                .long("region")
                 .help("Sets the AWS region")
                 .required(true)
                 .num_args(1),
@@ -101,7 +101,7 @@ $ staking-key-cert-s3-downloader \
             .get_one::<String>("LOG_LEVEL")
             .unwrap_or(&String::from("info"))
             .clone(),
-        aws_region: matches.get_one::<String>("AWS_REGION").unwrap().clone(),
+        region: matches.get_one::<String>("REGION").unwrap().clone(),
         s3_bucket: matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
         s3_key_tls_key: matches.get_one::<String>("S3_KEY_TLS_KEY").unwrap().clone(),
         s3_key_tls_cert: matches

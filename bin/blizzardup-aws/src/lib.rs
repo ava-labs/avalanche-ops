@@ -95,7 +95,6 @@ impl StackName {
 pub struct DefaultSpecOption {
     pub log_level: String,
 
-    pub key_files_dir: String,
     pub keys_to_generate: usize,
 
     pub region: String,
@@ -229,11 +228,6 @@ impl Spec {
             }
         };
 
-        if !opts.key_files_dir.is_empty() {
-            log::info!("creating key-files-dir '{}'", opts.key_files_dir);
-            fs::create_dir_all(&opts.key_files_dir).unwrap();
-        }
-
         // existing network has only 1 pre-funded key "ewoq"
         let mut generated_key_infos: Vec<hot::PrivateKeyInfoEntry> = Vec::new();
         let mut generated_keys: Vec<hot::Key> = Vec::new();
@@ -252,15 +246,6 @@ impl Spec {
             generated_key_infos.push(info.clone());
 
             generated_keys.push(k);
-
-            if !opts.key_files_dir.is_empty() {
-                // file name is eth address with 0x, contents are "private_key_hex"
-                let p = Path::new(&opts.key_files_dir).join(Path::new(&info.eth_address));
-                log::info!("writing key file {:?}", p);
-
-                let mut f = File::create(p).unwrap();
-                f.write_all(info.private_key_hex.as_bytes()).unwrap();
-            }
         }
 
         let generated_private_key_faucet = Some(generated_key_infos[0].clone());

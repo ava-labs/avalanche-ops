@@ -74,10 +74,6 @@ fn main() {
                     .unwrap_or(&String::from("info"))
                     .clone(),
 
-                key_files_dir: sub_matches
-                    .get_one::<String>("KEY_FILES_DIR")
-                    .unwrap_or(&String::new())
-                    .to_string(),
                 keys_to_generate,
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
