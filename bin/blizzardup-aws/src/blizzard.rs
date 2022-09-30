@@ -30,6 +30,8 @@ pub struct Endpoints {
     #[serde(default)]
     pub http_rpc_subnet_evm: Option<String>,
     #[serde(default)]
+    pub subnet_evm_blockchain_id: Option<String>,
+    #[serde(default)]
     pub metrics: String,
     #[serde(default)]
     pub health: String,
@@ -51,6 +53,7 @@ impl Endpoints {
             http_rpc_p: String::new(),
             http_rpc_c: String::new(),
             http_rpc_subnet_evm: None,
+            subnet_evm_blockchain_id: None,
             metrics: String::new(),
             health: String::new(),
             liveness: String::new(),
@@ -58,7 +61,7 @@ impl Endpoints {
     }
 
     pub fn new(http_rpc: &str, subnet_evm_blockchain_id: Option<String>) -> Self {
-        let http_rpc_subnet_evm = if let Some(blk_chain_id) = subnet_evm_blockchain_id {
+        let http_rpc_subnet_evm = if let Some(blk_chain_id) = &subnet_evm_blockchain_id {
             Some(format!("{}/ext/bc/{}/rpc", http_rpc, blk_chain_id))
         } else {
             None
@@ -69,6 +72,7 @@ impl Endpoints {
             http_rpc_p: format!("{}/ext/bc/P", http_rpc),
             http_rpc_c: format!("{}/ext/bc/C/rpc", http_rpc),
             http_rpc_subnet_evm,
+            subnet_evm_blockchain_id,
             metrics: format!("{}/ext/metrics", http_rpc),
             health: format!("{}/ext/health", http_rpc),
             liveness: format!("{}/ext/health/liveness", http_rpc),
