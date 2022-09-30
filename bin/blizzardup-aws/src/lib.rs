@@ -213,8 +213,9 @@ impl Spec {
 
         let blizzard_spec = blizzard::Spec {
             log_level: opts.blizzard_log_level,
-            metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
+            network_id: opts.network_id,
             rpc_endpoints,
+            metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
         };
 
         let id = {
@@ -456,8 +457,9 @@ install_artifacts:
 
 blizzard_spec:
   log_level: info
-  metrics_push_interval_seconds: 60
+  network_id: 99999
   rpc_endpoints: []
+  metrics_push_interval_seconds: 60
 
 "#,
         id, bucket, blizzard_bin,
@@ -498,8 +500,9 @@ blizzard_spec:
 
         blizzard_spec: blizzard::Spec {
             log_level: String::from("info"),
-            metrics_push_interval_seconds: 60,
+            network_id: 99999,
             rpc_endpoints: Vec::new(),
+            metrics_push_interval_seconds: 60,
         },
 
         generated_private_key_faucet: None,

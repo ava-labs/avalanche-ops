@@ -8,6 +8,11 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
+  NodeKind:
+    Type: String
+    AllowedValues: ["blizzard-worker"]
+    Description: Node kind.
+
   S3BucketName:
     Type: String
     Description: S3 bucket name.
@@ -146,11 +151,6 @@ Parameters:
     Default: "github"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
-  BlizzardFlag:
-    Type: String
-    Default: ""
-    Description: (Optional) flag for "blizzard" CLI.
-
 Conditions:
   HasImageId:
     Fn::Not:
@@ -268,7 +268,7 @@ Resources:
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
               else
-                aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/blizzard /tmp/blizzard
+                aws s3 cp s3://${S3BucketName}/${Id}/install/blizzard /tmp/blizzard
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
               fi;
@@ -284,7 +284,7 @@ Resources:
               Restart=on-failure
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/blizzard ${BlizzardFlag}
+              ExecStart=/usr/local/bin/blizzard
               StandardOutput=append:/var/log/blizzard.log
               StandardError=append:/var/log/blizzard.log
 
@@ -365,6 +365,9 @@ Resources:
         - Key: ASG_SPOT_INSTANCE
           PropagateAtLaunch: true
           Value: !Ref AsgSpotInstance
+        - Key: NODE_KIND
+          PropagateAtLaunch: true
+          Value: !Ref NodeKind
         - Key: S3_BUCKET_NAME
           PropagateAtLaunch: true
           Value: !Ref S3BucketName

@@ -1,15 +1,19 @@
 use std::{
     env,
+    fs::File,
     io::{self, stdout, Error, ErrorKind},
+    os::unix::fs::PermissionsExt,
     path::Path,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread,
     time::Duration,
 };
 
 use aws_manager::{self, cloudformation, ec2, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
-use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -364,6 +368,257 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
         ))
         .unwrap();
+    }
+
+    if aws_resources
+        .cloudformation_asg_blizzards_logical_id
+        .is_none()
+    {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\n\n\nSTEP: create ASG for blizzards nodes for network Id {}\n",
+                spec.blizzard_spec.network_id
+            )),
+            ResetColor
+        )?;
+
+        let public_subnet_ids = aws_resources
+            .cloudformation_vpc_public_subnet_ids
+            .clone()
+            .unwrap();
+        let mut asg_parameters = Vec::from([
+            build_param("Id", &spec.id),
+            build_param("NodeKind", "blizzard-worker"),
+            build_param("S3BucketName", &aws_resources.s3_bucket),
+            build_param(
+                "Ec2KeyPairName",
+                &aws_resources.ec2_key_name.clone().unwrap(),
+            ),
+            build_param(
+                "InstanceProfileArn",
+                &aws_resources
+                    .cloudformation_ec2_instance_profile_arn
+                    .clone()
+                    .unwrap(),
+            ),
+            build_param(
+                "SecurityGroupId",
+                &aws_resources
+                    .cloudformation_vpc_security_group_id
+                    .clone()
+                    .unwrap(),
+            ),
+            build_param("PublicSubnetIds", &public_subnet_ids.join(",")),
+            build_param("Arch", &spec.machine.arch),
+        ]);
+
+        if !spec.machine.instance_types.is_empty() {
+            let instance_types = spec.machine.instance_types.clone();
+            asg_parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
+            asg_parameters.push(build_param(
+                "InstanceTypesCount",
+                format!("{}", instance_types.len()).as_str(),
+            ));
+        }
+
+        let blizzard_download_source = if spec.install_artifacts.blizzard_bin.is_some() {
+            "s3"
+        } else {
+            "github"
+        };
+        asg_parameters.push(build_param(
+            "BlizzardDownloadSource",
+            blizzard_download_source,
+        ));
+
+        let cloudformation_asg_blizzards_yaml =
+            Asset::get("cfn-templates/asg_amd64_ubuntu.yaml").unwrap();
+        let cloudformation_asg_blizzards_tmpl =
+            std::str::from_utf8(cloudformation_asg_blizzards_yaml.data.as_ref()).unwrap();
+        let cloudformation_asg_blizzards_stack_name =
+            aws_resources.cloudformation_asg_blizzards.clone().unwrap();
+
+        let desired_capacity = spec.machine.nodes;
+
+        let is_spot_instance = spec.machine.use_spot_instance;
+        let on_demand_pct = if is_spot_instance { 0 } else { 100 };
+        asg_parameters.push(build_param(
+            "AsgSpotInstance",
+            format!("{}", is_spot_instance).as_str(),
+        ));
+        asg_parameters.push(build_param(
+            "OnDemandPercentageAboveBaseCapacity",
+            format!("{}", on_demand_pct).as_str(),
+        ));
+
+        asg_parameters.push(build_param(
+            "AsgDesiredCapacity",
+            format!("{}", desired_capacity).as_str(),
+        ));
+
+        // for CFN template updates
+        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
+        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
+        asg_parameters.push(build_param(
+            "AsgMaxSize",
+            format!("{}", desired_capacity + 1).as_str(),
+        ));
+
+        rt.block_on(cloudformation_manager.create_stack(
+            cloudformation_asg_blizzards_stack_name.as_str(),
+            None,
+            OnFailure::Delete,
+            cloudformation_asg_blizzards_tmpl,
+            Some(Vec::from([
+                Tag::builder().key("KIND").value("blizzardup").build(),
+            ])),
+            Some(asg_parameters),
+        ))
+        .unwrap();
+
+        // add 5-minute for ELB creation + volume provisioner
+        let mut wait_secs = 700 + 60 * desired_capacity as u64;
+        if wait_secs > MAX_WAIT_SECONDS {
+            wait_secs = MAX_WAIT_SECONDS;
+        }
+        thread::sleep(Duration::from_secs(60));
+        let stack = rt
+            .block_on(cloudformation_manager.poll_stack(
+                cloudformation_asg_blizzards_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(wait_secs),
+                Duration::from_secs(30),
+            ))
+            .unwrap();
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("AsgLogicalId") {
+                aws_resources.cloudformation_asg_blizzards_logical_id = Some(v);
+                continue;
+            }
+        }
+        if aws_resources
+            .cloudformation_asg_blizzards_logical_id
+            .is_none()
+        {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "aws_resources.cloudformation_asg_blizzards_logical_id not found",
+            ));
+        }
+
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
+
+        let asg_name = aws_resources
+            .cloudformation_asg_blizzards_logical_id
+            .clone()
+            .expect("unexpected None cloudformation_asg_blizzards_logical_id");
+
+        let mut droplets: Vec<ec2::Droplet> = Vec::new();
+        let target_nodes = spec.machine.nodes;
+        for _ in 0..20 {
+            // TODO: better retries
+            log::info!(
+                "fetching all droplets for non-anchor node SSH access (target nodes {})",
+                target_nodes
+            );
+            droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
+            if droplets.len() >= target_nodes {
+                break;
+            }
+            log::info!(
+                "retrying fetching all droplets (only got {})",
+                droplets.len()
+            );
+            thread::sleep(Duration::from_secs(30));
+        }
+
+        let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
+        let f = File::open(&ec2_key_path).unwrap();
+        f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+        println!(
+            "
+# change SSH key permission
+chmod 400 {}",
+            ec2_key_path
+        );
+        for d in droplets {
+            // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
+            // aws ssm start-session --region [region] --target [instance ID]
+            println!(
+                "# instance '{}' ({}, {})
+ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
+# download to local machine
+scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
+scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
+# upload to remote machine
+scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
+scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
+# SSM session (requires SSM agent)
+aws ssm start-session --region {} --target {}
+",
+                //
+                d.instance_id,
+                d.instance_state_name,
+                d.availability_zone,
+                //
+                ec2_key_path,
+                d.public_ipv4,
+                //
+                ec2_key_path,
+                d.public_ipv4,
+                //
+                ec2_key_path,
+                d.public_ipv4,
+                //
+                ec2_key_path,
+                d.public_ipv4,
+                //
+                ec2_key_path,
+                d.public_ipv4,
+                //
+                aws_resources.region,
+                d.instance_id,
+            );
+        }
+        println!();
+
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
+
+        rt.block_on(s3_manager.put_object(
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        ))
+        .expect("failed put_object ConfigFile");
+
+        log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
+        thread::sleep(Duration::from_secs(20));
+
+        // TODO: check some results by querying metrics
+
+        if term.load(Ordering::Relaxed) {
+            log::warn!("received signal {}", signal_hook::consts::SIGINT);
+            println!();
+            println!("# run the following to delete resources");
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                    exec_path.display(),
+                    spec_file_path
+                )),
+                ResetColor
+            )?;
+        };
     }
 
     Ok(())

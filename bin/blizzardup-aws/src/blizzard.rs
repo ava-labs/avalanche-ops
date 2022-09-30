@@ -7,8 +7,9 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub struct Spec {
     pub log_level: String,
-    pub metrics_push_interval_seconds: u64,
+    pub network_id: u32,
     pub rpc_endpoints: Vec<Endpoints>,
+    pub metrics_push_interval_seconds: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -84,3 +85,5 @@ impl Endpoints {
         }
     }
 }
+
+// TODO: define results sucess/failures
