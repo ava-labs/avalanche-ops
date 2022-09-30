@@ -261,6 +261,7 @@ async fn download_spec(
     .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
 
     let spec = blizzardup_aws::Spec::load(&tmp_spec_file_path)?;
+    log::info!("loaded blizzardup_aws::Spec");
 
     fs::copy(&tmp_spec_file_path, &blizzardup_spec_path)?;
     fs::remove_file(&tmp_spec_file_path)?; // "blizzard" never updates "spec" file, runs in read-only mode

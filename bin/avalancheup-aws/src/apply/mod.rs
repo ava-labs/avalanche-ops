@@ -1703,7 +1703,7 @@ default-spec \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
---blizzard-load-kinds=subnet-evm
+--blizzard-load-kinds=x,subnet-evm
 ",
                 region = aws_resources.region,
                 network_id = spec.avalanchego_config.network_id,
