@@ -1668,6 +1668,7 @@ $ cat /tmp/{node_id}.crt
             "
 $ ./scripts/build.release.sh
 $ ./target/release/blizzardup-aws \\
+default-spec \\
 --log-level=info \\
 --keys-to-generate=50 \\
 --region={region} \\
@@ -1692,6 +1693,7 @@ $ ./target/release/blizzardup-aws \\
                 "
 $ ./scripts/build.release.sh
 $ ./target/release/blizzardup-aws \\
+default-spec \\
 --log-level=info \\
 --keys-to-generate=50 \\
 --region={region} \\
