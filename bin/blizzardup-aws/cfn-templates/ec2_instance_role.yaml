@@ -1,0 +1,109 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "IAM instance role"
+
+# takes about 3-minute
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+Parameters:
+  Id:
+    Type: String
+    Description: Unique identifier, prefix for all resources created below.
+
+  S3BucketName:
+    Type: String
+    Description: S3 bucket name to store.
+
+Mappings:
+  ServicePrincipals:
+    aws-cn:
+      ec2: ec2.amazonaws.com.cn
+    aws:
+      ec2: ec2.amazonaws.com
+
+Resources:
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["-", [!Ref Id, "instance-role"]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - Fn::FindInMap:
+                    - ServicePrincipals
+                    - Ref: AWS::Partition
+                    - ec2
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Path: /
+      Policies:
+        - PolicyName: blizzard-instance-role-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances # to fetch tags
+                  - ec2:DescribeTags # to find network/resource information
+                # restrict this better
+                # ref. https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_ec2_ebs-owner.html
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:List*
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject # to download artifacts
+                  - s3:PutObject # to upload generated TLS keys
+                Resource:
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/*",
+                      ],
+                    ]
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:PutRetentionPolicy
+                Resource:
+                  # Ref: http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-cloudwatch-logs
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}:log-stream:*"
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Join ["-", [!Ref Id, "instance-profile"]]
+      Path: "/"
+      Roles:
+        - !Ref InstanceRole
+
+Outputs:
+  InstanceRoleArn:
+    Value: !GetAtt InstanceRole.Arn
+    Description: Role ARN
+
+  InstanceProfileArn:
+    Value: !GetAtt InstanceProfile.Arn
+    Description: Instance profile ARN
