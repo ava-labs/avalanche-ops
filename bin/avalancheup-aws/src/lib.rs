@@ -417,6 +417,8 @@ impl StackName {
 pub struct DefaultSpecOption {
     pub log_level: String,
     pub network_name: String,
+
+    pub key_files_dir: String,
     pub keys_to_generate: usize,
 
     pub region: String,
@@ -429,7 +431,6 @@ pub struct DefaultSpecOption {
     pub disable_logs_auto_removal: bool,
     pub metrics_fetch_interval_seconds: u64,
 
-    pub key_files_dir: String,
     pub aad_tag: String,
 
     pub nlb_acm_certificate_arn: String,
