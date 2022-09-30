@@ -1,5 +1,5 @@
 [package]
-name = "infra-aws"
+name = "certs-manager"
 version = "0.0.0"
 edition = "2021"
 rust-version = "1.64"
@@ -7,17 +7,11 @@ rust-version = "1.64"
 [dependencies]
 avalanche-types = { version = "0.0.41" } # https://crates.io/crates/avalanche-types
 aws-manager = "0.19.0" # https://github.com/gyuho/aws-manager/tags
-aws-sdk-cloudwatch = "0.19.0"
-chrono = "0.4.22"
-compress-manager = "0.0.2"
-http-manager = "0.0.3"
 log = "0.4.17"
-random-manager = "0.0.1"
-rust-embed = "6.4.1"
-serde_yaml = "0.9.13" # https://github.com/dtolnay/serde-yaml/releases
 tokio = { version = "1.21.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
 cmp-manager = "0.0.1"
 env_logger = "0.9.1"
+random-manager = "0.0.1"
 tokio-test = "0.4.2"

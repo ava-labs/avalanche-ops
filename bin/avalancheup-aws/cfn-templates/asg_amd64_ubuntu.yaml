@@ -625,9 +625,6 @@ Resources:
         - Key: AVALANCHEUP_SPEC_PATH
           PropagateAtLaunch: true
           Value: /data/avalancheup.yaml
-        - Key: AVALANCHED_BIN_PATH
-          PropagateAtLaunch: true
-          Value: /usr/local/bin/avalanched
         - Key: AVALANCHE_BIN_PATH
           PropagateAtLaunch: true
           Value: /usr/local/bin/avalanche
@@ -637,6 +634,7 @@ Resources:
         - Key: AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME
           PropagateAtLaunch: true
           Value: /dev/xvdb
+
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       # https://aws.amazon.com/getting-started/hands-on/ec2-auto-scaling-spot-instances/
       MixedInstancesPolicy:

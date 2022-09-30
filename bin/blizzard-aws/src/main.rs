@@ -1,3 +1,4 @@
+mod cloudwatch;
 mod command;
 mod flags;
 

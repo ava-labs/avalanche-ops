@@ -6,7 +6,6 @@ use aws_manager::{
     kms::{self, envelope},
     s3,
 };
-use infra_aws::certs;
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
     println!("starting {} with {:?}", crate::APP_NAME, opts);
@@ -24,7 +23,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         // e.g., "cfn-templates" tag "AAD_TAG"
         opts.aad_tag.clone(),
     );
-    let certs_manager = certs::Manager {
+    let certs_manager = certs_manager::Manager {
         envelope_manager,
         s3_manager: aws_creds.s3_manager.clone(),
         s3_bucket: opts.s3_bucket.clone(),

@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::flags;
+use crate::{cloudwatch, flags};
 use avalanche_sdk::health as api_health;
 use avalanche_types::{genesis as avalanchego_genesis, node};
 use aws_manager::{
@@ -16,7 +16,6 @@ use aws_manager::{
     s3,
 };
 use aws_sdk_ec2::model::{Filter, Tag, Volume};
-use infra_aws::{certs, telemetry};
 use tokio::time::{sleep, Duration};
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
@@ -151,7 +150,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         tags.kms_cmk_arn.to_string(),
         tags.aad_tag.to_string(),
     );
-    let certs_manager = certs::Manager {
+    let certs_manager = certs_manager::Manager {
         envelope_manager,
         s3_manager: aws_creds.s3_manager.clone(),
         s3_bucket: tags.s3_bucket.to_string(),
@@ -468,7 +467,6 @@ struct Tags {
     avalanche_telemetry_cloudwatch_bin_path: String,
     avalanche_telemetry_cloudwatch_rules_file_path: String,
     avalancheup_spec_path: String,
-    avalanched_bin_path: String,
     avalanche_bin_path: String,
     avalanche_data_volume_path: String,
     avalanche_data_volume_ebs_device_name: String,
@@ -499,7 +497,6 @@ async fn fetch_tags(
         avalanche_telemetry_cloudwatch_bin_path: String::new(),
         avalanche_telemetry_cloudwatch_rules_file_path: String::new(),
         avalancheup_spec_path: String::new(),
-        avalanched_bin_path: String::new(),
         avalanche_bin_path: String::new(),
         avalanche_data_volume_path: String::new(),
         avalanche_data_volume_ebs_device_name: String::new(),
@@ -553,9 +550,6 @@ async fn fetch_tags(
             "AVALANCHEUP_SPEC_PATH" => {
                 fetched_tags.avalancheup_spec_path = v.to_string();
             }
-            "AVALANCHED_BIN_PATH" => {
-                fetched_tags.avalanched_bin_path = v.to_string();
-            }
             "AVALANCHE_BIN_PATH" => {
                 fetched_tags.avalanche_bin_path = v.to_string();
             }
@@ -588,7 +582,6 @@ async fn fetch_tags(
         .avalanche_telemetry_cloudwatch_rules_file_path
         .is_empty());
     assert!(!fetched_tags.avalancheup_spec_path.is_empty());
-    assert!(!fetched_tags.avalanched_bin_path.is_empty());
     assert!(!fetched_tags.avalanche_bin_path.is_empty());
     assert!(!fetched_tags.avalanche_data_volume_path.is_empty());
     assert!(!fetched_tags
@@ -870,7 +863,7 @@ fn create_cloudwatch_config(
 ) -> io::Result<()> {
     log::info!("STEP: creating CloudWatch JSON config file...");
 
-    let cw_config_manager = telemetry::cloudwatch::ConfigManager {
+    let cw_config_manager = cloudwatch::ConfigManager {
         id: id.to_string(),
         node_kind,
         log_dir: avalanche_logs_dir.to_string(),
