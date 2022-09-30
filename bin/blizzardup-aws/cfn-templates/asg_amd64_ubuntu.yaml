@@ -348,7 +348,7 @@ Resources:
         - Granularity: "1Minute"
       Tags:
         # we can either propagate these information
-        # via tags, avalanched CLI flags, avalanche-ops spec, etc.
+        # via tags, blizzard CLI flags, blizzardup spec, etc.
         # use tags for relatively static configurations
         - Key: Name
           PropagateAtLaunch: true

@@ -4,7 +4,7 @@ mod delete;
 
 use clap::{crate_version, Command};
 
-const APP_NAME: &str = "avalancheup-aws";
+const APP_NAME: &str = "blizzardup-aws";
 
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
