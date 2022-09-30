@@ -9,7 +9,10 @@ name = "blizzardup-aws"
 path = "src/main.rs"
 
 [dependencies]
+aws-manager = "0.19.0" # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.0.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.9.1"
 log = "0.4.17"
+rust-embed = "6.4.1"
 serde = { version = "1.0.145", features = ["derive"] }
+signal-hook = "0.3.14"

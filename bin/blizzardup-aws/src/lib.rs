@@ -1,4 +1,5 @@
 mod blizzard;
+mod aws;
 
 use serde::{Deserialize, Serialize};
 
