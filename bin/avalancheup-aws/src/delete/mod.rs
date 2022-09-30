@@ -16,7 +16,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use log::info;
 use tokio::runtime::Runtime;
 
 pub const NAME: &str = "delete";
@@ -152,7 +151,7 @@ pub fn execute(
         }
     }
 
-    info!("deleting resources...");
+    log::info!("deleting resources...");
     let s3_manager = s3::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let ec2_manager = ec2::Manager::new(&shared_config);
@@ -434,13 +433,13 @@ pub fn execute(
         let volumes = rt
             .block_on(ec2_manager.describe_volumes(Some(filters)))
             .unwrap();
-        info!("found {} volumes", volumes.len());
+        log::info!("found {} volumes", volumes.len());
         if !volumes.is_empty() {
-            info!("deleting {} volumes", volumes.len());
+            log::info!("deleting {} volumes", volumes.len());
             let ec2_cli = ec2_manager.client();
             for v in volumes {
                 let volume_id = v.volume_id().unwrap().to_string();
-                info!("deleting EBS volume '{}'", volume_id);
+                log::info!("deleting EBS volume '{}'", volume_id);
                 rt.block_on(ec2_cli.delete_volume().volume_id(volume_id).send())
                     .unwrap();
                 thread::sleep(Duration::from_secs(2));
@@ -449,6 +448,6 @@ pub fn execute(
     }
 
     println!();
-    info!("delete all success!");
+    log::info!("delete all success!");
     Ok(())
 }

@@ -12,7 +12,11 @@ fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
         .about("Blizzard control plane on AWS")
-        .subcommands(vec![default_spec::command(), apply::command()])
+        .subcommands(vec![
+            default_spec::command(),
+            apply::command(),
+            delete::command(),
+        ])
         .get_matches();
 
     match matches.subcommand() {
@@ -74,6 +78,24 @@ fn main() {
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
             .expect("failed to execute 'apply'");
+        }
+
+        Some((delete::NAME, sub_matches)) => {
+            delete::execute(
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap()
+                    .clone(),
+                sub_matches.get_flag("DELETE_CLOUDWATCH_LOG_GROUP"),
+                sub_matches.get_flag("DELETE_S3_OBJECTS"),
+                sub_matches.get_flag("DELETE_S3_BUCKET"),
+                sub_matches.get_flag("SKIP_PROMPT"),
+            )
+            .expect("failed to execute 'delete'");
         }
 
         _ => unreachable!("unknown subcommand"),

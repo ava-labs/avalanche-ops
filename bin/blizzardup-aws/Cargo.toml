@@ -11,4 +11,5 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4.0.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.9.1"
+log = "0.4.17"
 serde = { version = "1.0.145", features = ["derive"] }
