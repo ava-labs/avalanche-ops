@@ -11,8 +11,10 @@ docker pull clux/muslrust
 docker run -v $PWD:/volume --rm -t clux/muslrust \
 cargo build \
 --release \
---bin avalancheup-aws \
 --bin avalanched-aws \
+--bin avalancheup-aws \
+--bin blizzardup-aws \
+--bin staking-key-cert-s3-downloader \
 --target x86_64-unknown-linux-musl
 
 BIN_PATH=./target/x86_64-unknown-linux-musl/release

@@ -7,9 +7,8 @@ use std::{
     time::Duration,
 };
 
-use aws_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
+use aws_manager::{self, cloudformation, cloudwatch, ec2, s3, sts};
 use aws_sdk_cloudformation::model::StackStatus;
-use aws_sdk_ec2::model::Filter;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -70,13 +69,6 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(0),
         )
-        .arg(
-            Arg::new("DELETE_EBS_VOLUMES")
-                .long("delete-ebs-volumes")
-                .help("Enables delete orphaned EBS volumes (use with caution!)")
-                .required(false)
-                .num_args(0),
-        )
 }
 
 // 50-minute
@@ -88,7 +80,6 @@ pub fn execute(
     delete_cloudwatch_log_group: bool,
     delete_s3_objects: bool,
     delete_s3_bucket: bool,
-    delete_ebs_volumes: bool,
     skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -96,7 +87,7 @@ pub fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalancheup_aws::Spec::load(spec_file_path).expect("failed to load spec");
+    let spec = blizzardup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     let aws_resources = spec.aws_resources.clone().unwrap();
 
     let rt = Runtime::new().unwrap();
@@ -153,7 +144,6 @@ pub fn execute(
 
     log::info!("deleting resources...");
     let s3_manager = s3::Manager::new(&shared_config);
-    let kms_manager = kms::Manager::new(&shared_config);
     let ec2_manager = ec2::Manager::new(&shared_config);
     let cloudformation_manager = cloudformation::Manager::new(&shared_config);
     let cw_manager = cloudwatch::Manager::new(&shared_config);
@@ -174,36 +164,7 @@ pub fn execute(
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
-        let ec2_key_path_compressed = format!(
-            "{}{}",
-            ec2_key_path,
-            compress_manager::Encoder::Zstd(3).ext()
-        );
-        if Path::new(ec2_key_path_compressed.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
-        if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
-        }
         rt.block_on(ec2_manager.delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str()))
-            .unwrap();
-    }
-
-    // delete this first since KMS key delete does not depend on ASG/VPC
-    // (mainly to speed up delete operation)
-    if aws_resources.kms_cmk_id.is_some() && aws_resources.kms_cmk_arn.is_some() {
-        thread::sleep(Duration::from_secs(1));
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete KMS key\n"),
-            ResetColor
-        )?;
-
-        let cmk_id = aws_resources.kms_cmk_id.unwrap();
-        rt.block_on(kms_manager.schedule_to_delete(cmk_id.as_str()))
             .unwrap();
     }
 
@@ -235,79 +196,33 @@ pub fn execute(
     execute!(
         stdout(),
         SetForegroundColor(Color::Red),
-        Print("\n\n\nSTEP: triggering delete ASG for non-anchor nodes\n"),
+        Print("\n\n\nSTEP: triggering delete ASG for blizzard nodes\n"),
         ResetColor
     )?;
-    let asg_non_anchor_nodes_stack_name = aws_resources
-        .cloudformation_asg_non_anchor_nodes
-        .clone()
-        .unwrap();
-    rt.block_on(cloudformation_manager.delete_stack(asg_non_anchor_nodes_stack_name.as_str()))
+    let asg_blizzards_stack_name = aws_resources.cloudformation_asg_blizzards.clone().unwrap();
+    rt.block_on(cloudformation_manager.delete_stack(asg_blizzards_stack_name.as_str()))
         .unwrap();
 
-    if spec.machine.anchor_nodes.unwrap_or(0) > 0 {
-        thread::sleep(Duration::from_secs(1));
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete ASG for anchor nodes\n"),
-            ResetColor
-        )?;
-        let asg_anchor_nodes_stack_name = aws_resources
-            .cloudformation_asg_anchor_nodes
-            .clone()
-            .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(asg_anchor_nodes_stack_name.as_str()))
-            .unwrap();
-    }
-
-    // delete no matter what, in case node provision failed
     thread::sleep(Duration::from_secs(1));
 
     execute!(
         stdout(),
         SetForegroundColor(Color::Red),
-        Print("\n\n\nSTEP: confirming delete ASG for non-anchor nodes\n"),
+        Print("\n\n\nSTEP: confirming delete ASG for blizzard nodes\n"),
         ResetColor
     )?;
-    let desired_capacity = spec.machine.non_anchor_nodes;
+    let desired_capacity = spec.machine.nodes;
     let mut wait_secs = 300 + 60 * desired_capacity as u64;
     if wait_secs > MAX_WAIT_SECONDS {
         wait_secs = MAX_WAIT_SECONDS;
     }
     rt.block_on(cloudformation_manager.poll_stack(
-        asg_non_anchor_nodes_stack_name.as_str(),
+        asg_blizzards_stack_name.as_str(),
         StackStatus::DeleteComplete,
         Duration::from_secs(wait_secs),
         Duration::from_secs(30),
     ))
     .unwrap();
-
-    if spec.machine.anchor_nodes.unwrap_or(0) > 0 {
-        // delete no matter what, in case node provision failed
-        thread::sleep(Duration::from_secs(1));
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete ASG for anchor nodes\n"),
-            ResetColor
-        )?;
-        let asg_anchor_nodes_stack_name = aws_resources.cloudformation_asg_anchor_nodes.unwrap();
-        let desired_capacity = spec.machine.anchor_nodes.unwrap();
-        let mut wait_secs = 300 + 60 * desired_capacity as u64;
-        if wait_secs > MAX_WAIT_SECONDS {
-            wait_secs = MAX_WAIT_SECONDS;
-        }
-        rt.block_on(cloudformation_manager.poll_stack(
-            asg_anchor_nodes_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(wait_secs),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
-    }
 
     // VPC delete must run after associated EC2 instances are terminated due to dependencies
     if aws_resources.cloudformation_vpc_id.is_some()
@@ -322,7 +237,6 @@ pub fn execute(
             Print("\n\n\nSTEP: delete VPC\n"),
             ResetColor
         )?;
-
         let vpc_stack_name = aws_resources.cloudformation_vpc.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(vpc_stack_name.as_str()))
             .unwrap();
@@ -348,7 +262,6 @@ pub fn execute(
             Print("\n\n\nSTEP: confirming delete EC2 instance role\n"),
             ResetColor
         )?;
-
         let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
         rt.block_on(cloudformation_manager.poll_stack(
             ec2_instance_role_stack_name.as_str(),
@@ -401,43 +314,6 @@ pub fn execute(
         thread::sleep(Duration::from_secs(5));
         rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
             .unwrap();
-    }
-
-    if delete_ebs_volumes {
-        thread::sleep(Duration::from_secs(1));
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: deleting orphaned EBS volumes\n"),
-            ResetColor
-        )?;
-        // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
-        let filters: Vec<Filter> = vec![
-            Filter::builder()
-                .set_name(Some(String::from("tag:Kind")))
-                .set_values(Some(vec![String::from("aws-volume-provisioner")]))
-                .build(),
-            Filter::builder()
-                .set_name(Some(String::from("tag:Id")))
-                .set_values(Some(vec![spec.id]))
-                .build(),
-        ];
-        let volumes = rt
-            .block_on(ec2_manager.describe_volumes(Some(filters)))
-            .unwrap();
-        log::info!("found {} volumes", volumes.len());
-        if !volumes.is_empty() {
-            log::info!("deleting {} volumes", volumes.len());
-            let ec2_cli = ec2_manager.client();
-            for v in volumes {
-                let volume_id = v.volume_id().unwrap().to_string();
-                log::info!("deleting EBS volume '{}'", volume_id);
-                rt.block_on(ec2_cli.delete_volume().volume_id(volume_id).send())
-                    .unwrap();
-                thread::sleep(Duration::from_secs(1));
-            }
-        }
     }
 
     println!();

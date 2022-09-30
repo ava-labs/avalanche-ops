@@ -23,6 +23,22 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
+            Arg::new("KEY_FILES_DIR")
+                .long("key-files-dir")
+                .help("Directory to write key files to")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("KEYS_TO_GENERATE") 
+                .long("keys-to-generate")
+                .help("Sets the number of keys to generate")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("5"),
+        )
+        .arg(
             Arg::new("REGION")
                 .long("region")
                 .short('r')
@@ -40,13 +56,6 @@ pub fn command() -> Command {
                 .num_args(1)
                 .value_parser(value_parser!(usize))
                 .default_value("0"),
-        )
-        .arg(
-            Arg::new("KEY_FILES_DIR")
-                .long("key-files-dir")
-                .help("Directory to write key files to")
-                .required(false)
-                .num_args(1),
         )
         .arg(
             Arg::new("USE_SPOT_INSTANCE")
@@ -129,15 +138,6 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .default_value("custom"),
-        )
-        .arg(
-            Arg::new("KEYS_TO_GENERATE") 
-                .long("keys-to-generate")
-                .help("Sets the number of keys to generate")
-                .required(false)
-                .num_args(1)
-                .value_parser(value_parser!(usize))
-                .default_value("5"), // ref. "avalancheup_aws::DEFAULT_KEYS_TO_GENERATE"
         )
         .arg(
             Arg::new("VOLUME_SIZE_IN_GB")

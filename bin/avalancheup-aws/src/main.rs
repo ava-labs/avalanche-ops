@@ -11,7 +11,7 @@ const APP_NAME: &str = "avalancheup-aws";
 fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
-        .about("Avalanche node operations on AWS")
+        .about("AvalancheUp control plane on AWS (requires avalanched)")
         .subcommands(vec![
             default_spec::command(),
             apply::command(),
@@ -55,6 +55,11 @@ fn main() {
                     .get_one::<String>("NETWORK_NAME")
                     .unwrap_or(&String::new())
                     .clone(),
+
+                key_files_dir: sub_matches
+                    .get_one::<String>("KEY_FILES_DIR")
+                    .unwrap_or(&String::new())
+                    .to_string(),
                 keys_to_generate,
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
@@ -70,10 +75,6 @@ fn main() {
                 disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
                 metrics_fetch_interval_seconds,
 
-                key_files_dir: sub_matches
-                    .get_one::<String>("KEY_FILES_DIR")
-                    .unwrap_or(&String::new())
-                    .to_string(),
                 aad_tag: sub_matches
                     .get_one::<String>("AAD_TAG")
                     .unwrap()

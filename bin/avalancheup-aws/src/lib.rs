@@ -6,7 +6,6 @@ use std::{
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
-    string::String,
 };
 
 use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
@@ -177,13 +176,11 @@ http_endpoint: http://1.2.3.4:9650
     assert_eq!(node, decompressed_node);
 }
 
-pub const DEFAULT_KEYS_TO_GENERATE: usize = 5;
-
 /// Default machine anchor nodes size.
 /// only required for custom networks
 pub const DEFAULT_MACHINE_ANCHOR_NODES: u32 = 1;
 pub const MIN_MACHINE_ANCHOR_NODES: u32 = 1;
-pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10; // TODO: allow higher number?
+pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10;
 
 /// Default machine non-anchor nodes size.
 /// "1" is better in order to choose only one AZ for static EBS provision.
@@ -191,7 +188,7 @@ pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10; // TODO: allow higher number?
 /// of avalanche ops clusters.
 pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
 pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
-pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20; // TODO: allow higher number?
+pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
@@ -329,7 +326,7 @@ impl Endpoints {
             Ok(s) => Ok(s),
             Err(e) => Err(Error::new(
                 ErrorKind::Other,
-                format!("failed to serialize DnsEndpoints to YAML {}", e),
+                format!("failed to serialize Endpoints to YAML {}", e),
             )),
         }
     }
@@ -397,8 +394,8 @@ pub struct InstallArtifacts {
 pub enum StackName {
     Ec2InstanceRole(String),
     Vpc(String),
-    AsgBeaconNodes(String),
-    AsgNonBeaconNodes(String),
+    AsgAnchorNodes(String),
+    AsgNonAnchorNodes(String),
 }
 
 impl StackName {
@@ -406,8 +403,8 @@ impl StackName {
         match self {
             StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
             StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::AsgBeaconNodes(id) => format!("{}-asg-anchor-nodes", id),
-            StackName::AsgNonBeaconNodes(id) => format!("{}-asg-non-anchor-nodes", id),
+            StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
+            StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
         }
     }
 }
@@ -417,6 +414,8 @@ impl StackName {
 pub struct DefaultSpecOption {
     pub log_level: String,
     pub network_name: String,
+
+    pub key_files_dir: String,
     pub keys_to_generate: usize,
 
     pub region: String,
@@ -429,7 +428,6 @@ pub struct DefaultSpecOption {
     pub disable_logs_auto_removal: bool,
     pub metrics_fetch_interval_seconds: u64,
 
-    pub key_files_dir: String,
     pub aad_tag: String,
 
     pub nlb_acm_certificate_arn: String,
@@ -573,10 +571,7 @@ pub fn default_rules() -> prometheus_manager::Rules {
 }
 
 impl Spec {
-    /// Creates a default Status based on the network ID.
-    /// For custom networks, it generates the "keys" number of keys
-    /// and pre-funds them in the genesis file path, which is
-    /// included in "InstallArtifacts.genesis_draft_file_path".
+    /// Creates a default spec.
     pub fn default_aws(opts: DefaultSpecOption) -> Self {
         let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opts.network_name.as_str())
         {
@@ -672,7 +667,7 @@ impl Spec {
 
             let info = k
                 .private_key_info_entry(network_id)
-                .expect("unexpected to_info failure");
+                .expect("unexpected private_key_info_entry failure");
             generated_seed_key_infos.push(info.clone());
 
             generated_seed_keys.push(k);
@@ -1137,8 +1132,6 @@ aws_resources:
   use_spot_instance: false
   disable_spot_instance_for_anchor_nodes: false
   s3_bucket: {}
-  instance_system_logs: true
-  instance_system_metrics: true
 
 machine:
   non_anchor_nodes: 1

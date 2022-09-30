@@ -174,7 +174,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin avalancheup-aws --bin avalanched-aws --bin staking-key-cert-s3-downloader --target ${{ matrix.job.target }}
+          args: --release --bin avalanched-aws --bin avalancheup-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader --target ${{ matrix.job.target }}
 
       - name: Compress binaries
         id: release_artifacts
@@ -185,17 +185,23 @@ jobs:
         run: |
           if [ "$PLATFORM_NAME" == "linux" ]; then
 
+            ./target/${TARGET}/release/avalanched-aws --help
+            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
+            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
+            tar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
+            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+
             ./target/${TARGET}/release/avalancheup-aws --help
             cp ./target/${TARGET}/release/avalancheup-aws avalancheup-aws.${TARGET}
             echo "::set-output name=file_name_avalancheup_aws::avalancheup-aws.${TARGET}"
             tar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
             echo "::set-output name=file_name_avalancheup_aws_tar_gz::avalancheup-aws_${TARGET}.tar.gz"
 
-            ./target/${TARGET}/release/avalanched-aws --help
-            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
-            tar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+            ./target/${TARGET}/release/blizzardup-aws --help
+            cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
+            echo "::set-output name=file_name_blizzardup_aws::blizzardup-aws.${TARGET}"
+            tar -czvf blizzardup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
+            echo "::set-output name=file_name_blizzardup_aws_tar_gz::blizzardup-aws_${TARGET}.tar.gz"
 
             ./target/${TARGET}/release/staking-key-cert-s3-downloader --help
             cp ./target/${TARGET}/release/staking-key-cert-s3-downloader staking-key-cert-s3-downloader.${TARGET}
@@ -205,15 +211,20 @@ jobs:
 
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
+            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
+            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
+            gtar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
+            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+
             cp ./target/${TARGET}/release/avalancheup-aws avalancheup-aws.${TARGET}
             echo "::set-output name=file_name_avalancheup_aws::avalancheup-aws.${TARGET}"
             gtar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
             echo "::set-output name=file_name_avalancheup_aws_tar_gz::avalancheup-aws_${TARGET}.tar.gz"
 
-            cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
-            gtar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+            cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
+            echo "::set-output name=file_name_blizzardup_aws::blizzardup-aws.${TARGET}"
+            gtar -czvf blizzardup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
+            echo "::set-output name=file_name_blizzardup_aws_tar_gz::blizzardup-aws_${TARGET}.tar.gz"
 
             cp ./target/${TARGET}/release/staking-key-cert-s3-downloader staking-key-cert-s3-downloader.${TARGET}
             echo "::set-output name=file_name_staking_key_cert_s3_downloader::staking-key-cert-s3-downloader.${TARGET}"
@@ -238,10 +249,12 @@ jobs:
           prerelease: true
           body: Latest builds from the last commit.
           files: |
-            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}
-            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader }}
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader_tar_gz }}
 
@@ -258,9 +271,11 @@ jobs:
           prerelease: true
           body: Release builds for ${{ github.ref_name }}.
           files: |
-            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}
-            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws }}
+            ${{ steps.release_artifacts.outputs.file_name_blizzardup_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader }}
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader_tar_gz }}
