@@ -1,9 +1,15 @@
 use std::{
+    env,
     io::{self, stdout, Error, ErrorKind},
+    path::Path,
     sync::{atomic::AtomicBool, Arc},
+    thread,
+    time::Duration,
 };
 
-use aws_manager::sts;
+use aws_manager::{self, cloudformation, ec2, s3, sts};
+use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_s3::model::Object;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -45,6 +51,9 @@ pub fn command() -> Command {
                 .num_args(0),
         )
 }
+
+// 50-minute
+const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
 pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     #[derive(RustEmbed)]
@@ -133,9 +142,250 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
     }
 
+    let exec_path = env::current_exe().expect("unexpected None current_exe");
+
+    log::info!("creating resources (with spec path {})", spec_file_path);
+    let s3_manager = s3::Manager::new(&shared_config);
+    let ec2_manager = ec2::Manager::new(&shared_config);
+    let cloudformation_manager = cloudformation::Manager::new(&shared_config);
+
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))
         .expect("failed to register os signal");
 
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: create S3 buckets\n"),
+        ResetColor
+    )?;
+    rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket))
+        .unwrap();
+
+    thread::sleep(Duration::from_secs(1));
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
+        ResetColor
+    )?;
+
+    if let Some(v) = &spec.install_artifacts.blizzard_bin {
+        // don't compress since we need to download this in user data
+        // while instance bootstrapping
+        rt.block_on(s3_manager.put_object(
+            Arc::new(v.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode()),
+        ))
+        .expect("failed put_object install_artifacts.blizzard_bin");
+    } else {
+        log::info!("skipping uploading blizzard_bin, will be downloaded on remote machines...");
+    }
+
+    log::info!("uploading blizzardup spec file...");
+    rt.block_on(s3_manager.put_object(
+        Arc::new(spec_file_path.to_string()),
+        Arc::new(aws_resources.s3_bucket.clone()),
+        Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+    ))
+    .unwrap();
+
+    if aws_resources.ec2_key_path.is_none() {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: create EC2 key pair\n"),
+            ResetColor
+        )?;
+
+        let ec2_key_path = get_ec2_key_path(spec_file_path);
+        rt.block_on(ec2_manager.create_key_pair(
+            aws_resources.ec2_key_name.clone().unwrap().as_str(),
+            ec2_key_path.as_str(),
+        ))
+        .unwrap();
+
+        rt.block_on(s3_manager.put_object(
+            Arc::new(ec2_key_path.clone()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(blizzardup_aws::StorageNamespace::Ec2AccessKey(spec.id.clone()).encode()),
+        ))
+        .unwrap();
+
+        aws_resources.ec2_key_path = Some(ec2_key_path);
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
+
+        rt.block_on(s3_manager.put_object(
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        ))
+        .unwrap();
+    }
+
+    if aws_resources
+        .cloudformation_ec2_instance_profile_arn
+        .is_none()
+    {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: create EC2 instance role\n"),
+            ResetColor
+        )?;
+
+        let ec2_instance_role_yaml = Asset::get("cfn-templates/ec2_instance_role.yaml").unwrap();
+        let ec2_instance_role_tmpl =
+            std::str::from_utf8(ec2_instance_role_yaml.data.as_ref()).unwrap();
+        let ec2_instance_role_stack_name = aws_resources
+            .cloudformation_ec2_instance_role
+            .clone()
+            .unwrap();
+
+        let role_params = Vec::from([
+            build_param("Id", &spec.id),
+            build_param("S3BucketName", &aws_resources.s3_bucket),
+        ]);
+        rt.block_on(cloudformation_manager.create_stack(
+            ec2_instance_role_stack_name.as_str(),
+            Some(vec![Capability::CapabilityNamedIam]),
+            OnFailure::Delete,
+            ec2_instance_role_tmpl,
+            Some(Vec::from([
+                Tag::builder().key("KIND").value("blizzardup").build(),
+            ])),
+            Some(role_params),
+        ))
+        .unwrap();
+
+        thread::sleep(Duration::from_secs(10));
+        let stack = rt
+            .block_on(cloudformation_manager.poll_stack(
+                ec2_instance_role_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            ))
+            .unwrap();
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("InstanceProfileArn") {
+                aws_resources.cloudformation_ec2_instance_profile_arn = Some(v)
+            }
+        }
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
+
+        rt.block_on(s3_manager.put_object(
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        ))
+        .unwrap();
+    }
+
+    if aws_resources.cloudformation_vpc_id.is_none()
+        && aws_resources.cloudformation_vpc_security_group_id.is_none()
+        && aws_resources.cloudformation_vpc_public_subnet_ids.is_none()
+    {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: create VPC\n"),
+            ResetColor
+        )?;
+
+        let vpc_yaml = Asset::get("cfn-templates/vpc.yaml").unwrap();
+        let vpc_tmpl = std::str::from_utf8(vpc_yaml.data.as_ref()).unwrap();
+        let vpc_stack_name = aws_resources.cloudformation_vpc.clone().unwrap();
+        let vpc_params = Vec::from([
+            build_param("Id", &spec.id),
+            build_param("VpcCidr", "10.0.0.0/16"),
+            build_param("PublicSubnetCidr1", "10.0.64.0/19"),
+            build_param("PublicSubnetCidr2", "10.0.128.0/19"),
+            build_param("PublicSubnetCidr3", "10.0.192.0/19"),
+            build_param("IngressIpv4Range", "0.0.0.0/0"),
+        ]);
+        rt.block_on(cloudformation_manager.create_stack(
+            vpc_stack_name.as_str(),
+            None,
+            OnFailure::Delete,
+            vpc_tmpl,
+            Some(Vec::from([
+                Tag::builder().key("KIND").value("blizzardup").build(),
+            ])),
+            Some(vpc_params),
+        ))
+        .expect("failed create_stack for VPC");
+
+        thread::sleep(Duration::from_secs(10));
+        let stack = rt
+            .block_on(cloudformation_manager.poll_stack(
+                vpc_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(300),
+                Duration::from_secs(30),
+            ))
+            .expect("failed poll_stack for VPC");
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("VpcId") {
+                aws_resources.cloudformation_vpc_id = Some(v);
+                continue;
+            }
+            if k.eq("SecurityGroupId") {
+                aws_resources.cloudformation_vpc_security_group_id = Some(v);
+                continue;
+            }
+            if k.eq("PublicSubnetIds") {
+                let splits: Vec<&str> = v.split(',').collect();
+                let mut pub_subnets: Vec<String> = vec![];
+                for s in splits {
+                    log::info!("public subnet {}", s);
+                    pub_subnets.push(String::from(s));
+                }
+                aws_resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
+            }
+        }
+        spec.aws_resources = Some(aws_resources.clone());
+        spec.sync(spec_file_path)?;
+
+        rt.block_on(s3_manager.put_object(
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        ))
+        .unwrap();
+    }
+
     Ok(())
+}
+
+fn build_param(k: &str, v: &str) -> Parameter {
+    Parameter::builder()
+        .parameter_key(k)
+        .parameter_value(v)
+        .build()
+}
+
+fn get_ec2_key_path(spec_file_path: &str) -> String {
+    let path = Path::new(spec_file_path);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
 }

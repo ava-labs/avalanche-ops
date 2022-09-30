@@ -164,18 +164,6 @@ pub fn execute(
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
-        let ec2_key_path_compressed = format!(
-            "{}{}",
-            ec2_key_path,
-            compress_manager::Encoder::Zstd(3).ext()
-        );
-        if Path::new(ec2_key_path_compressed.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
-        if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
-        }
         rt.block_on(ec2_manager.delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str()))
             .unwrap();
     }

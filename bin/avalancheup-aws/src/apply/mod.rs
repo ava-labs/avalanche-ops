@@ -186,7 +186,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket))
         .unwrap();
 
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(1));
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -285,7 +285,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     .unwrap();
 
     if aws_resources.kms_cmk_id.is_none() && aws_resources.kms_cmk_arn.is_none() {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),

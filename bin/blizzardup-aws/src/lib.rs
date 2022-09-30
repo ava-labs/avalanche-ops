@@ -534,7 +534,7 @@ blizzard_spec:
 /// MUST be kept in sync with "cfn-templates/ec2_instance_role.yaml".
 pub enum StorageNamespace {
     ConfigFile(String),
-    Ec2AccessKeyCompressedEncrypted(String),
+    Ec2AccessKey(String),
     BlizzardBin(String),
 }
 
@@ -542,8 +542,8 @@ impl StorageNamespace {
     pub fn encode(&self) -> String {
         match self {
             StorageNamespace::ConfigFile(id) => format!("{}/blizzard.config.yaml", id),
-            StorageNamespace::Ec2AccessKeyCompressedEncrypted(id) => {
-                format!("{}/ec2-access-key.zstd.seal_aes_256.encrypted", id)
+            StorageNamespace::Ec2AccessKey(id) => {
+                format!("{}/ec2-access.key", id)
             }
             StorageNamespace::BlizzardBin(id) => format!("{}/install/blizzard", id),
         }
