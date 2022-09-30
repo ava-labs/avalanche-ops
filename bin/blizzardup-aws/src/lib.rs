@@ -38,10 +38,7 @@ pub struct Spec {
     /// Flag to pass to the "blizzard" command-line interface.
     pub blizzard_spec: blizzard::Spec,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_private_key_faucet: Option<hot::PrivateKeyInfoEntry>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_private_keys: Option<Vec<hot::PrivateKeyInfoEntry>>,
+    pub generated_private_keys: Vec<hot::PrivateKeyInfoEntry>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -247,9 +244,7 @@ impl Spec {
 
             generated_keys.push(k);
         }
-
-        let generated_private_key_faucet = Some(generated_key_infos[0].clone());
-        let generated_private_keys = Some(generated_key_infos[1..].to_vec());
+        let generated_private_keys = generated_key_infos.clone();
 
         // [year][month][date]-[system host-based id]
         let s3_bucket = format!(
@@ -289,7 +284,6 @@ impl Spec {
 
             blizzard_spec,
 
-            generated_private_key_faucet,
             generated_private_keys,
         }
     }
@@ -494,8 +488,7 @@ blizzard_spec:
             metrics_push_interval_seconds: 60,
         },
 
-        generated_private_key_faucet: None,
-        generated_private_keys: None,
+        generated_private_keys: Vec::new(),
     };
 
     assert_eq!(cfg, orig);

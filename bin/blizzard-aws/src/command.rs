@@ -6,7 +6,10 @@ use std::{
 };
 
 use crate::{cloudwatch as cw, flags};
+use avalanche_sdk::wallet;
+use avalanche_types::key::hot;
 use aws_manager::{self, cloudwatch, ec2, s3};
+use ethers::prelude::*;
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
     println!("starting {} with {:?}", crate::APP_NAME, opts);
@@ -288,34 +291,129 @@ fn create_cloudwatch_config(
 }
 
 async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch::Manager>) {
-    log::info!(
-        "start sending loads to {} endpoints",
-        spec.blizzard_spec.rpc_endpoints.len()
-    );
-
     let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
     // TODO: update load testing status in CloudWatch
 
-    loop {
-        log::info!("sending loads");
+    let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
+    log::info!(
+        "start making X-chain transfers to {} endpoints",
+        total_rpc_eps
+    );
+    let http_rpc = spec.blizzard_spec.rpc_endpoints[random_manager::u8() as usize % total_rpc_eps]
+        .http_rpc
+        .clone();
 
-        break;
+    let total_keys = spec.generated_private_keys.len();
+    let mut sender_idx = random_manager::u8() as usize % total_keys;
+    let k = hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
+        .unwrap();
+    let mut sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
+    let mut x_bal = sender.get_balance_x().await.unwrap();
+
+    loop {
+        if x_bal > 0 {
+            break;
+        }
+
+        sender_idx += 1;
+        sender_idx = sender_idx % total_keys;
+
+        let k =
+            hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
+                .unwrap();
+        sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
+        x_bal = sender.get_balance_x().await.unwrap();
+    }
+
+    log::info!("sending X-chain transfers");
+    loop {
+        let bal = match sender.get_balance_x().await {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!("failed to get balance x {}", e);
+                continue;
+            }
+        };
+        let transfer_amount = bal / 50;
+
+        let target_idx = (sender_idx + random_manager::u8() as usize) % total_keys;
+        let target_short_addr = spec.generated_private_keys[target_idx]
+            .short_address
+            .clone();
+
+        match sender
+            .transfer_x_avax(None, target_short_addr, transfer_amount, true)
+            .await
+        {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("failed x-chain transfer {}", e);
+            }
+        }
     }
 }
 
 async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch::Manager>) {
-    log::info!(
-        "start making C-chain transfers to {} endpoints",
-        spec.blizzard_spec.rpc_endpoints.len()
-    );
-
     let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
     // TODO: update load testing status in CloudWatch
 
-    loop {
-        log::info!("sending loads");
+    let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
+    log::info!(
+        "start making C-chain transfers to {} endpoints",
+        total_rpc_eps
+    );
+    let http_rpc = spec.blizzard_spec.rpc_endpoints[random_manager::u8() as usize % total_rpc_eps]
+        .http_rpc
+        .clone();
 
-        break;
+    let total_keys = spec.generated_private_keys.len();
+    let mut sender_idx = random_manager::u8() as usize % total_keys;
+    let k = hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
+        .unwrap();
+    let mut sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
+    let mut evm_bal = sender.get_balance_evm_u256().await.unwrap();
+
+    loop {
+        if evm_bal > U256::from(0) {
+            break;
+        }
+
+        sender_idx += 1;
+        sender_idx = sender_idx % total_keys;
+
+        let k =
+            hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
+                .unwrap();
+        sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
+        evm_bal = sender.get_balance_evm_u256().await.unwrap();
+    }
+
+    log::info!("sending C-chain transfers");
+    loop {
+        let bal = match sender.get_balance_evm_u256().await {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!("failed to get balance c {}", e);
+                continue;
+            }
+        };
+        let transfer_amount = bal / 50;
+
+        let target_idx = (sender_idx + random_manager::u8() as usize) % total_keys;
+        let target_key =
+            hot::Key::from_private_key(spec.generated_private_keys[target_idx].private_key.clone())
+                .unwrap();
+        let target_h160_addr = target_key.h160_address();
+
+        match sender
+            .transfer_evm(None, target_h160_addr, transfer_amount, None, None, true)
+            .await
+        {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("failed c-chain transfer {}", e);
+            }
+        }
     }
 }
 
@@ -323,17 +421,71 @@ async fn make_subnet_evm_transfers(
     spec: blizzardup_aws::Spec,
     cw_manager: Arc<cloudwatch::Manager>,
 ) {
-    log::info!(
-        "start making subnet-evm transfers to {} endpoints",
-        spec.blizzard_spec.rpc_endpoints.len()
-    );
-
     let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
     // TODO: update load testing status in CloudWatch
 
-    loop {
-        log::info!("sending loads");
+    let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
+    log::info!(
+        "start making subnet-evm transfers to {} endpoints",
+        total_rpc_eps
+    );
+    let idx = random_manager::u8() as usize % total_rpc_eps;
+    let http_rpc = spec.blizzard_spec.rpc_endpoints[idx].http_rpc.clone();
+    let subnet_blockchain_id = spec.blizzard_spec.rpc_endpoints[idx]
+        .subnet_evm_blockchain_id
+        .clone();
 
-        break;
+    let total_keys = spec.generated_private_keys.len();
+    let mut sender_idx = random_manager::u8() as usize % total_keys;
+    let k = hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
+        .unwrap();
+    let mut sender = wallet::Wallet::new(&http_rpc, &k, subnet_blockchain_id.clone())
+        .await
+        .unwrap();
+    let mut evm_bal = sender.get_balance_evm_u256().await.unwrap();
+
+    loop {
+        if evm_bal > U256::from(0) {
+            break;
+        }
+
+        sender_idx += 1;
+        sender_idx = sender_idx % total_keys;
+
+        let k =
+            hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
+                .unwrap();
+        sender = wallet::Wallet::new(&http_rpc, &k, subnet_blockchain_id.clone())
+            .await
+            .unwrap();
+        evm_bal = sender.get_balance_evm_u256().await.unwrap();
+    }
+
+    log::info!("sending subnet-evm transfers");
+    loop {
+        let bal = match sender.get_balance_evm_u256().await {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!("failed to get balance c {}", e);
+                continue;
+            }
+        };
+        let transfer_amount = bal / 50;
+
+        let target_idx = (sender_idx + random_manager::u8() as usize) % total_keys;
+        let target_key =
+            hot::Key::from_private_key(spec.generated_private_keys[target_idx].private_key.clone())
+                .unwrap();
+        let target_h160_addr = target_key.h160_address();
+
+        match sender
+            .transfer_evm(None, target_h160_addr, transfer_amount, None, None, true)
+            .await
+        {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("failed subnet-evm transfer {}", e);
+            }
+        }
     }
 }

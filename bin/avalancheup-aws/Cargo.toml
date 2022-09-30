@@ -9,7 +9,7 @@ name = "avalancheup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-sdk = { version = "0.43.1" } # https://crates.io/crates/avalanche-sdk
+avalanche-sdk = { version = "0.43.3" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.43", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 aws-manager = "0.19.0" # https://github.com/gyuho/aws-manager/tags
