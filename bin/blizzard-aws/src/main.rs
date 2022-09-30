@@ -10,7 +10,7 @@ pub const APP_NAME: &str = "blizzard-aws";
 async fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
-        .about("Runs an Avalanche agent (daemon) on AWS")
+        .about("Runs a Blizzard agent (daemon) on AWS")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
