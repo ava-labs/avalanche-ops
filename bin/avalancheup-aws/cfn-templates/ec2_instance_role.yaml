@@ -60,7 +60,7 @@ Resources:
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
       Path: /
       Policies:
-        - PolicyName: avalanche-ops-instance-role-policy
+        - PolicyName: avalanched-instance-role-policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
