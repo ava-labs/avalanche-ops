@@ -17,6 +17,7 @@ filters:
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_blk_builds_failed$ # "Block Build Failures"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blks|txs)_(accepted|rejected|built|processing)[\s\S]*$ # "Accept Latency (Seconds)"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_vm_metervm_parse_block_(count|sum)$
+  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_vm_chain_state_tx_accepted_count$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_benchlist_benched_num$
   - regex: ^avalanche_(P|(([0-9a-zA-Z]+)+){40,})_vm_percent_connected[\s\S]*$ # covers "vm_percent_connected_subnet" with subnetID label
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blocked|blockers)$ # "avalanche_C_blocked" and "avalanche_C_blockers" for "Consensus Dependencies"
