@@ -18,5 +18,4 @@ clap = { version = "4.0.4", features = ["cargo", "derive"] } # https://github.co
 env_logger = "0.9.1"
 log = "0.4.17"
 random-manager = "0.0.1"
-tempfile = "3.3.0"
 tokio = { version = "1.21.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
