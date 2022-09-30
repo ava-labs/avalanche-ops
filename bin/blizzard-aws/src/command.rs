@@ -43,11 +43,45 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::warn!("skipping writing cloudwatch config (already exists)")
     }
 
-    let handles = vec![
-        // send loads asynchronously
-        // TODO: send loads x and c in parallel
-        tokio::spawn(send_loads(spec.clone(), Arc::clone(&cw_manager_arc))),
-    ];
+    let mut subnet_evm_exists = false;
+    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
+        if ep.http_rpc_subnet_evm.is_some() {
+            subnet_evm_exists = true;
+            break;
+        }
+    }
+
+    let mut handles = vec![];
+    for lk in spec.blizzard_spec.load_kinds.iter() {
+        match blizzardup_aws::blizzard::LoadKind::from(lk.as_str()) {
+            blizzardup_aws::blizzard::LoadKind::X => handles.push(tokio::spawn(make_x_transfers(
+                spec.clone(),
+                Arc::clone(&cw_manager_arc),
+            ))),
+            blizzardup_aws::blizzard::LoadKind::C => handles.push(tokio::spawn(make_c_transfers(
+                spec.clone(),
+                Arc::clone(&cw_manager_arc),
+            ))),
+            blizzardup_aws::blizzard::LoadKind::SubnetEvm => {
+                if !subnet_evm_exists {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "invalid load kind subnet-evm (not exists)",
+                    ));
+                }
+                handles.push(tokio::spawn(make_subnet_evm_transfers(
+                    spec.clone(),
+                    Arc::clone(&cw_manager_arc),
+                )));
+            }
+            blizzardup_aws::blizzard::LoadKind::Unknown(u) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("invalid load kind {}", u),
+                ));
+            }
+        }
+    }
 
     log::info!("STEP: blocking on handles via JoinHandle");
     for handle in handles {
@@ -253,9 +287,44 @@ fn create_cloudwatch_config(
     )
 }
 
-async fn send_loads(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch::Manager>) {
+async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch::Manager>) {
     log::info!(
         "start sending loads to {} endpoints",
+        spec.blizzard_spec.rpc_endpoints.len()
+    );
+
+    let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
+    // TODO: update load testing status in CloudWatch
+
+    loop {
+        log::info!("sending loads");
+
+        break;
+    }
+}
+
+async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch::Manager>) {
+    log::info!(
+        "start making C-chain transfers to {} endpoints",
+        spec.blizzard_spec.rpc_endpoints.len()
+    );
+
+    let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
+    // TODO: update load testing status in CloudWatch
+
+    loop {
+        log::info!("sending loads");
+
+        break;
+    }
+}
+
+async fn make_subnet_evm_transfers(
+    spec: blizzardup_aws::Spec,
+    cw_manager: Arc<cloudwatch::Manager>,
+) {
+    log::info!(
+        "start making subnet-evm transfers to {} endpoints",
         spec.blizzard_spec.rpc_endpoints.len()
     );
 

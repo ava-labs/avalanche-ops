@@ -100,6 +100,7 @@ impl Endpoints {
 pub enum LoadKind {
     X,
     C,
+    SubnetEvm,
     Unknown(String),
 }
 
@@ -108,6 +109,7 @@ impl std::convert::From<&str> for LoadKind {
         match s {
             "x" => LoadKind::X,
             "c" => LoadKind::C,
+            "subnet-evm" => LoadKind::SubnetEvm,
 
             other => LoadKind::Unknown(other.to_owned()),
         }
@@ -128,6 +130,7 @@ impl LoadKind {
         match self {
             LoadKind::X => "x",
             LoadKind::C => "c",
+            LoadKind::SubnetEvm => "subnet-evm",
 
             LoadKind::Unknown(s) => s.as_ref(),
         }
@@ -136,8 +139,9 @@ impl LoadKind {
     /// Returns all the `&str` values of the enum members.
     pub fn values() -> &'static [&'static str] {
         &[
-            "x", //
-            "c", //
+            "x",          //
+            "c",          //
+            "subnet-evm", //
         ]
     }
 }
