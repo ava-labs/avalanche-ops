@@ -161,7 +161,8 @@ pub fn execute(
     // delete this first since EC2 key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
     if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -192,7 +193,8 @@ pub fn execute(
     // delete this first since KMS key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
     if aws_resources.kms_cmk_id.is_some() && aws_resources.kms_cmk_arn.is_some() {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -210,7 +212,8 @@ pub fn execute(
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -226,39 +229,31 @@ pub fn execute(
             .unwrap();
     }
 
-    if aws_resources
-        .cloudformation_asg_non_anchor_nodes_logical_id
-        .is_some()
-    {
-        thread::sleep(Duration::from_secs(2));
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete ASG for non-anchor nodes\n"),
-            ResetColor
-        )?;
+    // delete no matter what, in case node provision failed
+    thread::sleep(Duration::from_secs(1));
 
-        let asg_non_anchor_nodes_stack_name = aws_resources
-            .cloudformation_asg_non_anchor_nodes
-            .clone()
-            .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(asg_non_anchor_nodes_stack_name.as_str()))
-            .unwrap();
-    }
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\n\nSTEP: triggering delete ASG for non-anchor nodes\n"),
+        ResetColor
+    )?;
+    let asg_non_anchor_nodes_stack_name = aws_resources
+        .cloudformation_asg_non_anchor_nodes
+        .clone()
+        .unwrap();
+    rt.block_on(cloudformation_manager.delete_stack(asg_non_anchor_nodes_stack_name.as_str()))
+        .unwrap();
 
-    if spec.machine.anchor_nodes.unwrap_or(0) > 0
-        && aws_resources
-            .cloudformation_asg_anchor_nodes_logical_id
-            .is_some()
-    {
-        thread::sleep(Duration::from_secs(2));
+    if spec.machine.anchor_nodes.unwrap_or(0) > 0 {
+        thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: triggering delete ASG for anchor nodes\n"),
             ResetColor
         )?;
-
         let asg_anchor_nodes_stack_name = aws_resources
             .cloudformation_asg_anchor_nodes
             .clone()
@@ -268,17 +263,14 @@ pub fn execute(
     }
 
     // delete no matter what, in case node provision failed
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(1));
+
     execute!(
         stdout(),
         SetForegroundColor(Color::Red),
         Print("\n\n\nSTEP: confirming delete ASG for non-anchor nodes\n"),
         ResetColor
     )?;
-
-    let asg_non_anchor_nodes_stack_name =
-        aws_resources.cloudformation_asg_non_anchor_nodes.unwrap();
-
     let desired_capacity = spec.machine.non_anchor_nodes;
     let mut wait_secs = 300 + 60 * desired_capacity as u64;
     if wait_secs > MAX_WAIT_SECONDS {
@@ -294,16 +286,15 @@ pub fn execute(
 
     if spec.machine.anchor_nodes.unwrap_or(0) > 0 {
         // delete no matter what, in case node provision failed
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: confirming delete ASG for anchor nodes\n"),
             ResetColor
         )?;
-
         let asg_anchor_nodes_stack_name = aws_resources.cloudformation_asg_anchor_nodes.unwrap();
-
         let desired_capacity = spec.machine.anchor_nodes.unwrap();
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
@@ -323,7 +314,8 @@ pub fn execute(
         && aws_resources.cloudformation_vpc_security_group_id.is_some()
         && aws_resources.cloudformation_vpc_public_subnet_ids.is_some()
     {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -348,7 +340,8 @@ pub fn execute(
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -368,7 +361,7 @@ pub fn execute(
 
     if delete_cloudwatch_log_group {
         // deletes the one auto-created by nodes
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
 
         execute!(
             stdout(),
@@ -442,7 +435,7 @@ pub fn execute(
                 log::info!("deleting EBS volume '{}'", volume_id);
                 rt.block_on(ec2_cli.delete_volume().volume_id(volume_id).send())
                     .unwrap();
-                thread::sleep(Duration::from_secs(2));
+                thread::sleep(Duration::from_secs(1));
             }
         }
     }
