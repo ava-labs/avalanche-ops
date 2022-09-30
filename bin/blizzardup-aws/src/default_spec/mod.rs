@@ -93,6 +93,14 @@ pub fn command() -> Command {
                 .default_value("60"),
         )
         .arg(
+            Arg::new("BLIZZARD_HTTP_RPCS")
+                .long("blizzard-http-rpcs")
+                .help("Comma-separated 'blizzard' HTTP RPC endpoints (e.g., http://[HOST]:[PORT])")
+                .required(false)
+                .num_args(1)
+                .default_value("http://localhost:9650"),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')

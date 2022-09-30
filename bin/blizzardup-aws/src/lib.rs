@@ -107,6 +107,7 @@ pub struct DefaultSpecOption {
     pub install_artifacts_blizzard_bin: String,
     pub blizzard_log_level: String,
     pub blizzard_metrics_push_interval_seconds: u64,
+    pub blizzard_http_rpcs: Vec<String>,
 
     pub spec_file_path: String,
 }

@@ -37,6 +37,16 @@ fn main() {
                 .unwrap_or(&2000777)
                 .clone();
 
+            let blizzard_http_rpcs_str = sub_matches
+                .get_one::<String>("BLIZZARD_HTTP_RPCS")
+                .unwrap()
+                .clone();
+            let blizzard_http_rpcs_str: Vec<&str> = blizzard_http_rpcs_str.split(',').collect();
+            let mut blizzard_http_rpcs: Vec<String> = Vec::new();
+            for rpc in blizzard_http_rpcs_str.iter() {
+                blizzard_http_rpcs.push(rpc.to_string());
+            }
+
             let opt = blizzardup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -64,6 +74,7 @@ fn main() {
                     .unwrap_or(&String::from("info"))
                     .to_string(),
                 blizzard_metrics_push_interval_seconds,
+                blizzard_http_rpcs,
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")
