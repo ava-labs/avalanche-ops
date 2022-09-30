@@ -88,15 +88,6 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("BLIZZARD_METRICS_PUSH_INTERVAL_SECONDS")
-                .long("blizzard-metrics-push-interval-seconds")
-                .help("Sets 'blizzard' metrics push interval in seconds")
-                .required(false)
-                .num_args(1)
-                .value_parser(value_parser!(u64))
-                .default_value("60"),
-        )
-        .arg(
             Arg::new("BLIZZARD_HTTP_RPCS")
                 .long("blizzard-http-rpcs")
                 .help("Comma-separated 'blizzard' HTTP RPC endpoints (e.g., http://[HOST]:[PORT])")
@@ -110,6 +101,23 @@ pub fn command() -> Command {
                 .help("Blockchain Id for subnet-evm")
                 .required(false)
                 .num_args(1),
+        )
+        .arg(
+            Arg::new("BLIZZARD_LOAD_KINDS")
+                .long("blizzard-load-kinds")
+                .help("Comma-separated 'blizzard' load kinds (e.g., x,c)")
+                .required(false)
+                .num_args(1)
+                .default_value("x,c"),
+        )
+        .arg(
+            Arg::new("BLIZZARD_METRICS_PUSH_INTERVAL_SECONDS")
+                .long("blizzard-metrics-push-interval-seconds")
+                .help("Sets 'blizzard' metrics push interval in seconds")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("60"),
         )
         .arg(
             Arg::new("SPEC_FILE_PATH")

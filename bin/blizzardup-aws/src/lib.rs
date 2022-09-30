@@ -106,9 +106,10 @@ pub struct DefaultSpecOption {
 
     pub install_artifacts_blizzard_bin: String,
     pub blizzard_log_level: String,
-    pub blizzard_metrics_push_interval_seconds: u64,
     pub blizzard_http_rpcs: Vec<String>,
     pub blizzard_subnet_evm_blockchain_id: Option<String>,
+    pub blizzard_load_kinds: Vec<String>,
+    pub blizzard_metrics_push_interval_seconds: u64,
 
     pub spec_file_path: String,
 }
@@ -215,6 +216,7 @@ impl Spec {
             log_level: opts.blizzard_log_level,
             network_id: opts.network_id,
             rpc_endpoints,
+            load_kinds: vec![String::from("x"), String::from("c")],
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
         };
 
@@ -459,6 +461,7 @@ blizzard_spec:
   log_level: info
   network_id: 99999
   rpc_endpoints: []
+  load_kinds: ["x", "c"]
   metrics_push_interval_seconds: 60
 
 "#,
@@ -502,6 +505,7 @@ blizzard_spec:
             log_level: String::from("info"),
             network_id: 99999,
             rpc_endpoints: Vec::new(),
+            load_kinds: vec![String::from("x"), String::from("c")],
             metrics_push_interval_seconds: 60,
         },
 
