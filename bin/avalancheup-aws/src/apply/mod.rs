@@ -1703,6 +1703,8 @@ default-spec \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
+--blizzard-gas=21000 \
+--blizzard-gas-price=0 \
 --blizzard-load-kinds=x,subnet-evm
 ",
                 region = aws_resources.region,

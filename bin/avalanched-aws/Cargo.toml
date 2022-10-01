@@ -10,8 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-installer = "0.0.7" # https://crates.io/crates/avalanche-installer
-avalanche-sdk = { version = "0.43.3" } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.43", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
+avalanche-sdk = { version = "0.44.0" } # https://crates.io/crates/avalanche-sdk
+avalanche-types = { version = "0.0.44", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
 aws-manager = "0.19.0" # https://github.com/gyuho/aws-manager/tags
@@ -19,7 +19,7 @@ aws-sdk-cloudwatch = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 certs-manager = { path = "../../certs-manager" }
-clap = { version = "4.0.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.0.8", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.2"
 coreth = { path = "../../crates/coreth" }

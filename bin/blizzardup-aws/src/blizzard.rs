@@ -11,6 +11,9 @@ pub struct Spec {
     pub rpc_endpoints: Vec<Endpoints>,
     pub load_kinds: Vec<String>,
     pub metrics_push_interval_seconds: u64,
+
+    pub gas: Option<u64>,
+    pub gas_price: Option<u64>,
     // TODO: set test run timeout
 }
 

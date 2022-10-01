@@ -107,6 +107,8 @@ pub struct DefaultSpecOption {
     pub blizzard_subnet_evm_blockchain_id: Option<String>,
     pub blizzard_load_kinds: Vec<String>,
     pub blizzard_metrics_push_interval_seconds: u64,
+    pub blizzard_gas: u64,
+    pub blizzard_gas_price: u64,
 
     pub spec_file_path: String,
 }
@@ -198,6 +200,8 @@ lazy_static! {
     ];
 }
 
+const DEFAULT_GAS: u64 = 21000;
+
 impl Spec {
     /// Creates a default spec.
     pub fn default_aws(opts: DefaultSpecOption) -> Self {
@@ -209,12 +213,25 @@ impl Spec {
             ))
         }
 
+        let gas = if opts.blizzard_gas > 0 {
+            Some(opts.blizzard_gas)
+        } else {
+            Some(DEFAULT_GAS)
+        };
+        let gas_price = if opts.blizzard_gas_price > 0 {
+            Some(opts.blizzard_gas_price)
+        } else {
+            None
+        };
+
         let blizzard_spec = blizzard::Spec {
             log_level: opts.blizzard_log_level,
             network_id: opts.network_id,
             rpc_endpoints,
             load_kinds: opts.blizzard_load_kinds,
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
+            gas,
+            gas_price,
         };
 
         let id = {
@@ -443,6 +460,8 @@ blizzard_spec:
   rpc_endpoints: []
   load_kinds: ["x", "c"]
   metrics_push_interval_seconds: 60
+  gas: 200000
+  gas_price: 2000000
 
 "#,
         id, bucket, blizzard_bin,
@@ -487,6 +506,8 @@ blizzard_spec:
             rpc_endpoints: Vec::new(),
             load_kinds: vec![String::from("x"), String::from("c")],
             metrics_push_interval_seconds: 60,
+            gas: Some(200000),
+            gas_price: Some(2000000),
         },
 
         generated_private_keys: Vec::new(),

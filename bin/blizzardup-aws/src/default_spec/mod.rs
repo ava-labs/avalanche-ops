@@ -113,6 +113,22 @@ pub fn command() -> Command {
                 .default_value("60"),
         )
         .arg(
+            Arg::new("BLIZZARD_GAS") 
+                .long("blizzard-gas")
+                .help("Sets the gas for EVM transactions")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64)),
+        )
+        .arg(
+            Arg::new("BLIZZARD_GAS_PRICE") 
+                .long("blizzard-gas-price")
+                .help("Sets the gas price for EVM transactions")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64)),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
