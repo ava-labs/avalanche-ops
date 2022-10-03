@@ -81,7 +81,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         let metrics_fetch_interval_seconds = if spec.metrics_fetch_interval_seconds > 0 {
             spec.metrics_fetch_interval_seconds
         } else {
-            300
+            600
         };
         (
             spec.avalanchego_config.clone(),
