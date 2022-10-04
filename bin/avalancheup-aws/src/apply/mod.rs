@@ -1564,7 +1564,7 @@ $ cat /tmp/{node_id}.crt
             SetForegroundColor(Color::Cyan),
             Print(format!(
                 "cat <<EOF > /tmp/test.key\n{}\nEOF\ncat /tmp/test.key\n",
-                keys[0].private_key_hex
+                prefix_manager::strip_0x(&keys[0].private_key_hex)
             )),
             ResetColor
         )?;

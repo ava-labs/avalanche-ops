@@ -105,6 +105,14 @@ To interact with C-chain via MetaMask, add the DNS RPC endpoint as a custom netw
 
 ![example-aws/29](./img/example-aws/29.png)
 
+Or use [Core wallet](https://chrome.google.com/webstore/detail/core/agoakfejjabomempkjlepdflaleeobhb):
+
+![example-aws/core-1](./img/example-aws/core-1.png)
+
+![example-aws/core-2](./img/example-aws/core-2.png)
+
+![example-aws/core-3](./img/example-aws/core-3.png)
+
 <hr>
 
 Import the test keys for pre-funded wallets:
