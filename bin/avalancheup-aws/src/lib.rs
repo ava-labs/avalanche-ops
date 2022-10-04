@@ -679,7 +679,8 @@ impl Spec {
                 log::info!("writing key file {:?}", p);
 
                 let mut f = File::create(p).unwrap();
-                f.write_all(info.private_key_hex.as_bytes()).unwrap();
+                f.write_all(prefix_manager::strip_0x(&info.private_key_hex).as_bytes())
+                    .unwrap();
             }
         }
 
