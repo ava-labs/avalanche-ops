@@ -1083,7 +1083,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
         staker.reward_address = Some(
             seed_priv_key
                 .addresses
-                .get(&format!("{}", spec.avalanchego_config.network_id))
+                .get(&spec.avalanchego_config.network_id)
                 .unwrap()
                 .x_address
                 .clone(),

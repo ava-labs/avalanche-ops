@@ -7,7 +7,7 @@ use std::{
     path::Path,
 };
 
-use avalanche_types::key::hot;
+use avalanche_types::key;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
@@ -39,7 +39,7 @@ pub struct Spec {
     pub blizzard_spec: blizzard::Spec,
 
     #[serde(default)]
-    pub generated_private_keys: Vec<hot::PrivateKeyInfoEntry>,
+    pub generated_private_keys: Vec<key::secp256k1::Info>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -244,20 +244,21 @@ impl Spec {
         };
 
         // existing network has only 1 pre-funded key "ewoq"
-        let mut generated_key_infos: Vec<hot::PrivateKeyInfoEntry> = Vec::new();
-        let mut generated_keys: Vec<hot::Key> = Vec::new();
+        let mut generated_key_infos: Vec<key::secp256k1::Info> = Vec::new();
+        let mut generated_keys: Vec<key::secp256k1::private_key::Key> = Vec::new();
         for i in 0..opts.keys_to_generate {
             let k = {
-                if i < hot::TEST_KEYS.len() {
-                    hot::TEST_KEYS[i].clone()
+                if i < key::secp256k1::TEST_KEYS.len() {
+                    key::secp256k1::TEST_KEYS[i].clone()
                 } else {
-                    hot::Key::generate().expect("unexpected key generate failure")
+                    key::secp256k1::private_key::Key::generate()
+                        .expect("unexpected key generate failure")
                 }
             };
 
             let info = k
-                .private_key_info_entry(opts.network_id)
-                .expect("unexpected private_key_info_entry failure");
+                .to_info(opts.network_id)
+                .expect("unexpected to_info failure");
             generated_key_infos.push(info.clone());
 
             generated_keys.push(k);
