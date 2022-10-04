@@ -8,7 +8,7 @@ use std::{
     path::Path,
 };
 
-use avalanche_types::{constants, genesis as avalanchego_genesis, key::hot, node};
+use avalanche_types::{constants, genesis as avalanchego_genesis, key, node};
 use avalanchego::config as avalanchego_config;
 use coreth::config as coreth_config;
 use lazy_static::lazy_static;
@@ -258,11 +258,11 @@ pub struct Spec {
     /// initial stake duration in genesis.
     /// Only valid for custom networks.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_key_with_locked_p_chain_balance: Option<hot::PrivateKeyInfoEntry>,
+    pub generated_seed_private_key_with_locked_p_chain_balance: Option<key::secp256k1::Info>,
     /// Generated key infos with immediately unlocked P-chain balance.
     /// Only pre-funded for custom networks with a custom genesis file.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_keys: Option<Vec<hot::PrivateKeyInfoEntry>>,
+    pub generated_seed_private_keys: Option<Vec<key::secp256k1::Info>>,
 
     /// Current all nodes. May be stale.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -654,19 +654,20 @@ impl Spec {
         }
 
         // existing network has only 1 pre-funded key "ewoq"
-        let mut generated_seed_key_infos: Vec<hot::PrivateKeyInfoEntry> = Vec::new();
-        let mut generated_seed_keys: Vec<hot::Key> = Vec::new();
+        let mut generated_seed_key_infos: Vec<key::secp256k1::Info> = Vec::new();
+        let mut generated_seed_keys: Vec<key::secp256k1::private_key::Key> = Vec::new();
         for i in 0..opts.keys_to_generate {
             let k = {
-                if i < hot::TEST_KEYS.len() {
-                    hot::TEST_KEYS[i].clone()
+                if i < key::secp256k1::TEST_KEYS.len() {
+                    key::secp256k1::TEST_KEYS[i].clone()
                 } else {
-                    hot::Key::generate().expect("unexpected key generate failure")
+                    key::secp256k1::private_key::Key::generate()
+                        .expect("unexpected key generate failure")
                 }
             };
 
             let info = k
-                .private_key_info_entry(network_id)
+                .to_info(network_id)
                 .expect("unexpected private_key_info_entry failure");
             generated_seed_key_infos.push(info.clone());
 

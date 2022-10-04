@@ -7,7 +7,7 @@ use std::{
 
 use crate::{cloudwatch as cw, flags};
 use avalanche_sdk::wallet;
-use avalanche_types::key::hot;
+use avalanche_types::key;
 use aws_manager::{self, cloudwatch, ec2, s3};
 use ethers::prelude::*;
 
@@ -306,8 +306,12 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
 
     let total_keys = spec.generated_private_keys.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
-    let k = hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
-        .unwrap();
+    let k = key::secp256k1::private_key::Key::from_cb58(
+        spec.generated_private_keys[sender_idx]
+            .private_key_cb58
+            .clone(),
+    )
+    .unwrap();
     let mut sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
     let mut x_bal = sender.get_balance_x().await.unwrap();
 
@@ -319,9 +323,12 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         sender_idx += 1;
         sender_idx = sender_idx % total_keys;
 
-        let k =
-            hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
-                .unwrap();
+        let k = key::secp256k1::private_key::Key::from_cb58(
+            spec.generated_private_keys[sender_idx]
+                .private_key_cb58
+                .clone(),
+        )
+        .unwrap();
         sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
         x_bal = sender.get_balance_x().await.unwrap();
     }
@@ -369,8 +376,12 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
 
     let total_keys = spec.generated_private_keys.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
-    let k = hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
-        .unwrap();
+    let k = key::secp256k1::private_key::Key::from_cb58(
+        spec.generated_private_keys[sender_idx]
+            .private_key_cb58
+            .clone(),
+    )
+    .unwrap();
     let mut sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
     let mut evm_bal = sender.get_balance_evm_u256().await.unwrap();
 
@@ -382,9 +393,12 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         sender_idx += 1;
         sender_idx = sender_idx % total_keys;
 
-        let k =
-            hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
-                .unwrap();
+        let k = key::secp256k1::private_key::Key::from_cb58(
+            spec.generated_private_keys[sender_idx]
+                .private_key_cb58
+                .clone(),
+        )
+        .unwrap();
         sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
         evm_bal = sender.get_balance_evm_u256().await.unwrap();
     }
@@ -401,10 +415,13 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         let transfer_amount = bal / 50;
 
         let target_idx = (sender_idx + random_manager::u8() as usize) % total_keys;
-        let target_key =
-            hot::Key::from_private_key(spec.generated_private_keys[target_idx].private_key.clone())
-                .unwrap();
-        let target_h160_addr = target_key.h160_address();
+        let target_key = key::secp256k1::private_key::Key::from_cb58(
+            spec.generated_private_keys[target_idx]
+                .private_key_cb58
+                .clone(),
+        )
+        .unwrap();
+        let target_h160_addr = target_key.to_public_key().to_prelude_h160();
 
         match sender
             .transfer_evm(None, target_h160_addr, transfer_amount, None, None, true)
@@ -438,8 +455,12 @@ async fn make_subnet_evm_transfers(
 
     let total_keys = spec.generated_private_keys.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
-    let k = hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
-        .unwrap();
+    let k = key::secp256k1::private_key::Key::from_cb58(
+        spec.generated_private_keys[sender_idx]
+            .private_key_cb58
+            .clone(),
+    )
+    .unwrap();
     let mut sender = wallet::Wallet::new(&http_rpc, &k, subnet_blockchain_id.clone())
         .await
         .unwrap();
@@ -453,9 +474,12 @@ async fn make_subnet_evm_transfers(
         sender_idx += 1;
         sender_idx = sender_idx % total_keys;
 
-        let k =
-            hot::Key::from_private_key(spec.generated_private_keys[sender_idx].private_key.clone())
-                .unwrap();
+        let k = key::secp256k1::private_key::Key::from_cb58(
+            spec.generated_private_keys[sender_idx]
+                .private_key_cb58
+                .clone(),
+        )
+        .unwrap();
         sender = wallet::Wallet::new(&http_rpc, &k, subnet_blockchain_id.clone())
             .await
             .unwrap();
@@ -474,10 +498,13 @@ async fn make_subnet_evm_transfers(
         let transfer_amount = bal / 50;
 
         let target_idx = (sender_idx + random_manager::u8() as usize) % total_keys;
-        let target_key =
-            hot::Key::from_private_key(spec.generated_private_keys[target_idx].private_key.clone())
-                .unwrap();
-        let target_h160_addr = target_key.h160_address();
+        let target_key = key::secp256k1::private_key::Key::from_cb58(
+            spec.generated_private_keys[target_idx]
+                .private_key_cb58
+                .clone(),
+        )
+        .unwrap();
+        let target_h160_addr = target_key.to_public_key().to_prelude_h160();
 
         match sender
             .transfer_evm(None, target_h160_addr, transfer_amount, None, None, true)
