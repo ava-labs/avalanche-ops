@@ -300,9 +300,6 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         "start making X-chain transfers to {} endpoints",
         total_rpc_eps
     );
-    let http_rpc = spec.blizzard_spec.rpc_endpoints[random_manager::u8() as usize % total_rpc_eps]
-        .http_rpc
-        .clone();
 
     let total_keys = spec.generated_private_keys.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
@@ -312,8 +309,17 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
             .clone(),
     )
     .unwrap();
-    let mut sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
-    let mut x_bal = sender.get_balance_x().await.unwrap();
+
+    let mut http_rpcs = Vec::new();
+    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
+        http_rpcs.push(ep.http_rpc.clone());
+    }
+    let mut sender_wallet = wallet::Builder::new(&k)
+        .http_rpcs(http_rpcs.clone())
+        .build()
+        .await
+        .unwrap();
+    let mut x_bal = sender_wallet.x().balance().await.unwrap();
 
     loop {
         if x_bal > 0 {
@@ -329,13 +335,17 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
                 .clone(),
         )
         .unwrap();
-        sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
-        x_bal = sender.get_balance_x().await.unwrap();
+        sender_wallet = wallet::Builder::new(&k)
+            .http_rpcs(http_rpcs.clone())
+            .build()
+            .await
+            .unwrap();
+        x_bal = sender_wallet.x().balance().await.unwrap();
     }
 
     log::info!("sending X-chain transfers");
     loop {
-        let bal = match sender.get_balance_x().await {
+        let bal = match sender_wallet.x().balance().await {
             Ok(b) => b,
             Err(e) => {
                 log::warn!("failed to get balance x {}", e);
@@ -349,8 +359,13 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
             .short_address
             .clone();
 
-        match sender
-            .transfer_x_avax(None, target_short_addr, transfer_amount, true)
+        match sender_wallet
+            .x()
+            .transfer()
+            .receiver(target_short_addr)
+            .amount(transfer_amount)
+            .check_acceptance(true)
+            .issue()
             .await
         {
             Ok(_) => {}
@@ -370,9 +385,6 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         "start making C-chain transfers to {} endpoints",
         total_rpc_eps
     );
-    let http_rpc = spec.blizzard_spec.rpc_endpoints[random_manager::u8() as usize % total_rpc_eps]
-        .http_rpc
-        .clone();
 
     let total_keys = spec.generated_private_keys.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
@@ -382,8 +394,17 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
             .clone(),
     )
     .unwrap();
-    let mut sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
-    let mut evm_bal = sender.get_balance_evm_u256().await.unwrap();
+
+    let mut http_rpcs = Vec::new();
+    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
+        http_rpcs.push(ep.http_rpc.clone());
+    }
+    let mut sender_wallet = wallet::Builder::new(&k)
+        .http_rpcs(http_rpcs.clone())
+        .build()
+        .await
+        .unwrap();
+    let mut evm_bal = sender_wallet.c().balance().await.unwrap();
 
     loop {
         if evm_bal > U256::from(0) {
@@ -399,13 +420,17 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
                 .clone(),
         )
         .unwrap();
-        sender = wallet::Wallet::new(&http_rpc, &k, None).await.unwrap();
-        evm_bal = sender.get_balance_evm_u256().await.unwrap();
+        sender_wallet = wallet::Builder::new(&k)
+            .http_rpcs(http_rpcs.clone())
+            .build()
+            .await
+            .unwrap();
+        evm_bal = sender_wallet.c().balance().await.unwrap();
     }
 
     log::info!("sending C-chain transfers");
     loop {
-        let bal = match sender.get_balance_evm_u256().await {
+        let bal = match sender_wallet.c().balance().await {
             Ok(b) => b,
             Err(e) => {
                 log::warn!("failed to get balance c {}", e);
@@ -423,8 +448,12 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         .unwrap();
         let target_h160_addr = target_key.to_public_key().to_prelude_h160();
 
-        match sender
-            .transfer_evm(None, target_h160_addr, transfer_amount, None, None, true)
+        match sender_wallet
+            .c()
+            .transfer()
+            .receiver(target_h160_addr)
+            .amount(transfer_amount)
+            .issue()
             .await
         {
             Ok(_) => {}
@@ -447,11 +476,12 @@ async fn make_subnet_evm_transfers(
         "start making subnet-evm transfers to {} endpoints",
         total_rpc_eps
     );
+
     let idx = random_manager::u8() as usize % total_rpc_eps;
-    let http_rpc = spec.blizzard_spec.rpc_endpoints[idx].http_rpc.clone();
     let subnet_blockchain_id = spec.blizzard_spec.rpc_endpoints[idx]
         .subnet_evm_blockchain_id
-        .clone();
+        .clone()
+        .unwrap();
 
     let total_keys = spec.generated_private_keys.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
@@ -461,10 +491,18 @@ async fn make_subnet_evm_transfers(
             .clone(),
     )
     .unwrap();
-    let mut sender = wallet::Wallet::new(&http_rpc, &k, subnet_blockchain_id.clone())
+
+    let mut http_rpcs = Vec::new();
+    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
+        http_rpcs.push(ep.http_rpc.clone());
+    }
+    let mut sender_wallet = wallet::Builder::new(&k)
+        .http_rpcs(http_rpcs.clone())
+        .subnet_evm_blockchain_id(subnet_blockchain_id.clone())
+        .build()
         .await
         .unwrap();
-    let mut evm_bal = sender.get_balance_evm_u256().await.unwrap();
+    let mut evm_bal = sender_wallet.subnet_evm().balance().await.unwrap();
 
     loop {
         if evm_bal > U256::from(0) {
@@ -480,15 +518,18 @@ async fn make_subnet_evm_transfers(
                 .clone(),
         )
         .unwrap();
-        sender = wallet::Wallet::new(&http_rpc, &k, subnet_blockchain_id.clone())
+        sender_wallet = wallet::Builder::new(&k)
+            .http_rpcs(http_rpcs.clone())
+            .subnet_evm_blockchain_id(subnet_blockchain_id.clone())
+            .build()
             .await
             .unwrap();
-        evm_bal = sender.get_balance_evm_u256().await.unwrap();
+        evm_bal = sender_wallet.subnet_evm().balance().await.unwrap();
     }
 
     log::info!("sending subnet-evm transfers");
     loop {
-        let bal = match sender.get_balance_evm_u256().await {
+        let bal = match sender_wallet.subnet_evm().balance().await {
             Ok(b) => b,
             Err(e) => {
                 log::warn!("failed to get balance c {}", e);
@@ -506,8 +547,12 @@ async fn make_subnet_evm_transfers(
         .unwrap();
         let target_h160_addr = target_key.to_public_key().to_prelude_h160();
 
-        match sender
-            .transfer_evm(None, target_h160_addr, transfer_amount, None, None, true)
+        match sender_wallet
+            .subnet_evm()
+            .transfer()
+            .receiver(target_h160_addr)
+            .amount(transfer_amount)
+            .issue()
             .await
         {
             Ok(_) => {}
