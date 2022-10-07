@@ -1867,9 +1867,7 @@ $ cat /tmp/{node_id}.crt
             )),
             ResetColor
         )?;
-    }
 
-    if spec.subnet_evm_config.is_some() {
         let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
         let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
         let path1 = Path::new(&chain_config_dir)
