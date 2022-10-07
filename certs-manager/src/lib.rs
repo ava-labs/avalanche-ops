@@ -3,7 +3,7 @@ use std::{
     path::Path,
 };
 
-use avalanche_types::{ids::node, key::cert};
+use avalanche_types::ids::node;
 use aws_manager::{self, kms::envelope, s3};
 
 /// Generates a new certificate if there is no existing certificate for reuse.
