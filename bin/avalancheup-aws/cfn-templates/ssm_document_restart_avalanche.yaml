@@ -1,0 +1,74 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "SSM document to restart Avalanche node process"
+
+Parameters:
+  DocumentName:
+    Type: String
+    Default: RestartAvalancheNodeV0
+    Description: SSM document Name.
+
+  VmId:
+    Type: String
+    Default: srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
+    Description: Vm Id (must match with the binary path).
+
+  PlaceHolderWhitelistedSubnetId:
+    Type: String
+    Default: hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
+    Description: Whitelisted subnet Id that was used as a placeholder.
+
+  NewWhitelistedSubnetId:
+    Type: String
+    Default: ""
+    Description: New subnet id to whitelist.
+
+Resources:
+  RestartAvalancheNode:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Command
+      Name: !Ref DocumentName
+      Tags:
+        - Key: DocumentName
+          Value: !Ref DocumentName
+        - Key: DocumentVersion
+          Value: "v0"
+      Content:
+        schemaVersion: "2.2"
+        description: restartAvalancheNode
+        parameters:
+          executionTimeout:
+            type: String
+            description: "timeout for run on all instances"
+            default: "50000"
+          scriptTimeout:
+            type: String
+            description: "timeout for script on individual instance"
+            default: "3600"
+        mainSteps:
+          - action: aws:runShellScript
+            name: restartAvalancheNode
+            inputs:
+              timeoutSeconds: "{{ scriptTimeout }}"
+              runCommand:
+                - |
+                  #!/usr/bin/env bash
+
+                  # sudo systemctl cat avalanche
+                  /usr/local/bin/plugins/${VmId} --version
+
+                  # to replace the avalanche configuration
+                  # sudo cat /data/avalanche-configs/config.json
+                  cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
+                  sed -i -- 's/${PlaceHolderWhitelistedSubnetId}/${NewWhitelistedSubnetId}/g' /tmp/avalanche.config.json
+                  cat /tmp/avalanche.config.json
+                  sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
+
+                  sudo systemctl restart avalanche
+                  sleep 5
+                  sudo tail -200 /var/log/avalanche/avalanche.log | grep ${NewWhitelistedSubnetId}
+
+                  # to check the status
+                  sudo find /var/log/avalanche/
+                  sudo tail /var/log/avalanche/avalanche.log
