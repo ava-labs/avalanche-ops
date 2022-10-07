@@ -4,6 +4,7 @@ use std::{
     io::{self, stdout, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
     path::Path,
+    str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -12,7 +13,8 @@ use std::{
     time::Duration,
 };
 
-use avalanche_sdk::health as api_health;
+use avalanche_sdk::{health as api_health, wallet};
+use avalanche_types::{ids::node, key};
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
@@ -1474,6 +1476,50 @@ aws ssm start-session --region {} --target {}
     println!();
     log::info!("apply all success!");
 
+    let nodes = spec
+        .current_nodes
+        .clone()
+        .expect("unexpected None current_nodes");
+    let mut all_node_ids: Vec<String> = Vec::new();
+    for node in nodes.iter() {
+        let node_id = node.clone().node_id;
+        all_node_ids.push(node_id);
+    }
+    if let Some(keys_with_balances) = &spec.generated_seed_private_keys {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: adding all nodes as validators...\n\n"),
+            ResetColor
+        )?;
+
+        // create a wallet
+        let pk = key::secp256k1::private_key::Key::from_cb58(
+            keys_with_balances[0].private_key_cb58.clone(),
+        )?;
+        let w = rt
+            .block_on(
+                wallet::Builder::new(&pk)
+                    .http_rpcs(http_rpcs.clone())
+                    .build(),
+            )
+            .unwrap();
+
+        log::info!("adding all nodes as primary network validator");
+        for node_id in all_node_ids.iter() {
+            let (tx_id, added) = rt
+                .block_on(
+                    w.p()
+                        .add_validator()
+                        .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+                        .check_acceptance(true)
+                        .issue(),
+                )
+                .unwrap();
+            log::info!("validator tx id {}, added {}", tx_id, added);
+        }
+    }
+
     println!();
     println!("# run the following to delete resources");
     execute!(
@@ -1547,6 +1593,55 @@ $ cat /tmp/{node_id}.crt
             .sync(&subnet_evm_genesis_file_path)
             .expect("failed subnet_evm_genesis.sync");
 
+        if let Some(keys_with_balances) = &spec.generated_seed_private_keys {
+            // create a wallet
+            let pk = key::secp256k1::private_key::Key::from_cb58(
+                keys_with_balances[0].private_key_cb58.clone(),
+            )?;
+            let w = rt
+                .block_on(
+                    wallet::Builder::new(&pk)
+                        .http_rpcs(http_rpcs.clone())
+                        .build(),
+                )
+                .unwrap();
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: creating a new subnet...\n\n"),
+                ResetColor
+            )?;
+            let subnet_id = rt
+                .block_on(w.p().create_subnet().check_acceptance(true).issue())
+                .unwrap();
+            log::info!("created subnet {}", subnet_id);
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: whitelisting the created subnet...\n\n"),
+                ResetColor
+            )?;
+            // TODO
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: adding all nodes as subnet validator...\n\n"),
+                ResetColor
+            )?;
+            // TODO
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
+                ResetColor
+            )?;
+            // TODO
+        }
+
         println!();
         println!("# [optional] run the following to create subnet-evm resources");
         execute!(
@@ -1586,12 +1681,6 @@ $ cat /tmp/{node_id}.crt
         let http_rpc = endpoints
             .http_rpc
             .expect("unexpected None endpoints.http_rpc");
-        let nodes = spec.current_nodes.expect("unexpected None current_nodes");
-        let mut all_node_ids: Vec<String> = Vec::new();
-        for node in nodes.iter() {
-            let node_id = node.clone().node_id;
-            all_node_ids.push(node_id);
-        }
 
         for node in nodes.iter() {
             // "anchor" node in the custom network is already validating the primary network
