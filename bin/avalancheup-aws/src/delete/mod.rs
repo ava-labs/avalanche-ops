@@ -229,6 +229,24 @@ pub fn execute(
             .unwrap();
     }
 
+    if spec.subnet_evm_genesis.is_some() && spec.avalanchego_config.is_custom_network() {
+        thread::sleep(Duration::from_secs(1));
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with subnet-evm whitelist\n"),
+            ResetColor
+        )?;
+
+        let ssm_doc_stack_name = aws_resources
+            .cloudformation_ssm_doc_restart_node_whitelist_subnet
+            .clone()
+            .unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(ssm_doc_stack_name.as_str()))
+            .unwrap();
+    }
+
     // delete no matter what, in case node provision failed
     thread::sleep(Duration::from_secs(1));
 
