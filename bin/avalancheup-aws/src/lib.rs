@@ -2,7 +2,6 @@ mod avalanched;
 mod aws;
 
 use std::{
-    collections::BTreeMap,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -708,18 +707,13 @@ impl Spec {
 
         let (subnet_evm_genesis, subnet_evm_config) = {
             if opts.enable_subnet_evm {
-                let mut subnet_evm_seed_allocs = BTreeMap::new();
+                let mut genesis = subnet_evm_genesis::Genesis::new(&generated_seed_keys)
+                    .expect("failed to generate genesis");
+
                 let mut admin_addresses: Vec<String> = Vec::new();
                 for key_info in generated_seed_key_infos.iter() {
-                    subnet_evm_seed_allocs.insert(
-                        String::from(prefix_manager::strip_0x(&key_info.eth_address)),
-                        subnet_evm_genesis::AllocAccount::default(),
-                    );
                     admin_addresses.push(key_info.eth_address.clone());
                 }
-
-                let mut genesis = subnet_evm_genesis::Genesis::default();
-                genesis.alloc = Some(subnet_evm_seed_allocs);
 
                 let mut chain_config = subnet_evm_genesis::ChainConfig::default();
                 if opts.subnet_evm_gas_limit > 0 {
