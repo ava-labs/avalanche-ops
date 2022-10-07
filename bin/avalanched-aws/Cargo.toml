@@ -14,7 +14,7 @@ avalanche-sdk = { version = "0.58.2" } # https://crates.io/crates/avalanche-sdk
 avalanche-types = { version = "0.0.58", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
 avalanchego = { path = "../../crates/avalanchego" }
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = "0.19.0" # https://github.com/gyuho/aws-manager/tags
+aws-manager = "0.19.1" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases

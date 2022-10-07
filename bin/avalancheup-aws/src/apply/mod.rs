@@ -21,7 +21,7 @@ use avalanche_types::{
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
-    s3, sts,
+    s3, ssm, sts,
 };
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_s3::model::Object;
@@ -178,10 +178,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     let exec_path = env::current_exe().expect("unexpected None current_exe");
 
     log::info!("creating resources (with spec path {})", spec_file_path);
-    let s3_manager = s3::Manager::new(&shared_config);
-    let kms_manager = kms::Manager::new(&shared_config);
-    let ec2_manager = ec2::Manager::new(&shared_config);
     let cloudformation_manager = cloudformation::Manager::new(&shared_config);
+    let ec2_manager = ec2::Manager::new(&shared_config);
+    let kms_manager = kms::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
+    let ssm_manager = ssm::Manager::new(&shared_config);
 
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))
@@ -1641,12 +1642,11 @@ $ cat /tmp/{node_id}.crt
                 .cloudformation_ssm_doc_restart_node_whitelist_subnet
                 .clone()
                 .unwrap();
+            let ssm_document_name =
+                avalancheup_aws::StackName::SsmDocRestartNodeWhitelistSubnet(spec.id.clone())
+                    .encode();
             let cfn_params = Vec::from([
-                build_param(
-                    "DocumentName",
-                    &avalancheup_aws::StackName::SsmDocRestartNodeWhitelistSubnet(spec.id.clone())
-                        .encode(),
-                ),
+                build_param("DocumentName", &ssm_document_name),
                 build_param("VmId", "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"),
                 build_param(
                     "PlaceHolderWhitelistedSubnetId",
@@ -1682,6 +1682,29 @@ $ cat /tmp/{node_id}.crt
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
+            let ssm_cli = ssm_manager.client();
+            let ssm_output = rt
+                .block_on(
+                    ssm_cli
+                        .send_command()
+                        .document_name(ssm_document_name)
+                        .set_instance_ids(Some(all_instance_ids.clone()))
+                        .output_s3_region(aws_resources.region.clone())
+                        .output_s3_bucket_name(aws_resources.s3_bucket.clone())
+                        .output_s3_key_prefix("ssm-output-logs")
+                        .send(),
+                )
+                .unwrap();
+            let ssm_output = ssm_output.command().unwrap();
+            log::info!("sent SSM command {}", ssm_output.command_id().unwrap());
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+                ResetColor
+            )?;
+            // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
             // TODO
 
             execute!(
@@ -1728,6 +1751,10 @@ $ cat /tmp/{node_id}.crt
             log::info!("created a blockchain {} for {}", blockchain_id, subnet_id);
         }
 
+        //
+        //
+        //
+        // TODO: remove this...
         println!();
         println!("# [optional] run the following to create subnet-evm resources");
         execute!(
