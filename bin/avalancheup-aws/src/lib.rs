@@ -8,13 +8,16 @@ use std::{
     path::Path,
 };
 
-use avalanche_types::{constants, genesis as avalanchego_genesis, key, node};
-use avalanchego::config as avalanchego_config;
-use coreth::config as coreth_config;
+use avalanche_types::{
+    avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
+    constants,
+    coreth::config as coreth_config,
+    key, node,
+    subnet_evm::{config as subnet_evm_config, genesis as subnet_evm_genesis},
+};
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use subnet_evm::{config as subnet_evm_config, genesis as subnet_evm_genesis};
 
 /// Represents each anchor/non-anchor node.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -697,6 +700,8 @@ impl Spec {
                 None
             }
         };
+
+        // just use the first key for locking all P-chain balance
         let generated_seed_private_key_with_locked_p_chain_balance =
             Some(generated_seed_key_infos[0].clone());
         let generated_seed_private_keys = Some(generated_seed_key_infos[1..].to_vec());

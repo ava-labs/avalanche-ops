@@ -1,6 +1,6 @@
 use std::io::{self, stdout, Error, ErrorKind};
 
-use avalanchego::config as avalanchego_config;
+use avalanche_types::avalanchego::config as avalanchego_config;
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,

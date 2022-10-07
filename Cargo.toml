@@ -6,7 +6,4 @@ members = [
     "bin/blizzardup-aws",
     "bin/staking-key-cert-s3-downloader",
     "certs-manager",
-    "crates/avalanchego",
-    "crates/coreth",
-    "crates/subnet-evm",
 ]

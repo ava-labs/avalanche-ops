@@ -9,7 +9,11 @@ use std::{
 
 use crate::{cloudwatch, flags};
 use avalanche_sdk::health as api_health;
-use avalanche_types::{genesis as avalanchego_genesis, node};
+use avalanche_types::{
+    avalanchego::{self, genesis as avalanchego_genesis},
+    cert::x509,
+    coreth, node, subnet_evm,
+};
 use aws_manager::{
     self, autoscaling, ec2,
     kms::{self, envelope},
@@ -157,9 +161,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     };
     let tls_key_path = avalanchego_config.staking_tls_key_file.clone().unwrap();
     let tls_cert_path = avalanchego_config.staking_tls_cert_file.clone().unwrap();
-    let (node_id, newly_generated) = certs_manager
-        .load_or_generate(&tls_key_path, &tls_cert_path)
-        .await?;
+    let (node_id, newly_generated) = x509::load_or_generate_pem(&tls_key_path, &tls_cert_path)?;
     log::info!(
         "loaded node ID {} (was generated {})",
         node_id,
