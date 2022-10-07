@@ -1481,10 +1481,13 @@ aws ssm start-session --region {} --target {}
         .clone()
         .expect("unexpected None current_nodes");
     let mut all_node_ids: Vec<String> = Vec::new();
+    let mut all_instance_ids: Vec<String> = Vec::new();
     for node in nodes.iter() {
-        let node_id = node.clone().node_id;
+        let node_id = node.node_id.clone();
         all_node_ids.push(node_id);
+        all_instance_ids.push(node.machine_id.clone())
     }
+
     if let Some(keys_with_balances) = &spec.generated_seed_private_keys {
         execute!(
             stdout(),
