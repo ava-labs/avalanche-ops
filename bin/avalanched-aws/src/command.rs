@@ -11,8 +11,9 @@ use crate::{cloudwatch, flags};
 use avalanche_sdk::health as api_health;
 use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
-    cert::x509,
-    coreth, node, subnet_evm,
+    coreth,
+    key::cert::x509,
+    node, subnet_evm,
 };
 use aws_manager::{
     self, autoscaling, ec2,
