@@ -396,6 +396,7 @@ pub enum StackName {
     Vpc(String),
     AsgAnchorNodes(String),
     AsgNonAnchorNodes(String),
+    SsmDocRestartNodeWhitelistSubnet(String),
 }
 
 impl StackName {
@@ -405,6 +406,9 @@ impl StackName {
             StackName::Vpc(id) => format!("{}-vpc", id),
             StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
             StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
+            StackName::SsmDocRestartNodeWhitelistSubnet(id) => {
+                format!("{}-ssm-doc-restart-node-whitelist-subnet", id)
+            }
         }
     }
 }

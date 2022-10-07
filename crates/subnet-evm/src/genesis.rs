@@ -128,6 +128,16 @@ impl Genesis {
         }
     }
 
+    /// Encodes the genesis to bytes.
+    pub fn to_bytes(&self) -> io::Result<Vec<u8>> {
+        serde_json::to_vec(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed encode genesis to JSON {}", e),
+            )
+        })
+    }
+
     /// Saves the current anchor node to disk
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
