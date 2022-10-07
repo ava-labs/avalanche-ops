@@ -116,6 +116,11 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_nlb_dns_name: Option<String>,
 
+    /// CloudFormation stack name for SSM document that restarts node with subnet whitelisting.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_doc_restart_node_whitelist_subnet: Option<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudwatch_avalanche_metrics_namespace: Option<String>,
 }
@@ -162,6 +167,7 @@ impl Resources {
             cloudformation_asg_nlb_target_group_arn: None,
             cloudformation_asg_nlb_dns_name: None,
 
+            cloudformation_ssm_doc_restart_node_whitelist_subnet: None,
             cloudwatch_avalanche_metrics_namespace: None,
         }
     }

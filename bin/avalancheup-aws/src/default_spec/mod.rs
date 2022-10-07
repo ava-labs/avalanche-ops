@@ -1,6 +1,6 @@
-use std::io::{self, stdout};
+use std::io::{self, stdout, Error, ErrorKind};
 
-use avalanchego::config as avalanchego_config;
+use avalanche_types::avalanchego::config as avalanchego_config;
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
@@ -32,11 +32,11 @@ pub fn command() -> Command {
         .arg(
             Arg::new("KEYS_TO_GENERATE") 
                 .long("keys-to-generate")
-                .help("Sets the number of keys to generate")
+                .help("Sets the number of keys to generate (only requires for custom network)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
-                .default_value("5"),
+                .default_value("0"),
         )
         .arg(
             Arg::new("REGION")
@@ -316,6 +316,22 @@ pub fn execute(opts: avalancheup_aws::DefaultSpecOption) -> io::Result<()> {
         env_logger::Env::default()
             .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
     );
+
+    if opts.network_name == "custom" && opts.keys_to_generate == 0 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            "can't --keys-to-generate=0 for custom network",
+        ));
+    }
+    if opts.network_name != "custom" && opts.keys_to_generate > 0 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!(
+                "can't --keys-to-generate={} (>0) for {} network",
+                opts.keys_to_generate, opts.network_name
+            ),
+        ));
+    }
 
     let spec = avalancheup_aws::Spec::default_aws(opts.clone());
     spec.validate()?;

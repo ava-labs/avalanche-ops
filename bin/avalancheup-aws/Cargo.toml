@@ -9,17 +9,16 @@ name = "avalancheup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-sdk = { version = "0.57.0" } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.57", features = ["jsonrpc"] } # https://crates.io/crates/avalanche-types
-avalanchego = { path = "../../crates/avalanchego" }
-aws-manager = "0.19.0" # https://github.com/gyuho/aws-manager/tags
+avalanche-sdk = { version = "0.63.0" } # https://crates.io/crates/avalanche-sdk
+avalanche-types = { version = "0.0.63", features = ["avalanchego", "subnet_evm", "jsonrpc"] } # https://crates.io/crates/avalanche-types
+aws-manager = "0.19.1" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudformation = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-ssm = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 big-num-manager = "0.0.1"
 clap = { version = "4.0.10", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.2"
-coreth = { path = "../../crates/coreth" }
 crossterm = "0.25.0"
 dialoguer = "0.10.2"
 dir-manager = "0.0.1"
@@ -35,7 +34,6 @@ serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.85" # https://github.com/serde-rs/json/releases
 serde_yaml = "0.9.13" # https://github.com/dtolnay/serde-yaml/releases
 signal-hook = "0.3.14"
-subnet-evm = { path = "../../crates/subnet-evm" }
 tokio = { version = "1.21.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]

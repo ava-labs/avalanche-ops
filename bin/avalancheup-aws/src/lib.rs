@@ -2,19 +2,21 @@ mod avalanched;
 mod aws;
 
 use std::{
-    collections::BTreeMap,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
 };
 
-use avalanche_types::{constants, genesis as avalanchego_genesis, key, node};
-use avalanchego::config as avalanchego_config;
-use coreth::config as coreth_config;
+use avalanche_types::{
+    avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
+    constants,
+    coreth::config as coreth_config,
+    key, node,
+    subnet_evm::{config as subnet_evm_config, genesis as subnet_evm_genesis},
+};
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use subnet_evm::{config as subnet_evm_config, genesis as subnet_evm_genesis};
 
 /// Represents each anchor/non-anchor node.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -396,6 +398,7 @@ pub enum StackName {
     Vpc(String),
     AsgAnchorNodes(String),
     AsgNonAnchorNodes(String),
+    SsmDocRestartNodeWhitelistSubnet(String),
 }
 
 impl StackName {
@@ -405,6 +408,9 @@ impl StackName {
             StackName::Vpc(id) => format!("{}-vpc", id),
             StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
             StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
+            StackName::SsmDocRestartNodeWhitelistSubnet(id) => {
+                format!("{}-ssm-doc-restart-node-whitelist-subnet", id)
+            }
         }
     }
 }
@@ -693,24 +699,21 @@ impl Spec {
                 None
             }
         };
+
+        // just use the first key for locking all P-chain balance
         let generated_seed_private_key_with_locked_p_chain_balance =
             Some(generated_seed_key_infos[0].clone());
         let generated_seed_private_keys = Some(generated_seed_key_infos[1..].to_vec());
 
         let (subnet_evm_genesis, subnet_evm_config) = {
             if opts.enable_subnet_evm {
-                let mut subnet_evm_seed_allocs = BTreeMap::new();
+                let mut genesis = subnet_evm_genesis::Genesis::new(&generated_seed_keys)
+                    .expect("failed to generate genesis");
+
                 let mut admin_addresses: Vec<String> = Vec::new();
                 for key_info in generated_seed_key_infos.iter() {
-                    subnet_evm_seed_allocs.insert(
-                        String::from(prefix_manager::strip_0x(&key_info.eth_address)),
-                        subnet_evm_genesis::AllocAccount::default(),
-                    );
                     admin_addresses.push(key_info.eth_address.clone());
                 }
-
-                let mut genesis = subnet_evm_genesis::Genesis::default();
-                genesis.alloc = Some(subnet_evm_seed_allocs);
 
                 let mut chain_config = subnet_evm_genesis::ChainConfig::default();
                 if opts.subnet_evm_gas_limit > 0 {

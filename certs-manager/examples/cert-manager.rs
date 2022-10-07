@@ -47,9 +47,11 @@ fn main() {
     let tls_cert_path1 = random_manager::tmp_path(10, None).unwrap();
 
     let (node_id1, generated1) =
-        ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+        avalanche_types::key::cert::x509::load_or_generate_pem(&tls_key_path1, &tls_cert_path1)
+            .unwrap();
     let (node_id2, generated2) =
-        ab!(certs_manager.load_or_generate(&tls_key_path1, &tls_cert_path1)).unwrap();
+        avalanche_types::key::cert::x509::load_or_generate_pem(&tls_key_path1, &tls_cert_path1)
+            .unwrap();
 
     log::info!("generated node Id {}", node_id1);
     assert_eq!(node_id1, node_id2);

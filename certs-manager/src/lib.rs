@@ -3,7 +3,7 @@ use std::{
     path::Path,
 };
 
-use avalanche_types::{ids::node, key::cert};
+use avalanche_types::ids::node;
 use aws_manager::{self, kms::envelope, s3};
 
 /// Generates a new certificate if there is no existing certificate for reuse.
@@ -15,49 +15,6 @@ pub struct Manager {
 }
 
 impl Manager {
-    /// Loads the existing staking certificates if exists.
-    /// Otherwise, generate a pair.
-    /// Returns "true" if generated.
-    pub async fn load_or_generate(
-        &self,
-        tls_key_path: &str,
-        tls_cert_path: &str,
-    ) -> io::Result<(node::Id, bool)> {
-        let tls_key_exists = Path::new(&tls_key_path).exists();
-        log::info!(
-            "staking TLS key {} exists? {}",
-            tls_key_path,
-            tls_key_exists
-        );
-
-        let tls_cert_exists = Path::new(&tls_cert_path).exists();
-        log::info!(
-            "staking TLS cert {} exists? {}",
-            tls_cert_path,
-            tls_cert_exists
-        );
-
-        let mut generated = false;
-        if !tls_key_exists || !tls_cert_exists {
-            log::info!(
-                "generating TLS certs (key exists {}, cert exists {})",
-                tls_key_exists,
-                tls_cert_exists
-            );
-            cert::x509::generate_default_pem(tls_key_path, tls_cert_path)?;
-            generated = true;
-        } else {
-            log::info!(
-                "loading existing staking TLS certificates from '{}' and '{}'",
-                tls_key_path,
-                tls_cert_path
-            );
-        }
-
-        let node_id = node::Id::from_cert_pem_file(tls_cert_path)?;
-        Ok((node_id, generated))
-    }
-
     /// Uploads the staking certificates to the remote storage.
     /// It envelope-encrypts using KMS.
     pub async fn upload(
