@@ -81,7 +81,8 @@ Resources:
 
                   sudo systemctl restart avalanche
                   sleep 5
-                  sudo tail -100 /var/log/avalanche/avalanche.log | grep {{ newWhitelistedSubnetId }}
+                  sudo tail -50 /var/log/avalanche/avalanche.log || true
+                  # sudo tail -100 /var/log/avalanche/avalanche.log | grep {{ newWhitelistedSubnetId }}
 
                   # to check the status
                   # sudo find /var/log/avalanche/
