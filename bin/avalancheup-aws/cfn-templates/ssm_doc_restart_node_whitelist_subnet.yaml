@@ -56,8 +56,10 @@ Resources:
                 - |
                   #!/usr/bin/env bash
 
+                  set -x
+
                   # sudo systemctl cat avalanche
-                  /usr/local/bin/plugins/${VmId} --version
+                  # /usr/local/bin/plugins/${VmId} --version
 
                   # to replace the avalanche configuration
                   # sudo cat /data/avalanche-configs/config.json
@@ -67,9 +69,9 @@ Resources:
                   sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
                   sudo systemctl restart avalanche
-                  sleep 5
-                  sudo tail -200 /var/log/avalanche/avalanche.log | grep ${NewWhitelistedSubnetId}
+                  # sleep 5
+                  # sudo tail -200 /var/log/avalanche/avalanche.log | grep ${NewWhitelistedSubnetId}
 
                   # to check the status
-                  sudo find /var/log/avalanche/
-                  sudo tail /var/log/avalanche/avalanche.log
+                  # sudo find /var/log/avalanche/
+                  # sudo tail /var/log/avalanche/avalanche.log
