@@ -153,6 +153,16 @@ Resources:
                         "/events/*",
                       ],
                     ]
+                  - !Join [
+                      "",
+                      [
+                        !Sub "arn:${AWS::Partition}:s3:::",
+                        !Ref S3BucketName,
+                        "/",
+                        !Ref Id,
+                        "/ssm-output-logs/*",
+                      ],
+                    ]
               - Effect: Allow
                 Action:
                   - cloudwatch:PutMetricData

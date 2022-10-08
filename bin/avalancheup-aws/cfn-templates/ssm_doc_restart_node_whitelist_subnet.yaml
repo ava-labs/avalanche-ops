@@ -47,6 +47,18 @@ Resources:
             type: String
             description: "timeout for script on individual instance"
             default: "3600"
+          vmId:
+            type: String
+            description: Vm Id (must match with the binary path).
+            default: !Ref VmId
+          placeHolderWhitelistedSubnetId:
+            type: String
+            description: Whitelisted subnet Id that was used as a placeholder.
+            default: !Ref PlaceHolderWhitelistedSubnetId
+          newWhitelistedSubnetId:
+            type: String
+            description: New subnet id to whitelist.
+            default: !Ref NewWhitelistedSubnetId
         mainSteps:
           - action: aws:runShellScript
             name: restartAvalancheNode
@@ -54,23 +66,22 @@ Resources:
               timeoutSeconds: "{{ scriptTimeout }}"
               runCommand:
                 - |
-                  #!/usr/bin/env bash
-
-                  set -x
+                  #!/bin/bash
+                  set -xeu
 
                   # sudo systemctl cat avalanche
-                  # /usr/local/bin/plugins/${VmId} --version
+                  # /usr/local/bin/plugins/{{ vmId }} --version
 
                   # to replace the avalanche configuration
                   # sudo cat /data/avalanche-configs/config.json
                   cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
-                  sed -i -- 's/${PlaceHolderWhitelistedSubnetId}/${NewWhitelistedSubnetId}/g' /tmp/avalanche.config.json
+                  sed -i -- 's/{{ placeHolderWhitelistedSubnetId }}/{{ newWhitelistedSubnetId }}/g' /tmp/avalanche.config.json
                   cat /tmp/avalanche.config.json
                   sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
                   sudo systemctl restart avalanche
                   # sleep 5
-                  # sudo tail -200 /var/log/avalanche/avalanche.log | grep ${NewWhitelistedSubnetId}
+                  # sudo tail -200 /var/log/avalanche/avalanche.log | grep {{ newWhitelistedSubnetId }}
 
                   # to check the status
                   # sudo find /var/log/avalanche/

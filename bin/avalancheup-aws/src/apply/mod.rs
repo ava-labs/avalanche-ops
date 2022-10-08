@@ -1698,9 +1698,22 @@ $ cat /tmp/{node_id}.crt
                             .send_command()
                             .document_name(ssm_document_name)
                             .set_instance_ids(Some(all_instance_ids.clone()))
+                            .parameters(
+                                "vmId",
+                                vec![String::from(
+                                    "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                                )],
+                            )
+                            .parameters(
+                                "placeHolderWhitelistedSubnetId",
+                                vec![String::from(
+                                    "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf",
+                                )],
+                            )
+                            .parameters("newWhitelistedSubnetId", vec![subnet_id.to_string()])
                             .output_s3_region(aws_resources.region.clone())
                             .output_s3_bucket_name(aws_resources.s3_bucket.clone())
-                            .output_s3_key_prefix("ssm-output-logs")
+                            .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
                             .send(),
                     )
                     .unwrap();
