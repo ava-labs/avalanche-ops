@@ -70,7 +70,7 @@ Resources:
                   set -xeu
 
                   # sudo systemctl cat avalanche
-                  # /usr/local/bin/plugins/{{ vmId }} --version
+                  /usr/local/bin/plugins/{{ vmId }} --version
 
                   # to replace the avalanche configuration
                   # sudo cat /data/avalanche-configs/config.json
@@ -80,8 +80,8 @@ Resources:
                   sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
                   sudo systemctl restart avalanche
-                  # sleep 5
-                  # sudo tail -200 /var/log/avalanche/avalanche.log | grep {{ newWhitelistedSubnetId }}
+                  sleep 5
+                  sudo tail -100 /var/log/avalanche/avalanche.log | grep {{ newWhitelistedSubnetId }}
 
                   # to check the status
                   # sudo find /var/log/avalanche/
