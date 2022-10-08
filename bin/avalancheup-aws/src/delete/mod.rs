@@ -377,6 +377,31 @@ pub fn execute(
         .unwrap();
     }
 
+    if aws_resources
+        .cloudformation_ssm_doc_restart_node_whitelist_subnet
+        .is_some()
+    {
+        thread::sleep(Duration::from_secs(1));
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: confirming delete SSM document for node restart subnet whitelist\n"),
+            ResetColor
+        )?;
+
+        let ssm_doc_stack_name = aws_resources
+            .cloudformation_ssm_doc_restart_node_whitelist_subnet
+            .unwrap();
+        rt.block_on(cloudformation_manager.poll_stack(
+            ssm_doc_stack_name.as_str(),
+            StackStatus::DeleteComplete,
+            Duration::from_secs(500),
+            Duration::from_secs(30),
+        ))
+        .unwrap();
+    }
+
     if delete_cloudwatch_log_group {
         // deletes the one auto-created by nodes
         thread::sleep(Duration::from_secs(1));
