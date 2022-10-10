@@ -631,7 +631,9 @@ impl Spec {
         };
         if !opts.avalanchego_whitelisted_subnets.is_empty() {
             avalanchego_config.whitelisted_subnets = Some(opts.avalanchego_whitelisted_subnets);
-        };
+        } else if opts.enable_subnet_evm {
+            panic!("enable_subnet_evm true but avalanchego_whitelisted_subnets is empty")
+        }
 
         let network_id = avalanchego_config.network_id;
         let id = {
