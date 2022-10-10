@@ -1639,6 +1639,17 @@ $ cat /tmp/{node_id}.crt
                 log::info!("created subnet {}", subnet_id);
                 thread::sleep(Duration::from_secs(5));
 
+                let whitelisted_subnet_id = if let Some(v) =
+                    &spec.avalanchego_config.whitelisted_subnets
+                {
+                    v.clone()
+                } else {
+                    // TODO: would not work... because SSM doc does simple string replacement on config file
+                    // TODO: parse avalanchego config JSON and in-place replace the config
+                    log::warn!("spec.avalanchego_config.whitelisted_subnets is empty... using default... may not work!");
+                    String::from("hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf")
+                };
+
                 execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
@@ -1660,7 +1671,7 @@ $ cat /tmp/{node_id}.crt
                     build_param("VmId", "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"),
                     build_param(
                         "PlaceHolderWhitelistedSubnetId",
-                        "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf",
+                        whitelisted_subnet_id.as_str(),
                     ),
                     build_param("NewWhitelistedSubnetId", &subnet_id.to_string()),
                 ]);
@@ -1691,16 +1702,6 @@ $ cat /tmp/{node_id}.crt
                     Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet...\n\n"),
                     ResetColor
                 )?;
-                let whitelisted_subnet_id = if let Some(v) =
-                    &spec.avalanchego_config.whitelisted_subnets
-                {
-                    v.clone()
-                } else {
-                    // TODO: would not work... because SSM doc does simple string replacement on config file
-                    // TODO: parse avalanchego config JSON and in-place replace the config
-                    log::warn!("spec.avalanchego_config.whitelisted_subnets is empty... using default... may not work!");
-                    String::from("hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf")
-                };
                 // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
                 let ssm_output = rt
                     .block_on(
