@@ -9,7 +9,7 @@ name = "blizzardup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.73", features = ["avalanchego", "subnet_evm", "jsonrpc"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.74", features = ["avalanchego", "subnet_evm", "jsonrpc"] } # https://crates.io/crates/avalanche-types
 aws-manager = "0.19.2" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudformation = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
