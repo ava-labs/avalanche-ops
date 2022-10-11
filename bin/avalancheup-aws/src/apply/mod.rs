@@ -1653,7 +1653,7 @@ $ cat /tmp/{node_id}.crt
                 execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: creating an SSM document for restarting node with whiteliste subnet...\n\n"),
+                    Print("\n\n\nSTEP: creating an SSM document for restarting node with whitelisted subnet...\n\n"),
                     ResetColor
                 )?;
                 let ssm_doc_yaml =
