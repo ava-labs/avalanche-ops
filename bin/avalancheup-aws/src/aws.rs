@@ -34,14 +34,14 @@ pub struct Resources {
     pub nlb_acm_certificate_arn: Option<String>,
 
     /// KMS CMK ID to encrypt resources.
+    /// Only used for encrypting node certs and EC2 keys.
     /// None if not created yet.
     /// READ ONLY -- DO NOT SET.
+    /// TODO: support existing key and load the ARN based on region and account number.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub kms_cmk_id: Option<String>,
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
+    pub kms_cmk_symmetric_default_encrypt_key: Option<KmsCmk>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub kms_cmk_arn: Option<String>,
+    pub test_insecure_kms_cmk_secp256k1_signing_keys: Option<Vec<KmsCmk>>,
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// READ ONLY -- DO NOT SET.
@@ -143,8 +143,8 @@ impl Resources {
 
             nlb_acm_certificate_arn: None,
 
-            kms_cmk_id: None,
-            kms_cmk_arn: None,
+            kms_cmk_symmetric_default_encrypt_key: None,
+            test_insecure_kms_cmk_secp256k1_signing_keys: None,
 
             ec2_key_name: None,
             ec2_key_path: None,
@@ -171,4 +171,14 @@ impl Resources {
             cloudwatch_avalanche_metrics_namespace: None,
         }
     }
+}
+
+/// Represents the KMS CMK resource.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct KmsCmk {
+    /// CMK Id.
+    pub id: String,
+    /// CMK ARN.
+    pub arn: String,
 }

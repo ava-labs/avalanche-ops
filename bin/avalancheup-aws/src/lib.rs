@@ -1,5 +1,5 @@
 mod avalanched;
-mod aws;
+pub mod aws;
 
 use std::{
     fs::{self, File},
@@ -211,8 +211,7 @@ pub struct Spec {
     #[serde(default)]
     pub aad_tag: String,
     /// AWS resources if run in AWS.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub aws_resources: Option<aws::Resources>,
+    pub aws_resources: aws::Resources,
 
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
@@ -256,15 +255,13 @@ pub struct Spec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_config: Option<subnet_evm_config::Config>,
 
-    /// Generated key info with locked P-chain balance with
-    /// initial stake duration in genesis.
-    /// Only valid for custom networks.
+    /// NOTE: Only required for custom networks with pre-funded wallets!
+    /// These are used for custom primary network genesis generation.
+    /// The first key will have locked P-chain balance with initial stake duration in genesis.
+    /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
+    /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_key_with_locked_p_chain_balance: Option<key::secp256k1::Info>,
-    /// Generated key infos with immediately unlocked P-chain balance.
-    /// Only pre-funded for custom networks with a custom genesis file.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub generated_seed_private_keys: Option<Vec<key::secp256k1::Info>>,
+    pub test_insecure_hot_key_infos: Option<Vec<key::secp256k1::Info>>,
 
     /// Current all nodes. May be stale.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -661,9 +658,8 @@ impl Spec {
             fs::create_dir_all(&opts.key_files_dir).unwrap();
         }
 
-        // existing network has only 1 pre-funded key "ewoq"
-        let mut generated_seed_key_infos: Vec<key::secp256k1::Info> = Vec::new();
-        let mut generated_seed_keys: Vec<key::secp256k1::private_key::Key> = Vec::new();
+        let mut test_key_infos: Vec<key::secp256k1::Info> = Vec::new();
+        let mut test_keys: Vec<key::secp256k1::private_key::Key> = Vec::new();
         for i in 0..opts.keys_to_generate {
             let k = {
                 if i < key::secp256k1::TEST_KEYS.len() {
@@ -677,9 +673,9 @@ impl Spec {
             let info = k
                 .to_info(network_id)
                 .expect("unexpected private_key_info_entry failure");
-            generated_seed_key_infos.push(info.clone());
+            test_key_infos.push(info.clone());
 
-            generated_seed_keys.push(k);
+            test_keys.push(k);
 
             if !opts.key_files_dir.is_empty() {
                 // file name is eth address with 0x, contents are "private_key_hex"
@@ -694,7 +690,7 @@ impl Spec {
 
         let avalanchego_genesis_template = {
             if avalanchego_config.is_custom_network() {
-                let g = avalanchego_genesis::Genesis::new(network_id, &generated_seed_keys)
+                let g = avalanchego_genesis::Genesis::new(network_id, &test_keys)
                     .expect("unexpected None genesis");
                 Some(g)
             } else {
@@ -702,18 +698,13 @@ impl Spec {
             }
         };
 
-        // just use the first key for locking all P-chain balance
-        let generated_seed_private_key_with_locked_p_chain_balance =
-            Some(generated_seed_key_infos[0].clone());
-        let generated_seed_private_keys = Some(generated_seed_key_infos[1..].to_vec());
-
         let (subnet_evm_genesis, subnet_evm_config) = {
             if opts.enable_subnet_evm {
-                let mut genesis = subnet_evm_genesis::Genesis::new(&generated_seed_keys)
+                let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys)
                     .expect("failed to generate genesis");
 
                 let mut admin_addresses: Vec<String> = Vec::new();
-                for key_info in generated_seed_key_infos.iter() {
+                for key_info in test_key_infos.iter() {
                     admin_addresses.push(key_info.eth_address.clone());
                 }
 
@@ -773,7 +764,6 @@ impl Spec {
         if !opts.nlb_acm_certificate_arn.is_empty() {
             aws_resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
         }
-        let aws_resources = Some(aws_resources);
 
         let mut install_artifacts = InstallArtifacts {
             avalanched_bin: None,
@@ -880,8 +870,7 @@ impl Spec {
             subnet_evm_genesis,
             subnet_evm_config,
 
-            generated_seed_private_key_with_locked_p_chain_balance,
-            generated_seed_private_keys,
+            test_insecure_hot_key_infos: Some(test_key_infos),
 
             current_nodes: None,
             endpoints: None,
@@ -961,14 +950,11 @@ impl Spec {
             ));
         }
 
-        if self.aws_resources.is_some() {
-            let aws_resources = self.aws_resources.clone().unwrap();
-            if aws_resources.region.is_empty() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    "'machine.region' cannot be empty",
-                ));
-            }
+        if self.aws_resources.region.is_empty() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "'machine.region' cannot be empty",
+            ));
         }
 
         if self.machine.non_anchor_nodes < MIN_MACHINE_NON_ANCHOR_NODES {
@@ -1231,12 +1217,12 @@ coreth_config:
         id: id.clone(),
         aad_tag: String::from("test"),
 
-        aws_resources: Some(aws::Resources {
+        aws_resources: aws::Resources {
             region: String::from("us-west-2"),
             preferred_az_index: 2,
             s3_bucket: bucket.clone(),
             ..aws::Resources::default()
-        }),
+        },
 
         machine: Machine {
             anchor_nodes: None,
@@ -1276,8 +1262,7 @@ coreth_config:
         subnet_evm_genesis: None,
         subnet_evm_config: None,
 
-        generated_seed_private_key_with_locked_p_chain_balance: None,
-        generated_seed_private_keys: None,
+        test_insecure_hot_key_infos: None,
         current_nodes: None,
         endpoints: None,
 
@@ -1292,10 +1277,9 @@ coreth_config:
     assert_eq!(cfg.id, id);
     assert_eq!(cfg.aad_tag, "test");
 
-    let aws_resources = cfg.aws_resources.unwrap();
-    assert_eq!(aws_resources.region, "us-west-2");
-    assert_eq!(aws_resources.preferred_az_index, 2);
-    assert_eq!(aws_resources.s3_bucket, bucket);
+    assert_eq!(cfg.aws_resources.region, "us-west-2");
+    assert_eq!(cfg.aws_resources.preferred_az_index, 2);
+    assert_eq!(cfg.aws_resources.s3_bucket, bucket);
 
     assert_eq!(
         cfg.install_artifacts
