@@ -519,10 +519,10 @@ lazy_static! {
     /// t3.2xlarge:  8  vCPU + 32 GiB RAM
     ///
     pub static ref DEFAULT_EC2_INSTANCE_TYPES_AMD64: Vec<String> = vec![
-        String::from("c6a.2xlarge"),
-        String::from("m6a.2xlarge"),
-        String::from("m5.2xlarge"),
-        String::from("c5.2xlarge"),
+        String::from("c6a.xlarge"),
+        String::from("m6a.xlarge"),
+        String::from("m5.xlarge"),
+        String::from("c5.xlarge"),
     ];
 
     /// Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
@@ -558,10 +558,10 @@ lazy_static! {
     /// t4g.xlarge:  4 vCPU + 16 GiB RAM
     /// t4g.2xlarge: 8 vCPU + 32 GiB RAM
     pub static ref DEFAULT_EC2_INSTANCE_TYPES_ARM64: Vec<String> = vec![
-        String::from("c6g.2xlarge"),
-        String::from("m6g.2xlarge"),
-        String::from("r6g.2xlarge"),
-        String::from("t4g.2xlarge"),
+        String::from("c6g.xlarge"),
+        String::from("m6g.xlarge"),
+        String::from("r6g.xlarge"),
+        String::from("t4g.xlarge"),
     ];
 }
 

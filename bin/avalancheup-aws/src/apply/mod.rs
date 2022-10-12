@@ -307,7 +307,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         )?;
 
         let key = rt
-            .block_on(kms_manager.create_key(format!("{}-cmk", spec.id).as_str()))
+            .block_on(kms_manager.create_symmetric_default_key(format!("{}-cmk", spec.id).as_str()))
             .unwrap();
 
         aws_resources.kms_cmk_id = Some(key.id);
