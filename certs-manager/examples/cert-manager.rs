@@ -23,7 +23,7 @@ fn main() {
     let shared_config = ab!(aws_manager::load_config(None)).unwrap();
 
     let kms_manager = kms::Manager::new(&shared_config);
-    let cmk = ab!(kms_manager.create_key("test key description")).unwrap();
+    let cmk = ab!(kms_manager.create_symmetric_default_key("test key description")).unwrap();
     let envelope_manager = envelope::Manager::new(
         kms_manager.clone(),
         cmk.id.clone(),
