@@ -97,33 +97,30 @@ pub fn execute(
     );
 
     let spec = avalancheup_aws::Spec::load(spec_file_path).expect("failed to load spec");
-    let aws_resources = spec.aws_resources.clone().unwrap();
 
     let rt = Runtime::new().unwrap();
     let shared_config = rt
-        .block_on(aws_manager::load_config(Some(aws_resources.region.clone())))
+        .block_on(aws_manager::load_config(Some(
+            spec.aws_resources.region.clone(),
+        )))
         .unwrap();
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
 
-    // validate identity
-    match aws_resources.identity {
-        Some(identity) => {
-            // AWS calls must be made from the same caller
-            if identity != current_identity {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!(
-                        "config identity {:?} != currently loaded identity {:?}",
-                        identity, current_identity
-                    ),
-                ));
-            }
+    if let Some(identity) = &spec.aws_resources.identity {
+        // AWS calls must be made from the same caller
+        if !identity.eq(&current_identity) {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "config identity {:?} != currently loaded identity {:?}",
+                    identity, current_identity
+                ),
+            ));
         }
-        None => {
-            return Err(Error::new(ErrorKind::Other, "unknown identity"));
-        }
+    } else {
+        return Err(Error::new(ErrorKind::Other, "unknown identity"));
     }
 
     execute!(
@@ -160,7 +157,7 @@ pub fn execute(
 
     // delete this first since EC2 key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
-    if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
+    if spec.aws_resources.ec2_key_name.is_some() && spec.aws_resources.ec2_key_path.is_some() {
         thread::sleep(Duration::from_secs(1));
 
         execute!(
@@ -170,7 +167,7 @@ pub fn execute(
             ResetColor
         )?;
 
-        let ec2_key_path = aws_resources.ec2_key_path.unwrap();
+        let ec2_key_path = spec.aws_resources.ec2_key_path.unwrap();
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
@@ -186,13 +183,17 @@ pub fn execute(
         if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
             fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
         }
-        rt.block_on(ec2_manager.delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str()))
+        rt.block_on(ec2_manager.delete_key_pair(spec.aws_resources.ec2_key_name.unwrap().as_str()))
             .unwrap();
     }
 
     // delete this first since KMS key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
-    if aws_resources.kms_cmk_id.is_some() && aws_resources.kms_cmk_arn.is_some() {
+    if spec
+        .aws_resources
+        .kms_cmk_symmetric_default_encrypt_key
+        .is_some()
+    {
         thread::sleep(Duration::from_secs(1));
 
         execute!(
@@ -202,13 +203,17 @@ pub fn execute(
             ResetColor
         )?;
 
-        let cmk_id = aws_resources.kms_cmk_id.unwrap();
-        rt.block_on(kms_manager.schedule_to_delete(cmk_id.as_str()))
+        let k = spec
+            .aws_resources
+            .kms_cmk_symmetric_default_encrypt_key
+            .unwrap();
+        rt.block_on(kms_manager.schedule_to_delete(k.id.as_str()))
             .unwrap();
     }
 
     // IAM roles can be deleted without being blocked on ASG/VPC
-    if aws_resources
+    if spec
+        .aws_resources
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
@@ -221,7 +226,8 @@ pub fn execute(
             ResetColor
         )?;
 
-        let ec2_instance_role_stack_name = aws_resources
+        let ec2_instance_role_stack_name = spec
+            .aws_resources
             .cloudformation_ec2_instance_role
             .clone()
             .unwrap();
@@ -239,7 +245,8 @@ pub fn execute(
             ResetColor
         )?;
 
-        let ssm_doc_stack_name = aws_resources
+        let ssm_doc_stack_name = spec
+            .aws_resources
             .cloudformation_ssm_doc_restart_node_whitelist_subnet
             .clone()
             .unwrap();
@@ -256,7 +263,8 @@ pub fn execute(
         Print("\n\n\nSTEP: triggering delete ASG for non-anchor nodes\n"),
         ResetColor
     )?;
-    let asg_non_anchor_nodes_stack_name = aws_resources
+    let asg_non_anchor_nodes_stack_name = spec
+        .aws_resources
         .cloudformation_asg_non_anchor_nodes
         .clone()
         .unwrap();
@@ -272,7 +280,8 @@ pub fn execute(
             Print("\n\n\nSTEP: triggering delete ASG for anchor nodes\n"),
             ResetColor
         )?;
-        let asg_anchor_nodes_stack_name = aws_resources
+        let asg_anchor_nodes_stack_name = spec
+            .aws_resources
             .cloudformation_asg_anchor_nodes
             .clone()
             .unwrap();
@@ -312,7 +321,8 @@ pub fn execute(
             Print("\n\n\nSTEP: confirming delete ASG for anchor nodes\n"),
             ResetColor
         )?;
-        let asg_anchor_nodes_stack_name = aws_resources.cloudformation_asg_anchor_nodes.unwrap();
+        let asg_anchor_nodes_stack_name =
+            spec.aws_resources.cloudformation_asg_anchor_nodes.unwrap();
         let desired_capacity = spec.machine.anchor_nodes.unwrap();
         let mut wait_secs = 300 + 60 * desired_capacity as u64;
         if wait_secs > MAX_WAIT_SECONDS {
@@ -328,9 +338,15 @@ pub fn execute(
     }
 
     // VPC delete must run after associated EC2 instances are terminated due to dependencies
-    if aws_resources.cloudformation_vpc_id.is_some()
-        && aws_resources.cloudformation_vpc_security_group_id.is_some()
-        && aws_resources.cloudformation_vpc_public_subnet_ids.is_some()
+    if spec.aws_resources.cloudformation_vpc_id.is_some()
+        && spec
+            .aws_resources
+            .cloudformation_vpc_security_group_id
+            .is_some()
+        && spec
+            .aws_resources
+            .cloudformation_vpc_public_subnet_ids
+            .is_some()
     {
         thread::sleep(Duration::from_secs(1));
 
@@ -341,7 +357,7 @@ pub fn execute(
             ResetColor
         )?;
 
-        let vpc_stack_name = aws_resources.cloudformation_vpc.unwrap();
+        let vpc_stack_name = spec.aws_resources.cloudformation_vpc.unwrap();
         rt.block_on(cloudformation_manager.delete_stack(vpc_stack_name.as_str()))
             .unwrap();
         thread::sleep(Duration::from_secs(10));
@@ -354,7 +370,8 @@ pub fn execute(
         .unwrap();
     }
 
-    if aws_resources
+    if spec
+        .aws_resources
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
@@ -367,7 +384,8 @@ pub fn execute(
             ResetColor
         )?;
 
-        let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
+        let ec2_instance_role_stack_name =
+            spec.aws_resources.cloudformation_ec2_instance_role.unwrap();
         rt.block_on(cloudformation_manager.poll_stack(
             ec2_instance_role_stack_name.as_str(),
             StackStatus::DeleteComplete,
@@ -377,7 +395,8 @@ pub fn execute(
         .unwrap();
     }
 
-    if aws_resources
+    if spec
+        .aws_resources
         .cloudformation_ssm_doc_restart_node_whitelist_subnet
         .is_some()
     {
@@ -390,7 +409,8 @@ pub fn execute(
             ResetColor
         )?;
 
-        let ssm_doc_stack_name = aws_resources
+        let ssm_doc_stack_name = spec
+            .aws_resources
             .cloudformation_ssm_doc_restart_node_whitelist_subnet
             .unwrap();
         rt.block_on(cloudformation_manager.poll_stack(
@@ -426,7 +446,7 @@ pub fn execute(
         )?;
         thread::sleep(Duration::from_secs(5));
         rt.block_on(s3_manager.delete_objects(
-            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(spec.aws_resources.s3_bucket.clone()),
             Some(Arc::new(spec.id.clone())),
         ))
         .unwrap();
@@ -442,7 +462,7 @@ pub fn execute(
             ResetColor
         )?;
         thread::sleep(Duration::from_secs(5));
-        rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
+        rt.block_on(s3_manager.delete_bucket(&spec.aws_resources.s3_bucket))
             .unwrap();
     }
 

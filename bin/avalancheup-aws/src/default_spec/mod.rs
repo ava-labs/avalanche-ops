@@ -406,7 +406,7 @@ pub fn execute(opts: avalancheup_aws::DefaultSpecOption) -> io::Result<()> {
             ResetColor
         )?;
         let keys = spec
-            .generated_seed_private_keys
+            .test_insecure_hot_key_infos
             .expect("unexpected None generated_seed_private_keys");
         execute!(
             stdout(),
