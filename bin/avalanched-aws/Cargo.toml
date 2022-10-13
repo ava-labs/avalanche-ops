@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.2.9"
+version = "0.2.9" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.64"
 
@@ -18,7 +18,7 @@ aws-sdk-cloudwatch = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 certs-manager = { path = "../../certs-manager" }
-clap = { version = "4.0.13", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.0.14", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.2"
 env_logger = "0.9.1"

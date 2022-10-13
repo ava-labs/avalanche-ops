@@ -1,13 +1,13 @@
 [package]
 name = "staking-key-cert-s3-downloader"
-version = "0.2.9"
+version = "0.2.9" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.64"
 
 [dependencies]
 aws-manager = "0.19.3" # https://github.com/gyuho/aws-manager/tags
 certs-manager = { path = "../../certs-manager" }
-clap = { version = "4.0.13", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.0.14", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.9.1"
 log = "0.4.17"
 tokio = { version = "1.21.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases

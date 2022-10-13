@@ -179,6 +179,6 @@ impl Resources {
 pub struct KmsCmk {
     /// CMK Id.
     pub id: String,
-    /// CMK ARN.
+    /// CMK Arn.
     pub arn: String,
 }
