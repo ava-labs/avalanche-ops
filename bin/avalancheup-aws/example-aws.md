@@ -1,6 +1,4 @@
 
-**UPDATED as of https://github.com/ava-labs/avalanche-ops/releases/tag/v0.2.9**
-
 ## Example: set up custom network on AWS
 
 *See ["Custom network with NO initial database state, with subnet-evm"](recipes-aws.md#custom-network-with-no-initial-database-state-with-subnet-evm) for the full commands.*
