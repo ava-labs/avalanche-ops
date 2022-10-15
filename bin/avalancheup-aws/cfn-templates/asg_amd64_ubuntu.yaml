@@ -344,6 +344,8 @@ Resources:
           TargetGroupArn: !Ref NLBTargetGroup
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
+  # NOTE: only needs be created once for either anchor or non-anchor node ASG since it's linked
+  # to a target group and the NLB that are both linked to the ASGs
   NLBListenerHttps:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Condition: HasNlbAcmCertificateArn
