@@ -26,6 +26,7 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 - 📨 Securely encrypt all artifacts in case of backups
 - Automates subnet/VM installation
 - Automates load/stress testing
+- Support private network
 
 `avalanche-ops` is:
 - 🚫 NOT a replacement of [`avalanchego`](https://github.com/ava-labs/avalanchego)
