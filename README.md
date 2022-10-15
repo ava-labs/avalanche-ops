@@ -24,6 +24,8 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 - ✅ Fully automates custom VM (subnet) setups
 - 🔥 Simulates routine failure conditions (slow network)
 - 📨 Securely encrypt all artifacts in case of backups
+- Automates subnet/VM installation
+- Automates load/stress testing
 
 `avalanche-ops` is:
 - 🚫 NOT a replacement of [`avalanchego`](https://github.com/ava-labs/avalanchego)
@@ -68,10 +70,8 @@ https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aw
 
 Contributions are welcome!
 
-- Support automatic subnet/VM setup
 - Support mainnet fork
 - Failure injection testing
-- Stress testing
 - Better Avalanche node health checks
 - Support ARM
 - Support Raspberry Pi
