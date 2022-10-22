@@ -404,7 +404,7 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         .build()
         .await
         .unwrap();
-    let mut evm_bal = sender_wallet.c().balance().await.unwrap();
+    let mut evm_bal = sender_wallet.evm_ethers_c().balance().await.unwrap();
 
     loop {
         if evm_bal > U256::from(0) {
@@ -425,12 +425,12 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
             .build()
             .await
             .unwrap();
-        evm_bal = sender_wallet.c().balance().await.unwrap();
+        evm_bal = sender_wallet.evm_ethers_c().balance().await.unwrap();
     }
 
     log::info!("sending C-chain transfers");
     loop {
-        let bal = match sender_wallet.c().balance().await {
+        let bal = match sender_wallet.evm_ethers_c().balance().await {
             Ok(b) => b,
             Err(e) => {
                 log::warn!("failed to get balance c {}", e);
@@ -449,7 +449,7 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         let target_h160_addr = target_key.to_public_key().to_prelude_h160();
 
         match sender_wallet
-            .c()
+            .evm_ethers_c()
             .transfer()
             .receiver(target_h160_addr)
             .amount(transfer_amount)
@@ -502,7 +502,11 @@ async fn make_subnet_evm_transfers(
         .build()
         .await
         .unwrap();
-    let mut evm_bal = sender_wallet.subnet_evm().balance().await.unwrap();
+    let mut evm_bal = sender_wallet
+        .evm_ethers_subnet_evm()
+        .balance()
+        .await
+        .unwrap();
 
     loop {
         if evm_bal > U256::from(0) {
@@ -524,12 +528,16 @@ async fn make_subnet_evm_transfers(
             .build()
             .await
             .unwrap();
-        evm_bal = sender_wallet.subnet_evm().balance().await.unwrap();
+        evm_bal = sender_wallet
+            .evm_ethers_subnet_evm()
+            .balance()
+            .await
+            .unwrap();
     }
 
     log::info!("sending subnet-evm transfers");
     loop {
-        let bal = match sender_wallet.subnet_evm().balance().await {
+        let bal = match sender_wallet.evm_ethers_subnet_evm().balance().await {
             Ok(b) => b,
             Err(e) => {
                 log::warn!("failed to get balance c {}", e);
@@ -548,7 +556,7 @@ async fn make_subnet_evm_transfers(
         let target_h160_addr = target_key.to_public_key().to_prelude_h160();
 
         match sender_wallet
-            .subnet_evm()
+            .evm_ethers_subnet_evm()
             .transfer()
             .receiver(target_h160_addr)
             .amount(transfer_amount)

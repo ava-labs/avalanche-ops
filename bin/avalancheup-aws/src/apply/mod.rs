@@ -1692,6 +1692,11 @@ $ cat /tmp/{node_id}.crt
                     ResetColor
                 )?;
                 let subnet_id = rt
+                    .block_on(w.p().create_subnet().dry_mode(true).issue())
+                    .unwrap();
+                log::info!("dry mode subnet {}", subnet_id);
+
+                let subnet_id = rt
                     .block_on(w.p().create_subnet().check_acceptance(true).issue())
                     .unwrap();
                 log::info!("created subnet {}", subnet_id);
