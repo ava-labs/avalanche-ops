@@ -1694,7 +1694,7 @@ $ cat /tmp/{node_id}.crt
                 let subnet_id = rt
                     .block_on(w.p().create_subnet().dry_mode(true).issue())
                     .unwrap();
-                log::info!("dry mode subnet {}", subnet_id);
+                log::info!("dry mode create_subnet Id {}", subnet_id);
 
                 let subnet_id = rt
                     .block_on(w.p().create_subnet().check_acceptance(true).issue())
@@ -1851,13 +1851,32 @@ $ cat /tmp/{node_id}.crt
                 log::info!("added subnet validators for {}", subnet_id);
                 thread::sleep(Duration::from_secs(5));
 
+                let subnet_evm_genesis_bytes = subnet_evm_genesis.to_bytes().unwrap();
                 execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
                     Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
                     ResetColor
                 )?;
-                let subnet_evm_genesis_bytes = subnet_evm_genesis.to_bytes().unwrap();
+                let blockchain_id = rt
+                    .block_on(
+                        w.p()
+                            .create_chain()
+                            .subnet_id(subnet_id)
+                            .genesis_data(subnet_evm_genesis_bytes.clone())
+                            .vm_id(
+                                ids::Id::from_str(
+                                    "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                                )
+                                .unwrap(),
+                            )
+                            .chain_name(String::from("subnetevm"))
+                            .dry_mode(true)
+                            .issue(),
+                    )
+                    .unwrap();
+                log::info!("dry mode create_chain Id {}", blockchain_id);
+
                 let blockchain_id = rt
                     .block_on(
                         w.p()
