@@ -9,15 +9,15 @@ name = "avalancheup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-sdk = { version = "0.77.0" } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.77", features = ["avalanchego", "subnet_evm", "jsonrpc"] } # https://crates.io/crates/avalanche-types
+avalanche-sdk = { version = "0.81.0" } # https://crates.io/crates/avalanche-sdk
+avalanche-types = { version = "0.0.81", features = ["avalanchego", "subnet_evm", "jsonrpc"] } # https://crates.io/crates/avalanche-types
 aws-manager = "0.19.7" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudformation = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ssm = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
 big-num-manager = "0.0.1"
-clap = { version = "4.0.15", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.0.18", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.2"
 crossterm = "0.25.0"
 dialoguer = "0.10.2"
@@ -29,10 +29,10 @@ log = "0.4.17"
 prefix-manager = "0.0.2"
 prometheus-manager = "0.0.15"
 random-manager = "0.0.1"
-rust-embed = "6.4.1"
-serde = { version = "1.0.145", features = ["derive"] }
-serde_json = "1.0.86" # https://github.com/serde-rs/json/releases
-serde_yaml = "0.9.13" # https://github.com/dtolnay/serde-yaml/releases
+rust-embed = "6.4.2"
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.87" # https://github.com/serde-rs/json/releases
+serde_yaml = "0.9.14" # https://github.com/dtolnay/serde-yaml/releases
 signal-hook = "0.3.14"
 tokio = { version = "1.21.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
