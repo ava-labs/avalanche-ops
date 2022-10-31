@@ -13,8 +13,8 @@ use std::{
     time::Duration,
 };
 
-use avalanche_sdk::{health as api_health, wallet};
 use avalanche_types::{
+    client::{health as client_health, wallet},
     ids::{self, node},
     key,
 };
@@ -1471,10 +1471,10 @@ aws ssm start-session --region {} --target {}
     for http_rpc in http_rpcs.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(api_health::check(Arc::new(http_rpc.clone()), true));
+            let ret = rt.block_on(client_health::check(Arc::new(http_rpc.clone()), true));
             match ret {
                 Ok(res) => {
-                    if res.healthy.is_some() && res.healthy.unwrap() {
+                    if res.healthy {
                         success = true;
                         log::info!("health/liveness check success for {}", http_rpc);
                         break;
@@ -1500,13 +1500,13 @@ aws ssm start-session --region {} --target {}
     for node in current_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(api_health::check(
+            let ret = rt.block_on(client_health::check(
                 Arc::new(node.http_endpoint.clone()),
                 true,
             ));
             match ret {
                 Ok(res) => {
-                    if res.healthy.is_some() && res.healthy.unwrap() {
+                    if res.healthy {
                         success = true;
                         log::info!("health/liveness check success for {}", node.machine_id);
                         break;

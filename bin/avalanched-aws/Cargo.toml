@@ -9,14 +9,13 @@ name = "avalanched-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-installer = "0.0.7" # https://crates.io/crates/avalanche-installer
-avalanche-sdk = { version = "0.81.0" } # https://crates.io/crates/avalanche-sdk
-avalanche-types = { version = "0.0.81", features = ["avalanchego", "subnet_evm", "jsonrpc"] } # https://crates.io/crates/avalanche-types
+avalanche-installer = "0.0.8" # https://crates.io/crates/avalanche-installer
+avalanche-types = { version = "0.0.110", features = ["avalanchego", "client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = "0.19.7" # https://github.com/gyuho/aws-manager/tags
-aws-sdk-cloudwatch = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-ec2 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-s3 = "0.19.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-manager = "0.21.0" # https://github.com/gyuho/aws-manager/tags
+aws-sdk-cloudwatch = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-ec2 = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-s3 = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
 certs-manager = { path = "../../certs-manager" }
 clap = { version = "4.0.18", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
