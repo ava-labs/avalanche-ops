@@ -13,6 +13,12 @@ Parameters:
     Default: srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
     Description: Vm Id (must match with the binary path).
 
+  # e.g., avalanchego_config.chain_config_dir).join("...")
+  ChainConfigDirectory:
+    Type: String
+    Default: /data/avalanche-configs/chains
+    Description: Chain configuration directory (e.g., /data/avalanche-configs/chains/C/config.json)
+
   PlaceHolderWhitelistedSubnetId:
     Type: String
     Default: hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
@@ -51,6 +57,10 @@ Resources:
             type: String
             description: Vm Id (must match with the binary path).
             default: !Ref VmId
+          chainConfigDirectory:
+            type: String
+            description: Chain configuration directory (e.g., /data/avalanche-configs/chains/C/config.json).
+            default: !Ref ChainConfigDirectory
           placeHolderWhitelistedSubnetId:
             type: String
             description: Whitelisted subnet Id that was used as a placeholder.
@@ -78,6 +88,9 @@ Resources:
                   sed -i -- 's/{{ placeHolderWhitelistedSubnetId }}/{{ newWhitelistedSubnetId }}/g' /tmp/avalanche.config.json
                   cat /tmp/avalanche.config.json
                   sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
+
+                  sudo mkdir -p {{ chainConfigDirectory }}/{{ newWhitelistedSubnetId }}
+                  sudo cp {{ chainConfigDirectory }}/{{ placeHolderWhitelistedSubnetId }}/config.json {{ chainConfigDirectory }}/{{ newWhitelistedSubnetId }}/config.json
 
                   sudo systemctl restart avalanche
                   sleep 5

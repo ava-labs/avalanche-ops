@@ -1734,6 +1734,10 @@ $ cat /tmp/{node_id}.crt
                     build_param("DocumentName", &ssm_document_name),
                     build_param("VmId", "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"),
                     build_param(
+                        "ChainConfigDirectory",
+                        &spec.avalanchego_config.chain_config_dir,
+                    ),
+                    build_param(
                         "PlaceHolderWhitelistedSubnetId",
                         whitelisted_subnet_id.as_str(),
                     ),
