@@ -8,9 +8,9 @@ use std::{
 };
 
 use crate::{cloudwatch, flags};
-use avalanche_sdk::health as api_health;
 use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
+    client::health as client_health,
     coreth,
     key::cert::x509,
     node, subnet_evm,
@@ -1438,10 +1438,10 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
 
         println!();
 
-        let ret = api_health::spawn_check(ep, true).await;
+        let ret = client_health::spawn_check(ep, true).await;
         match ret {
             Ok(res) => {
-                if res.healthy.is_some() && res.healthy.unwrap() {
+                if res.healthy {
                     log::info!("health/liveness check success");
                     break;
                 }

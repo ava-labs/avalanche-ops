@@ -92,7 +92,7 @@ impl Node {
             ));
         }
 
-        let f = File::open(&file_path).map_err(|e| {
+        let f = File::open(file_path).map_err(|e| {
             Error::new(
                 ErrorKind::Other,
                 format!("failed to open {} ({})", file_path, e),
@@ -714,10 +714,7 @@ impl Spec {
                     fee_config.gas_limit = Some(opts.subnet_evm_gas_limit);
                     chain_config.fee_config = Some(fee_config);
 
-                    genesis.gas_limit = big_num_manager::from_hex_to_big_int(
-                        format!("0x{:X}", opts.subnet_evm_gas_limit).as_str(),
-                    )
-                    .expect("failed from_hex_to_big_int");
+                    genesis.gas_limit = primitive_types::U256::from(opts.subnet_evm_gas_limit);
                 }
                 if opts.subnet_evm_auto_contract_deployer_allow_list_config {
                     chain_config.contract_deployer_allow_list_config =
@@ -924,7 +921,7 @@ impl Spec {
             ));
         }
 
-        let f = File::open(&file_path).map_err(|e| {
+        let f = File::open(file_path).map_err(|e| {
             Error::new(
                 ErrorKind::Other,
                 format!("failed to open {} ({})", file_path, e),
@@ -1575,7 +1572,7 @@ impl NodeInfo {
                 ));
             }
         };
-        let mut f = File::create(&file_path)?;
+        let mut f = File::create(file_path)?;
         f.write_all(&d)?;
 
         Ok(())
