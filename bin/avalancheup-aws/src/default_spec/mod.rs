@@ -92,7 +92,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("300"),
+                .default_value("3600"),
         )
         .arg(
             Arg::new("AAD_TAG")

@@ -64,7 +64,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             true,
             avalancheup_aws::default_rules(),
             true,
-            300,
+            3600,
         )
     } else {
         let spec = download_spec(
@@ -86,7 +86,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         let metrics_fetch_interval_seconds = if spec.metrics_fetch_interval_seconds > 0 {
             spec.metrics_fetch_interval_seconds
         } else {
-            600
+            3600
         };
         (
             spec.avalanchego_config.clone(),
