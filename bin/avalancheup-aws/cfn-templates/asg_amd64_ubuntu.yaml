@@ -579,12 +579,14 @@ Resources:
                 - !Ref AWS::NoValue
       HealthCheckType: EC2
       HealthCheckGracePeriod: 120
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-metricscollection.html
       MetricsCollection:
         - Granularity: "1Minute"
       Tags:
         # we can either propagate these information
         # via tags, avalanched CLI flags, avalanche-ops spec, etc.
         # use tags for relatively static configurations
+        # because when tags are updated, instances need be refreshed
         - Key: Name
           PropagateAtLaunch: true
           Value: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]

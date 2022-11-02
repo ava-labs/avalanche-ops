@@ -1145,6 +1145,7 @@ avalanched_config:
 
 disable_nlb: false
 disable_logs_auto_removal: false
+metrics_fetch_interval_seconds: 5000
 
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
@@ -1250,7 +1251,7 @@ coreth_config:
 
         disable_nlb: false,
         disable_logs_auto_removal: false,
-        metrics_fetch_interval_seconds: 0,
+        metrics_fetch_interval_seconds: 5000,
 
         avalanchego_config,
         coreth_config: coreth_config::Config::default(),
