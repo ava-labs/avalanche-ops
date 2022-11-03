@@ -26,7 +26,7 @@ lazy_static = "1.4.0"
 log = "0.4.17"
 prefix-manager = "0.0.2"
 primitive-types = { version = "0.12.1", features = ["impl-rlp", "impl-serde"], optional = false } # https://crates.io/crates/primitive-types
-prometheus-manager = "0.0.15"
+prometheus-manager = "0.0.16"
 random-manager = "0.0.1"
 rust-embed = "6.4.2"
 serde = { version = "1.0.147", features = ["derive"] }
