@@ -2,7 +2,7 @@
 name = "staking-key-cert-s3-downloader"
 version = "0.2.11" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.65"
 
 [dependencies]
 aws-manager = "0.21.0" # https://github.com/gyuho/aws-manager/tags
