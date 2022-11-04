@@ -66,16 +66,13 @@ impl Node {
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
-        let ret = serde_yaml::to_string(self);
-        let d = match ret {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize Node to YAML {}", e),
-                ));
-            }
-        };
+        let d = serde_yaml::to_string(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize Node info to YAML {}", e),
+            )
+        })?;
+
         let mut f = File::create(file_path)?;
         f.write_all(d.as_bytes())?;
 
@@ -98,6 +95,7 @@ impl Node {
                 format!("failed to open {} ({})", file_path, e),
             )
         })?;
+
         serde_yaml::from_reader(f)
             .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
     }
@@ -895,16 +893,13 @@ impl Spec {
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
 
-        let ret = serde_yaml::to_string(self);
-        let d = match ret {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize Spec to YAML {}", e),
-                ));
-            }
-        };
+        let d = serde_yaml::to_string(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize Spec info to YAML {}", e),
+            )
+        })?;
+
         let mut f = File::create(file_path)?;
         f.write_all(d.as_bytes())?;
 
@@ -1563,16 +1558,13 @@ impl NodeInfo {
         let parent_dir = path.parent().unwrap();
         fs::create_dir_all(parent_dir)?;
 
-        let ret = serde_json::to_vec(self);
-        let d = match ret {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize Info to YAML {}", e),
-                ));
-            }
-        };
+        let d = serde_json::to_vec(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize NodeInfo info to JSON {}", e),
+            )
+        })?;
+
         let mut f = File::create(file_path)?;
         f.write_all(&d)?;
 
