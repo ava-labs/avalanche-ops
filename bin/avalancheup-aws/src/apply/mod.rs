@@ -752,10 +752,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let is_spot_instance =
             spec.machine.use_spot_instance && !spec.machine.disable_spot_instance_for_anchor_nodes;
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
+        let ip_mode = if spec.machine.use_elastic_ips {
+            String::from("elastic")
+        } else {
+            String::from("ephemeral")
+        };
         asg_anchor_params.push(build_param(
             "AsgSpotInstance",
             format!("{}", is_spot_instance).as_str(),
         ));
+        asg_anchor_params.push(build_param("IpMode", &ip_mode));
         asg_anchor_params.push(build_param(
             "OnDemandPercentageAboveBaseCapacity",
             format!("{}", on_demand_pct).as_str(),
@@ -1163,10 +1169,16 @@ aws ssm start-session --region {} --target {}
 
         let is_spot_instance = spec.machine.use_spot_instance;
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
+        let ip_mode = if spec.machine.use_elastic_ips {
+            String::from("elastic")
+        } else {
+            String::from("ephemeral")
+        };
         asg_non_anchor_params.push(build_param(
             "AsgSpotInstance",
             format!("{}", is_spot_instance).as_str(),
         ));
+        asg_non_anchor_params.push(build_param("IpMode", &ip_mode));
         asg_non_anchor_params.push(build_param(
             "OnDemandPercentageAboveBaseCapacity",
             format!("{}", on_demand_pct).as_str(),

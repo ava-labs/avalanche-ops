@@ -345,6 +345,8 @@ pub struct Machine {
     pub use_spot_instance: bool,
     #[serde(default)]
     pub disable_spot_instance_for_anchor_nodes: bool,
+    #[serde(default)]
+    pub use_elastic_ips: bool,
 
     /// Initial EBS volume size in GB.
     /// Can be resized with no downtime.
@@ -842,6 +844,7 @@ impl Spec {
 
             use_spot_instance: opts.use_spot_instance,
             disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
+            use_elastic_ips: opts.use_elastic_ips,
 
             volume_size_in_gb,
         };
@@ -1231,6 +1234,7 @@ coreth_config:
             ],
             use_spot_instance: false,
             disable_spot_instance_for_anchor_nodes: false,
+            use_elastic_ips: false,
             volume_size_in_gb: 500,
         },
 

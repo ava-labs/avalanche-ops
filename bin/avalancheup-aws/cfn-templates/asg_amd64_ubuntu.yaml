@@ -158,9 +158,9 @@ Parameters:
 
   IpMode:
     Type: String
-    AllowedValues: ["ephemeral", "static"]
+    AllowedValues: ["ephemeral", "elastic"]
     Default: "ephemeral"
-    Description: Set "static" to allocate Elastic IP.
+    Description: Set "elastic" to allocate Elastic IP.
 
   AsgMinInstancesInService:
     Type: Number
@@ -470,7 +470,7 @@ Resources:
               --filesystem-name=ext4 \
               --mount-directory-path=/data
 
-              if [[ ${IpMode} == "static" ]]; then
+              if [[ ${IpMode} == "elastic" ]]; then
                 wget https://github.com/gyuho/ip-manager/releases/download/latest/aws-ip-provisioner.x86_64-unknown-linux-gnu
                 mv ./aws-ip-provisioner.x86_64-unknown-linux-gnu /tmp/aws-ip-provisioner
                 chmod +x /tmp/aws-ip-provisioner
@@ -480,7 +480,7 @@ Resources:
                 --id-tag=${Id} \
                 --mounted-eip-file-path=/data/eip.yaml
               else
-                echo "skipping allocating static IP address..."
+                echo "skipping allocating elastic IP address..."
               fi;
 
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
