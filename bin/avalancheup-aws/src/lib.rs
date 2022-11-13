@@ -425,6 +425,8 @@ pub struct DefaultSpecOption {
     pub disable_spot_instance_for_anchor_nodes: bool,
     pub volume_size_in_gb: u32,
 
+    pub use_elastic_ips: bool,
+
     pub disable_nlb: bool,
     pub disable_logs_auto_removal: bool,
     pub metrics_fetch_interval_seconds: u64,

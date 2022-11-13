@@ -492,7 +492,7 @@ pub fn execute(
                 .build(),
             Filter::builder()
                 .set_name(Some(String::from("tag:Id")))
-                .set_values(Some(vec![spec.id]))
+                .set_values(Some(vec![spec.id.clone()]))
                 .build(),
         ];
         let volumes = rt
@@ -512,7 +512,7 @@ pub fn execute(
         }
     }
 
-    if delete_ebs_volumes {
+    if delete_eips {
         thread::sleep(Duration::from_secs(1));
         execute!(
             stdout(),

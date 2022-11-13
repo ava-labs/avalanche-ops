@@ -156,6 +156,12 @@ Parameters:
     MaxValue: 500
     Description: Only set non-zero if multiple instances may compete for the same EBS volume in the same zone.
 
+  IpMode:
+    Type: String
+    AllowedValues: ["ephemeral", "static"]
+    Default: "ephemeral"
+    Description: Set "static" to allocate Elastic IP.
+
   AsgMinInstancesInService:
     Type: Number
     Description: Minimum instances in service for update.
@@ -451,18 +457,31 @@ Resources:
 
               # --initial-wait-random-seconds=X to prevent EBS volume provision contentions
               /tmp/aws-volume-provisioner \
+              --log-level=info \
+              --initial-wait-random-seconds=${VolumeProvisionerInitialWaitRandomSeconds} \
+              --kind-tag=aws-volume-provisioner \
+              --id-tag=${Id} \
+              --volume-type=${VolumeType} \
+              --volume-size=${VolumeSize} \
+              --volume-iops=${VolumeIops} \
+              --volume-throughput=${VolumeThroughput} \
+              --ebs-device-name=/dev/xvdb \
+              --block-device-name=/dev/nvme1n1 \
+              --filesystem-name=ext4 \
+              --mount-directory-path=/data
+
+              if [[ ${IpMode} == "static" ]]; then
+                wget https://github.com/gyuho/ip-manager/releases/download/latest/aws-ip-provisioner.x86_64-unknown-linux-gnu
+                mv ./aws-ip-provisioner.x86_64-unknown-linux-gnu /tmp/aws-ip-provisioner
+                chmod +x /tmp/aws-ip-provisioner
+                /tmp/aws-ip-provisioner \
                 --log-level=info \
-                --initial-wait-random-seconds=${VolumeProvisionerInitialWaitRandomSeconds} \
-                --kind-tag=aws-volume-provisioner \
+                --kind-tag=aws-ip-provisioner \
                 --id-tag=${Id} \
-                --volume-type=${VolumeType} \
-                --volume-size=${VolumeSize} \
-                --volume-iops=${VolumeIops} \
-                --volume-throughput=${VolumeThroughput} \
-                --ebs-device-name=/dev/xvdb \
-                --block-device-name=/dev/nvme1n1 \
-                --filesystem-name=ext4 \
-                --mount-directory-path=/data
+                --mounted-eip-file-path=/data/eip.yaml
+              else
+                echo "skipping allocating static IP address..."
+              fi;
 
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
                 # TODO: support ARM64

@@ -71,6 +71,8 @@ fn main() {
 
                 volume_size_in_gb,
 
+                use_elastic_ips: sub_matches.get_flag("USE_ELASTIC_IPS"),
+
                 disable_nlb: sub_matches.get_flag("DISABLE_NLB"),
                 disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
                 metrics_fetch_interval_seconds,
@@ -191,6 +193,7 @@ fn main() {
                 sub_matches.get_flag("DELETE_S3_OBJECTS"),
                 sub_matches.get_flag("DELETE_S3_BUCKET"),
                 sub_matches.get_flag("DELETE_EBS_VOLUMES"),
+                sub_matches.get_flag("DELETE_EIPS"),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
             .expect("failed to execute 'delete'");
