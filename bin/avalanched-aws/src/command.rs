@@ -44,6 +44,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     )
     .await?;
 
+    // TOOD: make sure to use elastic ip if any
     let (
         mut avalanchego_config,
         coreth_config,
@@ -594,6 +595,7 @@ async fn fetch_tags(
     Ok(fetched_tags)
 }
 
+/// TOOD: make sure to use elastic ip if any
 async fn download_spec(
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
