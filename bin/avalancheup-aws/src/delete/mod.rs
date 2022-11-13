@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     io::{self, stdout, Error, ErrorKind},
     path::Path,
@@ -77,6 +78,13 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            Arg::new("DELETE_EIPS")
+                .long("delete-eips")
+                .help("Enables delete orphaned EIPs (use with caution!)")
+                .required(false)
+                .num_args(0),
+        )
 }
 
 // 50-minute
@@ -89,6 +97,7 @@ pub fn execute(
     delete_s3_objects: bool,
     delete_s3_bucket: bool,
     delete_ebs_volumes: bool,
+    delete_eips: bool,
     skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -500,6 +509,37 @@ pub fn execute(
                     .unwrap();
                 thread::sleep(Duration::from_secs(1));
             }
+        }
+    }
+
+    if delete_ebs_volumes {
+        thread::sleep(Duration::from_secs(1));
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: deleting orphaned EIPs\n"),
+            ResetColor
+        )?;
+        let eip_addresses = rt
+            .block_on(
+                ec2_manager
+                    .describe_eips_by_tags(HashMap::from([(String::from("Id"), spec.id.clone())])),
+            )
+            .unwrap();
+        log::info!("found {} EIP addresses", eip_addresses.len());
+        for eip_addr in eip_addresses.iter() {
+            let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
+            let ec2_cli = ec2_manager.client();
+
+            log::info!("releasing EIP '{}'", allocation_id);
+            rt.block_on(
+                ec2_cli
+                    .release_address()
+                    .allocation_id(allocation_id)
+                    .send(),
+            )
+            .unwrap();
+            thread::sleep(Duration::from_secs(2));
         }
     }
 

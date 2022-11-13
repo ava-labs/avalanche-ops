@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     env,
     fs::{self, File},
     io::{self, stdout, Error, ErrorKind},
@@ -906,6 +907,21 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             thread::sleep(Duration::from_secs(30));
         }
 
+        let eip_addresses = rt
+            .block_on(
+                ec2_manager
+                    .describe_eips_by_tags(HashMap::from([(String::from("Id"), spec.id.clone())])),
+            )
+            .unwrap();
+        let mut instance_id_to_public_ip = HashMap::new();
+        for eip_addr in eip_addresses.iter() {
+            let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
+            let instance_id = eip_addr.instance_id.to_owned().unwrap();
+            let public_ip = eip_addr.public_ip.to_owned().unwrap();
+            log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
+            instance_id_to_public_ip.insert(instance_id, public_ip);
+        }
+
         let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
@@ -953,6 +969,44 @@ aws ssm start-session --region {} --target {}
                 spec.aws_resources.region,
                 d.instance_id,
             );
+
+            if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
+                println!(
+                    "# instance '{}' ({}, {}) -- with elastic IP
+ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
+# download to local machine
+scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
+scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
+# upload to remote machine
+scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
+scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
+# SSM session (requires SSM agent)
+aws ssm start-session --region {} --target {}
+",
+                    //
+                    d.instance_id,
+                    d.instance_state_name,
+                    d.availability_zone,
+                    //
+                    ec2_key_path,
+                    public_ip,
+                    //
+                    ec2_key_path,
+                    public_ip,
+                    //
+                    ec2_key_path,
+                    public_ip,
+                    //
+                    ec2_key_path,
+                    public_ip,
+                    //
+                    ec2_key_path,
+                    public_ip,
+                    //
+                    spec.aws_resources.region,
+                    d.instance_id,
+                );
+            }
         }
         println!();
 
@@ -991,7 +1045,7 @@ aws ssm start-session --region {} --target {}
                         stdout(),
                         SetForegroundColor(Color::Green),
                         Print(format!(
-                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--spec-file-path {}\n",
+                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--delete-eips \\\n--spec-file-path {}\n",
                             exec_path.display(),
                             spec_file_path
                         )),
@@ -1361,7 +1415,7 @@ aws ssm start-session --region {} --target {}
                         stdout(),
                         SetForegroundColor(Color::Green),
                         Print(format!(
-                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--spec-file-path {}\n",
+                            "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--delete-eips \\\n--spec-file-path {}\n",
                             exec_path.display(),
                             spec_file_path
                         )),
@@ -1597,6 +1651,7 @@ aws ssm start-session --region {} --target {}
 --delete-cloudwatch-log-group \\
 --delete-s3-objects \\
 --delete-ebs-volumes \\
+--delete-eips \\
 --spec-file-path {}
 ",
             exec_path.display(),
