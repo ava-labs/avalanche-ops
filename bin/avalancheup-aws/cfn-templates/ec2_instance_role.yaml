@@ -178,6 +178,15 @@ Resources:
                   # Ref: http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-cloudwatch-logs
                   - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}"
                   - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${Id}:log-stream:*"
+
+              # for static IP addresses
+              - Effect: Allow
+                Action:
+                  - ec2:AllocateAddress # https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_AllocateAddress.html
+                  - ec2:AssociateAddress # https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_AssociateAddress.html
+                  - ec2:DescribeAddresses # https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeAddresses.html
+                Resource: "*"
+
         - Fn::If:
             - HasS3BucketDbBackupName
             - PolicyName: avalanche-ops-instance-role-policy-for-db-backup
