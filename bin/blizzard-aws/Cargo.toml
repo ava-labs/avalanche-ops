@@ -9,13 +9,13 @@ name = "blizzard-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.135", features = ["client", "evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.136", features = ["client", "evm"] } # https://crates.io/crates/avalanche-types
 aws-manager = "0.21.0" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
 blizzardup-aws = { path = "../../bin/blizzardup-aws" }
-clap = { version = "4.0.22", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.0.23", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.9.3"
 ethers-signers = { version = "1.0.0", optional = false }
 log = "0.4.17"
