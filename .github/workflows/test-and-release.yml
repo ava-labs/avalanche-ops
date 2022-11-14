@@ -187,60 +187,60 @@ jobs:
 
             ./target/${TARGET}/release/avalanched-aws --help
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
+            echo "file_name_avalanched_aws=avalanched-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+            echo "file_name_avalanched_aws_tar_gz=avalanched-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             ./target/${TARGET}/release/avalancheup-aws --help
             cp ./target/${TARGET}/release/avalancheup-aws avalancheup-aws.${TARGET}
-            echo "::set-output name=file_name_avalancheup_aws::avalancheup-aws.${TARGET}"
+            echo "file_name_avalancheup_aws=avalancheup-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
-            echo "::set-output name=file_name_avalancheup_aws_tar_gz::avalancheup-aws_${TARGET}.tar.gz"
+            echo "file_name_avalancheup_aws_tar_gz=avalancheup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             ./target/${TARGET}/release/blizzard-aws --help
             cp ./target/${TARGET}/release/blizzard-aws blizzard-aws.${TARGET}
-            echo "::set-output name=file_name_blizzard_aws::blizzard-aws.${TARGET}"
+            echo "file_name_blizzard_aws=blizzard-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf blizzard-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
-            echo "::set-output name=file_name_blizzard_aws_tar_gz::blizzard-aws_${TARGET}.tar.gz"
+            echo "file_name_blizzard_aws_tar_gz=blizzard-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             ./target/${TARGET}/release/blizzardup-aws --help
             cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
-            echo "::set-output name=file_name_blizzardup_aws::blizzardup-aws.${TARGET}"
+            echo "file_name_blizzardup_aws=blizzardup-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf blizzardup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
-            echo "::set-output name=file_name_blizzardup_aws_tar_gz::blizzardup-aws_${TARGET}.tar.gz"
+            echo "file_name_blizzardup_aws_tar_gz=blizzardup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             ./target/${TARGET}/release/staking-key-cert-s3-downloader --help
             cp ./target/${TARGET}/release/staking-key-cert-s3-downloader staking-key-cert-s3-downloader.${TARGET}
-            echo "::set-output name=file_name_staking_key_cert_s3_downloader::staking-key-cert-s3-downloader.${TARGET}"
+            echo "file_name_staking_key_cert_s3_downloader=staking-key-cert-s3-downloader.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf staking-key-cert-s3-downloader_${TARGET}.tar.gz -C ./target/${TARGET}/release staking-key-cert-s3-downloader
-            echo "::set-output name=file_name_staking_key_cert_s3_downloader_tar_gz::staking-key-cert-s3-downloader_${TARGET}.tar.gz"
+            echo "file_name_staking_key_cert_s3_downloader_tar_gz=staking-key-cert-s3-downloader_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
-            echo "::set-output name=file_name_avalanched_aws::avalanched-aws.${TARGET}"
+            echo "file_name_avalanched_aws=avalanched-aws.${TARGET}" >> $GITHUB_OUTPUT
             gtar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "::set-output name=file_name_avalanched_aws_tar_gz::avalanched-aws_${TARGET}.tar.gz"
+            echo "file_name_avalanched_aws_tar_gz=avalanched-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/avalancheup-aws avalancheup-aws.${TARGET}
-            echo "::set-output name=file_name_avalancheup_aws::avalancheup-aws.${TARGET}"
+            echo "file_name_avalancheup_aws=avalancheup-aws.${TARGET}" >> $GITHUB_OUTPUT
             gtar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
-            echo "::set-output name=file_name_avalancheup_aws_tar_gz::avalancheup-aws_${TARGET}.tar.gz"
+            echo "file_name_avalancheup_aws_tar_gz=avalancheup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/blizzard-aws blizzard-aws.${TARGET}
-            echo "::set-output name=file_name_blizzard_aws::blizzard-aws.${TARGET}"
+            echo "file_name_blizzard_aws=blizzard-aws.${TARGET}" >> $GITHUB_OUTPUT
             gtar -czvf blizzard-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
-            echo "::set-output name=file_name_blizzard_aws_tar_gz::blizzard-aws_${TARGET}.tar.gz"
+            echo "file_name_blizzard_aws_tar_gz=blizzard-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
-            echo "::set-output name=file_name_blizzardup_aws::blizzardup-aws.${TARGET}"
+            echo "file_name_blizzardup_aws=blizzardup-aws.${TARGET}" >> $GITHUB_OUTPUT
             gtar -czvf blizzardup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
-            echo "::set-output name=file_name_blizzardup_aws_tar_gz::blizzardup-aws_${TARGET}.tar.gz"
+            echo "file_name_blizzardup_aws_tar_gz=blizzardup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/staking-key-cert-s3-downloader staking-key-cert-s3-downloader.${TARGET}
-            echo "::set-output name=file_name_staking_key_cert_s3_downloader::staking-key-cert-s3-downloader.${TARGET}"
+            echo "file_name_staking_key_cert_s3_downloader=staking-key-cert-s3-downloader.${TARGET}" >> $GITHUB_OUTPUT
             gtar -czvf staking-key-cert-s3-downloader_${TARGET}.tar.gz -C ./target/${TARGET}/release staking-key-cert-s3-downloader
-            echo "::set-output name=file_name_staking_key_cert_s3_downloader_tar_gz::staking-key-cert-s3-downloader_${TARGET}.tar.gz"
+            echo "file_name_staking_key_cert_s3_downloader_tar_gz=staking-key-cert-s3-downloader_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
           else
 
