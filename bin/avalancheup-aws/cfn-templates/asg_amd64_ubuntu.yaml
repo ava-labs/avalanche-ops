@@ -455,6 +455,7 @@ Resources:
               chmod +x /tmp/aws-volume-provisioner
               /tmp/aws-volume-provisioner --version
 
+              echo "Running /tmp/aws-volume-provisioner..."
               # --initial-wait-random-seconds=X to prevent EBS volume provision contentions
               /tmp/aws-volume-provisioner \
               --log-level=info \
@@ -474,6 +475,8 @@ Resources:
                 wget https://github.com/gyuho/ip-manager/releases/download/latest/aws-ip-provisioner.x86_64-unknown-linux-gnu
                 mv ./aws-ip-provisioner.x86_64-unknown-linux-gnu /tmp/aws-ip-provisioner
                 chmod +x /tmp/aws-ip-provisioner
+
+                echo "Running /tmp/aws-ip-provisioner..."
                 /tmp/aws-ip-provisioner \
                 --log-level=info \
                 --kind-tag=aws-ip-provisioner \
