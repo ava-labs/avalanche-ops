@@ -87,6 +87,15 @@ fn main() {
                     .unwrap_or(&String::new())
                     .to_string(),
 
+                install_artifacts_aws_volume_provisioner_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_VOLUME_PROVISIONER_BIN")
+                    .unwrap_or(&String::new())
+                    .to_string(),
+                install_artifacts_aws_ip_provisioner_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_IP_PROVISIONER_BIN")
+                    .unwrap_or(&String::new())
+                    .to_string(),
+
                 install_artifacts_avalanched_bin: sub_matches
                     .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHED_BIN")
                     .unwrap_or(&String::new())

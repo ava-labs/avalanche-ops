@@ -362,6 +362,24 @@ pub struct Machine {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct InstallArtifacts {
+    /// "aws-volume-provisioner" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/aws-volume-provisioner" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub aws_volume_provisioner_bin: Option<String>,
+
+    /// "aws-ip-provisioner" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/aws-ip-provisioner" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub aws_ip_provisioner_bin: Option<String>,
+
     /// "avalanched" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
     /// "bootstrap/install/avalanched" to be shared with remote machines.
@@ -439,6 +457,8 @@ pub struct DefaultSpecOption {
 
     pub nlb_acm_certificate_arn: String,
 
+    pub install_artifacts_aws_volume_provisioner_bin: String,
+    pub install_artifacts_aws_ip_provisioner_bin: String,
     pub install_artifacts_avalanched_bin: String,
     pub install_artifacts_avalanche_bin: String,
     pub install_artifacts_plugins_dir: String,
@@ -767,10 +787,20 @@ impl Spec {
         }
 
         let mut install_artifacts = InstallArtifacts {
+            aws_volume_provisioner_bin: None,
+            aws_ip_provisioner_bin: None,
             avalanched_bin: None,
             avalanchego_bin: None,
             plugins_dir: None,
         };
+        if !opts.install_artifacts_aws_volume_provisioner_bin.is_empty() {
+            install_artifacts.aws_volume_provisioner_bin =
+                Some(opts.install_artifacts_aws_volume_provisioner_bin);
+        }
+        if !opts.install_artifacts_aws_ip_provisioner_bin.is_empty() {
+            install_artifacts.aws_ip_provisioner_bin =
+                Some(opts.install_artifacts_aws_ip_provisioner_bin);
+        }
         if !opts.install_artifacts_avalanched_bin.is_empty() {
             install_artifacts.avalanched_bin = Some(opts.install_artifacts_avalanched_bin);
         }
@@ -990,6 +1020,23 @@ impl Spec {
                 ErrorKind::InvalidInput,
                 "'subnet_evm_config' is some but 'avalanchego_config.whitelisted_subnets' is none",
             ));
+        }
+
+        if let Some(v) = &self.install_artifacts.aws_volume_provisioner_bin {
+            if !Path::new(v).exists() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("aws_volume_provisioner_bin {} does not exist", v),
+                ));
+            }
+        }
+        if let Some(v) = &self.install_artifacts.aws_ip_provisioner_bin {
+            if !Path::new(v).exists() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("aws_ip_provisioner_bin {} does not exist", v),
+                ));
+            }
         }
 
         if let Some(v) = &self.install_artifacts.avalanched_bin {
@@ -1241,6 +1288,8 @@ coreth_config:
         },
 
         install_artifacts: InstallArtifacts {
+            aws_volume_provisioner_bin: None,
+            aws_ip_provisioner_bin: None,
             avalanched_bin: Some(avalanched_bin.to_string()),
             avalanchego_bin: Some(avalanchego_bin.to_string()),
             plugins_dir: Some(plugins_dir.to_string()),
@@ -1347,6 +1396,9 @@ pub enum StorageNamespace {
     /// Only updated after anchor nodes become active.
     GenesisFile(String),
 
+    AwsVolumeProvisionerBin(String),
+    AwsIpProvisionerBin(String),
+
     AvalanchedBin(String),
     AvalancheBinCompressed(String),
     PluginsDir(String),
@@ -1387,6 +1439,13 @@ impl StorageNamespace {
             }
 
             StorageNamespace::GenesisFile(id) => format!("{}/genesis.json", id),
+
+            StorageNamespace::AwsVolumeProvisionerBin(id) => {
+                format!("{}/bootstrap/install/aws-volume-provisioner", id)
+            }
+            StorageNamespace::AwsIpProvisionerBin(id) => {
+                format!("{}/bootstrap/install/aws-ip-provisioner", id)
+            }
 
             StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),
             StorageNamespace::AvalancheBinCompressed(id) => {

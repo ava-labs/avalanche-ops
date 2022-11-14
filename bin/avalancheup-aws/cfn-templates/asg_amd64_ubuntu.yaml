@@ -228,6 +228,16 @@ Parameters:
     Default: ""
     Description: (Optional) Certificates for NLB HTTPs traffic.
 
+  VolumeProvisionerDownloadSource:
+    Type: String
+    Default: "github"
+    Description: (Optional) set to "github" to download from github, or download from S3.
+
+  IpProvisionerDownloadSource:
+    Type: String
+    Default: "github"
+    Description: (Optional) set to "github" to download from github, or download from S3.
+
   AvalanchedDownloadSource:
     Type: String
     Default: "github"
@@ -446,18 +456,22 @@ Resources:
               EOF
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
-              # for outputs:
-              # sudo vi /var/log/cloud-init-output.log
-              #
-              # TODO: support ARM64
-              wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
-              mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
-              chmod +x /tmp/aws-volume-provisioner
-              /tmp/aws-volume-provisioner --version
+              if [[ ${VolumeProvisionerDownloadSource} == "github" ]]; then
+                # TODO: support ARM64
+                wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
+                mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
+                chmod +x /tmp/aws-volume-provisioner
+                sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
+              else
+                aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-volume-provisioner /tmp/aws-volume-provisioner
+                chmod +x /tmp/aws-volume-provisioner
+                sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
+              fi;
+              /usr/local/bin/aws-volume-provisioner --version
 
-              echo "Running /tmp/aws-volume-provisioner..."
+              echo "Running /usr/local/bin/aws-volume-provisioner..."
               # --initial-wait-random-seconds=X to prevent EBS volume provision contentions
-              /tmp/aws-volume-provisioner \
+              /usr/local/bin/aws-volume-provisioner \
               --log-level=info \
               --initial-wait-random-seconds=${VolumeProvisionerInitialWaitRandomSeconds} \
               --kind-tag=aws-volume-provisioner \
@@ -472,12 +486,21 @@ Resources:
               --mount-directory-path=/data
 
               if [[ ${IpMode} == "elastic" ]]; then
-                wget https://github.com/gyuho/ip-manager/releases/download/latest/aws-ip-provisioner.x86_64-unknown-linux-gnu
-                mv ./aws-ip-provisioner.x86_64-unknown-linux-gnu /tmp/aws-ip-provisioner
-                chmod +x /tmp/aws-ip-provisioner
+                if [[ ${IpProvisionerDownloadSource} == "github" ]]; then
+                  # TODO: support ARM64
+                  wget https://github.com/gyuho/ip-manager/releases/download/latest/aws-ip-provisioner.x86_64-unknown-linux-gnu
+                  mv ./aws-ip-provisioner.x86_64-unknown-linux-gnu /tmp/aws-ip-provisioner
+                  chmod +x /tmp/aws-ip-provisioner
+                  sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
+                else
+                  aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-ip-provisioner /tmp/aws-ip-provisioner
+                  chmod +x /tmp/aws-ip-provisioner
+                  sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
+                fi;
+                /usr/local/bin/aws-ip-provisioner --version
 
-                echo "Running /tmp/aws-ip-provisioner..."
-                /tmp/aws-ip-provisioner \
+                echo "Running /usr/local/bin/aws-ip-provisioner..."
+                /usr/local/bin/aws-ip-provisioner \
                 --log-level=info \
                 --kind-tag=aws-ip-provisioner \
                 --id-tag=${Id} \

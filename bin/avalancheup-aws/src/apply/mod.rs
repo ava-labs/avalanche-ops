@@ -215,6 +215,41 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ResetColor
     )?;
 
+    if let Some(v) = &spec.install_artifacts.aws_volume_provisioner_bin {
+        // don't compress since we need to download this in user data
+        // while instance bootstrapping
+        rt.block_on(
+            s3_manager.put_object(
+                Arc::new(v.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::StorageNamespace::AwsVolumeProvisionerBin(spec.id.clone())
+                        .encode(),
+                ),
+            ),
+        )
+        .expect("failed put_object install_artifacts.aws_volume_provisioner_bin");
+    } else {
+        log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
+    }
+
+    if let Some(v) = &spec.install_artifacts.aws_ip_provisioner_bin {
+        // don't compress since we need to download this in user data
+        // while instance bootstrapping
+        rt.block_on(s3_manager.put_object(
+            Arc::new(v.to_string()),
+            Arc::new(spec.aws_resources.s3_bucket.clone()),
+            Arc::new(
+                avalancheup_aws::StorageNamespace::AwsIpProvisionerBin(spec.id.clone()).encode(),
+            ),
+        ))
+        .expect("failed put_object install_artifacts.aws_ip_provisioner_bin");
+    } else {
+        log::info!(
+            "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
+        );
+    }
+
     if let Some(v) = &spec.install_artifacts.avalanched_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
@@ -644,6 +679,28 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             format!("{}", instance_types.len()).as_str(),
         ));
     }
+
+    let aws_volume_provisioner_download_source =
+        if spec.install_artifacts.aws_volume_provisioner_bin.is_some() {
+            "s3"
+        } else {
+            "github"
+        };
+    asg_parameters.push(build_param(
+        "VolumeProvisionerDownloadSource",
+        aws_volume_provisioner_download_source,
+    ));
+
+    let aws_ip_provisioner_download_source =
+        if spec.install_artifacts.aws_ip_provisioner_bin.is_some() {
+            "s3"
+        } else {
+            "github"
+        };
+    asg_parameters.push(build_param(
+        "IpProvisionerDownloadSource",
+        aws_ip_provisioner_download_source,
+    ));
 
     let avalanched_download_source = if spec.install_artifacts.avalanched_bin.is_some() {
         "s3"

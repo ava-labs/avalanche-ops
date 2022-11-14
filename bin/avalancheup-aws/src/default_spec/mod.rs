@@ -118,6 +118,20 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("INSTALL_ARTIFACTS_AWS_VOLUME_PROVISIONER_BIN") 
+                .long("install-artifacts-aws-volume-provisioner-bin")
+                .help("Sets the aws-volume-provisioner binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("INSTALL_ARTIFACTS_AWS_IP_PROVISIONER_BIN") 
+                .long("install-artifacts-aws-ip-provisioner-bin")
+                .help("Sets the aws-ip-provisioner binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
                 .long("install-artifacts-avalanched-bin")
                 .help("Sets the Avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
