@@ -44,6 +44,16 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     )
     .await?;
 
+    // if EIP is not set, just use the ephemeral IP
+    let public_ipv4 = if Path::new(&tags.eip_file_path).exists() {
+        log::info!("non-empty eip file path {} -- loading", tags.eip_file_path);
+        let eip = ec2::Eip::load(&tags.eip_file_path)?;
+        eip.public_ip
+    } else {
+        meta.public_ipv4.clone()
+    };
+    log::info!("public IPv4 for this node {}", public_ipv4);
+
     // TOOD: make sure to use elastic ip if any
     let (
         mut avalanchego_config,
@@ -54,8 +64,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         logs_auto_removal,
         metrics_fetch_interval_seconds,
     ) = if opts.use_default_config {
-        let avalanchego_config =
-            write_default_avalanche_config(tags.network_id, &meta.public_ipv4)?;
+        let avalanchego_config = write_default_avalanche_config(tags.network_id, &public_ipv4)?;
         let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
 
         (
@@ -68,11 +77,11 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             3600,
         )
     } else {
-        let spec = download_spec(
+        let spec = download_and_update_local_spec(
             Arc::clone(&s3_manager_arc),
             &tags.s3_bucket,
             &tags.id,
-            &meta.public_ipv4,
+            &public_ipv4,
             &tags.avalancheup_spec_path,
         )
         .await?;
@@ -244,15 +253,16 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::info!("STEP: running discover/genesis updates for custom network...");
 
         if matches!(tags.node_kind, node::Kind::Anchor) {
-            let bootstrappiong_anchor_node_s3_keys = discover_bootstrapping_anchor_nodes_from_s3(
-                &meta.ec2_instance_id,
-                &node_id.to_string(),
-                &meta.public_ipv4,
-                Arc::clone(&s3_manager_arc),
-                &tags.s3_bucket,
-                &tags.avalancheup_spec_path,
-            )
-            .await?;
+            let bootstrappiong_anchor_node_s3_keys =
+                discover_other_bootstrapping_anchor_nodes_from_s3(
+                    &meta.ec2_instance_id,
+                    &node_id.to_string(),
+                    &public_ipv4,
+                    Arc::clone(&s3_manager_arc),
+                    &tags.s3_bucket,
+                    &tags.avalancheup_spec_path,
+                )
+                .await?;
 
             merge_bootstrapping_anchor_nodes_to_write_genesis(
                 bootstrappiong_anchor_node_s3_keys,
@@ -344,7 +354,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     };
     let ep = format!(
         "{}://{}:{}",
-        http_scheme, meta.public_ipv4, avalanchego_config.http_port
+        http_scheme, public_ipv4, avalanchego_config.http_port
     );
     check_liveness(&ep).await?;
 
@@ -352,7 +362,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         Arc::new(meta.ec2_instance_id.clone()),
         tags.node_kind.clone(),
         Arc::new(node_id.to_string()),
-        Arc::new(meta.public_ipv4.clone()),
+        Arc::new(public_ipv4.clone()),
         Arc::clone(&s3_manager_arc),
         Arc::new(tags.s3_bucket.clone()),
         Arc::new(tags.avalancheup_spec_path.clone()),
@@ -474,6 +484,7 @@ struct Tags {
     avalanche_bin_path: String,
     avalanche_data_volume_path: String,
     avalanche_data_volume_ebs_device_name: String,
+    eip_file_path: String,
 }
 
 async fn fetch_tags(
@@ -504,6 +515,7 @@ async fn fetch_tags(
         avalanche_bin_path: String::new(),
         avalanche_data_volume_path: String::new(),
         avalanche_data_volume_ebs_device_name: String::new(),
+        eip_file_path: String::new(),
     };
     for c in tags {
         let k = c.key().unwrap();
@@ -563,6 +575,9 @@ async fn fetch_tags(
             "AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME" => {
                 fetched_tags.avalanche_data_volume_ebs_device_name = v.to_string();
             }
+            "EIP_FILE_PATH" => {
+                fetched_tags.eip_file_path = v.to_string();
+            }
             _ => {}
         }
     }
@@ -595,8 +610,7 @@ async fn fetch_tags(
     Ok(fetched_tags)
 }
 
-/// TOOD: make sure to use elastic ip if any
-async fn download_spec(
+async fn download_and_update_local_spec(
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
     id: &str,
@@ -950,10 +964,10 @@ async fn find_attached_volume(
 /// the anchor node information to the S3, and waits. And each anchor node
 /// lists all keys from the bootstrapping s3 directory for its peer discovery.
 /// The function returns all s3 keys that contains the anchor node information.
-async fn discover_bootstrapping_anchor_nodes_from_s3(
-    ec2_instance_id: &str,
-    node_id: &str,
-    public_ipv4: &str,
+async fn discover_other_bootstrapping_anchor_nodes_from_s3(
+    local_ec2_instance_id: &str,
+    local_node_id: &str,
+    local_public_ipv4: &str,
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
     avalancheup_spec_path: &str,
@@ -976,15 +990,15 @@ async fn discover_bootstrapping_anchor_nodes_from_s3(
     };
     let local_node = avalancheup_aws::Node::new(
         node::Kind::Anchor,
-        ec2_instance_id,
-        node_id,
-        public_ipv4,
+        local_ec2_instance_id,
+        local_node_id,
+        local_public_ipv4,
         http_scheme,
         spec.avalanchego_config.http_port,
     );
 
     log::info!(
-        "loaded local node information:\n{}",
+        "publishing the loaded local anchor node information for discovery:\n{}",
         local_node
             .encode_yaml()
             .expect("failed to encode node Info")
@@ -1014,16 +1028,17 @@ async fn discover_bootstrapping_anchor_nodes_from_s3(
 
     fs::remove_file(node_info_path)?;
 
-    log::info!("waiting some time for initial anchor nodes to start...");
+    log::info!("waiting some time for other bootstrapping anchor nodes to start...");
     sleep(Duration::from_secs(30)).await; // enough time for all anchor nodes up to be
 
     let target_nodes = spec.machine.anchor_nodes.unwrap();
-    log::info!("waiting for all other seed/bootstrapping anchor nodes to publish their own (expected total {} nodes)",target_nodes);
+    log::info!("waiting for all other seed/bootstrapping anchor nodes to publish their own (expected total {target_nodes} nodes)");
 
     let s3_key_prefix = s3::append_slash(
         &avalancheup_aws::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(spec.id).encode(),
     );
 
+    log::info!("listing s3 for other anchor nodes with the prefix {s3_key_prefix}");
     let mut objects: Vec<aws_sdk_s3::model::Object>;
     loop {
         sleep(Duration::from_secs(20)).await;
@@ -1233,7 +1248,7 @@ async fn discover_ready_anchor_nodes_from_s3(
         let machine_id = ready_anchor_node.machine_id;
         if !running_machine_ids.contains(&machine_id) {
             log::warn!(
-                "ready anchor node '{}' but machine id {} not found in ASG",
+                "ready anchor node '{}' but machine id {} not found in ASG (likely terminated)",
                 ready_anchor_node.node_id,
                 machine_id
             );

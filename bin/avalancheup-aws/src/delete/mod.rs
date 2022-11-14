@@ -520,14 +520,14 @@ pub fn execute(
             Print("\n\n\nSTEP: deleting orphaned EIPs\n"),
             ResetColor
         )?;
-        let eip_addresses = rt
+        let eips = rt
             .block_on(
                 ec2_manager
                     .describe_eips_by_tags(HashMap::from([(String::from("Id"), spec.id.clone())])),
             )
             .unwrap();
-        log::info!("found {} EIP addresses", eip_addresses.len());
-        for eip_addr in eip_addresses.iter() {
+        log::info!("found {} EIP addresses", eips.len());
+        for eip_addr in eips.iter() {
             let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
             let ec2_cli = ec2_manager.client();
 

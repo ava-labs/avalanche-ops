@@ -25,7 +25,11 @@ pub struct Node {
     pub kind: String,
     pub machine_id: String,
     pub node_id: String,
+
+    /// Overwrites with the persistent elastic IP
+    /// if provisioned and mounted via EBS.
     pub public_ip: String,
+
     pub http_endpoint: String,
 }
 
@@ -103,15 +107,12 @@ impl Node {
     /// Encodes the object in YAML format, compresses, and apply base58.
     /// Used for shortening S3 file name.
     pub fn compress_base58(&self) -> io::Result<String> {
-        let d = match serde_yaml::to_string(self) {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize Node to YAML {}", e),
-                ));
-            }
-        };
+        let d = serde_yaml::to_string(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed serde_yaml::to_string {}", e),
+            )
+        })?;
         let compressed =
             compress_manager::pack(d.as_bytes(), compress_manager::Encoder::ZstdBase58(3))?;
         Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
@@ -345,6 +346,7 @@ pub struct Machine {
     pub use_spot_instance: bool,
     #[serde(default)]
     pub disable_spot_instance_for_anchor_nodes: bool,
+
     #[serde(default)]
     pub use_elastic_ips: bool,
 
