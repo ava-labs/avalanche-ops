@@ -1470,7 +1470,10 @@ aws ssm start-session --region {} --target {}
                     .unwrap();
 
                 log::info!("got {} EIP addresses", eips.len());
-                if !eips.is_empty() {
+                if eips.len()
+                    >= spec.machine.anchor_nodes.unwrap_or(0) as usize
+                        + spec.machine.non_anchor_nodes as usize
+                {
                     break;
                 }
 
