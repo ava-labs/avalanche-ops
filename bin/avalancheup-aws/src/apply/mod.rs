@@ -991,6 +991,12 @@ aws ssm start-session --region {} --target {}
 
             if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
                 println!(
+                    "
+# change SSH key permission
+chmod 400 {}",
+                    ec2_key_path
+                );
+                println!(
                     "# instance '{}' ({}, {}) -- with elastic IP
 ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
 # download to local machine
@@ -1436,6 +1442,12 @@ aws ssm start-session --region {} --target {}
             );
 
             if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
+                println!(
+                    "
+# change SSH key permission
+chmod 400 {}",
+                    ec2_key_path
+                );
                 println!(
                     "# instance '{}' ({}, {}) -- with elastic IP
 ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
