@@ -54,7 +54,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     };
     log::info!("public IPv4 for this node {}", public_ipv4);
 
-    // TOOD: make sure to use elastic ip if any
     let (
         mut avalanchego_config,
         coreth_config,
