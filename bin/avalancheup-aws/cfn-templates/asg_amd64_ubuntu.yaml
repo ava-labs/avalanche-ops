@@ -238,6 +238,11 @@ Parameters:
     Default: "github"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
+  AvalancheTelemetryCloudwatchDownloadSource:
+    Type: String
+    Default: "github"
+    Description: (Optional) set to "github" to download from github, or download from S3.
+
   AvalanchedDownloadSource:
     Type: String
     Default: "github"
@@ -517,6 +522,23 @@ Resources:
                 echo "skipping allocating elastic IP address..."
               fi;
 
+              if [[ ${AvalancheTelemetryCloudwatchDownloadSource} == "github" ]]; then
+                # TODO: support ARM64
+                sudo rm -f ./avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu
+                sudo rm -f /tmp/avalanche-telemetry-cloudwatch
+                sudo rm -f /usr/local/bin/avalanche-telemetry-cloudwatch
+                wget https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu
+                mv ./avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu /tmp/avalanche-telemetry-cloudwatch
+                chmod +x /tmp/avalanche-telemetry-cloudwatch
+                sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
+              else
+                sudo rm -f /tmp/avalanche-telemetry-cloudwatch
+                aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-telemetry-cloudwatch /tmp/avalanche-telemetry-cloudwatch
+                chmod +x /tmp/avalanche-telemetry-cloudwatch
+                sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
+              fi;
+              /usr/local/bin/avalanche-telemetry-cloudwatch --version
+
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
                 sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu
@@ -537,11 +559,6 @@ Resources:
               # for logs
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
-
-              wget https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu
-              mv ./avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu /usr/local/bin/avalanche-telemetry-cloudwatch
-              chmod +x /usr/local/bin/avalanche-telemetry-cloudwatch
-              /usr/local/bin/avalanche-telemetry-cloudwatch --version
 
               cat > /tmp/avalanched.service <<EOF
               [Unit]

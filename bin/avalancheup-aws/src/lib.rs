@@ -380,6 +380,15 @@ pub struct InstallArtifacts {
     #[serde(default)]
     pub aws_ip_provisioner_bin: Option<String>,
 
+    /// "aws-telemetry-cloudwatch" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/aws-telemetry-cloudwatch" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub avalanche_telemetry_cloudwatch_bin: Option<String>,
+
     /// "avalanched" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
     /// "bootstrap/install/avalanched" to be shared with remote machines.
@@ -459,6 +468,7 @@ pub struct DefaultSpecOption {
 
     pub install_artifacts_aws_volume_provisioner_bin: String,
     pub install_artifacts_aws_ip_provisioner_bin: String,
+    pub install_artifacts_avalanche_telemetry_cloudwatch_bin: String,
     pub install_artifacts_avalanched_bin: String,
     pub install_artifacts_avalanche_bin: String,
     pub install_artifacts_plugins_dir: String,
@@ -789,6 +799,7 @@ impl Spec {
         let mut install_artifacts = InstallArtifacts {
             aws_volume_provisioner_bin: None,
             aws_ip_provisioner_bin: None,
+            avalanche_telemetry_cloudwatch_bin: None,
             avalanched_bin: None,
             avalanchego_bin: None,
             plugins_dir: None,
@@ -800,6 +811,13 @@ impl Spec {
         if !opts.install_artifacts_aws_ip_provisioner_bin.is_empty() {
             install_artifacts.aws_ip_provisioner_bin =
                 Some(opts.install_artifacts_aws_ip_provisioner_bin);
+        }
+        if !opts
+            .install_artifacts_avalanche_telemetry_cloudwatch_bin
+            .is_empty()
+        {
+            install_artifacts.avalanche_telemetry_cloudwatch_bin =
+                Some(opts.install_artifacts_avalanche_telemetry_cloudwatch_bin);
         }
         if !opts.install_artifacts_avalanched_bin.is_empty() {
             install_artifacts.avalanched_bin = Some(opts.install_artifacts_avalanched_bin);
@@ -1290,6 +1308,7 @@ coreth_config:
         install_artifacts: InstallArtifacts {
             aws_volume_provisioner_bin: None,
             aws_ip_provisioner_bin: None,
+            avalanche_telemetry_cloudwatch_bin: None,
             avalanched_bin: Some(avalanched_bin.to_string()),
             avalanchego_bin: Some(avalanchego_bin.to_string()),
             plugins_dir: Some(plugins_dir.to_string()),
@@ -1398,6 +1417,7 @@ pub enum StorageNamespace {
 
     AwsVolumeProvisionerBin(String),
     AwsIpProvisionerBin(String),
+    AvalancheTelemetryCloudwatchBin(String),
 
     AvalanchedBin(String),
     AvalancheBinCompressed(String),
@@ -1445,6 +1465,9 @@ impl StorageNamespace {
             }
             StorageNamespace::AwsIpProvisionerBin(id) => {
                 format!("{}/bootstrap/install/aws-ip-provisioner", id)
+            }
+            StorageNamespace::AvalancheTelemetryCloudwatchBin(id) => {
+                format!("{}/bootstrap/install/avalanche-telemetry-cloudwatch", id)
             }
 
             StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),

@@ -132,6 +132,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("INSTALL_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_BIN") 
+                .long("install-artifacts-avalanche-telemetry-cloudwatch-bin")
+                .help("Sets the avalanche-telemetry-cloudwatch binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_BIN") 
                 .long("install-artifacts-avalanched-bin")
                 .help("Sets the Avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")

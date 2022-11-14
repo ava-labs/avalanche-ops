@@ -95,6 +95,10 @@ fn main() {
                     .get_one::<String>("INSTALL_ARTIFACTS_AWS_IP_PROVISIONER_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
+                install_artifacts_avalanche_telemetry_cloudwatch_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_BIN")
+                    .unwrap_or(&String::new())
+                    .to_string(),
 
                 install_artifacts_avalanched_bin: sub_matches
                     .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHED_BIN")
