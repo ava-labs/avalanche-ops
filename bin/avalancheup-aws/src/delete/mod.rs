@@ -79,9 +79,9 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("DELETE_EIPS")
-                .long("delete-eips")
-                .help("Enables delete orphaned EIPs (use with caution!)")
+            Arg::new("DELETE_ELASTIC_IPS")
+                .long("delete-elastic-ips")
+                .help("Enables delete orphaned elastic IPs (use with caution!)")
                 .required(false)
                 .num_args(0),
         )
@@ -97,7 +97,7 @@ pub fn execute(
     delete_s3_objects: bool,
     delete_s3_bucket: bool,
     delete_ebs_volumes: bool,
-    delete_eips: bool,
+    delete_elastic_ips: bool,
     skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -512,12 +512,12 @@ pub fn execute(
         }
     }
 
-    if delete_eips {
+    if delete_elastic_ips {
         thread::sleep(Duration::from_secs(1));
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: deleting orphaned EIPs\n"),
+            Print("\n\n\nSTEP: releasing orphaned elastic IPs\n"),
             ResetColor
         )?;
         let eips = rt
@@ -526,12 +526,12 @@ pub fn execute(
                     .describe_eips_by_tags(HashMap::from([(String::from("Id"), spec.id.clone())])),
             )
             .unwrap();
-        log::info!("found {} EIP addresses", eips.len());
+        log::info!("found {} elastic IP addresses", eips.len());
         for eip_addr in eips.iter() {
             let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
             let ec2_cli = ec2_manager.client();
 
-            log::info!("releasing EIP '{}'", allocation_id);
+            log::info!("releasing elastic IP via allocation Id {}", allocation_id);
             rt.block_on(
                 ec2_cli
                     .release_address()

@@ -159,7 +159,7 @@ Parameters:
   IpMode:
     Type: String
     AllowedValues: ["ephemeral", "elastic"]
-    Default: "ephemeral"
+    Default: "elastic"
     Description: Set "elastic" to allocate Elastic IP.
 
   AsgMinInstancesInService:
@@ -206,7 +206,7 @@ Parameters:
   NlbDisabled:
     Type: String
     AllowedValues: [true, false]
-    Default: false
+    Default: true
     Description: true to disable NLB and use IPs
 
   NlbTargetGroupArn:

@@ -407,7 +407,7 @@ pub fn execute(opts: avalancheup_aws::DefaultSpecOption) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--delete-eips \\\n--spec-file-path {}\n",
+                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--delete-elastic-ips \\\n--spec-file-path {}\n",
                     exec_path.display(),
                     spec_file_path
         )),
