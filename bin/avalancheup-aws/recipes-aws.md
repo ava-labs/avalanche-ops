@@ -814,12 +814,13 @@ cd ${HOME}/avalanche-ops
 ```
 
 ```bash
-# only if you want to delete s3 objects + cloudwatch logs
+# only if you want to delete s3 objects + cloudwatch logs + EIPs
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws delete \
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
 --delete-ebs-volumes \
+--delete-eips \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
