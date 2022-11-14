@@ -235,17 +235,17 @@ Parameters:
 
   IpProvisionerDownloadSource:
     Type: String
-    Default: "s3"
+    Default: "github"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
   AvalancheTelemetryCloudwatchDownloadSource:
     Type: String
-    Default: "s3"
+    Default: "github"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
   AvalanchedDownloadSource:
     Type: String
-    Default: "s3"
+    Default: "github"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
   AvalanchedFlag:
