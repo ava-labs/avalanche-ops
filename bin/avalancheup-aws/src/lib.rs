@@ -25,7 +25,11 @@ pub struct Node {
     pub kind: String,
     pub machine_id: String,
     pub node_id: String,
+
+    /// Overwrites with the persistent elastic IP
+    /// if provisioned and mounted via EBS.
     pub public_ip: String,
+
     pub http_endpoint: String,
 }
 
@@ -103,15 +107,12 @@ impl Node {
     /// Encodes the object in YAML format, compresses, and apply base58.
     /// Used for shortening S3 file name.
     pub fn compress_base58(&self) -> io::Result<String> {
-        let d = match serde_yaml::to_string(self) {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("failed to serialize Node to YAML {}", e),
-                ));
-            }
-        };
+        let d = serde_yaml::to_string(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed serde_yaml::to_string {}", e),
+            )
+        })?;
         let compressed =
             compress_manager::pack(d.as_bytes(), compress_manager::Encoder::ZstdBase58(3))?;
         Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
@@ -346,6 +347,9 @@ pub struct Machine {
     #[serde(default)]
     pub disable_spot_instance_for_anchor_nodes: bool,
 
+    #[serde(default)]
+    pub use_elastic_ips: bool,
+
     /// Initial EBS volume size in GB.
     /// Can be resized with no downtime.
     /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html
@@ -424,6 +428,8 @@ pub struct DefaultSpecOption {
     pub use_spot_instance: bool,
     pub disable_spot_instance_for_anchor_nodes: bool,
     pub volume_size_in_gb: u32,
+
+    pub use_elastic_ips: bool,
 
     pub disable_nlb: bool,
     pub disable_logs_auto_removal: bool,
@@ -840,6 +846,7 @@ impl Spec {
 
             use_spot_instance: opts.use_spot_instance,
             disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
+            use_elastic_ips: opts.use_elastic_ips,
 
             volume_size_in_gb,
         };
@@ -1229,6 +1236,7 @@ coreth_config:
             ],
             use_spot_instance: false,
             disable_spot_instance_for_anchor_nodes: false,
+            use_elastic_ips: false,
             volume_size_in_gb: 500,
         },
 

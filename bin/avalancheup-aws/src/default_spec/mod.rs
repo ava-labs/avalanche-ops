@@ -65,6 +65,13 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("USE_ELASTIC_IPS")
+                .long("use-elastic-ips")
+                .help("Sets to provision EC2 elastic IPs for all nodes")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
             Arg::new("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES")
                 .long("disable-spot-instance-for-anchor-nodes")
                 .help("Sets to disable spot instance for anchor nodes")
