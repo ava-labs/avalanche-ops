@@ -458,11 +458,15 @@ Resources:
 
               if [[ ${VolumeProvisionerDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
+                sudo rm -f ./aws-volume-provisioner.x86_64-unknown-linux-gnu
+                sudo rm -f /tmp/aws-volume-provisioner 
+                sudo rm -f /usr/local/bin/aws-volume-provisioner
                 wget https://github.com/gyuho/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
                 mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
                 chmod +x /tmp/aws-volume-provisioner
                 sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
               else
+                sudo rm -f /tmp/aws-volume-provisioner 
                 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-volume-provisioner /tmp/aws-volume-provisioner
                 chmod +x /tmp/aws-volume-provisioner
                 sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
@@ -488,11 +492,15 @@ Resources:
               if [[ ${IpMode} == "elastic" ]]; then
                 if [[ ${IpProvisionerDownloadSource} == "github" ]]; then
                   # TODO: support ARM64
+                  sudo rm -f ./aws-ip-provisioner.x86_64-unknown-linux-gnu
+                  sudo rm -f /tmp/aws-ip-provisioner
+                  sudo rm -f /usr/local/bin/aws-ip-provisioner
                   wget https://github.com/gyuho/ip-manager/releases/download/latest/aws-ip-provisioner.x86_64-unknown-linux-gnu
                   mv ./aws-ip-provisioner.x86_64-unknown-linux-gnu /tmp/aws-ip-provisioner
                   chmod +x /tmp/aws-ip-provisioner
                   sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
                 else
+                  sudo rm -f /tmp/aws-ip-provisioner
                   aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-ip-provisioner /tmp/aws-ip-provisioner
                   chmod +x /tmp/aws-ip-provisioner
                   sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
@@ -511,11 +519,15 @@ Resources:
 
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
+                sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu
+                sudo rm -f /tmp/avalanched
+                sudo rm -f /usr/local/bin/avalanched
                 wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
                 mv ./avalanched-aws.x86_64-unknown-linux-gnu /tmp/avalanched
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               else
+                sudo rm -f /tmp/avalanched
                 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
