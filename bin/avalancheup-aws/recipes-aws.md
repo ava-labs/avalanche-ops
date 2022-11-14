@@ -820,7 +820,7 @@ cd ${HOME}/avalanche-ops
 --delete-cloudwatch-log-group \
 --delete-s3-objects \
 --delete-ebs-volumes \
---delete-eips \
+--delete-elastic-ips \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 

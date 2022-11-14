@@ -159,7 +159,7 @@ Parameters:
   IpMode:
     Type: String
     AllowedValues: ["ephemeral", "elastic"]
-    Default: "ephemeral"
+    Default: "elastic"
     Description: Set "elastic" to allocate Elastic IP.
 
   AsgMinInstancesInService:
@@ -206,7 +206,7 @@ Parameters:
   NlbDisabled:
     Type: String
     AllowedValues: [true, false]
-    Default: false
+    Default: true
     Description: true to disable NLB and use IPs
 
   NlbTargetGroupArn:
@@ -235,17 +235,17 @@ Parameters:
 
   IpProvisionerDownloadSource:
     Type: String
-    Default: "github"
+    Default: "s3"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
   AvalancheTelemetryCloudwatchDownloadSource:
     Type: String
-    Default: "github"
+    Default: "s3"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
   AvalanchedDownloadSource:
     Type: String
-    Default: "github"
+    Default: "s3"
     Description: (Optional) set to "github" to download from github, or download from S3.
 
   AvalanchedFlag:

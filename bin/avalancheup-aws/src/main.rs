@@ -206,7 +206,7 @@ fn main() {
                 sub_matches.get_flag("DELETE_S3_OBJECTS"),
                 sub_matches.get_flag("DELETE_S3_BUCKET"),
                 sub_matches.get_flag("DELETE_EBS_VOLUMES"),
-                sub_matches.get_flag("DELETE_EIPS"),
+                sub_matches.get_flag("DELETE_ELASTIC_IPS"),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
             .expect("failed to execute 'delete'");
