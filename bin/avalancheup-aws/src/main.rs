@@ -76,7 +76,7 @@ fn main() {
                     .unwrap_or(&String::new())
                     .to_string(),
 
-                disable_nlb: sub_matches.get_flag("DISABLE_NLB"),
+                enable_nlb: sub_matches.get_flag("ENABLE_NLB"),
                 disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
                 metrics_fetch_interval_seconds,
 

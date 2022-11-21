@@ -875,11 +875,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ));
         };
 
-        let disable_nlb = spec.disable_nlb;
-        if disable_nlb {
-            asg_anchor_params.push(build_param("NlbDisabled", "true"));
+        if spec.enable_nlb {
+            asg_anchor_params.push(build_param("NlbEnabled", "true"));
         } else {
-            asg_anchor_params.push(build_param("NlbDisabled", "false"));
+            asg_anchor_params.push(build_param("NlbEnabled", "false"));
         }
 
         rt.block_on(cloudformation_manager.create_stack(
@@ -942,7 +941,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ));
         }
         if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
-            if spec.disable_nlb {
+            if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB ARN...");
             } else {
                 return Err(Error::new(
@@ -956,7 +955,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .cloudformation_asg_nlb_target_group_arn
             .is_none()
         {
-            if spec.disable_nlb {
+            if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB target group ARN...");
             } else {
                 return Err(Error::new(
@@ -966,7 +965,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
         }
         if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
-            if spec.disable_nlb {
+            if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB DNS name...");
             } else {
                 return Err(Error::new(
@@ -1299,11 +1298,10 @@ aws ssm start-session --region {} --target {}
             format!("{}", desired_capacity + 1).as_str(),
         ));
 
-        let disable_nlb = spec.disable_nlb;
-        if disable_nlb {
-            asg_non_anchor_params.push(build_param("NlbDisabled", "true"));
+        if !spec.enable_nlb {
+            asg_non_anchor_params.push(build_param("NlbEnabled", "false"));
         } else {
-            asg_non_anchor_params.push(build_param("NlbDisabled", "false"));
+            asg_non_anchor_params.push(build_param("NlbEnabled", "true"));
             if need_to_create_nlb {
                 if spec.aws_resources.nlb_acm_certificate_arn.is_some() {
                     asg_non_anchor_params.push(build_param(
@@ -1387,7 +1385,7 @@ aws ssm start-session --region {} --target {}
         }
         if need_to_create_nlb {
             if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
-                if spec.disable_nlb {
+                if !spec.enable_nlb {
                     log::info!("NLB is disabled so empty NLB ARN...");
                 } else {
                     return Err(Error::new(
@@ -1401,7 +1399,7 @@ aws ssm start-session --region {} --target {}
                 .cloudformation_asg_nlb_target_group_arn
                 .is_none()
             {
-                if spec.disable_nlb {
+                if !spec.enable_nlb {
                     log::info!("NLB is disabled so empty NLB target group ARN...");
                 } else {
                     return Err(Error::new(
@@ -1411,7 +1409,7 @@ aws ssm start-session --region {} --target {}
                 }
             }
             if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
-                if spec.disable_nlb {
+                if !spec.enable_nlb {
                     log::info!("NLB is disabled so empty NLB DNS name...");
                 } else {
                     return Err(Error::new(

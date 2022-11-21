@@ -81,9 +81,9 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("DISABLE_NLB")
-                .long("disable-nlb")
-                .help("Sets to disable NLB")
+            Arg::new("ENABLE_NLB")
+                .long("enable-nlb")
+                .help("Sets to enable NLB")
                 .required(false)
                 .num_args(0),
         )

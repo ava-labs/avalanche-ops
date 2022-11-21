@@ -221,9 +221,9 @@ pub struct Spec {
     /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: avalanched::Flags,
 
-    /// Set "true" to disable NLB.
+    /// Set "true" to enable NLB.
     #[serde(default)]
-    pub disable_nlb: bool,
+    pub enable_nlb: bool,
     /// Set "true" to disable CloudWatch log auto removal.
     #[serde(default)]
     pub disable_logs_auto_removal: bool,
@@ -459,7 +459,7 @@ pub struct DefaultSpecOption {
 
     pub ip_mode: String,
 
-    pub disable_nlb: bool,
+    pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,
     pub metrics_fetch_interval_seconds: u64,
 
@@ -910,7 +910,7 @@ impl Spec {
 
             avalanched_config,
 
-            disable_nlb: opts.disable_nlb,
+            enable_nlb: opts.enable_nlb,
             disable_logs_auto_removal: opts.disable_logs_auto_removal,
             metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
 
@@ -1212,7 +1212,7 @@ avalanched_config:
   use_default_config: false
   publish_periodic_node_info: false
 
-disable_nlb: false
+enable_nlb: false
 disable_logs_auto_removal: false
 metrics_fetch_interval_seconds: 5000
 
@@ -1322,7 +1322,7 @@ coreth_config:
             publish_periodic_node_info: Some(false),
         },
 
-        disable_nlb: false,
+        enable_nlb: false,
         disable_logs_auto_removal: false,
         metrics_fetch_interval_seconds: 5000,
 

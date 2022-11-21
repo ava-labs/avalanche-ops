@@ -204,11 +204,11 @@ Parameters:
     MaxValue: 100
     Description: 0 for Spot only. 100 for On-Demand only.
 
-  NlbDisabled:
+  NlbEnabled:
     Type: String
     AllowedValues: [true, false]
-    Default: true
-    Description: true to disable NLB and use IPs
+    Default: false
+    Description: true to enable NLB
 
   NlbTargetGroupArn:
     Type: String
@@ -286,11 +286,6 @@ Conditions:
     Fn::Equals:
       - Ref: InstanceTypesCount
       - 4
-
-  NlbEnabled:
-    Fn::Equals:
-      - Ref: NlbDisabled
-      - "false"
 
   NlbTargetGroupArnEmpty:
     Fn::Equals:
