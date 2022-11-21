@@ -89,7 +89,10 @@ fn main() {
                 keys_to_generate,
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
-                use_spot_instance: sub_matches.get_flag("USE_SPOT_INSTANCE"),
+                instance_mode: sub_matches
+                    .get_one::<String>("INSTANCE_MODE")
+                    .unwrap()
+                    .clone(),
 
                 nodes,
                 network_id,

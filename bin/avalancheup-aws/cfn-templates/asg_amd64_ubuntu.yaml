@@ -156,11 +156,18 @@ Parameters:
     MaxValue: 500
     Description: Only set non-zero if multiple instances may compete for the same EBS volume in the same zone.
 
+  # as long as the IP's attached to an instance, it's free
   IpMode:
     Type: String
-    AllowedValues: ["ephemeral", "elastic"]
+    AllowedValues: ["elastic", "ephemeral"]
     Default: "elastic"
     Description: Set "elastic" to allocate Elastic IP.
+
+  InstanceMode:
+    Type: String
+    AllowedValues: ["spot", "on-demand"]
+    Default: "spot"
+    Description: Set to "spot" to run spot instance.
 
   AsgMinInstancesInService:
     Type: Number
@@ -190,12 +197,6 @@ Parameters:
     MinValue: 1
     MaxValue: 1000
 
-  AsgSpotInstance:
-    Type: String
-    AllowedValues: [true, false]
-    Default: false
-    Description: Set to "true" if the EC2 instance is set up with spot instance.
-
   OnDemandPercentageAboveBaseCapacity:
     Type: Number
     Default: 100
@@ -203,11 +204,11 @@ Parameters:
     MaxValue: 100
     Description: 0 for Spot only. 100 for On-Demand only.
 
-  NlbDisabled:
+  NlbEnabled:
     Type: String
     AllowedValues: [true, false]
-    Default: true
-    Description: true to disable NLB and use IPs
+    Default: false
+    Description: true to enable NLB
 
   NlbTargetGroupArn:
     Type: String
@@ -285,11 +286,6 @@ Conditions:
     Fn::Equals:
       - Ref: InstanceTypesCount
       - 4
-
-  NlbEnabled:
-    Fn::Equals:
-      - Ref: NlbDisabled
-      - "false"
 
   NlbTargetGroupArnEmpty:
     Fn::Equals:
@@ -676,9 +672,9 @@ Resources:
         - Key: OS_TYPE
           PropagateAtLaunch: true
           Value: linux
-        - Key: ASG_SPOT_INSTANCE
+        - Key: INSTANCE_MODE
           PropagateAtLaunch: true
-          Value: !Ref AsgSpotInstance
+          Value: !Ref InstanceMode
         - Key: NODE_KIND
           PropagateAtLaunch: true
           Value: !Ref NodeKind

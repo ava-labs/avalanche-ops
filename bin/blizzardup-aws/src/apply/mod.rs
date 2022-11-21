@@ -442,12 +442,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
         let desired_capacity = spec.machine.nodes;
 
-        let is_spot_instance = spec.machine.use_spot_instance;
+        let is_spot_instance = spec.machine.instance_mode == String::from("spot");
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-        asg_parameters.push(build_param(
-            "AsgSpotInstance",
-            format!("{}", is_spot_instance).as_str(),
-        ));
+        asg_parameters.push(build_param("InstanceMode", &spec.machine.instance_mode));
         asg_parameters.push(build_param(
             "OnDemandPercentageAboveBaseCapacity",
             format!("{}", on_demand_pct).as_str(),

@@ -53,7 +53,7 @@ pub struct Machine {
     #[serde(default)]
     pub instance_types: Vec<String>,
     #[serde(default)]
-    pub use_spot_instance: bool,
+    pub instance_mode: String,
 }
 
 /// Represents artifacts for installation, to be shared with
@@ -96,7 +96,7 @@ pub struct DefaultSpecOption {
     pub keys_to_generate: usize,
 
     pub region: String,
-    pub use_spot_instance: bool,
+    pub instance_mode: String,
 
     pub network_id: u32,
     pub nodes: usize,
@@ -291,7 +291,7 @@ impl Spec {
             arch: ARCH_AMD64.to_string(),
             instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
 
-            use_spot_instance: opts.use_spot_instance,
+            instance_mode: opts.instance_mode,
         };
 
         Self {
@@ -451,6 +451,7 @@ machine:
   - c5.large
   - r5.large
   - t3.large
+  instance_mode: spot
 
 install_artifacts:
   blizzard_bin: {}
@@ -494,7 +495,7 @@ blizzard_spec:
                 String::from("r5.large"),
                 String::from("t3.large"),
             ],
-            use_spot_instance: false,
+            instance_mode: String::from("spot"),
         },
 
         install_artifacts: InstallArtifacts {

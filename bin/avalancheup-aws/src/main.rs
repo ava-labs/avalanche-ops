@@ -65,15 +65,21 @@ fn main() {
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 preferred_az_index,
 
-                use_spot_instance: sub_matches.get_flag("USE_SPOT_INSTANCE"),
+                instance_mode: sub_matches
+                    .get_one::<String>("INSTANCE_MODE")
+                    .unwrap()
+                    .clone(),
                 disable_spot_instance_for_anchor_nodes: sub_matches
                     .get_flag("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
 
                 volume_size_in_gb,
 
-                use_elastic_ips: sub_matches.get_flag("USE_ELASTIC_IPS"),
+                ip_mode: sub_matches
+                    .get_one::<String>("IP_MODE")
+                    .unwrap_or(&String::new())
+                    .to_string(),
 
-                disable_nlb: sub_matches.get_flag("DISABLE_NLB"),
+                enable_nlb: sub_matches.get_flag("ENABLE_NLB"),
                 disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
                 metrics_fetch_interval_seconds,
 

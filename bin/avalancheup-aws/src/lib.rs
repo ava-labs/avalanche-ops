@@ -221,9 +221,9 @@ pub struct Spec {
     /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: avalanched::Flags,
 
-    /// Set "true" to disable NLB.
+    /// Set "true" to enable NLB.
     #[serde(default)]
-    pub disable_nlb: bool,
+    pub enable_nlb: bool,
     /// Set "true" to disable CloudWatch log auto removal.
     #[serde(default)]
     pub disable_logs_auto_removal: bool,
@@ -342,13 +342,15 @@ pub struct Machine {
     pub arch: String,
     #[serde(default)]
     pub instance_types: Vec<String>,
+    /// Either "spot" or "on-demand".
     #[serde(default)]
-    pub use_spot_instance: bool,
+    pub instance_mode: String,
     #[serde(default)]
     pub disable_spot_instance_for_anchor_nodes: bool,
 
+    /// Either "elastic" or "ephemeral".
     #[serde(default)]
-    pub use_elastic_ips: bool,
+    pub ip_mode: String,
 
     /// Initial EBS volume size in GB.
     /// Can be resized with no downtime.
@@ -452,13 +454,13 @@ pub struct DefaultSpecOption {
 
     pub region: String,
     pub preferred_az_index: usize,
-    pub use_spot_instance: bool,
+    pub instance_mode: String,
     pub disable_spot_instance_for_anchor_nodes: bool,
     pub volume_size_in_gb: u32,
 
-    pub use_elastic_ips: bool,
+    pub ip_mode: String,
 
-    pub disable_nlb: bool,
+    pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,
     pub metrics_fetch_interval_seconds: u64,
 
@@ -892,9 +894,9 @@ impl Spec {
             arch: ARCH_AMD64.to_string(),
             instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
 
-            use_spot_instance: opts.use_spot_instance,
+            instance_mode: opts.instance_mode,
             disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
-            use_elastic_ips: opts.use_elastic_ips,
+            ip_mode: opts.ip_mode,
 
             volume_size_in_gb,
         };
@@ -909,7 +911,7 @@ impl Spec {
 
             avalanched_config,
 
-            disable_nlb: opts.disable_nlb,
+            enable_nlb: opts.enable_nlb,
             disable_logs_auto_removal: opts.disable_logs_auto_removal,
             metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
 
@@ -1199,6 +1201,8 @@ machine:
   - r5.large
   - t3.large
   volume_size_in_gb: 500
+  instance_mode: spot
+  ip_mode: elastic
 
 install_artifacts:
   avalanched_bin: {}
@@ -1210,7 +1214,7 @@ avalanched_config:
   use_default_config: false
   publish_periodic_node_info: false
 
-disable_nlb: false
+enable_nlb: false
 disable_logs_auto_removal: false
 metrics_fetch_interval_seconds: 5000
 
@@ -1299,9 +1303,9 @@ coreth_config:
                 String::from("r5.large"),
                 String::from("t3.large"),
             ],
-            use_spot_instance: false,
+            instance_mode: String::from("spot"),
             disable_spot_instance_for_anchor_nodes: false,
-            use_elastic_ips: false,
+            ip_mode: String::from("elastic"),
             volume_size_in_gb: 500,
         },
 
@@ -1320,7 +1324,7 @@ coreth_config:
             publish_periodic_node_info: Some(false),
         },
 
-        disable_nlb: false,
+        enable_nlb: false,
         disable_logs_auto_removal: false,
         metrics_fetch_interval_seconds: 5000,
 

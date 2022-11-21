@@ -58,18 +58,22 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
-            Arg::new("USE_SPOT_INSTANCE")
-                .long("use-spot-instance")
-                .help("Sets to use EC2 spot instance")
+            Arg::new("INSTANCE_MODE")
+                .long("instance-mode")
+                .help("Sets instance mode")
                 .required(false)
-                .num_args(0),
+                .num_args(1)
+                .value_parser(["spot", "on-demand"])
+                .default_value("spot"),
         )
         .arg(
-            Arg::new("USE_ELASTIC_IPS")
-                .long("use-elastic-ips")
-                .help("Sets to provision EC2 elastic IPs for all nodes")
+            Arg::new("IP_MODE")
+                .long("ip-mode")
+                .help("Sets IP mode to provision EC2 elastic IPs for all nodes")
                 .required(false)
-                .num_args(0),
+                .num_args(1)
+                .value_parser(["elastic", "ephemeral"])
+                .default_value("elastic"),
         )
         .arg(
             Arg::new("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES")
@@ -79,9 +83,9 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("DISABLE_NLB")
-                .long("disable-nlb")
-                .help("Sets to disable NLB")
+            Arg::new("ENABLE_NLB")
+                .long("enable-nlb")
+                .help("Sets to enable NLB")
                 .required(false)
                 .num_args(0),
         )

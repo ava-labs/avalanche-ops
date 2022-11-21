@@ -842,19 +842,18 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
         }
 
-        let is_spot_instance =
-            spec.machine.use_spot_instance && !spec.machine.disable_spot_instance_for_anchor_nodes;
+        let is_spot_instance = spec.machine.instance_mode == String::from("spot")
+            && !spec.machine.disable_spot_instance_for_anchor_nodes;
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-        let ip_mode = if spec.machine.use_elastic_ips {
-            String::from("elastic")
-        } else {
-            String::from("ephemeral")
-        };
         asg_anchor_params.push(build_param(
-            "AsgSpotInstance",
-            format!("{}", is_spot_instance).as_str(),
+            "InstanceMode",
+            if is_spot_instance {
+                "spot"
+            } else {
+                "on-demand"
+            },
         ));
-        asg_anchor_params.push(build_param("IpMode", &ip_mode));
+        asg_anchor_params.push(build_param("IpMode", &spec.machine.ip_mode));
         asg_anchor_params.push(build_param(
             "OnDemandPercentageAboveBaseCapacity",
             format!("{}", on_demand_pct).as_str(),
@@ -880,11 +879,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ));
         };
 
-        let disable_nlb = spec.disable_nlb;
-        if disable_nlb {
-            asg_anchor_params.push(build_param("NlbDisabled", "true"));
+        if spec.enable_nlb {
+            asg_anchor_params.push(build_param("NlbEnabled", "true"));
         } else {
-            asg_anchor_params.push(build_param("NlbDisabled", "false"));
+            asg_anchor_params.push(build_param("NlbEnabled", "false"));
         }
 
         rt.block_on(cloudformation_manager.create_stack(
@@ -947,7 +945,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ));
         }
         if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
-            if spec.disable_nlb {
+            if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB ARN...");
             } else {
                 return Err(Error::new(
@@ -961,7 +959,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .cloudformation_asg_nlb_target_group_arn
             .is_none()
         {
-            if spec.disable_nlb {
+            if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB target group ARN...");
             } else {
                 return Err(Error::new(
@@ -971,7 +969,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
         }
         if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
-            if spec.disable_nlb {
+            if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB DNS name...");
             } else {
                 return Err(Error::new(
@@ -1007,7 +1005,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
 
         let mut eips = Vec::new();
-        if spec.machine.use_elastic_ips {
+        if spec.machine.ip_mode == String::from("elastic") {
             log::info!("using elastic IPs... wait more");
             loop {
                 eips = rt
@@ -1279,18 +1277,10 @@ aws ssm start-session --region {} --target {}
                 .push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
         }
 
-        let is_spot_instance = spec.machine.use_spot_instance;
+        let is_spot_instance = spec.machine.instance_mode == String::from("spot");
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-        let ip_mode = if spec.machine.use_elastic_ips {
-            String::from("elastic")
-        } else {
-            String::from("ephemeral")
-        };
-        asg_non_anchor_params.push(build_param(
-            "AsgSpotInstance",
-            format!("{}", is_spot_instance).as_str(),
-        ));
-        asg_non_anchor_params.push(build_param("IpMode", &ip_mode));
+        asg_non_anchor_params.push(build_param("InstanceMode", &spec.machine.instance_mode));
+        asg_non_anchor_params.push(build_param("IpMode", &spec.machine.ip_mode));
         asg_non_anchor_params.push(build_param(
             "OnDemandPercentageAboveBaseCapacity",
             format!("{}", on_demand_pct).as_str(),
@@ -1309,11 +1299,10 @@ aws ssm start-session --region {} --target {}
             format!("{}", desired_capacity + 1).as_str(),
         ));
 
-        let disable_nlb = spec.disable_nlb;
-        if disable_nlb {
-            asg_non_anchor_params.push(build_param("NlbDisabled", "true"));
+        if !spec.enable_nlb {
+            asg_non_anchor_params.push(build_param("NlbEnabled", "false"));
         } else {
-            asg_non_anchor_params.push(build_param("NlbDisabled", "false"));
+            asg_non_anchor_params.push(build_param("NlbEnabled", "true"));
             if need_to_create_nlb {
                 if spec.aws_resources.nlb_acm_certificate_arn.is_some() {
                     asg_non_anchor_params.push(build_param(
@@ -1397,7 +1386,7 @@ aws ssm start-session --region {} --target {}
         }
         if need_to_create_nlb {
             if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
-                if spec.disable_nlb {
+                if !spec.enable_nlb {
                     log::info!("NLB is disabled so empty NLB ARN...");
                 } else {
                     return Err(Error::new(
@@ -1411,7 +1400,7 @@ aws ssm start-session --region {} --target {}
                 .cloudformation_asg_nlb_target_group_arn
                 .is_none()
             {
-                if spec.disable_nlb {
+                if !spec.enable_nlb {
                     log::info!("NLB is disabled so empty NLB target group ARN...");
                 } else {
                     return Err(Error::new(
@@ -1421,7 +1410,7 @@ aws ssm start-session --region {} --target {}
                 }
             }
             if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
-                if spec.disable_nlb {
+                if !spec.enable_nlb {
                     log::info!("NLB is disabled so empty NLB DNS name...");
                 } else {
                     return Err(Error::new(
@@ -1459,7 +1448,7 @@ aws ssm start-session --region {} --target {}
         }
 
         let mut eips = Vec::new();
-        if spec.machine.use_elastic_ips {
+        if spec.machine.ip_mode == String::from("elastic") {
             log::info!("using elastic IPs... wait more");
             loop {
                 eips = rt
@@ -2168,7 +2157,7 @@ default-spec \\
 --log-level=info \\
 --keys-to-generate=50 \\
 --region={region} \\
---use-spot-instance \\
+--instance-mode=spot \\
 --network-id={network_id} \\
 --nodes=3 \\
 --blizzard-log-level=info \\
@@ -2193,7 +2182,7 @@ default-spec \\
 --log-level=info \\
 --keys-to-generate=50 \\
 --region={region} \\
---use-spot-instance \\
+--instance-mode=spot \\
 --network-id={network_id} \\
 --nodes=3 \\
 --blizzard-log-level=info \\

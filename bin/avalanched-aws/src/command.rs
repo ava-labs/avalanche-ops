@@ -371,7 +371,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     // assume the tag value is static
     // assume we don't change on-demand to spot, or vice versa
     // if someone changes, tag needs to be updated manually and restart avalanched
-    if tags.asg_spot_instance {
+    if tags.instance_mode == String::from("spot") {
         handles.push(tokio::spawn(monitor_spot_instance_action(
             Arc::clone(&ec2_manager_arc),
             Arc::clone(&asg_manager_arc),
@@ -471,7 +471,7 @@ struct Tags {
     network_id: u32,
     arch_type: String,
     os_type: String,
-    asg_spot_instance: bool,
+    instance_mode: String,
     node_kind: node::Kind,
     kms_cmk_arn: String,
     aad_tag: String,
@@ -502,7 +502,7 @@ async fn fetch_tags(
         network_id: 0,
         arch_type: String::new(),
         os_type: String::new(),
-        asg_spot_instance: false,
+        instance_mode: String::new(),
         node_kind: node::Kind::Unknown(String::new()),
         kms_cmk_arn: String::new(),
         aad_tag: String::new(),
@@ -534,8 +534,8 @@ async fn fetch_tags(
             "OS_TYPE" => {
                 fetched_tags.os_type = v.to_string();
             }
-            "ASG_SPOT_INSTANCE" => {
-                fetched_tags.asg_spot_instance = v.to_string().to_lowercase().eq("true");
+            "INSTANCE_MODE" => {
+                fetched_tags.instance_mode = v.to_string();
             }
             "NODE_KIND" => {
                 fetched_tags.node_kind = if v.to_string().eq("anchor") {
