@@ -254,7 +254,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name custom \
---use-spot-instance \
+--instance-mode=spot \
 --volume-size-in-gb 300 \
 --avalanchego-log-level INFO
 ```
@@ -264,7 +264,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name fuji \
---use-spot-instance \
+--instance-mode=spot \
 --volume-size-in-gb 400 \
 --avalanchego-log-level INFO
 ```
@@ -274,7 +274,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name mainnet \
---use-spot-instance \
+--instance-mode=spot \
 --volume-size-in-gb 500 \
 --avalanchego-log-level INFO
 ```
@@ -288,7 +288,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name custom \
---use-spot-instance \
+--instance-mode=spot \
 --ip-mode=elastic \
 --volume-size-in-gb 300 \
 --avalanchego-log-level INFO
@@ -369,14 +369,14 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name custom \
---use-spot-instance \
+--instance-mode=spot \
 --avalanchego-log-level DEBUG
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name custom \
---use-spot-instance \
+--instance-mode=spot \
 --avalanchego-log-level DEBUG
 
 
@@ -770,7 +770,7 @@ cd ${HOME}/avalanche-ops
 --region us-west-2 \
 --install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
---use-spot-instance \
+--instance-mode=spot \
 --network-name custom \
 --avalanchego-log-level INFO \
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
@@ -791,7 +791,7 @@ cd ${HOME}/avalanche-ops
 --region us-west-2 \
 --install-artifacts-avalanche-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
---use-spot-instance \
+--instance-mode=spot \
 --network-name custom \
 --avalanchego-log-level INFO \
 --avalanchego-whitelisted-subnets hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf \
@@ -947,7 +947,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name fuji \
---use-spot-instance \
+--instance-mode=spot \
 --avalanchego-log-level INFO
 
 
@@ -1090,14 +1090,14 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name mainnet \
---use-spot-instance \
+--instance-mode=spot \
 --avalanchego-log-level INFO
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --network-name mainnet \
---use-spot-instance \
+--instance-mode=spot \
 --avalanchego-log-level INFO
 
 

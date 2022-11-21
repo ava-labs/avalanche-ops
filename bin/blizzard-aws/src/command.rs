@@ -168,7 +168,7 @@ struct Tags {
     id: String,
     arch_type: String,
     os_type: String,
-    asg_spot_instance: bool,
+    instance_mode: String,
     node_kind: String,
     s3_bucket: String,
     cloudwatch_config_file_path: String,
@@ -190,7 +190,7 @@ async fn fetch_tags(
         id: String::new(),
         arch_type: String::new(),
         os_type: String::new(),
-        asg_spot_instance: false,
+        instance_mode: String::new(),
         node_kind: String::new(),
         s3_bucket: String::new(),
         cloudwatch_config_file_path: String::new(),
@@ -211,8 +211,8 @@ async fn fetch_tags(
             "OS_TYPE" => {
                 fetched_tags.os_type = v.to_string();
             }
-            "ASG_SPOT_INSTANCE" => {
-                fetched_tags.asg_spot_instance = v.to_string().to_lowercase().eq("true");
+            "INSTANCE_MODE" => {
+                fetched_tags.instance_mode = v.to_string();
             }
             "NODE_KIND" => {
                 fetched_tags.node_kind = v.to_string();

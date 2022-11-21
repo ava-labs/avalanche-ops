@@ -126,7 +126,7 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
     const paramNlbVpcId: cdk.CfnParameter = tmplAsg.getParameter('NlbVpcId');
     paramNlbVpcId.default = process.env.NLB_VPC_ID;
 
-    // TODO: "AsgSpotInstance=true" and "OnDemandPercentageAboveBaseCapacity=0" for spot instance...
+    // TODO: "InstanceMode=spot" and "OnDemandPercentageAboveBaseCapacity=0" for spot instance...
 
     this.asgLogicalId = tmplAsg.getOutput('AsgLogicalId');
   }

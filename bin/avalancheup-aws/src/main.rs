@@ -65,7 +65,10 @@ fn main() {
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 preferred_az_index,
 
-                use_spot_instance: sub_matches.get_flag("USE_SPOT_INSTANCE"),
+                instance_mode: sub_matches
+                    .get_one::<String>("INSTANCE_MODE")
+                    .unwrap()
+                    .clone(),
                 disable_spot_instance_for_anchor_nodes: sub_matches
                     .get_flag("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
 

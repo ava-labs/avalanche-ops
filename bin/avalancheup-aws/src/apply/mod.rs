@@ -842,12 +842,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
         }
 
-        let is_spot_instance =
-            spec.machine.use_spot_instance && !spec.machine.disable_spot_instance_for_anchor_nodes;
+        let is_spot_instance = spec.machine.instance_mode == String::from("spot")
+            && !spec.machine.disable_spot_instance_for_anchor_nodes;
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
         asg_anchor_params.push(build_param(
-            "AsgSpotInstance",
-            format!("{}", is_spot_instance).as_str(),
+            "InstanceMode",
+            if is_spot_instance {
+                "spot"
+            } else {
+                "on-demand"
+            },
         ));
         asg_anchor_params.push(build_param("IpMode", &spec.machine.ip_mode));
         asg_anchor_params.push(build_param(
@@ -1273,12 +1277,9 @@ aws ssm start-session --region {} --target {}
                 .push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
         }
 
-        let is_spot_instance = spec.machine.use_spot_instance;
+        let is_spot_instance = spec.machine.instance_mode == String::from("spot");
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-        asg_non_anchor_params.push(build_param(
-            "AsgSpotInstance",
-            format!("{}", is_spot_instance).as_str(),
-        ));
+        asg_non_anchor_params.push(build_param("InstanceMode", &spec.machine.instance_mode));
         asg_non_anchor_params.push(build_param("IpMode", &spec.machine.ip_mode));
         asg_non_anchor_params.push(build_param(
             "OnDemandPercentageAboveBaseCapacity",
@@ -2156,7 +2157,7 @@ default-spec \\
 --log-level=info \\
 --keys-to-generate=50 \\
 --region={region} \\
---use-spot-instance \\
+--instance-mode=spot \\
 --network-id={network_id} \\
 --nodes=3 \\
 --blizzard-log-level=info \\
@@ -2181,7 +2182,7 @@ default-spec \\
 --log-level=info \\
 --keys-to-generate=50 \\
 --region={region} \\
---use-spot-instance \\
+--instance-mode=spot \\
 --network-id={network_id} \\
 --nodes=3 \\
 --blizzard-log-level=info \\

@@ -58,11 +58,13 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
-            Arg::new("USE_SPOT_INSTANCE")
-                .long("use-spot-instance")
-                .help("Sets to use EC2 spot instance")
+            Arg::new("INSTANCE_MODE")
+                .long("instance-mode")
+                .help("Sets instance mode")
                 .required(false)
-                .num_args(0),
+                .num_args(1)
+                .value_parser(["spot", "on-demand"])
+                .default_value("spot"),
         )
         .arg(
             Arg::new("IP_MODE")

@@ -105,6 +105,12 @@ Parameters:
     MaxValue: 4
     Description: The number of instance types
 
+  InstanceMode:
+    Type: String
+    AllowedValues: ["spot", "on-demand"]
+    Default: "spot"
+    Description: Set to "spot" to run spot instance.
+
   AsgMinInstancesInService:
     Type: Number
     Description: Minimum instances in service for update.
@@ -132,12 +138,6 @@ Parameters:
     Default: 1
     MinValue: 1
     MaxValue: 1000
-
-  AsgSpotInstance:
-    Type: String
-    AllowedValues: [true, false]
-    Default: false
-    Description: Set to "true" if the EC2 instance is set up with spot instance.
 
   OnDemandPercentageAboveBaseCapacity:
     Type: Number
@@ -362,9 +362,9 @@ Resources:
         - Key: OS_TYPE
           PropagateAtLaunch: true
           Value: linux
-        - Key: ASG_SPOT_INSTANCE
+        - Key: INSTANCE_MODE
           PropagateAtLaunch: true
-          Value: !Ref AsgSpotInstance
+          Value: !Ref InstanceMode
         - Key: NODE_KIND
           PropagateAtLaunch: true
           Value: !Ref NodeKind
