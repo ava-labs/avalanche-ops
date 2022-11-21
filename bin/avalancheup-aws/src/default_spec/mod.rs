@@ -65,11 +65,13 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("USE_ELASTIC_IPS")
-                .long("use-elastic-ips")
-                .help("Sets to provision EC2 elastic IPs for all nodes")
+            Arg::new("IP_MODE")
+                .long("ip-mode")
+                .help("Sets IP mode to provision EC2 elastic IPs for all nodes")
                 .required(false)
-                .num_args(0),
+                .num_args(1)
+                .value_parser(["elastic", "ephemeral"])
+                .default_value("elastic"),
         )
         .arg(
             Arg::new("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES")

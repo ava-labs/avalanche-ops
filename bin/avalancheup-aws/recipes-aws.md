@@ -284,7 +284,7 @@ cd ${HOME}/avalanche-ops
 
 ### Use static IP
 
-Set `--use-elastic-ips` to provision elastic IPs to be 1:1 mapped to a node ID via [`aws-ip-provisioners`](https://github.com/gyuho/ip-manager):
+Set `--ip-mode=elastic` to provision elastic IPs to be 1:1 mapped to a node ID via [`aws-ip-provisioners`](https://github.com/gyuho/ip-manager):
 
 ```bash
 cd ${HOME}/avalanche-ops
@@ -292,7 +292,7 @@ cd ${HOME}/avalanche-ops
 --region us-west-2 \
 --network-name custom \
 --use-spot-instance \
---use-elastic-ips \
+--ip-mode=elastic \
 --disable-nlb \
 --volume-size-in-gb 300 \
 --avalanchego-log-level INFO

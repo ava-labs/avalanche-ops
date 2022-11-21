@@ -156,9 +156,10 @@ Parameters:
     MaxValue: 500
     Description: Only set non-zero if multiple instances may compete for the same EBS volume in the same zone.
 
+  # as long as the IP's attached to an instance, it's free
   IpMode:
     Type: String
-    AllowedValues: ["ephemeral", "elastic"]
+    AllowedValues: ["elastic", "ephemeral"]
     Default: "elastic"
     Description: Set "elastic" to allocate Elastic IP.
 

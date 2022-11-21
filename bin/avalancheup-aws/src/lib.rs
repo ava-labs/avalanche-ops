@@ -347,8 +347,9 @@ pub struct Machine {
     #[serde(default)]
     pub disable_spot_instance_for_anchor_nodes: bool,
 
+    /// Either "elastic" or "ephemeral".
     #[serde(default)]
-    pub use_elastic_ips: bool,
+    pub ip_mode: String,
 
     /// Initial EBS volume size in GB.
     /// Can be resized with no downtime.
@@ -456,7 +457,7 @@ pub struct DefaultSpecOption {
     pub disable_spot_instance_for_anchor_nodes: bool,
     pub volume_size_in_gb: u32,
 
-    pub use_elastic_ips: bool,
+    pub ip_mode: String,
 
     pub disable_nlb: bool,
     pub disable_logs_auto_removal: bool,
@@ -894,7 +895,7 @@ impl Spec {
 
             use_spot_instance: opts.use_spot_instance,
             disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
-            use_elastic_ips: opts.use_elastic_ips,
+            ip_mode: opts.ip_mode,
 
             volume_size_in_gb,
         };
@@ -1199,6 +1200,7 @@ machine:
   - r5.large
   - t3.large
   volume_size_in_gb: 500
+  ip_mode: elastic
 
 install_artifacts:
   avalanched_bin: {}
@@ -1301,7 +1303,7 @@ coreth_config:
             ],
             use_spot_instance: false,
             disable_spot_instance_for_anchor_nodes: false,
-            use_elastic_ips: false,
+            ip_mode: String::from("elastic"),
             volume_size_in_gb: 500,
         },
 

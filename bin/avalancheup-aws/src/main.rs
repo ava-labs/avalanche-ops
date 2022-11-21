@@ -71,7 +71,10 @@ fn main() {
 
                 volume_size_in_gb,
 
-                use_elastic_ips: sub_matches.get_flag("USE_ELASTIC_IPS"),
+                ip_mode: sub_matches
+                    .get_one::<String>("IP_MODE")
+                    .unwrap_or(&String::new())
+                    .to_string(),
 
                 disable_nlb: sub_matches.get_flag("DISABLE_NLB"),
                 disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
