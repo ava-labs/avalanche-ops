@@ -287,6 +287,11 @@ Conditions:
       - Ref: InstanceTypesCount
       - 4
 
+  NlbEnabledTrue:
+    Fn::Equals:
+      - Ref: NlbEnabled
+      - "true"
+
   NlbTargetGroupArnEmpty:
     Fn::Equals:
       - Ref: NlbTargetGroupArn
@@ -302,7 +307,7 @@ Conditions:
   CreateNlb:
     Fn::And:
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
-      - Condition: NlbEnabled
+      - Condition: NlbEnabledTrue
       - Condition: NlbTargetGroupArnEmpty
 
   # only create 1 HTTPs listener once
@@ -644,7 +649,7 @@ Resources:
             - CreateNlb
             - !Ref NLBTargetGroup
             - Fn::If:
-                - NlbEnabled
+                - NlbEnabledTrue
                 - !Ref NlbTargetGroupArn
                 - !Ref AWS::NoValue
       HealthCheckType: EC2
