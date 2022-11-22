@@ -804,33 +804,30 @@ async fn install_avalanche_from_s3(
 ) -> io::Result<()> {
     let s3_manager: &s3::Manager = s3_manager.as_ref();
 
+    // don't overwrite in case of avalanched restarts
     if !Path::new(avalanche_bin_path).exists() {
         log::info!("STEP: downloading avalanche binary from S3");
 
-        let s3_key =
-            avalancheup_aws::StorageNamespace::AvalancheBinCompressed(id.to_string()).encode();
-        let tmp_avalanche_bin_compressed_path = random_manager::tmp_path(15, Some(".zstd"))?;
+        let s3_key = avalancheup_aws::StorageNamespace::AvalancheBin(id.to_string()).encode();
+        let tmp_avalanche_bin_path = random_manager::tmp_path(15, Some(".zstd"))?;
 
         s3::spawn_get_object(
             s3_manager.to_owned(),
             s3_bucket,
             &s3_key,
-            &tmp_avalanche_bin_compressed_path,
+            &tmp_avalanche_bin_path,
         )
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
 
-        compress_manager::unpack_file(
-            &tmp_avalanche_bin_compressed_path,
-            avalanche_bin_path,
-            compress_manager::Decoder::Zstd,
-        )?;
+        fs::copy(&tmp_avalanche_bin_path, &avalanche_bin_path)?;
+        fs::remove_file(&tmp_avalanche_bin_path)?;
 
         let f = File::open(&avalanche_bin_path).expect("failed to open avalanche_bin");
         f.set_permissions(PermissionsExt::from_mode(0o777))?;
-        fs::remove_file(&tmp_avalanche_bin_compressed_path)?;
     }
 
+    // don't overwrite in case of avalanched restarts
     let plugins_dir = avalanche_installer::avalanchego::get_plugins_dir(&avalanche_bin_path);
     if !Path::new(&plugins_dir).exists() {
         log::info!("STEP: creating '{}' for plugins", plugins_dir);
@@ -860,11 +857,12 @@ async fn install_avalanche_from_s3(
 
             let file_name = extract_filename(&s3_key);
             let file_path = format!("{}/{}", plugins_dir, file_name);
-            compress_manager::unpack_file(&tmp_path, &file_path, compress_manager::Decoder::Zstd)?;
+
+            fs::copy(&tmp_path, &file_path)?;
+            fs::remove_file(&tmp_path)?;
 
             let f = File::open(file_path).expect("failed to open plugin file");
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
-            fs::remove_file(&tmp_path)?;
         }
     }
 

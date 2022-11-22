@@ -1424,7 +1424,7 @@ pub enum StorageNamespace {
     AvalancheTelemetryCloudwatchBin(String),
 
     AvalanchedBin(String),
-    AvalancheBinCompressed(String),
+    AvalancheBin(String),
     PluginsDir(String),
 
     PkiKeyDir(String),
@@ -1450,7 +1450,6 @@ pub enum StorageNamespace {
     /// avalanched triggers updates events based on the install artifacts
     /// in "EventsUpdateArtifactsInstallDir"
     EventsUpdateArtifactsEvent(String),
-    EventsUpdateArtifactsInstallDirAvalancheBinCompressed(String),
     EventsUpdateArtifactsInstallDirPluginsDir(String),
 }
 
@@ -1475,8 +1474,8 @@ impl StorageNamespace {
             }
 
             StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),
-            StorageNamespace::AvalancheBinCompressed(id) => {
-                format!("{}/bootstrap/install/avalanche.zstd", id)
+            StorageNamespace::AvalancheBin(id) => {
+                format!("{}/bootstrap/install/avalanche", id)
             }
             StorageNamespace::PluginsDir(id) => format!("{}/bootstrap/install/plugins", id),
 
@@ -1546,9 +1545,6 @@ impl StorageNamespace {
 
             StorageNamespace::EventsUpdateArtifactsEvent(id) => {
                 format!("{}/events/update-artifacts/event", id)
-            }
-            StorageNamespace::EventsUpdateArtifactsInstallDirAvalancheBinCompressed(id) => {
-                format!("{}/events/update-artifacts/install/avalanche.zstd", id)
             }
             StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(id) => {
                 format!("{}/events/update-artifacts/install/plugins", id)

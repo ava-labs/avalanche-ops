@@ -285,28 +285,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         log::info!("skipping uploading avalanched_bin, will be downloaded on remote machines...");
     }
 
-    if let Some(v) = &spec.install_artifacts.avalanchego_bin {
-        // compress as these will be decompressed by "avalanched"
-        let tmp_avalanche_bin_compressed_path =
-            random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
-
-        compress_manager::pack_file(
-            v,
-            &tmp_avalanche_bin_compressed_path,
-            compress_manager::Encoder::Zstd(3),
-        )
-        .expect("failed pack_file install_artifacts.avalanched_bin");
-
+    if let Some(avalanchego_bin) = &spec.install_artifacts.avalanchego_bin {
+        // upload without compression first
         rt.block_on(s3_manager.put_object(
-            Arc::new(tmp_avalanche_bin_compressed_path.clone()),
+            Arc::new(avalanchego_bin.clone()),
             Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(
-                avalancheup_aws::StorageNamespace::AvalancheBinCompressed(spec.id.clone()).encode(),
-            ),
+            Arc::new(avalancheup_aws::StorageNamespace::AvalancheBin(spec.id.clone()).encode()),
         ))
-        .expect("failed put_object compressed avalanchego_bin");
-
-        fs::remove_file(tmp_avalanche_bin_compressed_path)?;
+        .expect("failed put_object avalanchego_bin");
     } else {
         log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
     }
@@ -321,34 +307,21 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             let file_name = entry.file_name();
             let file_name = file_name.as_os_str().to_str().unwrap();
 
-            let tmp_plugin_compressed_path =
-                random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext()))
-                    .unwrap();
-            compress_manager::pack_file(
-                file_path,
-                &tmp_plugin_compressed_path,
-                compress_manager::Encoder::Zstd(3),
-            )
-            .unwrap();
-
             log::info!(
-                "uploading {} (compressed from {}) from plugins directory {}",
-                tmp_plugin_compressed_path,
+                "uploading {} from plugins directory {}",
                 file_path,
                 plugins_dir,
             );
             rt.block_on(s3_manager.put_object(
-                Arc::new(tmp_plugin_compressed_path.clone()),
+                Arc::new(file_path.to_string()),
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
                 Arc::new(format!(
-                    "{}/{}{}",
+                    "{}/{}",
                     &avalancheup_aws::StorageNamespace::PluginsDir(spec.id.clone()).encode(),
                     file_name,
-                    compress_manager::Encoder::Zstd(3).ext()
                 )),
             ))
-            .expect("failed put_object tmp_plugin_compressed_path");
-            fs::remove_file(tmp_plugin_compressed_path)?;
+            .expect("failed put_object file_path");
         }
     } else {
         log::info!("skipping uploading plugin dir...");
@@ -1167,6 +1140,7 @@ aws ssm start-session --region {} --target {}
                         )),
                         ResetColor
                     )?;
+                println!();
             };
         }
 
@@ -1609,6 +1583,7 @@ aws ssm start-session --region {} --target {}
                         )),
                         ResetColor
                     )?;
+                println!();
             };
         }
 
