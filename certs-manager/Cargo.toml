@@ -12,6 +12,6 @@ tokio = { version = "1.22.0", features = ["full"] } # https://github.com/tokio-r
 
 [dev-dependencies]
 cmp-manager = "0.0.1"
-env_logger = "0.9.3"
+env_logger = "0.10.0"
 random-manager = "0.0.1"
 tokio-test = "0.4.2"
