@@ -427,6 +427,7 @@ pub enum StackName {
     AsgAnchorNodes(String),
     AsgNonAnchorNodes(String),
     SsmDocRestartNodeWhitelistSubnet(String),
+    SsmDocRestartNodeChanConfig(String),
 }
 
 impl StackName {
@@ -438,6 +439,9 @@ impl StackName {
             StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
             StackName::SsmDocRestartNodeWhitelistSubnet(id) => {
                 format!("{}-ssm-doc-restart-node-whitelist-subnet", id)
+            }
+            StackName::SsmDocRestartNodeChanConfig(id) => {
+                format!("{}-ssm-doc-restart-node-chain-config", id)
             }
         }
     }

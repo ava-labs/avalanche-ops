@@ -745,7 +745,12 @@ fn write_subnet_evm_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result
 
         // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
         // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
+        // so this file needs to be moved again once the blockchain is created
+        // SSM doc will do such updates
         // ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
+        // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-precompile-configurations
+        // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-configuration-3
+        // ref. https://github.com/ava-labs/public-chain-assets/blob/main/chains/53935/genesis.json
         fs::create_dir_all(Path::new(&chain_config_dir).join(&whitelisted_subnet))?;
         let chain_config_path = Path::new(&chain_config_dir)
             .join(whitelisted_subnet)

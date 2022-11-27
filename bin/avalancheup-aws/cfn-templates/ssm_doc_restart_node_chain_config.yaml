@@ -1,30 +1,31 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "SSM document to restart Avalanche node process to whitelist subnet"
+Description: "SSM document to restart Avalanche node process to load chain config"
 
 Parameters:
   DocumentName:
     Type: String
-    Default: WhitelistSubnetWhitelistSubnetV0
+    Default: RestartAvalancheNodeChainConfigV0
     Description: SSM document Name.
 
-  VmId:
+  # e.g., avalanchego_config.chain_config_dir).join("...")
+  ChainConfigDirectory:
     Type: String
-    Default: srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
-    Description: Vm Id (must match with the binary path).
+    Default: /data/avalanche-configs/chains
+    Description: Chain configuration directory (e.g., /data/avalanche-configs/chains/C/config.json)
 
   PlaceHolderWhitelistedSubnetId:
     Type: String
     Default: hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
     Description: Whitelisted subnet Id that was used as a placeholder.
 
-  NewWhitelistedSubnetId:
+  NewBlockchainId:
     Type: String
     Default: ""
     Description: New subnet id to whitelist.
 
 Resources:
-  RestartAvalancheNodeWhitelistSubnet:
+  RestartAvalancheNodeChainConfig:
     # https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_CreateDocument.html
     Type: AWS::SSM::Document
     Properties:
@@ -37,7 +38,7 @@ Resources:
           Value: "v0"
       Content:
         schemaVersion: "2.2"
-        description: WhitelistSubnetWhitelistSubnet
+        description: restartAvalancheNodeChainConfig
         parameters:
           executionTimeout:
             type: String
@@ -47,21 +48,21 @@ Resources:
             type: String
             description: "timeout for script on individual instance"
             default: "3600"
-          vmId:
+          chainConfigDirectory:
             type: String
-            description: Vm Id (must match with the binary path).
-            default: !Ref VmId
+            description: Chain configuration directory (e.g., /data/avalanche-configs/chains/C/config.json).
+            default: !Ref ChainConfigDirectory
           placeHolderWhitelistedSubnetId:
             type: String
             description: Whitelisted subnet Id that was used as a placeholder.
             default: !Ref PlaceHolderWhitelistedSubnetId
-          newWhitelistedSubnetId:
+          newBlockchainId:
             type: String
-            description: New subnet id to whitelist.
-            default: !Ref NewWhitelistedSubnetId
+            description: New blockchain id to move configuration to.
+            default: !Ref NewBlockchainId
         mainSteps:
           - action: aws:runShellScript
-            name: WhitelistSubnetWhitelistSubnet
+            name: restartAvalancheNodeChainConfig
             inputs:
               timeoutSeconds: "{{ scriptTimeout }}"
               runCommand:
@@ -69,20 +70,15 @@ Resources:
                   #!/bin/bash
                   set -xeu
 
-                  # sudo systemctl cat avalanche
-                  /usr/local/bin/plugins/{{ vmId }} --version
-
-                  # to replace the avalanche configuration
-                  # sudo cat /data/avalanche-configs/config.json
-                  cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
-                  sed -i -- 's/{{ placeHolderWhitelistedSubnetId }}/{{ newWhitelistedSubnetId }}/g' /tmp/avalanche.config.json
-                  cat /tmp/avalanche.config.json
-                  sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
+                  # assume "avalanched" already wrote chain config based on place holder whitelisted subnet id
+                  sudo mkdir -p {{ chainConfigDirectory }}/{{ newBlockchainId }}
+                  sudo mv {{ chainConfigDirectory }}/{{ placeHolderWhitelistedSubnetId }} {{ chainConfigDirectory }}/{{ newBlockchainId }}
+                  sudo cat {{ chainConfigDirectory }}/{{ newBlockchainId }}/config.json
 
                   sudo systemctl restart avalanche
                   sleep 5
                   sudo tail -50 /var/log/avalanche/avalanche.log || true
-                  # sudo tail -100 /var/log/avalanche/avalanche.log | grep {{ newWhitelistedSubnetId }}
+                  # sudo tail -100 /var/log/avalanche/avalanche.log | grep {{ newBlockchainId }}
 
                   # to check the status
                   # sudo find /var/log/avalanche/

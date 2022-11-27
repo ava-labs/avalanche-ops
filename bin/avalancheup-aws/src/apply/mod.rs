@@ -1952,12 +1952,8 @@ $ cat /tmp/{node_id}.crt
                     build_param("DocumentName", &ssm_document_name),
                     build_param("VmId", "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"),
                     build_param(
-                        "ChainConfigDirectory",
-                        &spec.avalanchego_config.chain_config_dir,
-                    ),
-                    build_param(
                         "PlaceHolderWhitelistedSubnetId",
-                        whitelisted_subnet_id.as_str(),
+                        &whitelisted_subnet_id.clone(),
                     ),
                     build_param("NewWhitelistedSubnetId", &subnet_id.to_string()),
                 ]);
@@ -2003,7 +1999,7 @@ $ cat /tmp/{node_id}.crt
                             )
                             .parameters(
                                 "placeHolderWhitelistedSubnetId",
-                                vec![whitelisted_subnet_id],
+                                vec![whitelisted_subnet_id.clone()],
                             )
                             .parameters("newWhitelistedSubnetId", vec![subnet_id.to_string()])
                             .output_s3_region(spec.aws_resources.region.clone())
@@ -2117,6 +2113,116 @@ $ cat /tmp/{node_id}.crt
                     )
                     .unwrap();
                 log::info!("created a blockchain {} for {}", blockchain_id, subnet_id);
+
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Green),
+                    Print("\n\n\nSTEP: creating an SSM document for restarting node to load chain config...\n\n"),
+                    ResetColor
+                )?;
+                let ssm_doc_yaml =
+                    Asset::get("cfn-templates/ssm_doc_restart_node_chain_config.yaml").unwrap();
+                let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
+                let ssm_doc_stack_name = spec
+                    .aws_resources
+                    .cloudformation_ssm_doc_restart_node_chain_config
+                    .clone()
+                    .unwrap();
+                let ssm_document_name =
+                    avalancheup_aws::StackName::SsmDocRestartNodeChanConfig(spec.id.clone())
+                        .encode();
+                let cfn_params = Vec::from([
+                    build_param("DocumentName", &ssm_document_name),
+                    build_param(
+                        "PlaceHolderWhitelistedSubnetId",
+                        &whitelisted_subnet_id.clone(),
+                    ),
+                    build_param("NewBlockchainId", &blockchain_id.to_string()),
+                ]);
+                rt.block_on(cloudformation_manager.create_stack(
+                    ssm_doc_stack_name.as_str(),
+                    Some(vec![Capability::CapabilityNamedIam]),
+                    OnFailure::Delete,
+                    ssm_doc_tmpl,
+                    Some(Vec::from([
+                        Tag::builder().key("KIND").value("avalanche-ops").build(),
+                    ])),
+                    Some(cfn_params),
+                ))
+                .unwrap();
+                thread::sleep(Duration::from_secs(10));
+                rt.block_on(cloudformation_manager.poll_stack(
+                    ssm_doc_stack_name.as_str(),
+                    StackStatus::CreateComplete,
+                    Duration::from_secs(500),
+                    Duration::from_secs(30),
+                ))
+                .unwrap();
+                log::info!("created ssm document for {}", subnet_id);
+
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Green),
+                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet...\n\n"),
+                    ResetColor
+                )?;
+                // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
+                let ssm_output = rt
+                    .block_on(
+                        ssm_cli
+                            .send_command()
+                            .document_name(ssm_document_name)
+                            .set_instance_ids(Some(all_instance_ids.clone()))
+                            .parameters(
+                                "placeHolderWhitelistedSubnetId",
+                                vec![whitelisted_subnet_id.clone()],
+                            )
+                            .parameters("newBlockchainId", vec![blockchain_id.to_string()])
+                            .output_s3_region(spec.aws_resources.region.clone())
+                            .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                            .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
+                            .send(),
+                    )
+                    .unwrap();
+                let ssm_output = ssm_output.command().unwrap();
+                let ssm_command_id = ssm_output.command_id().unwrap();
+                log::info!("sent SSM command {}", ssm_command_id);
+                thread::sleep(Duration::from_secs(30));
+
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Green),
+                    Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+                    ResetColor
+                )?;
+                // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
+                for instance_id in all_instance_ids.iter() {
+                    loop {
+                        let inv_out = rt
+                            .block_on(
+                                ssm_cli
+                                    .get_command_invocation()
+                                    .command_id(ssm_command_id)
+                                    .instance_id(instance_id)
+                                    .send(),
+                            )
+                            .unwrap();
+
+                        if let Some(sv) = inv_out.status() {
+                            log::info!(
+                                "command {} status {:?} for instance {}",
+                                ssm_command_id,
+                                sv,
+                                instance_id
+                            );
+                            if sv.eq(&CommandInvocationStatus::Success) {
+                                break;
+                            }
+                        }
+
+                        thread::sleep(Duration::from_secs(5));
+                    }
+                }
             }
         }
     }
