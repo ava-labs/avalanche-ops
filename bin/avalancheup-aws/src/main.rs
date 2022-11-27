@@ -132,10 +132,6 @@ fn main() {
                     .get_one::<String>("AVALANCHEGO_LOG_LEVEL")
                     .unwrap_or(&String::from("INFO"))
                     .clone(),
-                avalanchego_whitelisted_subnets: sub_matches
-                    .get_one::<String>("AVALANCHEGO_WHITELISTED_SUBNETS")
-                    .unwrap_or(&String::new())
-                    .clone(),
                 avalanchego_http_tls_enabled: sub_matches.get_flag("AVALANCHEGO_HTTP_TLS_ENABLED"),
                 avalanchego_state_sync_ids: sub_matches
                     .get_one::<String>("AVALANCHEGO_STATE_SYNC_IDS")
