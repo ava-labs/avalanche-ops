@@ -427,6 +427,7 @@ pub enum StackName {
     AsgAnchorNodes(String),
     AsgNonAnchorNodes(String),
     SsmDocRestartNodeWhitelistSubnet(String),
+    SsmDocRestartNodeChanConfig(String),
 }
 
 impl StackName {
@@ -438,6 +439,9 @@ impl StackName {
             StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
             StackName::SsmDocRestartNodeWhitelistSubnet(id) => {
                 format!("{}-ssm-doc-restart-node-whitelist-subnet", id)
+            }
+            StackName::SsmDocRestartNodeChanConfig(id) => {
+                format!("{}-ssm-doc-restart-node-chain-config", id)
             }
         }
     }
@@ -480,7 +484,6 @@ pub struct DefaultSpecOption {
     pub avalanched_publish_periodic_node_info: bool,
 
     pub avalanchego_log_level: String,
-    pub avalanchego_whitelisted_subnets: String,
     pub avalanchego_http_tls_enabled: bool,
     pub avalanchego_state_sync_ids: String,
     pub avalanchego_state_sync_ips: String,
@@ -662,10 +665,10 @@ impl Spec {
             let profile_continuous_max_files = profile_continuous_max_files.parse::<u32>().unwrap();
             avalanchego_config.profile_continuous_max_files = Some(profile_continuous_max_files);
         };
-        if !opts.avalanchego_whitelisted_subnets.is_empty() {
-            avalanchego_config.whitelisted_subnets = Some(opts.avalanchego_whitelisted_subnets);
-        } else if opts.enable_subnet_evm {
-            panic!("enable_subnet_evm true but avalanchego_whitelisted_subnets is empty")
+        if opts.enable_subnet_evm {
+            avalanchego_config.whitelisted_subnets = Some(String::from(
+                "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf",
+            ));
         }
 
         let network_id = avalanchego_config.network_id;

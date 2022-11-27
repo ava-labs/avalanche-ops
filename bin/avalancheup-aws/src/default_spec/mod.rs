@@ -212,13 +212,6 @@ pub fn command() -> Command {
                 .default_value(avalanchego_config::DEFAULT_LOG_LEVEL),
         )
         .arg(
-            Arg::new("AVALANCHEGO_WHITELISTED_SUBNETS") 
-                .long("avalanchego-whitelisted-subnets")
-                .help("Sets the whitelisted-subnets value for avalanchego")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
             Arg::new("AVALANCHEGO_HTTP_TLS_ENABLED") 
                 .long("avalanchego-http-tls-enabled")
                 .help("Sets to enable HTTP TLS")
