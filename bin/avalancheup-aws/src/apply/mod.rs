@@ -2115,7 +2115,7 @@ $ cat /tmp/{node_id}.crt
                             .issue(),
                     )
                     .unwrap();
-                log::info!("created a blockchain {} for {}", blockchain_id, subnet_id);
+                log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
 
                 execute!(
                     stdout(),
