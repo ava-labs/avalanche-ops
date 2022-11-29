@@ -156,6 +156,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             .cloudformation_ssm_doc_restart_node_whitelist_subnet = Some(
             avalancheup_aws::StackName::SsmDocRestartNodeWhitelistSubnet(spec.id.clone()).encode(),
         );
+        spec.aws_resources
+            .cloudformation_ssm_doc_restart_node_chain_config =
+            Some(avalancheup_aws::StackName::SsmDocRestartNodeChanConfig(spec.id.clone()).encode());
     }
     spec.sync(spec_file_path)?;
 
