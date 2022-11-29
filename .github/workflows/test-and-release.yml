@@ -14,11 +14,12 @@ permissions:
 
 jobs:
   static_analysis:
-    name: Static analysis
+    name: Static analysis (lint)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -26,11 +27,14 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
           override: true
+
       - name: Check Rust version
         run: rustc --version
+
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
+
       - name: Run static analysis tests
         shell: bash
         run: scripts/tests.lint.sh
@@ -41,6 +45,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -48,20 +53,14 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
           override: true
+
       - name: Check Rust version
         run: rustc --version
-
-      # or use "abelfodil/protoc-action@v1"
-      # ref. https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
-      - name: Install protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: "3.x"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
+
       - name: Check unused Cargo dependencies
         shell: bash
         run: scripts/tests.unused.sh
@@ -72,26 +71,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           profile: minimal
           override: true
+
       - name: Check Rust version
         run: rustc --version
-
-      # or use "abelfodil/protoc-action@v1"
-      # ref. https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
-      - name: Install protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: "3.x"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
+
       - name: Run unit tests
         run: scripts/tests.unit.sh
 
@@ -106,24 +100,34 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             target: x86_64-unknown-linux-gnu
+
+          # https://github.com/sharkdp/fd/blob/master/.github/workflows/CICD.yml
+          - os: ubuntu-20.04
+            platform: linux
+            target: aarch64-unknown-linux-gnu
+            use-cross: true
+
           - os: macos-latest
             platform: darwin
             target: x86_64-apple-darwin
-          # ref. https://github.com/clux/muslrust
-          # ref. https://github.com/sfackler/rust-openssl/issues/1405
-          # - os: ubuntu-latest
-          #   platform: linux
-          #   target: aarch64-unknown-linux-musl
+
           - os: macos-latest
             platform: darwin
             target: aarch64-apple-darwin
-          # - os: windows-latest
-          #   platform: win32
-          #   target: x86_64-pc-windows-msvc
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      # https://github.com/sharkdp/fd/blob/master/.github/workflows/CICD.yml
+      # https://github.com/cross-rs/cross/wiki/Recipes#openssl
+      - name: Install OS dependencies
+        shell: bash
+        run: |
+          case ${{ matrix.job.target }} in
+            arm-unknown-linux-*) sudo apt-get -y update ; sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
+            aarch64-unknown-linux-gnu) sudo apt-get -y update ; sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+          esac
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -132,49 +136,37 @@ jobs:
           toolchain: stable
           target: ${{ matrix.job.target }}
           override: true
-      - name: Check Rust version
-        run: rustc --version
 
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-
-      # or use "abelfodil/protoc-action@v1"
-      # https://github.com/hyperium/tonic/issues/1047#issuecomment-1222508191
-      - name: Install protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: "3.x"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
-      - name: Apple M1 setup
-        if: matrix.job.target == 'aarch64-apple-darwin'
+      - name: Show version information (Rust, cargo, GCC)
+        shell: bash
         run: |
-          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
 
-      # ref. https://github.com/gakonst/foundry/blob/master/.github/workflows/cross-platform.yml
-      # ref. https://github.com/briansmith/ring/blob/main/mk/install-build-tools.sh
-      # ref. https://github.com/briansmith/ring/issues/1414
-      # ref. https://github.com/zellij-org/zellij/blob/main/.github/workflows/release.yml
-      # ref. https://github.com/sfackler/rust-openssl/issues/621
-      - name: Linux ARM64 setup with musl-tools
-        if: matrix.job.target == 'aarch64-unknown-linux-musl'
-        run: |
-          sudo apt-get install -y --no-install-recommends pkg-config libssl-dev musl-tools clang llvm
-          echo "CC_aarch64_unknown_linux_musl=clang" >> $GITHUB_ENV
-          echo "AR_aarch64_unknown_linux_musl=llvm-ar" >> $GITHUB_ENV
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS=\"-Clink-self-contained=yes -Clinker=rust-lld\"" >> $GITHUB_ENV
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+      - name: Set cargo cmd
+        shell: bash
+        run: echo "CARGO_CMD=cargo" >> $GITHUB_ENV
 
-      - name: Compile binaries
-        env:
-          RUSTFLAGS: -C link-args=-s
-        uses: actions-rs/cargo@v1
+      - name: Set cargo cmd to cross
+        shell: bash
+        if: ${{ matrix.job.use-cross == true }}
+        run: echo "CARGO_CMD=cross" >> $GITHUB_ENV
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          command: build
-          args: --release --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader --target ${{ matrix.job.target }}
+          key: ${{ matrix.job.os }}-${{ matrix.job.target }}
+
+      - name: Install cross
+        if: ${{ matrix.job.use-cross == true }}
+        run: cargo install cross
+
+      - name: Build
+        run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader
 
       - name: Compress binaries
         id: release_artifacts
@@ -185,62 +177,57 @@ jobs:
         run: |
           if [ "$PLATFORM_NAME" == "linux" ]; then
 
-            ./target/${TARGET}/release/avalanched-aws --help
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
             echo "file_name_avalanched_aws=avalanched-aws.${TARGET}" >> $GITHUB_OUTPUT
-            tar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "file_name_avalanched_aws_tar_gz=avalanched-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            tar -czvf avalanched-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
+            echo "file_name_avalanched_aws_tar_gz=avalanched-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/avalancheup-aws --help
             cp ./target/${TARGET}/release/avalancheup-aws avalancheup-aws.${TARGET}
             echo "file_name_avalancheup_aws=avalancheup-aws.${TARGET}" >> $GITHUB_OUTPUT
-            tar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
-            echo "file_name_avalancheup_aws_tar_gz=avalancheup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            tar -czvf avalancheup-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
+            echo "file_name_avalancheup_aws_tar_gz=avalancheup-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/blizzard-aws --help
             cp ./target/${TARGET}/release/blizzard-aws blizzard-aws.${TARGET}
             echo "file_name_blizzard_aws=blizzard-aws.${TARGET}" >> $GITHUB_OUTPUT
-            tar -czvf blizzard-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
-            echo "file_name_blizzard_aws_tar_gz=blizzard-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            tar -czvf blizzard-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
+            echo "file_name_blizzard_aws_tar_gz=blizzard-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/blizzardup-aws --help
             cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
             echo "file_name_blizzardup_aws=blizzardup-aws.${TARGET}" >> $GITHUB_OUTPUT
-            tar -czvf blizzardup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
-            echo "file_name_blizzardup_aws_tar_gz=blizzardup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            tar -czvf blizzardup-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
+            echo "file_name_blizzardup_aws_tar_gz=blizzardup-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/staking-key-cert-s3-downloader --help
             cp ./target/${TARGET}/release/staking-key-cert-s3-downloader staking-key-cert-s3-downloader.${TARGET}
             echo "file_name_staking_key_cert_s3_downloader=staking-key-cert-s3-downloader.${TARGET}" >> $GITHUB_OUTPUT
-            tar -czvf staking-key-cert-s3-downloader_${TARGET}.tar.gz -C ./target/${TARGET}/release staking-key-cert-s3-downloader
-            echo "file_name_staking_key_cert_s3_downloader_tar_gz=staking-key-cert-s3-downloader_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            tar -czvf staking-key-cert-s3-downloader.${TARGET}.tar.gz -C ./target/${TARGET}/release staking-key-cert-s3-downloader
+            echo "file_name_staking_key_cert_s3_downloader_tar_gz=staking-key-cert-s3-downloader.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
             echo "file_name_avalanched_aws=avalanched-aws.${TARGET}" >> $GITHUB_OUTPUT
-            gtar -czvf avalanched-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
-            echo "file_name_avalanched_aws_tar_gz=avalanched-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            gtar -czvf avalanched-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
+            echo "file_name_avalanched_aws_tar_gz=avalanched-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/avalancheup-aws avalancheup-aws.${TARGET}
             echo "file_name_avalancheup_aws=avalancheup-aws.${TARGET}" >> $GITHUB_OUTPUT
-            gtar -czvf avalancheup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
-            echo "file_name_avalancheup_aws_tar_gz=avalancheup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            gtar -czvf avalancheup-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
+            echo "file_name_avalancheup_aws_tar_gz=avalancheup-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/blizzard-aws blizzard-aws.${TARGET}
             echo "file_name_blizzard_aws=blizzard-aws.${TARGET}" >> $GITHUB_OUTPUT
-            gtar -czvf blizzard-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
-            echo "file_name_blizzard_aws_tar_gz=blizzard-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            gtar -czvf blizzard-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
+            echo "file_name_blizzard_aws_tar_gz=blizzard-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
             echo "file_name_blizzardup_aws=blizzardup-aws.${TARGET}" >> $GITHUB_OUTPUT
-            gtar -czvf blizzardup-aws_${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
-            echo "file_name_blizzardup_aws_tar_gz=blizzardup-aws_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            gtar -czvf blizzardup-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
+            echo "file_name_blizzardup_aws_tar_gz=blizzardup-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/staking-key-cert-s3-downloader staking-key-cert-s3-downloader.${TARGET}
             echo "file_name_staking_key_cert_s3_downloader=staking-key-cert-s3-downloader.${TARGET}" >> $GITHUB_OUTPUT
-            gtar -czvf staking-key-cert-s3-downloader_${TARGET}.tar.gz -C ./target/${TARGET}/release staking-key-cert-s3-downloader
-            echo "file_name_staking_key_cert_s3_downloader_tar_gz=staking-key-cert-s3-downloader_${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            gtar -czvf staking-key-cert-s3-downloader.${TARGET}.tar.gz -C ./target/${TARGET}/release staking-key-cert-s3-downloader
+            echo "file_name_staking_key_cert_s3_downloader_tar_gz=staking-key-cert-s3-downloader.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
           else
 

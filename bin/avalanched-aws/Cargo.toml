@@ -26,3 +26,6 @@ log = "0.4.17"
 random-manager = "0.0.1"
 tempfile = "3.3.0"
 tokio = { version = "1.22.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+
+# https://github.com/cross-rs/cross/wiki/Recipes#openssl
+openssl = { version = "0.10", features = ["vendored"] }
