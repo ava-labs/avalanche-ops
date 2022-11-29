@@ -126,7 +126,7 @@ jobs:
         run: |
           case ${{ matrix.job.target }} in
             arm-unknown-linux-*) sudo apt-get -y update ; sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
-            aarch64-unknown-linux-gnu) sudo apt-get -y update ; sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+            aarch64-unknown-linux-gnu) sudo apt-get -y update ; sudo apt-get -y install gcc-aarch64-linux-gnu libssl-dev ;;
           esac
 
       - name: Install Rust
@@ -177,31 +177,26 @@ jobs:
         run: |
           if [ "$PLATFORM_NAME" == "linux" ]; then
 
-            ./target/${TARGET}/release/avalanched-aws --help
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
             echo "file_name_avalanched_aws=avalanched-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf avalanched-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanched-aws
             echo "file_name_avalanched_aws_tar_gz=avalanched-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/avalancheup-aws --help
             cp ./target/${TARGET}/release/avalancheup-aws avalancheup-aws.${TARGET}
             echo "file_name_avalancheup_aws=avalancheup-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf avalancheup-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalancheup-aws
             echo "file_name_avalancheup_aws_tar_gz=avalancheup-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/blizzard-aws --help
             cp ./target/${TARGET}/release/blizzard-aws blizzard-aws.${TARGET}
             echo "file_name_blizzard_aws=blizzard-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf blizzard-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release blizzard-aws
             echo "file_name_blizzard_aws_tar_gz=blizzard-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/blizzardup-aws --help
             cp ./target/${TARGET}/release/blizzardup-aws blizzardup-aws.${TARGET}
             echo "file_name_blizzardup_aws=blizzardup-aws.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf blizzardup-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release blizzardup-aws
             echo "file_name_blizzardup_aws_tar_gz=blizzardup-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            ./target/${TARGET}/release/staking-key-cert-s3-downloader --help
             cp ./target/${TARGET}/release/staking-key-cert-s3-downloader staking-key-cert-s3-downloader.${TARGET}
             echo "file_name_staking_key_cert_s3_downloader=staking-key-cert-s3-downloader.${TARGET}" >> $GITHUB_OUTPUT
             tar -czvf staking-key-cert-s3-downloader.${TARGET}.tar.gz -C ./target/${TARGET}/release staking-key-cert-s3-downloader
