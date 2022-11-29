@@ -71,7 +71,6 @@ Resources:
                   set -xeu
 
                   # assume "avalanched" already wrote chain config based on place holder whitelisted subnet id
-                  sudo mkdir -p {{ chainConfigDirectory }}/{{ newBlockchainId }}
                   sudo mv {{ chainConfigDirectory }}/{{ placeHolderWhitelistedSubnetId }} {{ chainConfigDirectory }}/{{ newBlockchainId }}
                   sudo cat {{ chainConfigDirectory }}/{{ newBlockchainId }}/config.json
 
