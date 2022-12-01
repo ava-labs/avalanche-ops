@@ -995,11 +995,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
                 let mut ready = true;
                 for eip_addr in eips.iter() {
-                    // if instance_id not found, ready set to "false"
-                    ready = eip_addr.instance_id.is_some();
-                    if !ready {
-                        break;
-                    }
+                    ready = ready && eip_addr.instance_id.is_some();
                 }
                 if ready {
                     break;
@@ -1448,13 +1444,8 @@ aws ssm start-session --region {} --target {}
 
                 let mut ready = true;
                 for eip_addr in eips.iter() {
-                    // if instance_id not found, ready set to "false"
-                    ready = eip_addr.instance_id.is_some();
-                    if !ready {
-                        break;
-                    }
+                    ready = ready && eip_addr.instance_id.is_some();
                 }
-
                 if ready
                     && eips.len()
                         >= spec.machine.anchor_nodes.unwrap_or(0) as usize
