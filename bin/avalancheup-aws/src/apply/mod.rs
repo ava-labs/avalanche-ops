@@ -997,7 +997,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 for eip_addr in eips.iter() {
                     ready = ready && eip_addr.instance_id.is_some();
                 }
-                if ready && eips.len() == target_nodes {
+                if ready && eips.len() == target_nodes as usize {
                     break;
                 }
 
