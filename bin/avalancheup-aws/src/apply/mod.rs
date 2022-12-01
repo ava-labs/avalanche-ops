@@ -992,7 +992,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     .unwrap();
 
                 log::info!("got {} EIP addresses", eips.len());
-                if !eips.is_empty() {
+
+                let mut ready = true;
+                for eip_addr in eips.iter() {
+                    // if instance_id not found, ready set to "false"
+                    ready = eip_addr.instance_id.is_some();
+                    if !ready {
+                        break;
+                    }
+                }
+                if ready {
                     break;
                 }
 
@@ -1436,9 +1445,20 @@ aws ssm start-session --region {} --target {}
                     .unwrap();
 
                 log::info!("got {} EIP addresses", eips.len());
-                if eips.len()
-                    >= spec.machine.anchor_nodes.unwrap_or(0) as usize
-                        + spec.machine.non_anchor_nodes as usize
+
+                let mut ready = true;
+                for eip_addr in eips.iter() {
+                    // if instance_id not found, ready set to "false"
+                    ready = eip_addr.instance_id.is_some();
+                    if !ready {
+                        break;
+                    }
+                }
+
+                if ready
+                    && eips.len()
+                        >= spec.machine.anchor_nodes.unwrap_or(0) as usize
+                            + spec.machine.non_anchor_nodes as usize
                 {
                     break;
                 }
