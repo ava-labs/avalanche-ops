@@ -171,7 +171,7 @@ fn main() {
                 subnet_evm_auto_fee_manager_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG"),
                 subnet_evm_config_proposer_min_block_delay_seconds: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY")
+                    .get_one::<u64>("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY_SECONDS")
                     .unwrap_or(&1)
                     .clone(),
 

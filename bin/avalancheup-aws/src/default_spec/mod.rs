@@ -326,7 +326,7 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY")
+            Arg::new("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY_SECONDS")
                 .long("subnet-evm-config-proposer-min-block-delay-seconds")
                 .help("Sets to subnet-evm config proposer-min-block-delay in seconds")
                 .required(false)
