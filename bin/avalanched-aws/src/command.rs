@@ -64,11 +64,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         metrics_fetch_interval_seconds,
     ) = if opts.use_default_config {
         let avalanchego_config = write_default_avalanche_config(tags.network_id, &public_ipv4)?;
-        let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
+        let coreth_chain_config =
+            write_default_coreth_chain_config(&avalanchego_config.chain_config_dir)?;
 
         (
             avalanchego_config,
-            coreth_config,
+            coreth_chain_config,
             None,
             true,
             avalancheup_aws::default_rules(),
@@ -85,6 +86,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         )
         .await?;
         write_coreth_chain_config_from_spec(&spec)?;
+        write_subnet_evm_config_from_spec(&spec)?;
         write_subnet_evm_chain_config_from_spec(&spec)?;
 
         let metrics_rules = if let Some(mm) = spec.metrics_rules {
@@ -678,17 +680,21 @@ fn write_default_avalanche_config(
     Ok(avalanchego_config)
 }
 
-fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::config::Config> {
+fn write_default_coreth_chain_config(
+    chain_config_dir: &str,
+) -> io::Result<coreth::chain_config::Config> {
     log::info!("STEP: writing default coreth config file...");
 
     fs::create_dir_all(Path::new(chain_config_dir).join("C"))?;
 
-    let coreth_config = coreth::config::Config::default();
+    let coreth_config = coreth::chain_config::Config::default();
 
     let chain_config_c_path = Path::new(chain_config_dir).join("C").join("config.json");
     if chain_config_c_path.exists() {
         log::info!("coreth C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
-        return coreth::config::Config::load(chain_config_c_path.display().to_string().as_str());
+        return coreth::chain_config::Config::load(
+            chain_config_c_path.display().to_string().as_str(),
+        );
     };
 
     let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
@@ -728,6 +734,45 @@ fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Resu
         "saved coreth config file to {:?}",
         chain_config_c_path.as_os_str()
     );
+
+    Ok(())
+}
+
+fn write_subnet_evm_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    if let Some(subnet_evm_chain_config) = &spec.subnet_evm_chain_config {
+        let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
+        log::info!(
+            "STEP: writing subnet-evm chain config file from spec for '{}'",
+            whitelisted_subnet
+        );
+
+        let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
+        let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
+
+        // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+        // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
+        // so this file needs to be moved again once the blockchain is created
+        // SSM doc will do such updates
+        // ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
+        // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-precompile-configurations
+        // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-configuration-3
+        // ref. https://github.com/ava-labs/public-chain-assets/blob/main/chains/53935/genesis.json
+        fs::create_dir_all(Path::new(&chain_config_dir).join(&whitelisted_subnet))?;
+        let chain_config_path = Path::new(&chain_config_dir)
+            .join(whitelisted_subnet)
+            .join("config.json");
+
+        subnet_evm_chain_config.sync(&tmp_path)?;
+        fs::copy(&tmp_path, &chain_config_path)?;
+        fs::remove_file(&tmp_path)?;
+
+        log::info!(
+            "saved subnet-evm config file to {}",
+            chain_config_path.display()
+        );
+    } else {
+        log::info!("STEP: no subnet-evm config is found, skipping writiing subnet-evm config file");
+    }
 
     Ok(())
 }
@@ -1278,8 +1323,8 @@ async fn discover_ready_anchor_nodes_from_s3(
 fn stop_and_start_avalanche_systemd_service(
     avalanche_bin_path: &str,
     avalanchego_config: &avalanchego::config::Config,
-    coreth_chain_config: &coreth::config::Config,
-    subnet_evm_chain_config: Option<subnet_evm::config::Config>,
+    coreth_chain_config: &coreth::chain_config::Config,
+    subnet_evm_chain_config: Option<subnet_evm::chain_config::Config>,
 ) -> io::Result<()> {
     log::info!("STEP: setting up and starting Avalanche systemd service...");
 

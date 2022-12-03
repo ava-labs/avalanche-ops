@@ -10,9 +10,9 @@ use std::{
 use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
     constants,
-    coreth::config as coreth_chain_config,
+    coreth::chain_config as coreth_chain_config,
     key, node,
-    subnet_evm::{config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
+    subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
 };
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
