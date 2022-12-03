@@ -249,10 +249,13 @@ pub struct Spec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
 
+    /// TODO: support multiple subnets
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_genesis: Option<subnet_evm_genesis::Genesis>,
+    /// TODO: support multiple subnets
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_chain_config: Option<subnet_evm_chain_config::Config>,
+    /// TODO: support multiple subnets
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_subnet_config: Option<subnet::config::Config>,
 
@@ -505,6 +508,7 @@ pub struct DefaultSpecOption {
     pub subnet_evm_auto_contract_deployer_allow_list_config: bool,
     pub subnet_evm_auto_contract_native_minter_config: bool,
     pub subnet_evm_auto_fee_manager_config: bool,
+    pub subnet_evm_config_proposer_min_block_delay_seconds: u64,
 
     pub spec_file_path: String,
 }
@@ -780,7 +784,15 @@ impl Spec {
                 genesis.config = Some(chain_config);
 
                 let subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
-                let subnet_evm_subnet_config = subnet::config::Config::default();
+
+                let mut subnet_evm_subnet_config = subnet::config::Config::default();
+                if opts.subnet_evm_config_proposer_min_block_delay_seconds > 0 {
+                    subnet_evm_subnet_config.proposer_min_block_delay = opts
+                        .subnet_evm_config_proposer_min_block_delay_seconds
+                        * 1000
+                        * 1000
+                        * 1000;
+                }
 
                 (
                     Some(genesis),

@@ -683,7 +683,7 @@ fn write_default_avalanche_config(
 fn write_default_coreth_chain_config(
     chain_config_dir: &str,
 ) -> io::Result<coreth::chain_config::Config> {
-    log::info!("STEP: writing default coreth config file...");
+    log::info!("STEP: writing default coreth chain config file...");
 
     fs::create_dir_all(Path::new(chain_config_dir).join("C"))?;
 
@@ -739,7 +739,7 @@ fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Resu
 }
 
 fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
-    if let Some(subnet_evm_subnet_config) = &spec.subnet_evm_chain_config {
+    if let Some(subnet_evm_subnet_config) = &spec.subnet_evm_subnet_config {
         let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
         log::info!(
             "STEP: writing subnet-evm subnet config file from spec for '{}'",
@@ -749,14 +749,8 @@ fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::Spec) -> io:
         let subnet_config_dir = spec.avalanchego_config.subnet_config_dir.clone();
         let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
 
-        // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
-        // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
-        // so this file needs to be moved again once the blockchain is created
-        // SSM doc will do such updates
-        // ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
-        // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-precompile-configurations
-        // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-configuration-3
-        // ref. https://github.com/ava-labs/public-chain-assets/blob/main/chains/53935/genesis.json
+        // If a subnet id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+        // the config file for this subnet is located at {subnet-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt.json.
         fs::create_dir_all(Path::new(&subnet_config_dir))?;
         let subnet_config_path = Path::new(&subnet_config_dir).join(whitelisted_subnet + ".json");
 

@@ -326,6 +326,14 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY")
+                .long("subnet-evm-config-proposer-min-block-delay-seconds")
+                .help("Sets to subnet-evm config proposer-min-block-delay in seconds")
+                .required(false)
+                .num_args(1)
+                .default_value("1"),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')

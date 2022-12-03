@@ -745,8 +745,6 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 
 #####
-# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
-# with real subnet ID from subnet-cli wizard
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
@@ -758,9 +756,6 @@ cd ${HOME}/avalanche-ops
 --enable-subnet-evm
 
 #####
-# or to run performance tests
-# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
-# with real subnet ID from subnet-cli wizard
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 rm -rf ${HOME}/subnet-evm-test-keys
@@ -777,10 +772,6 @@ cd ${HOME}/avalanche-ops
 --enable-subnet-evm
 
 #####
-# or to run performance tests
-# replace "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf"
-# with real subnet ID from subnet-cli wizard
-# and disable NLB
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 rm -rf ${HOME}/subnet-evm-test-keys
