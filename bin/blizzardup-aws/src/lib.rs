@@ -39,7 +39,7 @@ pub struct Spec {
     pub blizzard_spec: blizzard::Spec,
 
     #[serde(default)]
-    pub generated_private_keys: Vec<key::secp256k1::Info>,
+    pub test_keys_with_funds: Vec<key::secp256k1::Info>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -243,9 +243,9 @@ impl Spec {
             }
         };
 
-        // existing network has only 1 pre-funded key "ewoq"
-        let mut generated_key_infos: Vec<key::secp256k1::Info> = Vec::new();
-        let mut generated_keys: Vec<key::secp256k1::private_key::Key> = Vec::new();
+        // same order as avalanche-types genesis
+        // assume they are pre-funded
+        let mut test_keys_with_funds: Vec<key::secp256k1::Info> = Vec::new();
         for i in 0..opts.keys_to_generate {
             let k = {
                 if i < key::secp256k1::TEST_KEYS.len() {
@@ -259,11 +259,8 @@ impl Spec {
             let info = k
                 .to_info(opts.network_id)
                 .expect("unexpected to_info failure");
-            generated_key_infos.push(info.clone());
-
-            generated_keys.push(k);
+            test_keys_with_funds.push(info.clone());
         }
-        let generated_private_keys = generated_key_infos.clone();
 
         // [year][month][date]-[system host-based id]
         let s3_bucket = format!(
@@ -303,7 +300,7 @@ impl Spec {
 
             blizzard_spec,
 
-            generated_private_keys,
+            test_keys_with_funds,
         }
     }
 
@@ -512,7 +509,7 @@ blizzard_spec:
             gas_price: Some(2000000),
         },
 
-        generated_private_keys: Vec::new(),
+        test_keys_with_funds: Vec::new(),
     };
 
     assert_eq!(cfg, orig);

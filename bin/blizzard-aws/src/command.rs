@@ -302,10 +302,10 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         total_rpc_eps
     );
 
-    let total_keys = spec.generated_private_keys.len();
+    let total_keys = spec.test_keys_with_funds.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
     let k = key::secp256k1::private_key::Key::from_cb58(
-        spec.generated_private_keys[sender_idx]
+        spec.test_keys_with_funds[sender_idx]
             .private_key_cb58
             .clone(),
     )
@@ -331,7 +331,7 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         sender_idx = sender_idx % total_keys;
 
         let k = key::secp256k1::private_key::Key::from_cb58(
-            spec.generated_private_keys[sender_idx]
+            spec.test_keys_with_funds[sender_idx]
                 .private_key_cb58
                 .clone(),
         )
@@ -356,9 +356,7 @@ async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         let transfer_amount = bal / 50;
 
         let target_idx = (sender_idx + random_manager::u8() as usize) % total_keys;
-        let target_short_addr = spec.generated_private_keys[target_idx]
-            .short_address
-            .clone();
+        let target_short_addr = spec.test_keys_with_funds[target_idx].short_address.clone();
 
         match sender_wallet
             .x()
@@ -387,10 +385,10 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         total_rpc_eps
     );
 
-    let total_keys = spec.generated_private_keys.len();
+    let total_keys = spec.test_keys_with_funds.len();
     let mut sender_idx = random_manager::u8() as usize % total_keys;
     let k = key::secp256k1::private_key::Key::from_cb58(
-        spec.generated_private_keys[sender_idx]
+        spec.test_keys_with_funds[sender_idx]
             .private_key_cb58
             .clone(),
     )
@@ -424,7 +422,7 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
         sender_idx = sender_idx % total_keys;
 
         let k = key::secp256k1::private_key::Key::from_cb58(
-            spec.generated_private_keys[sender_idx]
+            spec.test_keys_with_funds[sender_idx]
                 .private_key_cb58
                 .clone(),
         )
@@ -460,7 +458,7 @@ async fn make_c_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch
 
         let target_idx = (sender_idx + random_manager::u8() as usize) % total_keys;
         let target_key = key::secp256k1::private_key::Key::from_cb58(
-            spec.generated_private_keys[target_idx]
+            spec.test_keys_with_funds[target_idx]
                 .private_key_cb58
                 .clone(),
         )
