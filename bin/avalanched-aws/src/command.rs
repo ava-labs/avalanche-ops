@@ -56,7 +56,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     let (
         mut avalanchego_config,
-        coreth_config,
+        coreth_chain_config,
         subnet_evm_chain_config,
         download_avalanchego_from_github,
         metrics_rules,
@@ -109,11 +109,18 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             metrics_fetch_interval_seconds,
         )
     };
+
     if !Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
         metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
     } else {
         log::warn!("skipping writing avalanche-telemetry-cloudwatch rules file (already exists)")
     }
+
+    create_config_dirs(
+        &avalanchego_config,
+        &coreth_chain_config,
+        subnet_evm_chain_config.clone(),
+    )?;
 
     // do not overwrite "avalanchego" binary
     if !Path::new(&tags.avalanche_bin_path).exists() {
@@ -331,7 +338,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     stop_and_start_avalanche_systemd_service(
         &tags.avalanche_bin_path,
         &avalanchego_config,
-        &coreth_config,
+        &coreth_chain_config,
         subnet_evm_chain_config,
     )?;
     stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
@@ -703,7 +710,7 @@ fn write_default_coreth_chain_config(
     fs::remove_file(&tmp_path)?;
 
     log::info!(
-        "saved default coreth config file to {:?}",
+        "saved default coreth chain config file to {:?}",
         chain_config_c_path.as_os_str()
     );
 
@@ -731,7 +738,7 @@ fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Resu
     fs::remove_file(&tmp_path)?;
 
     log::info!(
-        "saved coreth config file to {:?}",
+        "saved coreth chain config file to {:?}",
         chain_config_c_path.as_os_str()
     );
 
@@ -807,6 +814,37 @@ fn write_subnet_evm_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::
         log::info!(
             "STEP: no subnet-evm chain config is found, skipping writing subnet-evm config file"
         );
+    }
+
+    Ok(())
+}
+
+fn create_config_dirs(
+    avalanchego_config: &avalanchego::config::Config,
+    coreth_chain_config: &coreth::chain_config::Config,
+    subnet_evm_chain_config: Option<subnet_evm::chain_config::Config>,
+) -> io::Result<()> {
+    log::info!("STEP: creating config directories...");
+
+    fs::create_dir_all(&avalanchego_config.log_dir)?;
+    fs::create_dir_all(&avalanchego_config.subnet_config_dir)?;
+    fs::create_dir_all(&avalanchego_config.chain_config_dir)?;
+
+    if let Some(v) = &avalanchego_config.profile_dir {
+        fs::create_dir_all(v)?;
+    }
+
+    if let Some(v) = &coreth_chain_config.continuous_profiler_dir {
+        fs::create_dir_all(v)?;
+    }
+    if let Some(v) = &coreth_chain_config.offline_pruning_data_directory {
+        fs::create_dir_all(v)?;
+    }
+
+    if let Some(cfg) = &subnet_evm_chain_config {
+        if let Some(v) = &cfg.continuous_profiler_dir {
+            fs::create_dir_all(v)?;
+        }
     }
 
     Ok(())
@@ -1323,26 +1361,6 @@ fn stop_and_start_avalanche_systemd_service(
     subnet_evm_chain_config: Option<subnet_evm::chain_config::Config>,
 ) -> io::Result<()> {
     log::info!("STEP: setting up and starting Avalanche systemd service...");
-
-    fs::create_dir_all(&avalanchego_config.log_dir)?;
-    fs::create_dir_all(Path::new(&avalanchego_config.subnet_config_dir).join("C"))?;
-
-    if let Some(v) = &avalanchego_config.profile_dir {
-        fs::create_dir_all(v)?;
-    }
-
-    if let Some(v) = &coreth_chain_config.continuous_profiler_dir {
-        fs::create_dir_all(v)?;
-    }
-    if let Some(v) = &coreth_chain_config.offline_pruning_data_directory {
-        fs::create_dir_all(v)?;
-    }
-
-    if let Some(cfg) = &subnet_evm_chain_config {
-        if let Some(v) = &cfg.continuous_profiler_dir {
-            fs::create_dir_all(v)?;
-        }
-    }
 
     avalanchego_config.validate()?;
     if avalanchego_config.config_file.is_none() {
