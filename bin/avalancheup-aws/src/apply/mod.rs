@@ -1783,7 +1783,7 @@ aws ssm start-session --region {} --target {}
         all_instance_ids.push(node.machine_id.clone())
     }
 
-    if let Some(keys_with_balances) = &spec.test_insecure_hot_key_infos {
+    if let Some(keys_with_balances) = &spec.test_keys_with_funds {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -1904,7 +1904,7 @@ $ cat /tmp/{node_id}.crt
             .expect("failed subnet_evm_genesis.sync");
 
         if spec.avalanchego_config.is_custom_network() {
-            if let Some(keys_with_balances) = &spec.test_insecure_hot_key_infos {
+            if let Some(keys_with_balances) = &spec.test_keys_with_funds {
                 // create a wallet
                 let pk = key::secp256k1::private_key::Key::from_cb58(
                     keys_with_balances[0].private_key_cb58.clone(),

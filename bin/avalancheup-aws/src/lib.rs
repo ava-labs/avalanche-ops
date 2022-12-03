@@ -260,7 +260,7 @@ pub struct Spec {
     /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
     /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub test_insecure_hot_key_infos: Option<Vec<key::secp256k1::Info>>,
+    pub test_keys_with_funds: Option<Vec<key::secp256k1::Info>>,
 
     /// Current all nodes. May be stale.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -925,7 +925,7 @@ impl Spec {
             subnet_evm_genesis,
             subnet_evm_config,
 
-            test_insecure_hot_key_infos: Some(test_key_infos),
+            test_keys_with_funds: Some(test_key_infos),
 
             current_nodes: None,
             endpoints: None,
@@ -1338,7 +1338,7 @@ coreth_config:
         subnet_evm_genesis: None,
         subnet_evm_config: None,
 
-        test_insecure_hot_key_infos: None,
+        test_keys_with_funds: None,
         current_nodes: None,
         endpoints: None,
 
