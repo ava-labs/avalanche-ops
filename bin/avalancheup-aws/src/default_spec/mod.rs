@@ -331,6 +331,7 @@ pub fn command() -> Command {
                 .help("Sets to subnet-evm config proposer-min-block-delay in seconds")
                 .required(false)
                 .num_args(1)
+                .value_parser(value_parser!(u64))
                 .default_value("1"),
         )
         .arg(
