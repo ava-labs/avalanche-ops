@@ -1016,17 +1016,20 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
-        println!(
-            "
-# change SSH key permission
-chmod 400 {}",
-            ec2_key_path
-        );
+
         for d in droplets {
+            let (instance_ip, ip_kind) =
+                if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
+                    (public_ip.clone(), "elastic")
+                } else {
+                    (d.public_ipv4.clone(), "ephemeral")
+                };
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
-                "# instance '{}' ({}, {})
+                "# change SSH key permission
+chmod 400 {}
+# instance '{}' ({}, {}) -- IP kind {}
 ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
 # download to local machine
 scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
@@ -1037,73 +1040,31 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
+                ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
+                ip_kind,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 spec.aws_resources.region,
                 d.instance_id,
             );
-
-            if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
-                println!(
-                    "
-# change SSH key permission
-chmod 400 {}",
-                    ec2_key_path
-                );
-                println!(
-                    "# instance '{}' ({}, {}) -- with elastic IP
-ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
-# download to local machine
-scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
-scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
-# upload to remote machine
-scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
-scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
-# SSM session (requires SSM agent)
-aws ssm start-session --region {} --target {}
-",
-                    //
-                    d.instance_id,
-                    d.instance_state_name,
-                    d.availability_zone,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    spec.aws_resources.region,
-                    d.instance_id,
-                );
-            }
         }
         println!();
 
@@ -1469,17 +1430,20 @@ aws ssm start-session --region {} --target {}
         let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
-        println!(
-            "
-# change SSH key permission
-chmod 400 {}",
-            ec2_key_path
-        );
+
         for d in droplets {
+            let (instance_ip, ip_kind) =
+                if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
+                    (public_ip.clone(), "elastic")
+                } else {
+                    (d.public_ipv4.clone(), "ephemeral")
+                };
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
-                "# instance '{}' ({}, {})
+                "# change SSH key permission
+chmod 400 {}
+# instance '{}' ({}, {}) -- IP kind {}
 ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
 # download to local machine
 scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
@@ -1490,73 +1454,31 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
+                ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
+                ip_kind,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 ec2_key_path,
-                d.public_ipv4,
+                instance_ip,
                 //
                 spec.aws_resources.region,
                 d.instance_id,
             );
-
-            if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
-                println!(
-                    "
-# change SSH key permission
-chmod 400 {}",
-                    ec2_key_path
-                );
-                println!(
-                    "# instance '{}' ({}, {}) -- with elastic IP
-ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
-# download to local machine
-scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
-scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
-# upload to remote machine
-scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
-scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
-# SSM session (requires SSM agent)
-aws ssm start-session --region {} --target {}
-",
-                    //
-                    d.instance_id,
-                    d.instance_state_name,
-                    d.availability_zone,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    ec2_key_path,
-                    public_ip,
-                    //
-                    spec.aws_resources.region,
-                    d.instance_id,
-                );
-            }
         }
         println!();
 
