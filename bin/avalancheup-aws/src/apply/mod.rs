@@ -2265,7 +2265,7 @@ default-spec \\
         )),
         ResetColor
     )?;
-    if spec.subnet_evm_config.is_some() {
+    if spec.subnet_evm_chain_config.is_some() {
         execute!(
             stdout(),
             SetForegroundColor(Color::DarkGreen),

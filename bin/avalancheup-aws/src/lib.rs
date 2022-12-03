@@ -10,9 +10,9 @@ use std::{
 use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
     constants,
-    coreth::config as coreth_config,
+    coreth::config as coreth_chain_config,
     key, node,
-    subnet_evm::{config as subnet_evm_config, genesis as subnet_evm_genesis},
+    subnet_evm::{config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
 };
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
@@ -239,7 +239,7 @@ pub struct Spec {
     pub avalanchego_config: avalanchego_config::Config,
     /// If non-empty, the JSON-encoded data are saved to a file
     /// in Path::new(&avalanchego_config.chain_config_dir).join("C").
-    pub coreth_config: coreth_config::Config,
+    pub coreth_chain_config: coreth_chain_config::Config,
 
     /// If non-empty, the JSON-encoded data are saved to a file
     /// and used for "--genesis" in Path::new(&avalanchego_config.genesis).
@@ -252,7 +252,7 @@ pub struct Spec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_genesis: Option<subnet_evm_genesis::Genesis>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub subnet_evm_config: Option<subnet_evm_config::Config>,
+    pub subnet_evm_chain_config: Option<subnet_evm_chain_config::Config>,
 
     /// NOTE: Only required for custom networks with pre-funded wallets!
     /// These are used for custom primary network genesis generation.
@@ -737,7 +737,7 @@ impl Spec {
             }
         };
 
-        let (subnet_evm_genesis, subnet_evm_config) = {
+        let (subnet_evm_genesis, subnet_evm_chain_config) = {
             if opts.enable_subnet_evm {
                 let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys)
                     .expect("failed to generate genesis");
@@ -777,9 +777,9 @@ impl Spec {
                 }
                 genesis.config = Some(chain_config);
 
-                let subnet_evm_config = subnet_evm_config::Config::default();
+                let subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
 
-                (Some(genesis), Some(subnet_evm_config))
+                (Some(genesis), Some(subnet_evm_chain_config))
             } else {
                 (None, None)
             }
@@ -834,32 +834,32 @@ impl Spec {
             install_artifacts.plugins_dir = Some(opts.install_artifacts_plugins_dir);
         }
 
-        let mut coreth_config = coreth_config::Config::default();
+        let mut coreth_chain_config = coreth_chain_config::Config::default();
         if opts.coreth_metrics_enabled {
-            coreth_config.metrics_enabled = Some(true);
+            coreth_chain_config.metrics_enabled = Some(true);
         }
         if opts.coreth_continuous_profiler_enabled {
-            coreth_config.continuous_profiler_dir =
-                Some(String::from(coreth_config::DEFAULT_PROFILE_DIR));
-            coreth_config.continuous_profiler_frequency =
-                Some(coreth_config::DEFAULT_PROFILE_FREQUENCY);
-            coreth_config.continuous_profiler_max_files =
-                Some(coreth_config::DEFAULT_PROFILE_MAX_FILES);
+            coreth_chain_config.continuous_profiler_dir =
+                Some(String::from(coreth_chain_config::DEFAULT_PROFILE_DIR));
+            coreth_chain_config.continuous_profiler_frequency =
+                Some(coreth_chain_config::DEFAULT_PROFILE_FREQUENCY);
+            coreth_chain_config.continuous_profiler_max_files =
+                Some(coreth_chain_config::DEFAULT_PROFILE_MAX_FILES);
         }
         if opts.coreth_offline_pruning_enabled {
-            coreth_config.offline_pruning_enabled = Some(true);
+            coreth_chain_config.offline_pruning_enabled = Some(true);
         }
         if opts.coreth_state_sync_enabled {
-            coreth_config.state_sync_enabled = Some(true);
+            coreth_chain_config.state_sync_enabled = Some(true);
             if !opts.avalanchego_state_sync_ids.is_empty() {
-                coreth_config.state_sync_ids = Some(opts.avalanchego_state_sync_ids.clone());
+                coreth_chain_config.state_sync_ids = Some(opts.avalanchego_state_sync_ids.clone());
             }
         }
         if opts.coreth_state_sync_metrics_enabled {
-            coreth_config.state_sync_metrics_enabled = Some(true);
+            coreth_chain_config.state_sync_metrics_enabled = Some(true);
         }
 
-        let state_sync_enabled = if let Some(b) = coreth_config.state_sync_enabled {
+        let state_sync_enabled = if let Some(b) = coreth_chain_config.state_sync_enabled {
             b
         } else {
             false
@@ -919,11 +919,11 @@ impl Spec {
             metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
 
             avalanchego_config,
-            coreth_config,
+            coreth_chain_config,
             avalanchego_genesis_template,
 
             subnet_evm_genesis,
-            subnet_evm_config,
+            subnet_evm_chain_config,
 
             test_keys_with_funds: Some(test_key_infos),
 
@@ -1037,11 +1037,12 @@ impl Spec {
             ));
         }
 
-        if self.subnet_evm_config.is_some() && self.avalanchego_config.whitelisted_subnets.is_none()
+        if self.subnet_evm_chain_config.is_some()
+            && self.avalanchego_config.whitelisted_subnets.is_none()
         {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                "'subnet_evm_config' is some but 'avalanchego_config.whitelisted_subnets' is none",
+                "'subnet_evm_chain_config' is some but 'avalanchego_config.whitelisted_subnets' is none",
             ));
         }
 
@@ -1252,7 +1253,7 @@ avalanchego_config:
   throttler-inbound-node-max-at-large-bytes: 2097152
   throttler-inbound-at-large-alloc-size: 6291456
 
-coreth_config:
+coreth_chain_config:
   coreth-admin-api-enabled: true
   offline-pruning-enabled: false
   offline-pruning-data-directory: /data/c-chain-offline-pruning
@@ -1332,11 +1333,11 @@ coreth_config:
         metrics_fetch_interval_seconds: 5000,
 
         avalanchego_config,
-        coreth_config: coreth_config::Config::default(),
+        coreth_chain_config: coreth_chain_config::Config::default(),
         avalanchego_genesis_template: None,
 
         subnet_evm_genesis: None,
-        subnet_evm_config: None,
+        subnet_evm_chain_config: None,
 
         test_keys_with_funds: None,
         current_nodes: None,
@@ -1629,19 +1630,19 @@ fn test_storage_path() {
 pub struct NodeInfo {
     pub local_node: Node,
     pub avalanchego_config: avalanchego_config::Config,
-    pub coreth_config: coreth_config::Config,
+    pub coreth_chain_config: coreth_chain_config::Config,
 }
 
 impl NodeInfo {
     pub fn new(
         local_node: Node,
         avalanchego_config: avalanchego_config::Config,
-        coreth_config: coreth_config::Config,
+        coreth_chain_config: coreth_chain_config::Config,
     ) -> Self {
         Self {
             local_node,
             avalanchego_config,
-            coreth_config,
+            coreth_chain_config,
         }
     }
 
