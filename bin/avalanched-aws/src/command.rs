@@ -1327,10 +1327,7 @@ fn stop_and_start_avalanche_systemd_service(
     log::info!("STEP: setting up and starting Avalanche systemd service...");
 
     fs::create_dir_all(&avalanchego_config.log_dir)?;
-
-    if let Some(v) = &avalanchego_config.subnet_config_dir {
-        fs::create_dir_all(Path::new(v).join("C"))?;
-    }
+    fs::create_dir_all(Path::new(&avalanchego_config.subnet_config_dir).join("C"))?;
 
     if let Some(v) = &avalanchego_config.profile_dir {
         fs::create_dir_all(v)?;
