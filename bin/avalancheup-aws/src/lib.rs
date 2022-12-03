@@ -11,7 +11,7 @@ use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
     constants,
     coreth::chain_config as coreth_chain_config,
-    key, node,
+    key, node, subnet,
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
 };
 use lazy_static::lazy_static;
@@ -253,6 +253,8 @@ pub struct Spec {
     pub subnet_evm_genesis: Option<subnet_evm_genesis::Genesis>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_chain_config: Option<subnet_evm_chain_config::Config>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subnet_evm_subnet_config: Option<subnet::config::Config>,
 
     /// NOTE: Only required for custom networks with pre-funded wallets!
     /// These are used for custom primary network genesis generation.
@@ -737,7 +739,7 @@ impl Spec {
             }
         };
 
-        let (subnet_evm_genesis, subnet_evm_chain_config) = {
+        let (subnet_evm_genesis, subnet_evm_chain_config, subnet_evm_subnet_config) = {
             if opts.enable_subnet_evm {
                 let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys)
                     .expect("failed to generate genesis");
@@ -778,10 +780,15 @@ impl Spec {
                 genesis.config = Some(chain_config);
 
                 let subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
+                let subnet_evm_subnet_config = subnet::config::Config::default();
 
-                (Some(genesis), Some(subnet_evm_chain_config))
+                (
+                    Some(genesis),
+                    Some(subnet_evm_chain_config),
+                    Some(subnet_evm_subnet_config),
+                )
             } else {
-                (None, None)
+                (None, None, None)
             }
         };
 
@@ -924,6 +931,7 @@ impl Spec {
 
             subnet_evm_genesis,
             subnet_evm_chain_config,
+            subnet_evm_subnet_config,
 
             test_keys_with_funds: Some(test_key_infos),
 
@@ -1338,6 +1346,7 @@ coreth_chain_config:
 
         subnet_evm_genesis: None,
         subnet_evm_chain_config: None,
+        subnet_evm_subnet_config: None,
 
         test_keys_with_funds: None,
         current_nodes: None,

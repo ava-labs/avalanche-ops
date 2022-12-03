@@ -86,7 +86,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         )
         .await?;
         write_coreth_chain_config_from_spec(&spec)?;
-        write_subnet_evm_config_from_spec(&spec)?;
+        write_subnet_evm_subnet_config_from_spec(&spec)?;
         write_subnet_evm_chain_config_from_spec(&spec)?;
 
         let metrics_rules = if let Some(mm) = spec.metrics_rules {
@@ -738,15 +738,15 @@ fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Resu
     Ok(())
 }
 
-fn write_subnet_evm_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
-    if let Some(subnet_evm_chain_config) = &spec.subnet_evm_chain_config {
+fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    if let Some(subnet_evm_subnet_config) = &spec.subnet_evm_chain_config {
         let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
         log::info!(
-            "STEP: writing subnet-evm chain config file from spec for '{}'",
+            "STEP: writing subnet-evm subnet config file from spec for '{}'",
             whitelisted_subnet
         );
 
-        let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
+        let subnet_config_dir = spec.avalanchego_config.subnet_config_dir.clone();
         let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
 
         // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
@@ -757,21 +757,19 @@ fn write_subnet_evm_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result
         // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-precompile-configurations
         // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-configuration-3
         // ref. https://github.com/ava-labs/public-chain-assets/blob/main/chains/53935/genesis.json
-        fs::create_dir_all(Path::new(&chain_config_dir).join(&whitelisted_subnet))?;
-        let chain_config_path = Path::new(&chain_config_dir)
-            .join(whitelisted_subnet)
-            .join("config.json");
+        fs::create_dir_all(Path::new(&subnet_config_dir))?;
+        let subnet_config_path = Path::new(&subnet_config_dir).join(whitelisted_subnet + ".json");
 
-        subnet_evm_chain_config.sync(&tmp_path)?;
-        fs::copy(&tmp_path, &chain_config_path)?;
+        subnet_evm_subnet_config.sync(&tmp_path)?;
+        fs::copy(&tmp_path, &subnet_config_path)?;
         fs::remove_file(&tmp_path)?;
 
         log::info!(
-            "saved subnet-evm config file to {}",
-            chain_config_path.display()
+            "saved subnet-evm subnet config file to {}",
+            subnet_config_path.display()
         );
     } else {
-        log::info!("STEP: no subnet-evm config is found, skipping writiing subnet-evm config file");
+        log::info!("STEP: no subnet config is found, skipping writiing subnet config file");
     }
 
     Ok(())
