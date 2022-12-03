@@ -763,7 +763,9 @@ fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::Spec) -> io:
             subnet_config_path.display()
         );
     } else {
-        log::info!("STEP: no subnet config is found, skipping writiing subnet config file");
+        log::info!(
+            "STEP: no subnet-evm subnet config is found, skipping writing subnet config file"
+        );
     }
 
     Ok(())
@@ -798,11 +800,13 @@ fn write_subnet_evm_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::
         fs::remove_file(&tmp_path)?;
 
         log::info!(
-            "saved subnet-evm config file to {}",
+            "saved subnet-evm chain config file to {}",
             chain_config_path.display()
         );
     } else {
-        log::info!("STEP: no subnet-evm config is found, skipping writiing subnet-evm config file");
+        log::info!(
+            "STEP: no subnet-evm chain config is found, skipping writing subnet-evm config file"
+        );
     }
 
     Ok(())
