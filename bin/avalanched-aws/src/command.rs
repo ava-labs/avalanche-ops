@@ -335,12 +335,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     }
 
-    stop_and_start_avalanche_systemd_service(
-        &tags.avalanche_bin_path,
-        &avalanchego_config,
-        &coreth_chain_config,
-        subnet_evm_chain_config,
-    )?;
+    stop_and_start_avalanche_systemd_service(&tags.avalanche_bin_path, &avalanchego_config)?;
     stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
         &tags.avalanche_telemetry_cloudwatch_bin_path,
         &tags.avalanche_telemetry_cloudwatch_rules_file_path,
@@ -1357,8 +1352,6 @@ async fn discover_ready_anchor_nodes_from_s3(
 fn stop_and_start_avalanche_systemd_service(
     avalanche_bin_path: &str,
     avalanchego_config: &avalanchego::config::Config,
-    coreth_chain_config: &coreth::chain_config::Config,
-    subnet_evm_chain_config: Option<subnet_evm::chain_config::Config>,
 ) -> io::Result<()> {
     log::info!("STEP: setting up and starting Avalanche systemd service...");
 
