@@ -57,18 +57,19 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let (
         mut avalanchego_config,
         coreth_config,
-        subnet_evm_config,
+        subnet_evm_chain_config,
         download_avalanchego_from_github,
         metrics_rules,
         logs_auto_removal,
         metrics_fetch_interval_seconds,
     ) = if opts.use_default_config {
         let avalanchego_config = write_default_avalanche_config(tags.network_id, &public_ipv4)?;
-        let coreth_config = write_default_coreth_config(&avalanchego_config.chain_config_dir)?;
+        let coreth_chain_config =
+            write_default_coreth_chain_config(&avalanchego_config.chain_config_dir)?;
 
         (
             avalanchego_config,
-            coreth_config,
+            coreth_chain_config,
             None,
             true,
             avalancheup_aws::default_rules(),
@@ -84,8 +85,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             &tags.avalancheup_spec_path,
         )
         .await?;
-        write_coreth_config_from_spec(&spec)?;
-        write_subnet_evm_config_from_spec(&spec)?;
+        write_coreth_chain_config_from_spec(&spec)?;
+        write_subnet_evm_subnet_config_from_spec(&spec)?;
+        write_subnet_evm_chain_config_from_spec(&spec)?;
 
         let metrics_rules = if let Some(mm) = spec.metrics_rules {
             mm
@@ -99,8 +101,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         };
         (
             spec.avalanchego_config.clone(),
-            spec.coreth_config.clone(),
-            spec.subnet_evm_config.clone(),
+            spec.coreth_chain_config.clone(),
+            spec.subnet_evm_chain_config.clone(),
             spec.install_artifacts.avalanchego_bin.is_none(),
             metrics_rules,
             !spec.disable_logs_auto_removal,
@@ -330,7 +332,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         &tags.avalanche_bin_path,
         &avalanchego_config,
         &coreth_config,
-        subnet_evm_config,
+        subnet_evm_chain_config,
     )?;
     stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
         &tags.avalanche_telemetry_cloudwatch_bin_path,
@@ -678,17 +680,21 @@ fn write_default_avalanche_config(
     Ok(avalanchego_config)
 }
 
-fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::config::Config> {
-    log::info!("STEP: writing default coreth config file...");
+fn write_default_coreth_chain_config(
+    chain_config_dir: &str,
+) -> io::Result<coreth::chain_config::Config> {
+    log::info!("STEP: writing default coreth chain config file...");
 
     fs::create_dir_all(Path::new(chain_config_dir).join("C"))?;
 
-    let coreth_config = coreth::config::Config::default();
+    let coreth_config = coreth::chain_config::Config::default();
 
     let chain_config_c_path = Path::new(chain_config_dir).join("C").join("config.json");
     if chain_config_c_path.exists() {
         log::info!("coreth C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
-        return coreth::config::Config::load(chain_config_c_path.display().to_string().as_str());
+        return coreth::chain_config::Config::load(
+            chain_config_c_path.display().to_string().as_str(),
+        );
     };
 
     let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
@@ -704,8 +710,8 @@ fn write_default_coreth_config(chain_config_dir: &str) -> io::Result<coreth::con
     Ok(coreth_config)
 }
 
-fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
-    log::info!("STEP: writing coreth config file from spec for the C-chain...");
+fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    log::info!("STEP: writing coreth chain config file from spec for the C-chain...");
 
     let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
     fs::create_dir_all(Path::new(&chain_config_dir).join("C"))?;
@@ -720,7 +726,7 @@ fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()>
     };
 
     let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
-    spec.coreth_config.sync(&tmp_path)?;
+    spec.coreth_chain_config.sync(&tmp_path)?;
     fs::copy(&tmp_path, &chain_config_c_path)?;
     fs::remove_file(&tmp_path)?;
 
@@ -732,11 +738,44 @@ fn write_coreth_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()>
     Ok(())
 }
 
-fn write_subnet_evm_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
-    if let Some(subnet_evm_config) = &spec.subnet_evm_config {
+fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    if let Some(subnet_evm_subnet_config) = &spec.subnet_evm_subnet_config {
         let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
         log::info!(
-            "STEP: writing subnet-evm config file from spec for '{}'",
+            "STEP: writing subnet-evm subnet config file from spec for '{}'",
+            whitelisted_subnet
+        );
+
+        let subnet_config_dir = spec.avalanchego_config.subnet_config_dir.clone();
+        let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
+
+        // If a subnet id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+        // the config file for this subnet is located at {subnet-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt.json.
+        fs::create_dir_all(Path::new(&subnet_config_dir))?;
+        let subnet_config_path = Path::new(&subnet_config_dir).join(whitelisted_subnet + ".json");
+
+        subnet_evm_subnet_config.sync(&tmp_path)?;
+        fs::copy(&tmp_path, &subnet_config_path)?;
+        fs::remove_file(&tmp_path)?;
+
+        log::info!(
+            "saved subnet-evm subnet config file to {}",
+            subnet_config_path.display()
+        );
+    } else {
+        log::info!(
+            "STEP: no subnet-evm subnet config is found, skipping writing subnet config file"
+        );
+    }
+
+    Ok(())
+}
+
+fn write_subnet_evm_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+    if let Some(subnet_evm_chain_config) = &spec.subnet_evm_chain_config {
+        let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
+        log::info!(
+            "STEP: writing subnet-evm chain config file from spec for '{}'",
             whitelisted_subnet
         );
 
@@ -756,16 +795,18 @@ fn write_subnet_evm_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result
             .join(whitelisted_subnet)
             .join("config.json");
 
-        subnet_evm_config.sync(&tmp_path)?;
+        subnet_evm_chain_config.sync(&tmp_path)?;
         fs::copy(&tmp_path, &chain_config_path)?;
         fs::remove_file(&tmp_path)?;
 
         log::info!(
-            "saved subnet-evm config file to {}",
+            "saved subnet-evm chain config file to {}",
             chain_config_path.display()
         );
     } else {
-        log::info!("STEP: no subnet-evm config is found, skipping writiing subnet-evm config file");
+        log::info!(
+            "STEP: no subnet-evm chain config is found, skipping writing subnet-evm config file"
+        );
     }
 
     Ok(())
@@ -1009,7 +1050,7 @@ async fn discover_other_bootstrapping_anchor_nodes_from_s3(
     let node_info = avalancheup_aws::NodeInfo::new(
         local_node.clone(),
         spec.avalanchego_config.clone(),
-        spec.coreth_config.clone(),
+        spec.coreth_chain_config.clone(),
     );
     let node_info_path = random_manager::tmp_path(10, Some(".yaml"))?;
     node_info.sync(node_info_path.clone()).unwrap();
@@ -1091,7 +1132,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
 
     // "initial_staked_funds" is reserved for locked P-chain balance
     // with "spec.generated_seed_private_key_with_locked_p_chain_balance"
-    let seed_priv_keys = spec.clone().test_insecure_hot_key_infos.unwrap();
+    let seed_priv_keys = spec.clone().test_keys_with_funds.unwrap();
     let seed_priv_key = seed_priv_keys[0].clone();
 
     let mut initial_stakers: Vec<avalanchego_genesis::Staker> = vec![];
@@ -1278,27 +1319,26 @@ async fn discover_ready_anchor_nodes_from_s3(
 fn stop_and_start_avalanche_systemd_service(
     avalanche_bin_path: &str,
     avalanchego_config: &avalanchego::config::Config,
-    coreth_config: &coreth::config::Config,
-    subnet_evm_config: Option<subnet_evm::config::Config>,
+    coreth_chain_config: &coreth::chain_config::Config,
+    subnet_evm_chain_config: Option<subnet_evm::chain_config::Config>,
 ) -> io::Result<()> {
     log::info!("STEP: setting up and starting Avalanche systemd service...");
 
     fs::create_dir_all(&avalanchego_config.log_dir)?;
-    if let Some(v) = &avalanchego_config.subnet_config_dir {
-        fs::create_dir_all(Path::new(v).join("C"))?;
-    }
+    fs::create_dir_all(Path::new(&avalanchego_config.subnet_config_dir).join("C"))?;
+
     if let Some(v) = &avalanchego_config.profile_dir {
         fs::create_dir_all(v)?;
     }
 
-    if let Some(v) = &coreth_config.continuous_profiler_dir {
+    if let Some(v) = &coreth_chain_config.continuous_profiler_dir {
         fs::create_dir_all(v)?;
     }
-    if let Some(v) = &coreth_config.offline_pruning_data_directory {
+    if let Some(v) = &coreth_chain_config.offline_pruning_data_directory {
         fs::create_dir_all(v)?;
     }
 
-    if let Some(cfg) = &subnet_evm_config {
+    if let Some(cfg) = &subnet_evm_chain_config {
         if let Some(v) = &cfg.continuous_profiler_dir {
             fs::create_dir_all(v)?;
         }
@@ -1516,7 +1556,7 @@ async fn publish_node_info_ready_loop(
     let node_info = avalancheup_aws::NodeInfo::new(
         local_node.clone(),
         spec.avalanchego_config.clone(),
-        spec.coreth_config.clone(),
+        spec.coreth_chain_config.clone(),
     );
 
     let node_info_path = random_manager::tmp_path(10, Some(".yaml")).unwrap();

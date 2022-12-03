@@ -170,6 +170,10 @@ fn main() {
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
                 subnet_evm_auto_fee_manager_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG"),
+                subnet_evm_config_proposer_min_block_delay_seconds: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY")
+                    .unwrap_or(&1)
+                    .clone(),
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")

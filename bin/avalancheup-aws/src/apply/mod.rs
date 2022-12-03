@@ -1783,7 +1783,7 @@ aws ssm start-session --region {} --target {}
         all_instance_ids.push(node.machine_id.clone())
     }
 
-    if let Some(keys_with_balances) = &spec.test_insecure_hot_key_infos {
+    if let Some(keys_with_balances) = &spec.test_keys_with_funds {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -1904,7 +1904,7 @@ $ cat /tmp/{node_id}.crt
             .expect("failed subnet_evm_genesis.sync");
 
         if spec.avalanchego_config.is_custom_network() {
-            if let Some(keys_with_balances) = &spec.test_insecure_hot_key_infos {
+            if let Some(keys_with_balances) = &spec.test_keys_with_funds {
                 // create a wallet
                 let pk = key::secp256k1::private_key::Key::from_cb58(
                     keys_with_balances[0].private_key_cb58.clone(),
@@ -1928,13 +1928,16 @@ $ cat /tmp/{node_id}.crt
                     .unwrap();
                 log::info!("dry mode create_subnet Id {}", subnet_id);
 
-                let subnet_id = rt
+                let created_subnet_id = rt
                     .block_on(w.p().create_subnet().check_acceptance(true).issue())
                     .unwrap();
-                log::info!("created subnet {}", subnet_id);
+                log::info!(
+                    "created subnet {} (still need whitelist)",
+                    created_subnet_id
+                );
                 thread::sleep(Duration::from_secs(5));
 
-                let whitelisted_subnet_id = if let Some(v) =
+                let placeholder_whitelisted_subnet_id = if let Some(v) =
                     &spec.avalanchego_config.whitelisted_subnets
                 {
                     v.clone()
@@ -1966,10 +1969,17 @@ $ cat /tmp/{node_id}.crt
                     build_param("DocumentName", &ssm_document_name),
                     build_param("VmId", "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"),
                     build_param(
-                        "PlaceHolderWhitelistedSubnetId",
-                        &whitelisted_subnet_id.clone(),
+                        "SubnetConfigDirectory",
+                        &spec.avalanchego_config.subnet_config_dir,
                     ),
-                    build_param("NewWhitelistedSubnetId", &subnet_id.to_string()),
+                    build_param(
+                        "PlaceHolderWhitelistedSubnetId",
+                        &placeholder_whitelisted_subnet_id.clone(),
+                    ),
+                    build_param(
+                        "NewWhitelistedSubnetId",
+                        &placeholder_whitelisted_subnet_id.to_string(),
+                    ),
                 ]);
                 rt.block_on(cloudformation_manager.create_stack(
                     ssm_doc_stack_name.as_str(),
@@ -1990,7 +2000,7 @@ $ cat /tmp/{node_id}.crt
                     Duration::from_secs(30),
                 ))
                 .unwrap();
-                log::info!("created ssm document for {}", subnet_id);
+                log::info!("created ssm document for {}", created_subnet_id);
 
                 execute!(
                     stdout(),
@@ -2012,10 +2022,17 @@ $ cat /tmp/{node_id}.crt
                                 )],
                             )
                             .parameters(
-                                "placeHolderWhitelistedSubnetId",
-                                vec![whitelisted_subnet_id.clone()],
+                                "subnetConfigDirectory",
+                                vec![spec.avalanchego_config.subnet_config_dir.clone()],
                             )
-                            .parameters("newWhitelistedSubnetId", vec![subnet_id.to_string()])
+                            .parameters(
+                                "placeHolderWhitelistedSubnetId",
+                                vec![placeholder_whitelisted_subnet_id.clone()],
+                            )
+                            .parameters(
+                                "newWhitelistedSubnetId",
+                                vec![created_subnet_id.to_string()],
+                            )
                             .output_s3_region(spec.aws_resources.region.clone())
                             .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
                             .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
@@ -2074,13 +2091,13 @@ $ cat /tmp/{node_id}.crt
                         w.p()
                             .add_subnet_validator()
                             .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-                            .subnet_id(subnet_id)
+                            .subnet_id(created_subnet_id)
                             .check_acceptance(true)
                             .issue(),
                     )
                     .unwrap();
                 }
-                log::info!("added subnet validators for {}", subnet_id);
+                log::info!("added subnet validators for {}", created_subnet_id);
                 thread::sleep(Duration::from_secs(5));
 
                 let subnet_evm_genesis_bytes = subnet_evm_genesis.to_bytes().unwrap();
@@ -2094,7 +2111,7 @@ $ cat /tmp/{node_id}.crt
                     .block_on(
                         w.p()
                             .create_chain()
-                            .subnet_id(subnet_id)
+                            .subnet_id(created_subnet_id)
                             .genesis_data(subnet_evm_genesis_bytes.clone())
                             .vm_id(
                                 ids::Id::from_str(
@@ -2113,7 +2130,7 @@ $ cat /tmp/{node_id}.crt
                     .block_on(
                         w.p()
                             .create_chain()
-                            .subnet_id(subnet_id)
+                            .subnet_id(created_subnet_id)
                             .genesis_data(subnet_evm_genesis_bytes)
                             .vm_id(
                                 ids::Id::from_str(
@@ -2148,8 +2165,12 @@ $ cat /tmp/{node_id}.crt
                 let cfn_params = Vec::from([
                     build_param("DocumentName", &ssm_document_name),
                     build_param(
+                        "ChainConfigDirectory",
+                        &spec.avalanchego_config.chain_config_dir,
+                    ),
+                    build_param(
                         "PlaceHolderWhitelistedSubnetId",
-                        &whitelisted_subnet_id.clone(),
+                        &placeholder_whitelisted_subnet_id.clone(),
                     ),
                     build_param("NewBlockchainId", &blockchain_id.to_string()),
                 ]);
@@ -2172,7 +2193,7 @@ $ cat /tmp/{node_id}.crt
                     Duration::from_secs(30),
                 ))
                 .unwrap();
-                log::info!("created ssm document for {}", subnet_id);
+                log::info!("created ssm document for {}", created_subnet_id);
 
                 execute!(
                     stdout(),
@@ -2188,8 +2209,12 @@ $ cat /tmp/{node_id}.crt
                             .document_name(ssm_document_name)
                             .set_instance_ids(Some(all_instance_ids.clone()))
                             .parameters(
+                                "chainConfigDirectory",
+                                vec![spec.avalanchego_config.chain_config_dir.clone()],
+                            )
+                            .parameters(
                                 "placeHolderWhitelistedSubnetId",
-                                vec![whitelisted_subnet_id.clone()],
+                                vec![placeholder_whitelisted_subnet_id.clone()],
                             )
                             .parameters("newBlockchainId", vec![blockchain_id.to_string()])
                             .output_s3_region(spec.aws_resources.region.clone())
@@ -2265,7 +2290,7 @@ default-spec \\
         )),
         ResetColor
     )?;
-    if spec.subnet_evm_config.is_some() {
+    if spec.subnet_evm_chain_config.is_some() {
         execute!(
             stdout(),
             SetForegroundColor(Color::DarkGreen),
