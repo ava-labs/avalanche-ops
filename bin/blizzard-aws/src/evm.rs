@@ -121,10 +121,10 @@ pub async fn make_transfers(
     //
     //
     //
-    let target_addr = ephemeral_test_keys[0].to_public_key().to_h160();
+    let first_addr = ephemeral_test_keys[0].to_public_key().to_h160();
     log::info!(
         "STEP 4: requesting funds from faucet to the first new key {}",
-        target_addr
+        first_addr
     );
     loop {
         let faucet_bal = match faucet_evm_wallet.balance().await {
@@ -139,7 +139,7 @@ pub async fn make_transfers(
 
         match faucet_evm_wallet
             .eip1559()
-            .to(target_addr.clone())
+            .to(first_addr.clone())
             .value(transfer_amount)
             .submit()
             .await
@@ -158,4 +158,19 @@ pub async fn make_transfers(
             }
         }
     }
+
+    //
+    //
+    //
+    log::info!(
+        "STEP 5: distributing funds from first new key {} to all other keys",
+        first_addr
+    );
+    // TODO
+
+    //
+    //
+    //
+    log::info!("STEP 6: move funds from beginning to end between new keys");
+    // TODO
 }

@@ -100,13 +100,13 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
     //
     //
     //
-    let target_addr = ephemeral_test_keys[0]
+    let first_addr = ephemeral_test_keys[0]
         .to_public_key()
         .to_short_id()
         .unwrap();
     log::info!(
         "STEP 4: requesting funds from faucet to the first new key {}",
-        target_addr
+        first_addr
     );
     loop {
         let faucet_bal = match faucet_wallet.x().balance().await {
@@ -122,7 +122,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
         match faucet_wallet
             .x()
             .transfer()
-            .receiver(target_addr.clone())
+            .receiver(first_addr.clone())
             .amount(transfer_amount)
             .check_acceptance(true)
             .issue()
@@ -142,4 +142,19 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
             }
         }
     }
+
+    //
+    //
+    //
+    log::info!(
+        "STEP 5: distributing funds from first new key {} to all other keys",
+        first_addr
+    );
+    // TODO
+
+    //
+    //
+    //
+    log::info!("STEP 6: move funds from beginning to end between new keys");
+    // TODO
 }
