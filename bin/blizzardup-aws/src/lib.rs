@@ -39,7 +39,7 @@ pub struct Spec {
     pub blizzard_spec: blizzard::Spec,
 
     #[serde(default)]
-    pub test_keys_with_funds: Vec<key::secp256k1::Info>,
+    pub test_keys: Vec<key::secp256k1::Info>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -93,7 +93,7 @@ impl StackName {
 pub struct DefaultSpecOption {
     pub log_level: String,
 
-    pub keys_to_generate: usize,
+    pub funded_keys: usize,
 
     pub region: String,
     pub instance_mode: String,
@@ -106,6 +106,7 @@ pub struct DefaultSpecOption {
     pub blizzard_http_rpcs: Vec<String>,
     pub blizzard_subnet_evm_blockchain_id: Option<String>,
     pub blizzard_load_kinds: Vec<String>,
+    pub blizzard_keys_to_generate: usize,
     pub blizzard_metrics_push_interval_seconds: u64,
     pub blizzard_gas: u64,
     pub blizzard_gas_price: u64,
@@ -229,6 +230,7 @@ impl Spec {
             network_id: opts.network_id,
             rpc_endpoints,
             load_kinds: opts.blizzard_load_kinds,
+            keys_to_generate: opts.blizzard_keys_to_generate,
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
             gas,
             gas_price,
@@ -245,21 +247,13 @@ impl Spec {
 
         // same order as avalanche-types genesis
         // assume they are pre-funded
-        let mut test_keys_with_funds: Vec<key::secp256k1::Info> = Vec::new();
-        for i in 0..opts.keys_to_generate {
-            let k = {
-                if i < key::secp256k1::TEST_KEYS.len() {
-                    key::secp256k1::TEST_KEYS[i].clone()
-                } else {
-                    key::secp256k1::private_key::Key::generate()
-                        .expect("unexpected key generate failure")
-                }
-            };
-
-            let info = k
+        assert!(key::secp256k1::TEST_KEYS.len() >= opts.funded_keys);
+        let mut test_keys: Vec<key::secp256k1::Info> = Vec::new();
+        for i in 0..opts.funded_keys {
+            let info = key::secp256k1::TEST_KEYS[i]
                 .to_info(opts.network_id)
                 .expect("unexpected to_info failure");
-            test_keys_with_funds.push(info.clone());
+            test_keys.push(info.clone());
         }
 
         // [year][month][date]-[system host-based id]
@@ -300,7 +294,7 @@ impl Spec {
 
             blizzard_spec,
 
-            test_keys_with_funds,
+            test_keys,
         }
     }
 
@@ -457,8 +451,9 @@ blizzard_spec:
   log_level: info
   network_id: 99999
   rpc_endpoints: []
-  load_kinds: ["x", "c"]
+  load_kinds: ["x-transfer", "c-transfer"]
   metrics_push_interval_seconds: 60
+  keys_to_generate: 1000
   gas: 200000
   gas_price: 2000000
 
@@ -503,13 +498,14 @@ blizzard_spec:
             log_level: String::from("info"),
             network_id: 99999,
             rpc_endpoints: Vec::new(),
-            load_kinds: vec![String::from("x"), String::from("c")],
+            load_kinds: vec![String::from("x-transfer"), String::from("c-transfer")],
+            keys_to_generate: 1000,
             metrics_push_interval_seconds: 60,
             gas: Some(200000),
             gas_price: Some(2000000),
         },
 
-        test_keys_with_funds: Vec::new(),
+        test_keys: Vec::new(),
     };
 
     assert_eq!(cfg, orig);

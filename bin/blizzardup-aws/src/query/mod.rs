@@ -49,7 +49,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
     lazy_static! {
         static ref REGEXES: Vec<String> = vec![
             r"^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_last_accepted_(height|timestamp)$".to_string(),
-            r"^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_chain_state_tx_accepted_count$".to_string(),
+            r"^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_chain_txs_accepted$".to_string(),
         ];
     }
     let rset = RegexSet::new(REGEXES.to_vec()).unwrap();
@@ -101,7 +101,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
                             prev_height_c = *v;
                         } else if k.ends_with("last_accepted_timestamp") {
                             prev_timestamp_c = *v;
-                        } else if k.ends_with("vm_chain_state_tx_accepted_count") {
+                        } else if k.ends_with("vm_eth_chain_txs_accepted") {
                             prev_tx_accepted_c = *v;
                         }
                         continue;
@@ -110,7 +110,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
                         prev_height_subnet_evm = *v;
                     } else if k.ends_with("last_accepted_timestamp") {
                         prev_timestamp_subnet_evm = *v;
-                    } else if k.ends_with("vm_chain_state_tx_accepted_count") {
+                    } else if k.ends_with("vm_eth_chain_txs_accepted") {
                         prev_tx_accepted_subnet_evm = *v;
                     }
                 }
@@ -120,7 +120,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
                             cur_height_c = *v;
                         } else if k.ends_with("last_accepted_timestamp") {
                             cur_timestamp_c = *v;
-                        } else if k.ends_with("vm_chain_state_tx_accepted_count") {
+                        } else if k.ends_with("vm_eth_chain_txs_accepted") {
                             cur_tx_accepted_c = *v;
                         }
                         continue;
@@ -129,7 +129,7 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
                         cur_height_subnet_evm = *v;
                     } else if k.ends_with("last_accepted_timestamp") {
                         cur_timestamp_subnet_evm = *v;
-                    } else if k.ends_with("vm_chain_state_tx_accepted_count") {
+                    } else if k.ends_with("vm_eth_chain_txs_accepted") {
                         cur_tx_accepted_subnet_evm = *v;
                     }
                 }
