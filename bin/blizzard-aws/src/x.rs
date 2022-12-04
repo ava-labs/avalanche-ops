@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, thread, time::Duration};
 
 use avalanche_types::{client::wallet, key};
 use aws_manager::{self, cloudwatch};
@@ -9,7 +9,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
 
     let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
     log::info!(
-        "start making X-chain transfers to {} endpoints",
+        "STEP 0: start making X-chain transfers to {} endpoints",
         total_rpc_eps
     );
 
@@ -20,8 +20,11 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
 
     let total_funded_keys = spec.test_keys.len();
 
+    //
+    //
+    //
     log::info!(
-        "finding faucet wallet to fund {} new wallets",
+        "STEP 1: finding faucet wallet to fund {} new wallets",
         spec.blizzard_spec.keys_to_generate
     );
     let mut faucet_found = false;
@@ -53,20 +56,34 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
         return;
     }
 
+    //
+    //
+    //
+    log::info!("STEP 2: loading faucet key and wallet");
     let faucet_key = key::secp256k1::private_key::Key::from_cb58(
         spec.test_keys[faucet_idx].private_key_cb58.clone(),
     )
     .unwrap();
+
+    let faucet_wallet = wallet::Builder::new(&faucet_key)
+        .http_rpcs(http_rpcs.clone())
+        .build()
+        .await
+        .unwrap();
+
     log::info!(
-        "faucet wallet '{}' will distribute funds to new keys",
+        "faucet '{}' can now distribute funds to new keys",
         faucet_key
             .to_public_key()
             .hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
 
+    //
+    //
+    //
     log::info!(
-        "generating {} ephemeral keys",
+        "STEP 3: generating {} ephemeral keys",
         spec.blizzard_spec.keys_to_generate
     );
     let mut ephemeral_test_keys = Vec::new();
@@ -79,4 +96,50 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
         "generated {} ephemeral keys",
         spec.blizzard_spec.keys_to_generate
     );
+
+    //
+    //
+    //
+    let target_addr = ephemeral_test_keys[0]
+        .to_public_key()
+        .to_short_id()
+        .unwrap();
+    log::info!(
+        "STEP 4: requesting funds from faucet to the first new key {}",
+        target_addr
+    );
+    loop {
+        let faucet_bal = match faucet_wallet.x().balance().await {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!("failed to get balance {}", e);
+                thread::sleep(Duration::from_secs(5));
+                continue;
+            }
+        };
+        let transfer_amount = faucet_bal / 100;
+
+        match faucet_wallet
+            .x()
+            .transfer()
+            .receiver(target_addr.clone())
+            .amount(transfer_amount)
+            .check_acceptance(true)
+            .issue()
+            .await
+        {
+            Ok(tx_id) => {
+                log::info!(
+                    "successfully transferred {} to the first wallet ({})",
+                    transfer_amount,
+                    tx_id
+                );
+                break;
+            }
+            Err(e) => {
+                log::warn!("failed transfer {}", e);
+                thread::sleep(Duration::from_secs(5));
+            }
+        }
+    }
 }
