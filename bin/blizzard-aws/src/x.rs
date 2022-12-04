@@ -232,6 +232,55 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
     //
     //
     //
-    log::info!("STEP 6: move funds from beginning to end between new keys");
-    // TODO
+    log::info!("STEP 6: looping funds from beginning to end between new keys");
+    // only move 1/10-th of remaining balance
+    let transfer_amount = deposit_amount / 10;
+    loop {
+        for i in 0..spec.blizzard_spec.keys_to_generate {
+            log::info!(
+                "transferring {} from {} to {}",
+                transfer_amount,
+                ephemeral_test_keys[i]
+                    .to_public_key()
+                    .hrp_address(spec.blizzard_spec.network_id, "X")
+                    .unwrap(),
+                ephemeral_test_keys[(i + 1) % spec.blizzard_spec.keys_to_generate]
+                    .to_public_key()
+                    .hrp_address(spec.blizzard_spec.network_id, "X")
+                    .unwrap()
+            );
+
+            let source_wallet = wallet::Builder::new(&ephemeral_test_keys[i])
+                .http_rpcs(http_rpcs.clone())
+                .build()
+                .await
+                .unwrap();
+
+            loop {
+                match source_wallet
+                    .x()
+                    .transfer()
+                    .receiver(
+                        ephemeral_test_keys[(i + 1) % spec.blizzard_spec.keys_to_generate]
+                            .to_public_key()
+                            .to_short_id()
+                            .unwrap(),
+                    )
+                    .amount(transfer_amount)
+                    .check_acceptance(true)
+                    .issue()
+                    .await
+                {
+                    Ok(tx_id) => {
+                        log::info!("successfully transferred {} ({})", transfer_amount, tx_id);
+                        break;
+                    }
+                    Err(e) => {
+                        log::warn!("failed transfer {}", e);
+                        thread::sleep(Duration::from_secs(5));
+                    }
+                }
+            }
+        }
+    }
 }
