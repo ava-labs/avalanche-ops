@@ -23,8 +23,12 @@ fn main() {
 
     match matches.subcommand() {
         Some((default_spec::NAME, sub_matches)) => {
-            let keys_to_generate = sub_matches
-                .get_one::<usize>("KEYS_TO_GENERATE")
+            let funded_keys = sub_matches
+                .get_one::<usize>("FUNDED_KEYS")
+                .unwrap_or(&5)
+                .clone();
+            let blizzard_keys_to_generate = sub_matches
+                .get_one::<usize>("BLIZZARD_KEYS_TO_GENERATE")
                 .unwrap_or(&5)
                 .clone();
 
@@ -86,7 +90,7 @@ fn main() {
                     .unwrap_or(&String::from("info"))
                     .clone(),
 
-                keys_to_generate,
+                funded_keys,
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 instance_mode: sub_matches
@@ -108,6 +112,7 @@ fn main() {
                 blizzard_http_rpcs,
                 blizzard_subnet_evm_blockchain_id,
                 blizzard_load_kinds,
+                blizzard_keys_to_generate,
                 blizzard_metrics_push_interval_seconds,
                 blizzard_gas,
                 blizzard_gas_price,

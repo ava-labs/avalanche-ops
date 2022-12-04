@@ -22,9 +22,9 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("KEYS_TO_GENERATE") 
-                .long("keys-to-generate")
-                .help("Sets the number of keys to generate")
+            Arg::new("FUNDED_KEYS") 
+                .long("funded-keys")
+                .help("Sets the number of pre-funded keys to load from avalanche-types TEST_KEYS")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
@@ -100,10 +100,19 @@ pub fn command() -> Command {
         .arg(
             Arg::new("BLIZZARD_LOAD_KINDS")
                 .long("blizzard-load-kinds")
-                .help("Comma-separated 'blizzard' load kinds (e.g., x,c)")
+                .help("Comma-separated 'blizzard' load kinds (e.g., x-transfer,c-transfer)")
                 .required(false)
                 .num_args(1)
-                .default_value("x,c"),
+                .default_value("x-transfer,c-transfer"),
+        )
+        .arg(
+            Arg::new("BLIZZARD_KEYS_TO_GENERATE")
+                .long("blizzard-keys-to-generate")
+                .help("Number of keys to generate per each blizzard agent")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("100"),
         )
         .arg(
             Arg::new("BLIZZARD_METRICS_PUSH_INTERVAL_SECONDS")

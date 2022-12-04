@@ -539,17 +539,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
-        println!(
-            "
-# change SSH key permission
-chmod 400 {}",
-            ec2_key_path
-        );
+
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
             println!(
-                "# instance '{}' ({}, {})
+                "# change SSH key permission
+chmod 400 {}
+# instance '{}' ({}, {})
 ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
 # download to local machine
 scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
@@ -560,6 +557,7 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
+                ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
