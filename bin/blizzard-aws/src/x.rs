@@ -102,13 +102,12 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
     //
     // amount to distribute to new keys
     let mut total_to_distribute = 0;
-    let first_addr = ephemeral_test_keys[0]
-        .to_public_key()
-        .to_short_id()
-        .unwrap();
     log::info!(
         "STEP 4: requesting funds from faucet to the first new key {}",
-        first_addr
+        ephemeral_test_keys[0]
+            .to_public_key()
+            .hrp_address(spec.blizzard_spec.network_id, "X")
+            .unwrap()
     );
     loop {
         let faucet_bal = match faucet_wallet.x().balance().await {
@@ -124,7 +123,12 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
         match faucet_wallet
             .x()
             .transfer()
-            .receiver(first_addr.clone())
+            .receiver(
+                ephemeral_test_keys[0]
+                    .to_public_key()
+                    .to_short_id()
+                    .unwrap(),
+            )
             .amount(total_to_distribute)
             .check_acceptance(true)
             .issue()
@@ -152,11 +156,53 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
     //
     //
     //
+    log::info!("STEP 5: loading first key and wallet");
+    let first_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
+        .http_rpcs(http_rpcs.clone())
+        .build()
+        .await
+        .unwrap();
     log::info!(
-        "STEP 5: distributing funds from first new key {} to all other keys",
-        first_addr
+        "first key '{}' can now distribute funds to new keys",
+        ephemeral_test_keys[0]
+            .to_public_key()
+            .hrp_address(spec.blizzard_spec.network_id, "X")
+            .unwrap()
     );
-    // TODO
+
+    //
+    //
+    //
+    log::info!(
+        "STEP 6: distributing funds from first new key {} to all other keys",
+        ephemeral_test_keys[0]
+            .to_public_key()
+            .hrp_address(spec.blizzard_spec.network_id, "X")
+            .unwrap()
+    );
+    let total_to_distribute = total_to_distribute as f64 * 0.9; // save some for gas
+    let deposit_amount = total_to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
+    let deposit_amount = deposit_amount as u64;
+    for i in 1..spec.blizzard_spec.keys_to_generate {
+        log::info!(
+            "transferring {} from {} to {}",
+            deposit_amount,
+            ephemeral_test_keys[0]
+                .to_public_key()
+                .hrp_address(spec.blizzard_spec.network_id, "X")
+                .unwrap(),
+            ephemeral_test_keys[i]
+                .to_public_key()
+                .hrp_address(spec.blizzard_spec.network_id, "X")
+                .unwrap()
+        );
+
+        let _addr = ephemeral_test_keys[i]
+            .to_public_key()
+            .to_short_id()
+            .unwrap();
+        // TODO
+    }
 
     //
     //

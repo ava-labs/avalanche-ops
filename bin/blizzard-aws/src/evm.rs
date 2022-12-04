@@ -123,10 +123,9 @@ pub async fn make_transfers(
     //
     // amount to distribute to new keys
     let mut total_to_distribute = primitive_types::U256::from(0);
-    let first_addr = ephemeral_test_keys[0].to_public_key().to_h160();
     log::info!(
         "STEP 4: requesting funds from faucet to the first new key {}",
-        first_addr
+        ephemeral_test_keys[0].to_public_key().to_h160()
     );
     loop {
         let faucet_bal = match faucet_evm_wallet.balance().await {
@@ -141,7 +140,7 @@ pub async fn make_transfers(
 
         match faucet_evm_wallet
             .eip1559()
-            .to(first_addr.clone())
+            .to(ephemeral_test_keys[0].to_public_key().to_h160())
             .value(total_to_distribute)
             .submit()
             .await
@@ -168,11 +167,36 @@ pub async fn make_transfers(
     //
     //
     //
+    log::info!("STEP 5: loading first key and wallet");
+    let first_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
+        .http_rpcs(http_rpcs.clone())
+        .build()
+        .await
+        .unwrap();
+    log::info!(
+        "first key '{}' can now distribute funds to new keys",
+        ephemeral_test_keys[0].to_public_key().to_h160()
+    );
+
+    //
+    //
+    //
     log::info!(
         "STEP 5: distributing funds from first new key {} to all other keys",
-        first_addr
+        ephemeral_test_keys[0].to_public_key().to_h160()
     );
-    // TODO
+    let total_to_distribute = total_to_distribute.as_u64() as f64 * 0.9; // save some for gas
+    let deposit_amount = total_to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
+    let deposit_amount = primitive_types::U256::from(deposit_amount as u64);
+    for i in 1..spec.blizzard_spec.keys_to_generate {
+        log::info!(
+            "transferring {} from {} to {}",
+            deposit_amount,
+            ephemeral_test_keys[0].to_public_key().to_h160(),
+            ephemeral_test_keys[i].to_public_key().to_h160()
+        )
+        // TODO
+    }
 
     //
     //
