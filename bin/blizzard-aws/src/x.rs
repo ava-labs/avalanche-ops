@@ -101,6 +101,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
     //
     //
     // amount to distribute to new keys
+    #[allow(unused_assignments)]
     let mut total_to_distribute = 0;
     log::info!(
         "STEP 4: requesting funds from faucet to the first new key {}",
@@ -180,8 +181,8 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
             .hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
-    let total_to_distribute = total_to_distribute as f64 * 0.9; // save some for gas
-    let deposit_amount = total_to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
+    let to_distribute = total_to_distribute as f64 * 0.9; // save some for gas
+    let deposit_amount = to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
     let deposit_amount = deposit_amount as u64;
     for i in 1..spec.blizzard_spec.keys_to_generate {
         log::info!(

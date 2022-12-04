@@ -122,7 +122,8 @@ pub async fn make_transfers(
     //
     //
     // amount to distribute to new keys
-    let mut total_to_distribute = primitive_types::U256::from(0);
+    #[allow(unused_assignments)]
+    let mut total_to_distribute = primitive_types::U256::zero();
     log::info!(
         "STEP 4: requesting funds from faucet to the first new key {}",
         ephemeral_test_keys[0].to_public_key().to_h160()
@@ -193,8 +194,8 @@ pub async fn make_transfers(
         "STEP 5: distributing funds from first new key {} to all other keys",
         ephemeral_test_keys[0].to_public_key().to_h160()
     );
-    let total_to_distribute = total_to_distribute.as_u64() as f64 * 0.9; // save some for gas
-    let deposit_amount = total_to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
+    let to_distribute = total_to_distribute.as_u64() as f64 * 0.9; // save some for gas
+    let deposit_amount = to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
     let deposit_amount = primitive_types::U256::from(deposit_amount as u64);
     for i in 1..spec.blizzard_spec.keys_to_generate {
         log::info!(
