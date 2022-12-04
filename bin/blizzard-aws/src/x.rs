@@ -52,7 +52,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
         }
     }
     if !faucet_found {
-        log::warn!("no faucet found with >balance");
+        log::warn!("no faucet found with >balance... exiting...");
         return;
     }
 
@@ -100,6 +100,8 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
     //
     //
     //
+    // amount to distribute to new keys
+    let mut total_to_distribute = 0;
     let first_addr = ephemeral_test_keys[0]
         .to_public_key()
         .to_short_id()
@@ -117,13 +119,13 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
                 continue;
             }
         };
-        let transfer_amount = faucet_bal / 100;
+        total_to_distribute = faucet_bal / 100;
 
         match faucet_wallet
             .x()
             .transfer()
             .receiver(first_addr.clone())
-            .amount(transfer_amount)
+            .amount(total_to_distribute)
             .check_acceptance(true)
             .issue()
             .await
@@ -131,7 +133,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
             Ok(tx_id) => {
                 log::info!(
                     "successfully transferred {} to the first wallet ({})",
-                    transfer_amount,
+                    total_to_distribute,
                     tx_id
                 );
                 break;
@@ -141,6 +143,10 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
                 thread::sleep(Duration::from_secs(5));
             }
         }
+    }
+    if total_to_distribute == 0 {
+        log::warn!("zero amount to distribute... exiting...");
+        return;
     }
 
     //

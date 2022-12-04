@@ -70,7 +70,7 @@ pub async fn make_transfers(
         }
     }
     if !faucet_found {
-        log::warn!("no faucet found with >balance");
+        log::warn!("no faucet found with >balance... exiting...");
         return;
     }
 
@@ -121,6 +121,8 @@ pub async fn make_transfers(
     //
     //
     //
+    // amount to distribute to new keys
+    let mut total_to_distribute = primitive_types::U256::from(0);
     let first_addr = ephemeral_test_keys[0].to_public_key().to_h160();
     log::info!(
         "STEP 4: requesting funds from faucet to the first new key {}",
@@ -135,19 +137,19 @@ pub async fn make_transfers(
                 continue;
             }
         };
-        let transfer_amount = faucet_bal / 100;
+        total_to_distribute = faucet_bal / 100;
 
         match faucet_evm_wallet
             .eip1559()
             .to(first_addr.clone())
-            .value(transfer_amount)
+            .value(total_to_distribute)
             .submit()
             .await
         {
             Ok(tx_id) => {
                 log::info!(
                     "successfully transferred {} to the first wallet ({})",
-                    transfer_amount,
+                    total_to_distribute,
                     tx_id
                 );
                 break;
@@ -157,6 +159,10 @@ pub async fn make_transfers(
                 thread::sleep(Duration::from_secs(5));
             }
         }
+    }
+    if total_to_distribute.is_zero() {
+        log::warn!("zero amount to distribute... exiting...");
+        return;
     }
 
     //

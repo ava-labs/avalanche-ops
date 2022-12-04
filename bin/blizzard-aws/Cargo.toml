@@ -19,5 +19,6 @@ clap = { version = "4.0.29", features = ["cargo", "derive"] } # https://github.c
 env_logger = "0.10.0"
 ethers-signers = { version = "1.0.2", optional = false }
 log = "0.4.17"
+primitive-types = { version = "0.12.1", optional = false } # https://crates.io/crates/primitive-types
 random-manager = "0.0.1"
 tokio = { version = "1.22.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
