@@ -173,6 +173,14 @@ pub async fn make_transfers(
         .build()
         .await
         .unwrap();
+
+    let first_local_wallet: ethers_signers::LocalWallet =
+        ephemeral_test_keys[0].signing_key().into();
+
+    let first_evm_wallet = first_wallet
+        .evm(&first_local_wallet, chain_id_alias.to_string(), chain_id)
+        .unwrap();
+
     log::info!(
         "first key '{}' can now distribute funds to new keys",
         ephemeral_test_keys[0].to_public_key().to_h160()
@@ -194,8 +202,30 @@ pub async fn make_transfers(
             deposit_amount,
             ephemeral_test_keys[0].to_public_key().to_h160(),
             ephemeral_test_keys[i].to_public_key().to_h160()
-        )
-        // TODO
+        );
+
+        loop {
+            match first_evm_wallet
+                .eip1559()
+                .to(ephemeral_test_keys[i].to_public_key().to_h160())
+                .value(deposit_amount)
+                .submit()
+                .await
+            {
+                Ok(tx_id) => {
+                    log::info!(
+                        "successfully deposited {} from the first wallet ({})",
+                        deposit_amount,
+                        tx_id
+                    );
+                    break;
+                }
+                Err(e) => {
+                    log::warn!("failed transfer {}", e);
+                    thread::sleep(Duration::from_secs(5));
+                }
+            }
+        }
     }
 
     //

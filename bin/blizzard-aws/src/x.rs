@@ -197,11 +197,35 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwat
                 .unwrap()
         );
 
-        let _addr = ephemeral_test_keys[i]
-            .to_public_key()
-            .to_short_id()
-            .unwrap();
-        // TODO
+        loop {
+            match first_wallet
+                .x()
+                .transfer()
+                .receiver(
+                    ephemeral_test_keys[i]
+                        .to_public_key()
+                        .to_short_id()
+                        .unwrap(),
+                )
+                .amount(deposit_amount)
+                .check_acceptance(true)
+                .issue()
+                .await
+            {
+                Ok(tx_id) => {
+                    log::info!(
+                        "successfully deposited {} from the first wallet ({})",
+                        deposit_amount,
+                        tx_id
+                    );
+                    break;
+                }
+                Err(e) => {
+                    log::warn!("failed transfer {}", e);
+                    thread::sleep(Duration::from_secs(5));
+                }
+            }
+        }
     }
 
     //
