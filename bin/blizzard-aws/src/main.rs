@@ -1,6 +1,8 @@
 mod cloudwatch;
 mod command;
+mod evm;
 mod flags;
+mod x;
 
 use clap::{crate_version, Arg, Command};
 

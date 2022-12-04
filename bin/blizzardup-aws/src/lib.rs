@@ -453,6 +453,7 @@ blizzard_spec:
   rpc_endpoints: []
   load_kinds: ["x-transfer", "c-transfer"]
   metrics_push_interval_seconds: 60
+  keys_to_generate: 1000
   gas: 200000
   gas_price: 2000000
 
@@ -498,7 +499,7 @@ blizzard_spec:
             network_id: 99999,
             rpc_endpoints: Vec::new(),
             load_kinds: vec![String::from("x-transfer"), String::from("c-transfer")],
-            keys_to_generate: 100,
+            keys_to_generate: 1000,
             metrics_push_interval_seconds: 60,
             gas: Some(200000),
             gas_price: Some(2000000),

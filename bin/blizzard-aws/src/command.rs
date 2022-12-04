@@ -5,11 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{cloudwatch as cw, flags};
-use avalanche_types::{
-    client::{evm as client_evm, wallet},
-    key,
-};
+use crate::{cloudwatch as cw, evm, flags, x};
 use aws_manager::{self, cloudwatch, ec2, s3};
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
@@ -59,10 +55,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     for lk in spec.blizzard_spec.load_kinds.iter() {
         match blizzardup_aws::blizzard::LoadKind::from(lk.as_str()) {
             blizzardup_aws::blizzard::LoadKind::XTransfer => handles.push(tokio::spawn(
-                make_x_transfers(spec.clone(), Arc::clone(&cw_manager_arc)),
+                x::make_transfers(spec.clone(), Arc::clone(&cw_manager_arc)),
             )),
             blizzardup_aws::blizzard::LoadKind::CTransfer => {
-                handles.push(tokio::spawn(make_evm_transfers(
+                handles.push(tokio::spawn(evm::make_transfers(
                     spec.clone(),
                     Arc::clone(&cw_manager_arc),
                     Arc::new(String::from("C")),
@@ -75,7 +71,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                         "invalid load kind subnet-evm (not exists)",
                     ));
                 }
-                handles.push(tokio::spawn(make_evm_transfers(
+                handles.push(tokio::spawn(evm::make_transfers(
                     spec.clone(),
                     Arc::clone(&cw_manager_arc),
                     Arc::new(subnet_evm_blockchain_id.clone()),
@@ -293,222 +289,4 @@ fn create_cloudwatch_config(
             String::from("/var/log/blizzard.log"),
         ]),
     )
-}
-
-async fn make_x_transfers(spec: blizzardup_aws::Spec, cw_manager: Arc<cloudwatch::Manager>) {
-    let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
-    // TODO: update load testing status in CloudWatch
-
-    let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
-    log::info!(
-        "start making X-chain transfers to {} endpoints",
-        total_rpc_eps
-    );
-
-    let mut http_rpcs = Vec::new();
-    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
-        http_rpcs.push(ep.http_rpc.clone());
-    }
-
-    let total_funded_keys = spec.test_keys.len();
-
-    log::info!(
-        "generate {} ephemeral keys",
-        spec.blizzard_spec.keys_to_generate
-    );
-    let mut ephemeral_test_keys = Vec::new();
-    for _ in 0..spec.blizzard_spec.keys_to_generate {
-        let k =
-            key::secp256k1::private_key::Key::generate().expect("unexpected key generate failure");
-        ephemeral_test_keys.push(k);
-    }
-    log::info!(
-        "generated {} ephemeral keys",
-        spec.blizzard_spec.keys_to_generate
-    );
-
-    // loop {}
-
-    let mut faucet_idx = random_manager::u8() as usize % total_funded_keys;
-    let k = key::secp256k1::private_key::Key::from_cb58(
-        spec.test_keys[faucet_idx].private_key_cb58.clone(),
-    )
-    .unwrap();
-
-    let mut faucet_wallet = wallet::Builder::new(&k)
-        .http_rpcs(http_rpcs.clone())
-        .build()
-        .await
-        .unwrap();
-    let mut faucet_x_bal = faucet_wallet.x().balance().await.unwrap();
-
-    loop {
-        if faucet_x_bal > 0 {
-            break;
-        }
-
-        faucet_idx += 1;
-        faucet_idx = faucet_idx % total_funded_keys;
-
-        let k = key::secp256k1::private_key::Key::from_cb58(
-            spec.test_keys[faucet_idx].private_key_cb58.clone(),
-        )
-        .unwrap();
-        faucet_wallet = wallet::Builder::new(&k)
-            .http_rpcs(http_rpcs.clone())
-            .build()
-            .await
-            .unwrap();
-        faucet_x_bal = faucet_wallet.x().balance().await.unwrap();
-    }
-
-    log::info!("sending X-chain transfers");
-    loop {
-        let bal = match faucet_wallet.x().balance().await {
-            Ok(b) => b,
-            Err(e) => {
-                log::warn!("failed to get balance x {}", e);
-                continue;
-            }
-        };
-        let transfer_amount = bal / 50;
-
-        let target_idx = (faucet_idx + random_manager::u8() as usize) % total_funded_keys;
-        let target_short_addr = spec.test_keys[target_idx].short_address.clone();
-
-        match faucet_wallet
-            .x()
-            .transfer()
-            .receiver(target_short_addr)
-            .amount(transfer_amount)
-            .check_acceptance(true)
-            .issue()
-            .await
-        {
-            Ok(_) => {}
-            Err(e) => {
-                log::warn!("failed x-chain transfer {}", e);
-            }
-        }
-    }
-}
-
-async fn make_evm_transfers(
-    spec: blizzardup_aws::Spec,
-    cw_manager: Arc<cloudwatch::Manager>,
-    chain_id_alias: Arc<String>,
-) {
-    let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
-    // TODO: update load testing status in CloudWatch
-
-    let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
-    log::info!(
-        "start making transfers to {} endpoints with chain id alias {}",
-        total_rpc_eps,
-        chain_id_alias,
-    );
-
-    let mut http_rpcs = Vec::new();
-    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
-        http_rpcs.push(ep.http_rpc.clone());
-    }
-
-    let total_funded_keys = spec.test_keys.len();
-
-    log::info!(
-        "generate {} ephemeral keys",
-        spec.blizzard_spec.keys_to_generate
-    );
-    let mut ephemeral_test_keys = Vec::new();
-    for _ in 0..spec.blizzard_spec.keys_to_generate {
-        let k =
-            key::secp256k1::private_key::Key::generate().expect("unexpected key generate failure");
-        ephemeral_test_keys.push(k);
-    }
-    log::info!(
-        "generated {} ephemeral keys",
-        spec.blizzard_spec.keys_to_generate
-    );
-
-    let mut faucet_idx = random_manager::u8() as usize % total_funded_keys;
-    let k = key::secp256k1::private_key::Key::from_cb58(
-        spec.test_keys[faucet_idx].private_key_cb58.clone(),
-    )
-    .unwrap();
-
-    let resp = client_evm::chain_id(&http_rpcs[0], &chain_id_alias)
-        .await
-        .unwrap();
-    let chain_id = resp.result;
-
-    let mut faucet_wallet = wallet::Builder::new(&k)
-        .http_rpcs(http_rpcs.clone())
-        .build()
-        .await
-        .unwrap();
-    let faucet_local_wallet: ethers_signers::LocalWallet = k.signing_key().into();
-    let faucet_evm_wallet = faucet_wallet
-        .evm(&faucet_local_wallet, chain_id_alias.to_string(), chain_id)
-        .unwrap();
-    let mut evm_bal = faucet_evm_wallet.balance().await.unwrap();
-
-    loop {
-        if !evm_bal.is_zero() {
-            break;
-        }
-
-        faucet_idx += 1;
-        faucet_idx = faucet_idx % total_funded_keys;
-
-        let k = key::secp256k1::private_key::Key::from_cb58(
-            spec.test_keys[faucet_idx].private_key_cb58.clone(),
-        )
-        .unwrap();
-        faucet_wallet = wallet::Builder::new(&k)
-            .http_rpcs(http_rpcs.clone())
-            .build()
-            .await
-            .unwrap();
-
-        let local_wallet: ethers_signers::LocalWallet = k.signing_key().into();
-        let evm_wallet = faucet_wallet
-            .evm(&local_wallet, chain_id_alias.to_string(), chain_id)
-            .unwrap();
-        evm_bal = evm_wallet.balance().await.unwrap();
-    }
-
-    log::info!("sending C-chain transfers");
-    loop {
-        let local_wallet: ethers_signers::LocalWallet = k.signing_key().into();
-        let evm_wallet = faucet_wallet
-            .evm(&local_wallet, chain_id_alias.to_string(), chain_id)
-            .unwrap();
-
-        let bal = match evm_wallet.balance().await {
-            Ok(b) => b,
-            Err(e) => {
-                log::warn!("failed to get balance c {}", e);
-                continue;
-            }
-        };
-        let transfer_amount = bal / 50;
-
-        let target_idx = (faucet_idx + random_manager::u8() as usize) % total_funded_keys;
-        let target_key = key::secp256k1::private_key::Key::from_cb58(
-            spec.test_keys[target_idx].private_key_cb58.clone(),
-        )
-        .unwrap();
-        let target_h160_addr = target_key.to_public_key().to_h160();
-
-        match evm_wallet
-            .eip1559()
-            .to(target_h160_addr)
-            .value(transfer_amount)
-            .submit()
-            .await
-        {
-            Ok(tx_id) => log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id),
-            Err(e) => log::warn!("failed c-chain transfer {}", e),
-        }
-    }
 }
