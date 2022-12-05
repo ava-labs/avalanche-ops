@@ -2205,10 +2205,11 @@ default-spec \\
 --install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --network-id={network_id} \\
---nodes=3 \\
+--nodes=5 \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-keys-to-generate=100 \\
+--blizzard-workers=5 \\
 --blizzard-load-kinds=x-transfers,c-transfers
 ",
             exec_parent_dir = exec_parent_dir,
@@ -2237,11 +2238,12 @@ default-spec \\
 --install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --network-id={network_id} \\
---nodes=3 \\
+--nodes=5 \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
 --blizzard-keys-to-generate=100 \\
+--blizzard-workers=5 \\
 --blizzard-load-kinds=subnet-evm-transfers
 ",
                 exec_parent_dir = exec_parent_dir,
