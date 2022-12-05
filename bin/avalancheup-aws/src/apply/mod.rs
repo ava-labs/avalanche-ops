@@ -188,6 +188,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     }
 
     let exec_path = env::current_exe().expect("unexpected None current_exe");
+    let exec_parent_dir = exec_path.parent().expect("unexpected None parent");
+    let exec_parent_dir = exec_parent_dir.display().to_string();
 
     log::info!("creating resources (with spec path {})", spec_file_path);
     let cloudformation_manager = cloudformation::Manager::new(&shared_config);
@@ -1783,7 +1785,7 @@ aws ssm start-session --region {} --target {}
                 SetForegroundColor(Color::Green),
                 Print(format!(
                     "
-./target/release/staking-key-cert-s3-downloader \\
+{exec_parent_dir}/staking-key-cert-s3-downloader \\
 --log-level=info \\
 --region={region} \\
 --s3-bucket={s3_buckeet} \\
@@ -1795,6 +1797,7 @@ aws ssm start-session --region {} --target {}
 --tls-cert-path=/tmp/{node_id}.crt
 $ cat /tmp/{node_id}.crt
 ",
+                    exec_parent_dir = exec_parent_dir,
                     region = spec.aws_resources.region,
                     s3_buckeet = spec.aws_resources.s3_bucket,
                     id = spec.id,
@@ -2194,11 +2197,12 @@ $ cat /tmp/{node_id}.crt
         SetForegroundColor(Color::DarkGreen),
         Print(format!(
             "
-./target/release/blizzardup-aws \\
+{exec_parent_dir}/blizzardup-aws \\
 default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
 --region={region} \\
+--install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --network-id={network_id} \\
 --nodes=3 \\
@@ -2207,6 +2211,7 @@ default-spec \\
 --blizzard-keys-to-generate=100 \\
 --blizzard-load-kinds=x-transfer,c-transfer
 ",
+            exec_parent_dir = exec_parent_dir,
             funded_keys = if let Some(keys) = &spec.test_keys_with_funds {
                 keys.len()
             } else {
@@ -2224,11 +2229,12 @@ default-spec \\
             SetForegroundColor(Color::DarkGreen),
             Print(format!(
                 "
-./target/release/blizzardup-aws \\
+{exec_parent_dir}/blizzardup-aws \\
 default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
 --region={region} \\
+--install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --network-id={network_id} \\
 --nodes=3 \\
@@ -2238,6 +2244,7 @@ default-spec \\
 --blizzard-keys-to-generate=100 \\
 --blizzard-load-kinds=subnet-evm
 ",
+                exec_parent_dir = exec_parent_dir,
                 funded_keys = if let Some(keys) = &spec.test_keys_with_funds {
                     keys.len()
                 } else {
