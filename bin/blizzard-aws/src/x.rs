@@ -41,14 +41,17 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
 
         let faucet_bal = faucet_wallet.x().balance().await.unwrap();
         if faucet_bal > 0 {
-            log::info!("faucet wallet found with balance {}", faucet_bal);
+            log::info!(
+                "[WORKER #{worker_idx}] faucet wallet found with balance {}",
+                faucet_bal
+            );
             faucet_found = true;
             faucet_idx = idx;
             break;
         }
     }
     if !faucet_found {
-        log::warn!("no faucet found with >balance... exiting...");
+        log::warn!("[WORKER #{worker_idx}] no faucet found with >balance... exiting...");
         return;
     }
 
@@ -68,7 +71,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         .unwrap();
 
     log::info!(
-        "faucet '{}' can now distribute funds to new keys",
+        "[WORKER #{worker_idx}] faucet '{}' can now distribute funds to new keys",
         faucet_key
             .to_public_key()
             .hrp_address(spec.blizzard_spec.network_id, "X")
@@ -89,7 +92,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         ephemeral_test_keys.push(k);
     }
     log::info!(
-        "generated {} ephemeral keys",
+        "[WORKER #{worker_idx}] generated {} ephemeral keys",
         spec.blizzard_spec.keys_to_generate
     );
 
@@ -110,7 +113,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         let faucet_bal = match faucet_wallet.x().balance().await {
             Ok(b) => b,
             Err(e) => {
-                log::warn!("failed to get balance {}", e);
+                log::warn!("[WORKER #{worker_idx}] failed to get balance {}", e);
                 thread::sleep(Duration::from_secs(5));
                 continue;
             }
@@ -133,20 +136,20 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         {
             Ok(tx_id) => {
                 log::info!(
-                    "successfully transferred {} to the first wallet ({})",
+                    "[WORKER #{worker_idx}] successfully transferred {} to the first wallet ({})",
                     total_to_distribute,
                     tx_id
                 );
                 break;
             }
             Err(e) => {
-                log::warn!("failed transfer {}", e);
+                log::warn!("[WORKER #{worker_idx}] failed transfer {}", e);
                 thread::sleep(Duration::from_secs(5));
             }
         }
     }
     if total_to_distribute == 0 {
-        log::warn!("zero amount to distribute... exiting...");
+        log::warn!("[WORKER #{worker_idx}] zero amount to distribute... exiting...");
         return;
     }
 
@@ -160,7 +163,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         .await
         .unwrap();
     log::info!(
-        "first generated new key '{}' can now distribute funds to new keys",
+        "[WORKER #{worker_idx}] first generated new key '{}' can now distribute funds to new keys",
         ephemeral_test_keys[0]
             .to_public_key()
             .hrp_address(spec.blizzard_spec.network_id, "X")
@@ -182,7 +185,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     let deposit_amount = deposit_amount as u64;
     for i in 1..spec.blizzard_spec.keys_to_generate {
         log::info!(
-            "[{}] transferring {} from {} to {}",
+            "[WORKER #{worker_idx}-{}] transferring {} from {} to {}",
             i,
             deposit_amount,
             ephemeral_test_keys[0]
@@ -212,7 +215,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             {
                 Ok(tx_id) => {
                     log::info!(
-                        "[{}] successfully deposited {} from the first wallet ({})",
+                        "[WORKER #{worker_idx}-{}] successfully deposited {} from the first wallet ({})",
                         i,
                         deposit_amount,
                         tx_id
@@ -220,7 +223,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                     break;
                 }
                 Err(e) => {
-                    log::warn!("failed transfer {}", e);
+                    log::warn!("[WORKER #{worker_idx}-{}] failed transfer {}", i, e);
                     thread::sleep(Duration::from_secs(5));
                 }
             }
@@ -252,7 +255,8 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     loop {
         for i in 0..spec.blizzard_spec.keys_to_generate {
             log::info!(
-                "transferring {} from {} to {}",
+                "[WORKER #{worker_idx}-{}] transferring {} from {} to {}",
+                i,
                 transfer_amount,
                 ephemeral_test_keys[i]
                     .to_public_key()
@@ -280,11 +284,16 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                     .await
                 {
                     Ok(tx_id) => {
-                        log::info!("successfully transferred {} ({})", transfer_amount, tx_id);
+                        log::info!(
+                            "[WORKER #{worker_idx}-{}] successfully transferred {} ({})",
+                            i,
+                            transfer_amount,
+                            tx_id
+                        );
                         break;
                     }
                     Err(e) => {
-                        log::warn!("failed transfer {}", e);
+                        log::warn!("[WORKER #{worker_idx}-{}] failed transfer {}", i, e);
                         thread::sleep(Duration::from_secs(5));
                     }
                 }
