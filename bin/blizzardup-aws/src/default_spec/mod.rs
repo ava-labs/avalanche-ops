@@ -175,7 +175,7 @@ pub fn execute(opts: blizzardup_aws::DefaultSpecOption) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Magenta),
-        Print(format!("cat {}\n", spec_file_path)),
+        Print(format!("cat {}\n\n", spec_file_path)),
         ResetColor
     )?;
     let exec_path = std::env::current_exe().expect("unexpected None current_exe");
