@@ -57,7 +57,17 @@ pub async fn make_transfers(
             .evm(&faucet_local_wallet, chain_id_alias.to_string(), chain_id)
             .unwrap();
 
-        let faucet_bal = faucet_evm_wallet.balance().await.unwrap();
+        let faucet_bal = match faucet_evm_wallet.balance().await {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!(
+                    "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}' -- checking next faucet wallet",
+                    e
+                );
+                thread::sleep(Duration::from_secs(5));
+                continue;
+            }
+        };
         if !faucet_bal.is_zero() {
             log::info!(
                 "[WORKER #{worker_idx}] faucet wallet found with balance {}",
@@ -133,11 +143,14 @@ pub async fn make_transfers(
             Ok(b) => b,
             Err(e) => {
                 log::warn!(
-                    "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}'",
+                    "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}' -- TODO: for now, just use 10000000000000000000000",
                     e
                 );
-                thread::sleep(Duration::from_secs(5));
-                continue;
+
+                // TODO: retries...
+                // thread::sleep(Duration::from_secs(5));
+                // continue;
+                primitive_types::U256::from_dec_str("10000000000000000000000").unwrap()
             }
         };
         log::info!(
@@ -176,17 +189,21 @@ pub async fn make_transfers(
     //
     //
     log::info!("[WORKER #{worker_idx}] STEP 5: loading first generated new key and wallet");
-    let first_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
+    let first_ephemeral_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
         .http_rpcs(http_rpcs.clone())
         .build()
         .await
         .unwrap();
 
-    let first_local_wallet: ethers_signers::LocalWallet =
+    let first_ephemeral_local_wallet: ethers_signers::LocalWallet =
         ephemeral_test_keys[0].signing_key().into();
 
-    let first_evm_wallet = first_wallet
-        .evm(&first_local_wallet, chain_id_alias.to_string(), chain_id)
+    let first_ephemeral_evm_wallet = first_ephemeral_wallet
+        .evm(
+            &first_ephemeral_local_wallet,
+            chain_id_alias.to_string(),
+            chain_id,
+        )
         .unwrap();
 
     log::info!(
@@ -224,7 +241,7 @@ pub async fn make_transfers(
         );
 
         loop {
-            match first_evm_wallet
+            match first_ephemeral_evm_wallet
                 .eip1559()
                 .to(ephemeral_test_keys[i].to_public_key().to_h160())
                 .value(deposit_amount)

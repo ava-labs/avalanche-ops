@@ -39,7 +39,18 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             .await
             .unwrap();
 
-        let faucet_bal = faucet_wallet.x().balance().await.unwrap();
+        let faucet_bal = match faucet_wallet.x().balance().await {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!(
+                    "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}' -- checking next faucet wallet",
+                    e
+                );
+                thread::sleep(Duration::from_secs(5));
+                continue;
+            }
+        };
+
         if faucet_bal > 0 {
             log::info!(
                 "[WORKER #{worker_idx}] faucet wallet found with balance {}",
@@ -165,7 +176,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     //
     //
     log::info!("[WORKER #{worker_idx}] STEP 5: loading first generated new key and wallet");
-    let first_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
+    let first_ephemeral_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
         .http_rpcs(http_rpcs.clone())
         .build()
         .await
@@ -207,7 +218,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         );
 
         loop {
-            match first_wallet
+            match first_ephemeral_wallet
                 .x()
                 .transfer()
                 .receiver(
