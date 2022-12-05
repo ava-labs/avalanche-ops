@@ -238,8 +238,22 @@ pub async fn make_transfers(
     //
     //
     //
+    log::info!("[WORKER #{worker_idx}] STEP 7: load keys to wallets");
+    let mut ephmeral_wallets = Vec::new();
+    for i in 0..spec.blizzard_spec.keys_to_generate {
+        let wallet = wallet::Builder::new(&ephemeral_test_keys[i])
+            .http_rpcs(http_rpcs.clone())
+            .build()
+            .await
+            .unwrap();
+        ephmeral_wallets.push(wallet);
+    }
+
+    //
+    //
+    //
     log::info!(
-        "[WORKER #{worker_idx}] STEP 7: looping funds from beginning to end between new keys"
+        "[WORKER #{worker_idx}] STEP 8: looping funds from beginning to end between new keys"
     );
     // only move 1/10-th of remaining balance
     let transfer_amount = deposit_amount
@@ -256,21 +270,15 @@ pub async fn make_transfers(
                     .to_h160()
             );
 
-            let source_wallet = wallet::Builder::new(&ephemeral_test_keys[i])
-                .http_rpcs(http_rpcs.clone())
-                .build()
-                .await
-                .unwrap();
-
-            let source_local_wallet: ethers_signers::LocalWallet =
+            let local_wallet: ethers_signers::LocalWallet =
                 ephemeral_test_keys[i].signing_key().into();
 
-            let source_evm_wallet = source_wallet
-                .evm(&source_local_wallet, chain_id_alias.to_string(), chain_id)
+            let evm_wallet = ephmeral_wallets[i]
+                .evm(&local_wallet, chain_id_alias.to_string(), chain_id)
                 .unwrap();
 
             loop {
-                match source_evm_wallet
+                match evm_wallet
                     .eip1559()
                     .to(
                         ephemeral_test_keys[(i + 1) % spec.blizzard_spec.keys_to_generate]
