@@ -9,8 +9,8 @@ name = "blizzardup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.149", features = ["avalanchego", "subnet_evm"] } # https://crates.io/crates/avalanche-types
-aws-manager = "0.21.8" # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.151", features = ["avalanchego", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+aws-manager = "0.21.11" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudformation = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
@@ -20,7 +20,7 @@ crossterm = "0.25.0"
 dialoguer = "0.10.2"
 dir-manager = "0.0.1"
 env_logger = "0.10.0"
-http-manager = "0.0.4"
+http-manager = "0.0.5"
 id-manager = "0.0.1"
 lazy_static = "1.4.0"
 log = "0.4.17"

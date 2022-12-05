@@ -99,7 +99,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("METRICS_FETCH_INTERVAL_SECONDS")
                 .long("metrics-fetch-interval-seconds")
-                .help("Sets the avalanche-telemetry-cloudwatch fetch interval in seconds")
+                .help("Sets the avalanche-telemetry-cloudwatch fetch interval and other system metrics push interval in seconds")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))

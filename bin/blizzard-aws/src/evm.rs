@@ -150,6 +150,7 @@ pub async fn make_transfers(
                 // TODO: retries...
                 // thread::sleep(Duration::from_secs(5));
                 // continue;
+
                 primitive_types::U256::from_dec_str("10000000000000000000000").unwrap()
             }
         };

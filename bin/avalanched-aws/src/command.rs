@@ -144,18 +144,16 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::warn!("skipping downloading avalanche binary (already exists)")
     }
 
-    if !Path::new(&tags.cloudwatch_config_file_path).exists() {
-        create_cloudwatch_config(
-            &tags.id,
-            tags.node_kind.clone(),
-            logs_auto_removal,
-            &avalanchego_config.log_dir,
-            &tags.avalanche_data_volume_path,
-            &tags.cloudwatch_config_file_path,
-        )?;
-    } else {
-        log::warn!("skipping writing cloudwatch config (already exists)")
-    }
+    // always overwrite in case we update tags
+    create_cloudwatch_config(
+        &tags.id,
+        tags.node_kind.clone(),
+        logs_auto_removal,
+        &avalanchego_config.log_dir,
+        &tags.avalanche_data_volume_path,
+        &tags.cloudwatch_config_file_path,
+        metrics_fetch_interval_seconds as u32,
+    )?;
 
     let attached_volume = find_attached_volume(
         Arc::clone(&ec2_manager_arc),
@@ -955,6 +953,7 @@ fn create_cloudwatch_config(
     avalanche_logs_dir: &str,
     avalanche_data_volume_path: &str,
     cloudwatch_config_file_path: &str,
+    metrics_fetch_interval_seconds: u32,
 ) -> io::Result<()> {
     log::info!("STEP: creating CloudWatch JSON config file...");
 
@@ -977,6 +976,7 @@ fn create_cloudwatch_config(
             String::from("/var/log/avalanched.log"),
             String::from("/var/log/avalanche-telemetry-cloudwatch.log"),
         ]),
+        metrics_fetch_interval_seconds,
     )
 }
 

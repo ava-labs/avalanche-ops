@@ -31,7 +31,12 @@ pub struct ConfigManager {
 impl ConfigManager {
     /// Set "log_files" to track extra log files via CloudWatch.
     /// e.g., "/var/log/avalanched.log"
-    pub fn sync(&self, logs_auto_removal: bool, log_files: Option<Vec<String>>) -> io::Result<()> {
+    pub fn sync(
+        &self,
+        logs_auto_removal: bool,
+        log_files: Option<Vec<String>>,
+        metrics_collect_interval: u32,
+    ) -> io::Result<()> {
         log::info!("syncing CloudWatch configuration JSON file");
 
         let mut log_collect_list = vec![
@@ -117,15 +122,12 @@ impl ConfigManager {
         });
 
         if self.instance_system_metrics {
-            let mut cw_metrics = cloudwatch::Metrics {
-                namespace: self.id.clone(),
-                ..Default::default()
-            };
-            cw_metrics.metrics_collected.disk = Some(cloudwatch::Disk::new(vec![self
-                .data_volume_path
-                .clone()
-                .unwrap()]));
-
+            let mut cw_metrics = cloudwatch::Metrics::new(metrics_collect_interval);
+            cw_metrics.namespace = self.id.clone();
+            cw_metrics.metrics_collected.disk = Some(cloudwatch::Disk::new_with_resources(
+                vec![self.data_volume_path.clone().unwrap()],
+                metrics_collect_interval,
+            ));
             cloudwatch_config.metrics = Some(cw_metrics);
         }
 
