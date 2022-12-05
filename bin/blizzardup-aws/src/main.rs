@@ -79,16 +79,6 @@ fn main() {
                 .unwrap_or(&5)
                 .clone();
 
-            let blizzard_gas = sub_matches
-                .get_one::<u64>("BLIZZARD_GAS")
-                .unwrap_or(&0)
-                .clone();
-
-            let blizzard_gas_price = sub_matches
-                .get_one::<u64>("BLIZZARD_GAS_PRICE")
-                .unwrap_or(&0)
-                .clone();
-
             let opt = blizzardup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -120,8 +110,6 @@ fn main() {
                 blizzard_keys_to_generate,
                 blizzard_metrics_push_interval_seconds,
                 blizzard_workers,
-                blizzard_gas,
-                blizzard_gas_price,
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")

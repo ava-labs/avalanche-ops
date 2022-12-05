@@ -109,8 +109,6 @@ pub struct DefaultSpecOption {
     pub blizzard_keys_to_generate: usize,
     pub blizzard_metrics_push_interval_seconds: u64,
     pub blizzard_workers: usize,
-    pub blizzard_gas: u64,
-    pub blizzard_gas_price: u64,
 
     pub spec_file_path: String,
 }
@@ -202,8 +200,6 @@ lazy_static! {
     ];
 }
 
-const DEFAULT_GAS: u64 = 21000;
-
 impl Spec {
     /// Creates a default spec.
     pub fn default_aws(opts: DefaultSpecOption) -> Self {
@@ -215,17 +211,6 @@ impl Spec {
             ))
         }
 
-        let gas = if opts.blizzard_gas > 0 {
-            Some(opts.blizzard_gas)
-        } else {
-            Some(DEFAULT_GAS)
-        };
-        let gas_price = if opts.blizzard_gas_price > 0 {
-            Some(opts.blizzard_gas_price)
-        } else {
-            None
-        };
-
         let blizzard_spec = blizzard::Spec {
             log_level: opts.blizzard_log_level,
             network_id: opts.network_id,
@@ -234,8 +219,6 @@ impl Spec {
             keys_to_generate: opts.blizzard_keys_to_generate,
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
             workers: opts.blizzard_workers,
-            gas,
-            gas_price,
         };
 
         let id = {
@@ -457,8 +440,6 @@ blizzard_spec:
   metrics_push_interval_seconds: 60
   workers: 10
   keys_to_generate: 1000
-  gas: 200000
-  gas_price: 2000000
 
 "#,
         id, bucket, blizzard_bin,
@@ -505,8 +486,6 @@ blizzard_spec:
             keys_to_generate: 1000,
             metrics_push_interval_seconds: 60,
             workers: 10,
-            gas: Some(200000),
-            gas_price: Some(2000000),
         },
 
         test_keys: Vec::new(),
