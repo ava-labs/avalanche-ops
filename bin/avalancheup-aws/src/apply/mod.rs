@@ -1783,8 +1783,7 @@ aws ssm start-session --region {} --target {}
                 SetForegroundColor(Color::Green),
                 Print(format!(
                     "
-$ ./scripts/build.release.sh
-$ ./target/release/staking-key-cert-s3-downloader \\
+./target/release/staking-key-cert-s3-downloader \\
 --log-level=info \\
 --region={region} \\
 --s3-bucket={s3_buckeet} \\
@@ -2193,8 +2192,7 @@ $ cat /tmp/{node_id}.crt
         SetForegroundColor(Color::DarkGreen),
         Print(format!(
             "
-$ ./scripts/build.release.sh
-$ ./target/release/blizzardup-aws \\
+./target/release/blizzardup-aws \\
 default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
@@ -2204,9 +2202,10 @@ default-spec \\
 --nodes=3 \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
+--blizzard-keys-to-generate=100 \\
 --blizzard-load-kinds=x-transfer,c-transfer
 ",
-            funded_keys = if let Some(keys) = spec.test_keys_with_funds {
+            funded_keys = if let Some(keys) = &spec.test_keys_with_funds {
                 keys.len()
             } else {
                 1
@@ -2223,11 +2222,10 @@ default-spec \\
             SetForegroundColor(Color::DarkGreen),
             Print(format!(
                 "
-$ ./scripts/build.release.sh
-$ ./target/release/blizzardup-aws \\
+./target/release/blizzardup-aws \\
 default-spec \\
 --log-level=info \\
---keys-to-generate=50 \\
+--funded-keys={funded_keys} \\
 --region={region} \\
 --instance-mode=spot \\
 --network-id={network_id} \\
@@ -2235,10 +2233,14 @@ default-spec \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
---blizzard-gas=21000 \
---blizzard-gas-price=0 \
---blizzard-load-kinds=x,subnet-evm
+--blizzard-keys-to-generate=100 \\
+--blizzard-load-kinds=subnet-evm
 ",
+                funded_keys = if let Some(keys) = &spec.test_keys_with_funds {
+                    keys.len()
+                } else {
+                    1
+                },
                 region = spec.aws_resources.region,
                 network_id = spec.avalanchego_config.network_id,
                 blizzard_http_rpcs = http_rpcs.clone().join(","),
