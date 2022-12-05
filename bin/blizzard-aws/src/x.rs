@@ -100,7 +100,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec) {
     #[allow(unused_assignments)]
     let mut total_to_distribute = 0;
     log::info!(
-        "STEP 4: requesting funds from faucet to the first new key {}",
+        "STEP 4: requesting funds from faucet to the first generated new key {}",
         ephemeral_test_keys[0]
             .to_public_key()
             .hrp_address(spec.blizzard_spec.network_id, "X")
@@ -153,14 +153,14 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec) {
     //
     //
     //
-    log::info!("STEP 5: loading first key and wallet");
+    log::info!("STEP 5: loading first generated new key and wallet");
     let first_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
         .http_rpcs(http_rpcs.clone())
         .build()
         .await
         .unwrap();
     log::info!(
-        "first key '{}' can now distribute funds to new keys",
+        "first generated new key '{}' can now distribute funds to new keys",
         ephemeral_test_keys[0]
             .to_public_key()
             .hrp_address(spec.blizzard_spec.network_id, "X")
@@ -171,7 +171,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec) {
     //
     //
     log::info!(
-        "STEP 6: distributing funds from first new key {} to all other keys",
+        "STEP 6: distributing funds from first generated new key {} to all other keys",
         ephemeral_test_keys[0]
             .to_public_key()
             .hrp_address(spec.blizzard_spec.network_id, "X")
