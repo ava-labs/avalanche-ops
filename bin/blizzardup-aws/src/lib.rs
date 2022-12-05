@@ -451,7 +451,7 @@ blizzard_spec:
   log_level: info
   network_id: 99999
   rpc_endpoints: []
-  load_kinds: ["x-transfer", "c-transfer"]
+  load_kinds: ["x-transfers", "c-transfers"]
   metrics_push_interval_seconds: 60
   keys_to_generate: 1000
   gas: 200000
@@ -498,7 +498,7 @@ blizzard_spec:
             log_level: String::from("info"),
             network_id: 99999,
             rpc_endpoints: Vec::new(),
-            load_kinds: vec![String::from("x-transfer"), String::from("c-transfer")],
+            load_kinds: vec![String::from("x-transfers"), String::from("c-transfers")],
             keys_to_generate: 1000,
             metrics_push_interval_seconds: 60,
             gas: Some(200000),

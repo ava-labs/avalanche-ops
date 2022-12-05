@@ -2209,7 +2209,7 @@ default-spec \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-keys-to-generate=100 \\
---blizzard-load-kinds=x-transfer,c-transfer
+--blizzard-load-kinds=x-transfers,c-transfers
 ",
             exec_parent_dir = exec_parent_dir,
             funded_keys = if let Some(keys) = &spec.test_keys_with_funds {
@@ -2242,7 +2242,7 @@ default-spec \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
 --blizzard-keys-to-generate=100 \\
---blizzard-load-kinds=subnet-evm-transfer
+--blizzard-load-kinds=subnet-evm-transfers
 ",
                 exec_parent_dir = exec_parent_dir,
                 funded_keys = if let Some(keys) = &spec.test_keys_with_funds {

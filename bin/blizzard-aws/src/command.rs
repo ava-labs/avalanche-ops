@@ -53,13 +53,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let mut handles = vec![];
     for lk in spec.blizzard_spec.load_kinds.iter() {
         match blizzardup_aws::blizzard::LoadKind::from(lk.as_str()) {
-            blizzardup_aws::blizzard::LoadKind::XTransfer => {
+            blizzardup_aws::blizzard::LoadKind::XTransfers => {
                 handles.push(tokio::spawn(x::make_transfers(spec.clone())))
             }
-            blizzardup_aws::blizzard::LoadKind::CTransfer => handles.push(tokio::spawn(
+            blizzardup_aws::blizzard::LoadKind::CTransfers => handles.push(tokio::spawn(
                 evm::make_transfers(spec.clone(), Arc::new(String::from("C"))),
             )),
-            blizzardup_aws::blizzard::LoadKind::SubnetEvmTransfer => {
+            blizzardup_aws::blizzard::LoadKind::SubnetEvmTransfers => {
                 if subnet_evm_blockchain_id.is_empty() {
                     return Err(Error::new(
                         ErrorKind::Other,

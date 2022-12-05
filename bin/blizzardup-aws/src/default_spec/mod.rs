@@ -100,10 +100,10 @@ pub fn command() -> Command {
         .arg(
             Arg::new("BLIZZARD_LOAD_KINDS")
                 .long("blizzard-load-kinds")
-                .help("Comma-separated 'blizzard' load kinds (e.g., x-transfer,c-transfer)")
+                .help("Comma-separated 'blizzard' load kinds (e.g., x-transfers,c-transfers)")
                 .required(false)
                 .num_args(1)
-                .default_value("x-transfer,c-transfer"),
+                .default_value("x-transfers,c-transfers"),
         )
         .arg(
             Arg::new("BLIZZARD_KEYS_TO_GENERATE")

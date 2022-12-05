@@ -108,18 +108,18 @@ impl Endpoints {
     std::hash::Hash,
 )]
 pub enum LoadKind {
-    XTransfer,
-    CTransfer,
-    SubnetEvmTransfer,
+    XTransfers,
+    CTransfers,
+    SubnetEvmTransfers,
     Unknown(String),
 }
 
 impl std::convert::From<&str> for LoadKind {
     fn from(s: &str) -> Self {
         match s {
-            "x-transfer" => LoadKind::XTransfer,
-            "c-transfer" => LoadKind::CTransfer,
-            "subnet-evm-transfer" => LoadKind::SubnetEvmTransfer,
+            "x-transfers" => LoadKind::XTransfers,
+            "c-transfers" => LoadKind::CTransfers,
+            "subnet-evm-transfers" => LoadKind::SubnetEvmTransfers,
 
             other => LoadKind::Unknown(other.to_owned()),
         }
@@ -138,9 +138,9 @@ impl LoadKind {
     /// Returns the `&str` value of the enum member.
     pub fn as_str(&self) -> &str {
         match self {
-            LoadKind::XTransfer => "x-transfer",
-            LoadKind::CTransfer => "c-transfer",
-            LoadKind::SubnetEvmTransfer => "subnet-evm-transfer",
+            LoadKind::XTransfers => "x-transfers",
+            LoadKind::CTransfers => "c-transfers",
+            LoadKind::SubnetEvmTransfers => "subnet-evm-transfers",
 
             LoadKind::Unknown(s) => s.as_ref(),
         }
@@ -149,9 +149,9 @@ impl LoadKind {
     /// Returns all the `&str` values of the enum members.
     pub fn values() -> &'static [&'static str] {
         &[
-            "x-transfer",          //
-            "c-transfer",          //
-            "subnet-evm-transfer", //
+            "x-transfers",          //
+            "c-transfers",          //
+            "subnet-evm-transfers", //
         ]
     }
 }
