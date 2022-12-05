@@ -74,6 +74,11 @@ fn main() {
                 .unwrap_or(&60)
                 .clone();
 
+            let blizzard_workers = sub_matches
+                .get_one::<usize>("BLIZZARD_WORKERS")
+                .unwrap_or(&5)
+                .clone();
+
             let blizzard_gas = sub_matches
                 .get_one::<u64>("BLIZZARD_GAS")
                 .unwrap_or(&0)
@@ -114,6 +119,7 @@ fn main() {
                 blizzard_load_kinds,
                 blizzard_keys_to_generate,
                 blizzard_metrics_push_interval_seconds,
+                blizzard_workers,
                 blizzard_gas,
                 blizzard_gas_price,
 

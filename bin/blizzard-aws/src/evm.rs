@@ -5,10 +5,14 @@ use avalanche_types::{
     key,
 };
 
-pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<String>) {
+pub async fn make_transfers(
+    worker_idx: usize,
+    spec: blizzardup_aws::Spec,
+    chain_id_alias: Arc<String>,
+) {
     let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
     log::info!(
-        "STEP 0: start making EVM transfers to {} endpoints with chain id alias {}",
+        "[WORKER #{worker_idx}] STEP 0: start making EVM transfers to {} endpoints with chain id alias {}",
         total_rpc_eps,
         chain_id_alias,
     );
@@ -28,7 +32,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
     //
     //
     log::info!(
-        "STEP 1: finding faucet wallet to fund {} new wallets",
+        "[WORKER #{worker_idx}] STEP 1: finding faucet wallet to fund {} new wallets",
         spec.blizzard_spec.keys_to_generate
     );
     let mut faucet_found = false;
@@ -69,7 +73,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
     //
     //
     //
-    log::info!("STEP 2: loading faucet key and wallet");
+    log::info!("[WORKER #{worker_idx}] STEP 2: loading faucet key and wallet");
     let faucet_key = key::secp256k1::private_key::Key::from_cb58(
         spec.test_keys[faucet_idx].private_key_cb58.clone(),
     )
@@ -96,7 +100,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
     //
     //
     log::info!(
-        "STEP 3: generating {} ephemeral keys",
+        "[WORKER #{worker_idx}] STEP 3: generating {} ephemeral keys",
         spec.blizzard_spec.keys_to_generate
     );
     let mut ephemeral_test_keys = Vec::new();
@@ -117,7 +121,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
     #[allow(unused_assignments)]
     let mut total_to_distribute = primitive_types::U256::zero();
     log::info!(
-        "STEP 4: requesting funds from faucet to the first new key {}",
+        "[WORKER #{worker_idx}] STEP 4: requesting funds from faucet to the first generated new key {}",
         ephemeral_test_keys[0].to_public_key().to_h160()
     );
     loop {
@@ -160,7 +164,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
     //
     //
     //
-    log::info!("STEP 5: loading first key and wallet");
+    log::info!("[WORKER #{worker_idx}] STEP 5: loading first generated new key and wallet");
     let first_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
         .http_rpcs(http_rpcs.clone())
         .build()
@@ -175,7 +179,7 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
         .unwrap();
 
     log::info!(
-        "first key '{}' can now distribute funds to new keys",
+        "first generated new key '{}' can now distribute funds to new keys",
         ephemeral_test_keys[0].to_public_key().to_h160()
     );
 
@@ -183,12 +187,22 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
     //
     //
     log::info!(
-        "STEP 5: distributing funds from first new key {} to all other keys",
+        "[WORKER #{worker_idx}] STEP 6: distributing funds from first generated new key {} to all other keys",
         ephemeral_test_keys[0].to_public_key().to_h160()
     );
-    let to_distribute = total_to_distribute.as_u64() as f64 * 0.9; // save some for gas
-    let deposit_amount = to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
-    let deposit_amount = primitive_types::U256::from(deposit_amount as u64);
+    // save some for gas, only use 90%
+    let to_distribute = total_to_distribute
+        .checked_div(primitive_types::U256::from(10))
+        .unwrap();
+    let to_distribute = to_distribute
+        .checked_mul(primitive_types::U256::from(9))
+        .unwrap();
+    // amount to transfer for each new key
+    let deposit_amount = to_distribute
+        .checked_div(primitive_types::U256::from(
+            spec.blizzard_spec.keys_to_generate,
+        ))
+        .unwrap();
     for i in 1..spec.blizzard_spec.keys_to_generate {
         log::info!(
             "transferring {} from {} to {}",
@@ -224,9 +238,13 @@ pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<Stri
     //
     //
     //
-    log::info!("STEP 6: looping funds from beginning to end between new keys");
+    log::info!(
+        "[WORKER #{worker_idx}] STEP 7: looping funds from beginning to end between new keys"
+    );
     // only move 1/10-th of remaining balance
-    let transfer_amount = primitive_types::U256::from(deposit_amount.as_u64() / 10);
+    let transfer_amount = deposit_amount
+        .checked_div(primitive_types::U256::from(10))
+        .unwrap();
     loop {
         for i in 0..spec.blizzard_spec.keys_to_generate {
             log::info!(

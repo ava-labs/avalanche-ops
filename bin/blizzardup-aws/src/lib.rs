@@ -108,6 +108,7 @@ pub struct DefaultSpecOption {
     pub blizzard_load_kinds: Vec<String>,
     pub blizzard_keys_to_generate: usize,
     pub blizzard_metrics_push_interval_seconds: u64,
+    pub blizzard_workers: usize,
     pub blizzard_gas: u64,
     pub blizzard_gas_price: u64,
 
@@ -232,6 +233,7 @@ impl Spec {
             load_kinds: opts.blizzard_load_kinds,
             keys_to_generate: opts.blizzard_keys_to_generate,
             metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
+            workers: opts.blizzard_workers,
             gas,
             gas_price,
         };
@@ -451,8 +453,9 @@ blizzard_spec:
   log_level: info
   network_id: 99999
   rpc_endpoints: []
-  load_kinds: ["x-transfer", "c-transfer"]
+  load_kinds: ["x-transfers", "c-transfers"]
   metrics_push_interval_seconds: 60
+  workers: 10
   keys_to_generate: 1000
   gas: 200000
   gas_price: 2000000
@@ -498,9 +501,10 @@ blizzard_spec:
             log_level: String::from("info"),
             network_id: 99999,
             rpc_endpoints: Vec::new(),
-            load_kinds: vec![String::from("x-transfer"), String::from("c-transfer")],
+            load_kinds: vec![String::from("x-transfers"), String::from("c-transfers")],
             keys_to_generate: 1000,
             metrics_push_interval_seconds: 60,
+            workers: 10,
             gas: Some(200000),
             gas_price: Some(2000000),
         },

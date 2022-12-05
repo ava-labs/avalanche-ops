@@ -64,7 +64,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
-                .default_value("2"),
+                .default_value("5"),
         )
         .arg(
             Arg::new("INSTALL_ARTIFACTS_BLIZZARD_BIN") 
@@ -100,10 +100,10 @@ pub fn command() -> Command {
         .arg(
             Arg::new("BLIZZARD_LOAD_KINDS")
                 .long("blizzard-load-kinds")
-                .help("Comma-separated 'blizzard' load kinds (e.g., x-transfer,c-transfer)")
+                .help("Comma-separated 'blizzard' load kinds (e.g., x-transfers,c-transfers)")
                 .required(false)
                 .num_args(1)
-                .default_value("x-transfer,c-transfer"),
+                .default_value("x-transfers,c-transfers"),
         )
         .arg(
             Arg::new("BLIZZARD_KEYS_TO_GENERATE")
@@ -122,6 +122,15 @@ pub fn command() -> Command {
                 .num_args(1)
                 .value_parser(value_parser!(u64))
                 .default_value("60"),
+        )
+        .arg(
+            Arg::new("BLIZZARD_WORKERS")
+                .long("blizzard-workers")
+                .help("Sets the number of concurrent blizzard workers to launch on the host")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("5"),
         )
         .arg(
             Arg::new("BLIZZARD_GAS") 

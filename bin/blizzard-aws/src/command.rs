@@ -51,25 +51,42 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     }
 
     let mut handles = vec![];
-    for lk in spec.blizzard_spec.load_kinds.iter() {
-        match blizzardup_aws::blizzard::LoadKind::from(lk.as_str()) {
-            blizzardup_aws::blizzard::LoadKind::XTransfer => {
-                handles.push(tokio::spawn(x::make_transfers(spec.clone())))
+    for load_kind in spec.blizzard_spec.load_kinds.iter() {
+        log::info!(
+            "launching {} workers for {}",
+            spec.blizzard_spec.workers,
+            load_kind
+        );
+
+        match blizzardup_aws::blizzard::LoadKind::from(load_kind.as_str()) {
+            blizzardup_aws::blizzard::LoadKind::XTransfers => {
+                for worker_idx in 0..spec.blizzard_spec.workers {
+                    handles.push(tokio::spawn(x::make_transfers(worker_idx, spec.clone())))
+                }
             }
-            blizzardup_aws::blizzard::LoadKind::CTransfer => handles.push(tokio::spawn(
-                evm::make_transfers(spec.clone(), Arc::new(String::from("C"))),
-            )),
-            blizzardup_aws::blizzard::LoadKind::SubnetEvmTransfer => {
+            blizzardup_aws::blizzard::LoadKind::CTransfers => {
+                for worker_idx in 0..spec.blizzard_spec.workers {
+                    handles.push(tokio::spawn(evm::make_transfers(
+                        worker_idx,
+                        spec.clone(),
+                        Arc::new(String::from("C")),
+                    )));
+                }
+            }
+            blizzardup_aws::blizzard::LoadKind::SubnetEvmTransfers => {
                 if subnet_evm_blockchain_id.is_empty() {
                     return Err(Error::new(
                         ErrorKind::Other,
                         "invalid load kind subnet-evm (not exists)",
                     ));
                 }
-                handles.push(tokio::spawn(evm::make_transfers(
-                    spec.clone(),
-                    Arc::new(subnet_evm_blockchain_id.clone()),
-                )));
+                for worker_idx in 0..spec.blizzard_spec.workers {
+                    handles.push(tokio::spawn(evm::make_transfers(
+                        worker_idx,
+                        spec.clone(),
+                        Arc::new(subnet_evm_blockchain_id.clone()),
+                    )));
+                }
             }
             blizzardup_aws::blizzard::LoadKind::Unknown(u) => {
                 return Err(Error::new(
