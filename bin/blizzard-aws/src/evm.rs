@@ -205,7 +205,8 @@ pub async fn make_transfers(
         .unwrap();
     for i in 1..spec.blizzard_spec.keys_to_generate {
         log::info!(
-            "transferring {} from {} to {}",
+            "[{}] transferring {} from {} to {}",
+            i,
             deposit_amount,
             ephemeral_test_keys[0].to_public_key().to_h160(),
             ephemeral_test_keys[i].to_public_key().to_h160()
@@ -221,7 +222,8 @@ pub async fn make_transfers(
             {
                 Ok(tx_id) => {
                     log::info!(
-                        "successfully deposited {} from the first wallet ({})",
+                        "[{}] successfully deposited {} from the first wallet ({})",
+                        i,
                         deposit_amount,
                         tx_id
                     );

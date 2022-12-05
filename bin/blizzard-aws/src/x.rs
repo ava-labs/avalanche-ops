@@ -182,7 +182,8 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     let deposit_amount = deposit_amount as u64;
     for i in 1..spec.blizzard_spec.keys_to_generate {
         log::info!(
-            "transferring {} from {} to {}",
+            "[{}] transferring {} from {} to {}",
+            i,
             deposit_amount,
             ephemeral_test_keys[0]
                 .to_public_key()
@@ -211,7 +212,8 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             {
                 Ok(tx_id) => {
                     log::info!(
-                        "successfully deposited {} from the first wallet ({})",
+                        "[{}] successfully deposited {} from the first wallet ({})",
+                        i,
                         deposit_amount,
                         tx_id
                     );
