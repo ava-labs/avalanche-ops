@@ -110,14 +110,22 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             .unwrap()
     );
     loop {
+        log::info!("[WORKER #{worker_idx}] getting faucet wallet balance");
         let faucet_bal = match faucet_wallet.x().balance().await {
             Ok(b) => b,
             Err(e) => {
-                log::warn!("[WORKER #{worker_idx}] failed to get balance {}", e);
+                log::warn!(
+                    "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}'",
+                    e
+                );
                 thread::sleep(Duration::from_secs(5));
                 continue;
             }
         };
+        log::info!(
+            "[WORKER #{worker_idx}] successfully got faucet wallet balance '{}'",
+            faucet_bal
+        );
         total_to_distribute = faucet_bal / 100;
 
         match faucet_wallet
@@ -136,7 +144,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         {
             Ok(tx_id) => {
                 log::info!(
-                    "[WORKER #{worker_idx}] successfully transferred {} to the first wallet ({})",
+                    "[WORKER #{worker_idx}] successfully transferred {} from faucet to the first wallet ({})",
                     total_to_distribute,
                     tx_id
                 );

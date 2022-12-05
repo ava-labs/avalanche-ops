@@ -128,14 +128,22 @@ pub async fn make_transfers(
         ephemeral_test_keys[0].to_public_key().to_h160()
     );
     loop {
+        log::info!("[WORKER #{worker_idx}] getting faucet wallet balance");
         let faucet_bal = match faucet_evm_wallet.balance().await {
             Ok(b) => b,
             Err(e) => {
-                log::warn!("[WORKER #{worker_idx}] failed to get balance {}", e);
+                log::warn!(
+                    "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}'",
+                    e
+                );
                 thread::sleep(Duration::from_secs(5));
                 continue;
             }
         };
+        log::info!(
+            "[WORKER #{worker_idx}] successfully got faucet wallet balance '{}'",
+            faucet_bal
+        );
         total_to_distribute = faucet_bal / 100;
 
         match faucet_evm_wallet
@@ -147,7 +155,7 @@ pub async fn make_transfers(
         {
             Ok(tx_id) => {
                 log::info!(
-                    "[WORKER #{worker_idx}] successfully transferred {} to the first wallet ({})",
+                    "[WORKER #{worker_idx}] successfully transferred {} from faucet to the first wallet ({})",
                     total_to_distribute,
                     tx_id
                 );
