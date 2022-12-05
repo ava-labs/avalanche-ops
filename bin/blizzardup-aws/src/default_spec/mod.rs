@@ -130,7 +130,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
-                .default_value("15"),
+                .default_value("30"),
         )
         .arg(
             Arg::new("BLIZZARD_GAS") 
