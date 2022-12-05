@@ -2209,7 +2209,7 @@ default-spec \\
 --blizzard-log-level=info \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-keys-to-generate=100 \\
---blizzard-workers=10 \\
+--blizzard-workers=15 \\
 --blizzard-load-kinds=x-transfers,c-transfers
 ",
             exec_parent_dir = exec_parent_dir,
@@ -2243,7 +2243,7 @@ default-spec \\
 --blizzard-http-rpcs={blizzard_http_rpcs} \\
 --blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
 --blizzard-keys-to-generate=100 \\
---blizzard-workers=10 \\
+--blizzard-workers=15 \\
 --blizzard-load-kinds=subnet-evm-transfers
 ",
                 exec_parent_dir = exec_parent_dir,
