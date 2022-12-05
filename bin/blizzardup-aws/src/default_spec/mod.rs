@@ -183,7 +183,7 @@ pub fn execute(opts: blizzardup_aws::DefaultSpecOption) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{} apply \\\n--spec-file-path {}\n",
+            "{} apply \\\n--spec-file-path {}\n\n",
             exec_path.display(),
             spec_file_path
         )),
@@ -195,7 +195,7 @@ pub fn execute(opts: blizzardup_aws::DefaultSpecOption) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n",
+                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--spec-file-path {}\n\n",
                     exec_path.display(),
                     spec_file_path
         )),
