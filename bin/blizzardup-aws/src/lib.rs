@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 /// Default machine nodes size.
 pub const DEFAULT_MACHINE_NODES: usize = 2;
 pub const MIN_MACHINE_NODES: usize = 1;
-pub const MAX_MACHINE_NODES: usize = 10;
+pub const MAX_MACHINE_NODES: usize = 300;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
