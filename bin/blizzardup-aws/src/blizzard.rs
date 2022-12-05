@@ -15,6 +15,8 @@ pub struct Spec {
 
     pub metrics_push_interval_seconds: u64,
 
+    pub workers: usize,
+
     pub gas: Option<u64>,
     pub gas_price: Option<u64>,
     // TODO: set test run timeout

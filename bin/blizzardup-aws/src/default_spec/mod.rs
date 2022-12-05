@@ -124,6 +124,15 @@ pub fn command() -> Command {
                 .default_value("60"),
         )
         .arg(
+            Arg::new("BLIZZARD_WORKERS")
+                .long("blizzard-workers")
+                .help("Sets the number of concurrent blizzard workers to launch on the host")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("1"),
+        )
+        .arg(
             Arg::new("BLIZZARD_GAS") 
                 .long("blizzard-gas")
                 .help("Sets the gas for EVM transactions")
