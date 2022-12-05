@@ -2,6 +2,7 @@
 <br>
 
 ![Github Actions](https://github.com/ava-labs/avalanche-ops/actions/workflows/test-and-release.yml/badge.svg)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 See https://talks.gyuho.dev/avalanche-aws-2022q3.html for slides.
 
