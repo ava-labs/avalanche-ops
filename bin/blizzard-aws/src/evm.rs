@@ -4,7 +4,6 @@ use avalanche_types::{
     client::{evm as client_evm, wallet},
     key,
 };
-use aws_manager::{self, cloudwatch};
 
 pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<String>) {
     let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();

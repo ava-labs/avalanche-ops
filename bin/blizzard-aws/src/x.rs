@@ -1,7 +1,6 @@
-use std::{sync::Arc, thread, time::Duration};
+use std::{thread, time::Duration};
 
 use avalanche_types::{client::wallet, key};
-use aws_manager::{self, cloudwatch};
 
 pub async fn make_transfers(spec: blizzardup_aws::Spec) {
     let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
