@@ -924,21 +924,29 @@ async fn install_avalanche_from_s3(
         log::info!("listed {} plugins from S3", objects.len());
         for obj in objects.iter() {
             let s3_key = obj.key().expect("unexpected None s3 object").to_string();
-            let tmp_path = random_manager::tmp_path(15, None)?;
+            let s3_file_name = extract_filename(&s3_key);
+            if s3_file_name.ends_with("plugins") || s3_file_name.ends_with("plugins/") {
+                log::info!("s3 file name is '{}' directory, so skip", s3_file_name);
+                continue;
+            }
+            let download_file_path = format!("{}/{}", plugins_dir, s3_file_name);
 
+            log::info!(
+                "downloading plugin {} to {}",
+                s3_file_name,
+                download_file_path
+            );
+            let tmp_path = random_manager::tmp_path(15, None)?;
             s3::spawn_get_object(s3_manager.to_owned(), s3_bucket, &s3_key, &tmp_path)
                 .await
                 .map_err(|e| {
                     Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e))
                 })?;
 
-            let file_name = extract_filename(&s3_key);
-            let file_path = format!("{}/{}", plugins_dir, file_name);
-
-            fs::copy(&tmp_path, &file_path)?;
+            fs::copy(&tmp_path, &download_file_path)?;
             fs::remove_file(&tmp_path)?;
 
-            let f = File::open(file_path).expect("failed to open plugin file");
+            let f = File::open(download_file_path).expect("failed to open plugin file");
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
         }
     }
