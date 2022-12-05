@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{cloudwatch as cw, evm, flags, x};
-use aws_manager::{self, cloudwatch, ec2, s3};
+use aws_manager::{self, ec2, s3};
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
     println!("starting {} with {:?}", crate::APP_NAME, opts);
@@ -21,7 +21,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let aws_creds = load_aws_credential(&meta.region).await?;
     let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
     let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
-    let cw_manager_arc = Arc::new(aws_creds.cw_manager.clone());
 
     let tags = fetch_tags(
         Arc::clone(&ec2_manager_arc),
@@ -54,16 +53,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let mut handles = vec![];
     for lk in spec.blizzard_spec.load_kinds.iter() {
         match blizzardup_aws::blizzard::LoadKind::from(lk.as_str()) {
-            blizzardup_aws::blizzard::LoadKind::XTransfer => handles.push(tokio::spawn(
-                x::make_transfers(spec.clone(), Arc::clone(&cw_manager_arc)),
-            )),
-            blizzardup_aws::blizzard::LoadKind::CTransfer => {
-                handles.push(tokio::spawn(evm::make_transfers(
-                    spec.clone(),
-                    Arc::clone(&cw_manager_arc),
-                    Arc::new(String::from("C")),
-                )))
+            blizzardup_aws::blizzard::LoadKind::XTransfer => {
+                handles.push(tokio::spawn(x::make_transfers(spec.clone())))
             }
+            blizzardup_aws::blizzard::LoadKind::CTransfer => handles.push(tokio::spawn(
+                evm::make_transfers(spec.clone(), Arc::new(String::from("C"))),
+            )),
             blizzardup_aws::blizzard::LoadKind::SubnetEvmTransfer => {
                 if subnet_evm_blockchain_id.is_empty() {
                     return Err(Error::new(
@@ -73,7 +68,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 }
                 handles.push(tokio::spawn(evm::make_transfers(
                     spec.clone(),
-                    Arc::clone(&cw_manager_arc),
                     Arc::new(subnet_evm_blockchain_id.clone()),
                 )));
             }
@@ -143,7 +137,6 @@ async fn fetch_metadata() -> io::Result<Metadata> {
 struct AwsCreds {
     ec2_manager: ec2::Manager,
     s3_manager: s3::Manager,
-    cw_manager: cloudwatch::Manager,
 }
 
 async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
@@ -153,12 +146,10 @@ async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
 
     let ec2_manager = ec2::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
-    let cw_manager = cloudwatch::Manager::new(&shared_config);
 
     Ok(AwsCreds {
         ec2_manager,
         s3_manager,
-        cw_manager,
     })
 }
 

@@ -6,14 +6,7 @@ use avalanche_types::{
 };
 use aws_manager::{self, cloudwatch};
 
-pub async fn make_transfers(
-    spec: blizzardup_aws::Spec,
-    cw_manager: Arc<cloudwatch::Manager>,
-    chain_id_alias: Arc<String>,
-) {
-    let _cw_manager: &cloudwatch::Manager = cw_manager.as_ref();
-    // TODO: update load testing status in CloudWatch
-
+pub async fn make_transfers(spec: blizzardup_aws::Spec, chain_id_alias: Arc<String>) {
     let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
     log::info!(
         "STEP 0: start making EVM transfers to {} endpoints with chain id alias {}",

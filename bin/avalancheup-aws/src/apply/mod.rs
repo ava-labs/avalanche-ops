@@ -1810,6 +1810,7 @@ $ cat /tmp/{node_id}.crt
     }
 
     // need subnet-evm installation
+    let mut subnet_evm_blockchain_id = String::new();
     if let Some(subnet_evm_genesis) = &spec.subnet_evm_genesis {
         let subnet_evm_genesis_file_path =
             dir_manager::home::named(&spec.id, Some(".subnet-evm.genesis.json"));
@@ -2065,6 +2066,7 @@ $ cat /tmp/{node_id}.crt
                     )
                     .unwrap();
                 log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
+                subnet_evm_blockchain_id = blockchain_id.to_string();
 
                 execute!(
                     stdout(),
@@ -2244,7 +2246,7 @@ default-spec \\
                 region = spec.aws_resources.region,
                 network_id = spec.avalanchego_config.network_id,
                 blizzard_http_rpcs = http_rpcs.clone().join(","),
-                subnet_evm_blockchain_id = "2nBBjWJEiBFjUbDjEvVY9a7XhhtTRzdTWToC9LssJuzHq3LdMv",
+                subnet_evm_blockchain_id = subnet_evm_blockchain_id,
             )),
             ResetColor
         )?;
