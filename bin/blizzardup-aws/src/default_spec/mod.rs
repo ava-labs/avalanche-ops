@@ -64,7 +64,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
-                .default_value("5"),
+                .default_value("10"),
         )
         .arg(
             Arg::new("INSTALL_ARTIFACTS_BLIZZARD_BIN") 
@@ -130,7 +130,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
-                .default_value("5"),
+                .default_value("10"),
         )
         .arg(
             Arg::new("BLIZZARD_GAS") 
