@@ -269,7 +269,7 @@ pub async fn make_transfers(
             receiver_h160
         );
 
-        let sender_nonce = h160_to_nonce.get(&sender_h160).unwrap();
+        let sender_nonce = h160_to_nonce.get(&sender_h160).unwrap().clone();
         loop {
             match first_ephemeral_evm_wallet
                 .eip1559()
@@ -291,7 +291,23 @@ pub async fn make_transfers(
                     break;
                 }
                 Err(e) => {
-                    log::warn!("[WORKER #{worker_idx}-{}] failed transfer {}", i, e);
+                    log::warn!("[WORKER #{worker_idx}-{}] failed transfer '{}' from the first wallet to the other ephemeral key", i, e);
+
+                    // e.g., (code: -32000, message: nonce too low: address 0x557FDFCAEff5daDF7287344f4E30172e56EC7aec current nonce (1) > tx nonce (0), data: None)
+                    if e.to_string().contains("nonce too low") {
+                        log::info!("retrying latest nonce fetch");
+                        let new_nonce = match first_ephemeral_evm_wallet.latest_nonce().await {
+                            Ok(v) => v,
+                            Err(e) => {
+                                log::warn!("failed to get latest nonce {}", e);
+                                sender_nonce
+                                    .checked_add(primitive_types::U256::from(1))
+                                    .unwrap()
+                            }
+                        };
+                        h160_to_nonce.insert(sender_h160, new_nonce);
+                    }
+
                     thread::sleep(Duration::from_secs(5));
                 }
             }
@@ -348,7 +364,7 @@ pub async fn make_transfers(
                 .evm(&local_wallet, chain_id_alias.to_string(), chain_id)
                 .unwrap();
 
-            let sender_nonce = h160_to_nonce.get(&sender_h160).unwrap();
+            let sender_nonce = h160_to_nonce.get(&sender_h160).unwrap().clone();
             loop {
                 match evm_wallet
                     .eip1559()
@@ -375,7 +391,27 @@ pub async fn make_transfers(
                         break;
                     }
                     Err(e) => {
-                        log::warn!("[WORKER #{worker_idx}-{}] failed transfer {}", i, e);
+                        log::warn!(
+                            "[WORKER #{worker_idx}-{}] failed transfer '{}' between ephemeral keys",
+                            i,
+                            e
+                        );
+
+                        // e.g., (code: -32000, message: nonce too low: address 0x557FDFCAEff5daDF7287344f4E30172e56EC7aec current nonce (1) > tx nonce (0), data: None)
+                        if e.to_string().contains("nonce too low") {
+                            log::info!("retrying latest nonce fetch");
+                            let new_nonce = match evm_wallet.latest_nonce().await {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    log::warn!("failed to get latest nonce {}", e);
+                                    sender_nonce
+                                        .checked_add(primitive_types::U256::from(1))
+                                        .unwrap()
+                                }
+                            };
+                            h160_to_nonce.insert(sender_h160, new_nonce);
+                        }
+
                         thread::sleep(Duration::from_secs(5));
                     }
                 }
