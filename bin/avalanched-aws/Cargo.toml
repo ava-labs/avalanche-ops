@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-installer = "0.0.9" # https://crates.io/crates/avalanche-installer
-avalanche-types = { version = "0.0.151", features = ["avalanchego", "client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.152", features = ["avalanchego", "client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
 aws-manager = "0.21.11" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
@@ -25,7 +25,7 @@ lazy_static = "1.4.0"
 log = "0.4.17"
 random-manager = "0.0.1"
 tempfile = "3.3.0"
-tokio = { version = "1.22.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.23.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 # https://github.com/cross-rs/cross/wiki/Recipes#openssl
 openssl = { version = "0.10", features = ["vendored"] }
