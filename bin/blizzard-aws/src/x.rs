@@ -128,6 +128,11 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             .hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
+
+    let receiver_short_addr = ephemeral_test_keys[0]
+        .to_public_key()
+        .to_short_id()
+        .unwrap();
     loop {
         log::info!("[WORKER #{worker_idx}] getting faucet wallet balance");
         let faucet_bal = match faucet_wallet.x().balance().await {
@@ -150,12 +155,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         match faucet_wallet
             .x()
             .transfer()
-            .receiver(
-                ephemeral_test_keys[0]
-                    .to_public_key()
-                    .to_short_id()
-                    .unwrap(),
-            )
+            .receiver(receiver_short_addr.clone())
             .amount(total_to_distribute)
             .check_acceptance(true)
             .issue()
@@ -211,8 +211,10 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             .hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
-    let to_distribute = total_to_distribute as f64 * 0.9; // save some for gas
-    let deposit_amount = to_distribute / spec.blizzard_spec.keys_to_generate as f64; // amount to transfer for each new key
+    // save some for gas
+    let to_distribute = total_to_distribute as f64 * 0.9;
+    // amount to transfer for each new key
+    let deposit_amount = to_distribute / spec.blizzard_spec.keys_to_generate as f64;
     let deposit_amount = deposit_amount as u64;
     for i in 1..spec.blizzard_spec.keys_to_generate {
         log::info!(
@@ -229,16 +231,15 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                 .unwrap()
         );
 
+        let receiver_short_addr = ephemeral_test_keys[i]
+            .to_public_key()
+            .to_short_id()
+            .unwrap();
         loop {
             match first_ephemeral_wallet
                 .x()
                 .transfer()
-                .receiver(
-                    ephemeral_test_keys[i]
-                        .to_public_key()
-                        .to_short_id()
-                        .unwrap(),
-                )
+                .receiver(receiver_short_addr.clone())
                 .amount(deposit_amount)
                 .check_acceptance(true)
                 .issue()
@@ -303,16 +304,16 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                     .unwrap()
             );
 
+            let receiver_short_addr = ephemeral_test_keys
+                [(i + 1) % spec.blizzard_spec.keys_to_generate]
+                .to_public_key()
+                .to_short_id()
+                .unwrap();
             loop {
                 match ephmeral_wallets[i]
                     .x()
                     .transfer()
-                    .receiver(
-                        ephemeral_test_keys[(i + 1) % spec.blizzard_spec.keys_to_generate]
-                            .to_public_key()
-                            .to_short_id()
-                            .unwrap(),
-                    )
+                    .receiver(receiver_short_addr.clone())
                     .amount(transfer_amount)
                     .check_acceptance(true)
                     .issue()
