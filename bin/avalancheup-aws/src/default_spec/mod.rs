@@ -305,6 +305,15 @@ pub fn command() -> Command {
                 .default_value("8000000"),
         )
         .arg(
+            Arg::new("SUBNET_EVM_MIN_MAX_GAS_COST")
+                .long("subnet-evm-min-max-gas-cost")
+                .help("Sets non-zero to set the same value for subnet-evm min and max gas cost (in genesis), useful for load testing")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
             Arg::new("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG")
                 .long("subnet-evm-auto-contract-deployer-allow-list-config")
                 .help("Sets to auto-populate subnet-evm allow list config")

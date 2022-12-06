@@ -46,6 +46,11 @@ fn main() {
                 .unwrap_or(&8000000)
                 .clone();
 
+            let subnet_evm_min_max_gas_cost = sub_matches
+                .get_one::<u64>("SUBNET_EVM_MIN_MAX_GAS_COST")
+                .unwrap_or(&0)
+                .clone();
+
             let opt = avalancheup_aws::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -164,6 +169,8 @@ fn main() {
                 enable_subnet_evm: sub_matches.get_flag("ENABLE_SUBNET_EVM"),
 
                 subnet_evm_gas_limit,
+                subnet_evm_min_max_gas_cost,
+
                 subnet_evm_auto_contract_deployer_allow_list_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
                 subnet_evm_auto_contract_native_minter_config: sub_matches

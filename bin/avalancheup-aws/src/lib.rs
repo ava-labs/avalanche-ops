@@ -505,6 +505,8 @@ pub struct DefaultSpecOption {
     pub enable_subnet_evm: bool,
 
     pub subnet_evm_gas_limit: u64,
+    pub subnet_evm_min_max_gas_cost: u64,
+
     pub subnet_evm_auto_contract_deployer_allow_list_config: bool,
     pub subnet_evm_auto_contract_native_minter_config: bool,
     pub subnet_evm_auto_fee_manager_config: bool,
@@ -672,6 +674,7 @@ impl Spec {
             avalanchego_config.profile_continuous_max_files = Some(profile_continuous_max_files);
         };
         if opts.enable_subnet_evm {
+            // use this as a placeholder since we don't know the subnet Id yet
             avalanchego_config.whitelisted_subnets = Some(String::from(
                 "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf",
             ));
@@ -760,6 +763,16 @@ impl Spec {
                     chain_config.fee_config = Some(fee_config);
 
                     genesis.gas_limit = primitive_types::U256::from(opts.subnet_evm_gas_limit);
+                }
+                if opts.subnet_evm_min_max_gas_cost > 0 {
+                    if let Some(chain_config_fee_config) = &chain_config.fee_config {
+                        let mut chain_config_fee_config = chain_config_fee_config.clone();
+                        chain_config_fee_config.min_block_gas_cost =
+                            Some(opts.subnet_evm_min_max_gas_cost);
+                        chain_config_fee_config.max_block_gas_cost =
+                            Some(opts.subnet_evm_min_max_gas_cost);
+                        chain_config.fee_config = Some(chain_config_fee_config);
+                    }
                 }
                 if opts.subnet_evm_auto_contract_deployer_allow_list_config {
                     chain_config.contract_deployer_allow_list_config =
