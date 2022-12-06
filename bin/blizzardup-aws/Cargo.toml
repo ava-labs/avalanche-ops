@@ -1,6 +1,6 @@
 [package]
 name = "blizzardup-aws"
-version = "0.0.0" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.2.19" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.65"
 
@@ -26,9 +26,9 @@ lazy_static = "1.4.0"
 log = "0.4.17"
 prometheus-manager = "0.0.19"
 random-manager = "0.0.1"
-regex = "1.6.0"
+regex = "1.7.0"
 rust-embed = "6.4.2"
-serde = { version = "1.0.148", features = ["derive"] }
+serde = { version = "1.0.149", features = ["derive"] }
 serde_yaml = "0.9.14" # https://github.com/dtolnay/serde-yaml/releases
 signal-hook = "0.3.14"
 tokio = { version = "1.22.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
