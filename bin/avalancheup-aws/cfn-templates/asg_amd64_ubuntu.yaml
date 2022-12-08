@@ -455,11 +455,12 @@ Resources:
               sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
               sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
               mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
-              cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
+              cat > /tmp/amazon-ssm-agent-10-restart-always.conf <<EOF
               [Service]
               Restart=always
               RestartSec=60s
               EOF
+              sudo mv /tmp/amazon-ssm-agent-10-restart-always.conf /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               if [[ ${VolumeProvisionerDownloadSource} == "github" ]]; then
@@ -602,11 +603,12 @@ Resources:
               cat /opt/aws/amazon-cloudwatch-agent/bin/config.json
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
               mkdir -p /etc/systemd/system/amazon-cloudwatch-agent.service.d
-              cat <<EOF > /etc/systemd/system/amazon-cloudwatch-agent.service.d/10-restart-always.conf
+              cat <<EOF > /tmp/amazon-cloudwatch-agent-10-restart-always.conf
               [Service]
               Restart=always
               RestartSec=60s
               EOF
+              sudo mv /tmp/amazon-cloudwatch-agent-10-restart-always.conf /etc/systemd/system/amazon-cloudwatch-agent.service.d/10-restart-always.conf
 
               sudo timedatectl set-ntp on
 
