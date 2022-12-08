@@ -538,8 +538,7 @@ Resources:
                 chmod +x /tmp/avalanche-telemetry-cloudwatch
                 sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
               fi;
-              # TODO(FIX): error while loading shared libraries: libssl.so.3: cannot open shared object file: No such file or directory
-              # /usr/local/bin/avalanche-telemetry-cloudwatch --version
+              /usr/local/bin/avalanche-telemetry-cloudwatch --version
 
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
