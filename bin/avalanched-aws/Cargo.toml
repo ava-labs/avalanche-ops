@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-installer = "0.0.10" # https://crates.io/crates/avalanche-installer
-avalanche-types = { version = "0.0.157", features = ["avalanchego", "client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.159", features = ["avalanchego", "client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
 aws-manager = "0.21.13" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.21.0" # https://github.com/awslabs/aws-sdk-rust/releases
