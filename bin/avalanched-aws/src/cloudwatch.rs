@@ -37,7 +37,7 @@ impl ConfigManager {
         log_files: Option<Vec<String>>,
         metrics_collect_interval: u32,
     ) -> io::Result<()> {
-        log::info!("syncing CloudWatch configuration JSON file");
+        log::info!("syncing CloudWatch configuration JSON file with {metrics_collect_interval}");
 
         let mut log_collect_list = vec![
             // e.g., collect all .log files in the "/var/log/avalanche" tree
@@ -121,7 +121,12 @@ impl ConfigManager {
             }),
         });
 
-        if self.instance_system_metrics {
+        // max "metrics_collect_interval" is 2-day
+        // "Error : Must be less than or equal to 172800" (2-day)
+        if metrics_collect_interval > 172800 {
+            log::warn!("invalid metrics_collect_interval {metrics_collect_interval} so disabling instance_system_metrics");
+        }
+        if self.instance_system_metrics && metrics_collect_interval <= 172800 {
             let mut cw_metrics = cloudwatch::Metrics::new(metrics_collect_interval);
             cw_metrics.namespace = self.id.clone();
             cw_metrics.metrics_collected.disk = Some(cloudwatch::Disk::new_with_resources(
