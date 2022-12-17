@@ -18,178 +18,7 @@ use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 
-/// Represents each anchor/non-anchor node.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Node {
-    pub kind: String,
-    pub machine_id: String,
-    pub node_id: String,
-
-    /// Overwrites with the persistent elastic IP
-    /// if provisioned and mounted via EBS.
-    pub public_ip: String,
-
-    pub http_endpoint: String,
-}
-
-impl Node {
-    pub fn new(
-        kind: node::Kind,
-        machine_id: &str,
-        node_id: &str,
-        public_ip: &str,
-        http_scheme: &str,
-        http_port: u32,
-    ) -> Self {
-        Self {
-            kind: String::from(kind.as_str()),
-            machine_id: String::from(machine_id),
-            node_id: String::from(node_id),
-            public_ip: String::from(public_ip),
-            http_endpoint: format!("{}://{}:{}", http_scheme, public_ip, http_port),
-        }
-    }
-
-    /// Converts to string with YAML encoder.
-    pub fn encode_yaml(&self) -> io::Result<String> {
-        match serde_yaml::to_string(&self) {
-            Ok(s) => Ok(s),
-            Err(e) => Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to serialize to YAML {}", e),
-            )),
-        }
-    }
-
-    /// Saves the current anchor node to disk
-    /// and overwrites the file.
-    pub fn sync(&self, file_path: &str) -> io::Result<()> {
-        log::info!("syncing Node to '{}'", file_path);
-        let path = Path::new(file_path);
-        let parent_dir = path.parent().expect("unexpected None parent");
-        fs::create_dir_all(parent_dir)?;
-
-        let d = serde_yaml::to_string(self).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed to serialize Node info to YAML {}", e),
-            )
-        })?;
-
-        let mut f = File::create(file_path)?;
-        f.write_all(d.as_bytes())?;
-
-        Ok(())
-    }
-
-    pub fn load(file_path: &str) -> io::Result<Self> {
-        log::info!("loading node from {}", file_path);
-
-        if !Path::new(file_path).exists() {
-            return Err(Error::new(
-                ErrorKind::NotFound,
-                format!("file {} does not exists", file_path),
-            ));
-        }
-
-        let f = File::open(file_path).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed to open {} ({})", file_path, e),
-            )
-        })?;
-
-        serde_yaml::from_reader(f)
-            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
-    }
-
-    /// Encodes the object in YAML format, compresses, and apply base58.
-    /// Used for shortening S3 file name.
-    pub fn compress_base58(&self) -> io::Result<String> {
-        let d = serde_yaml::to_string(self).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed serde_yaml::to_string {}", e),
-            )
-        })?;
-        let compressed =
-            compress_manager::pack(d.as_bytes(), compress_manager::Encoder::ZstdBase58(3))?;
-        Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
-    }
-
-    /// Reverse of "compress_base64".
-    pub fn decompress_base58(d: String) -> io::Result<Self> {
-        let decompressed =
-            compress_manager::unpack(d.as_bytes(), compress_manager::Decoder::ZstdBase58)?;
-        serde_yaml::from_slice(&decompressed)
-            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
-    }
-}
-
-#[test]
-fn test_node() {
-    let d = r#"
-kind: anchor
-machine_id: i-123123
-node_id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
-public_ip: 1.2.3.4
-http_endpoint: http://1.2.3.4:9650
-
-"#;
-    let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(d.as_bytes());
-    assert!(ret.is_ok());
-    let node_path = f.path().to_str().unwrap();
-
-    let ret = Node::load(node_path);
-    assert!(ret.is_ok());
-    let node = ret.unwrap();
-
-    let ret = node.sync(node_path);
-    assert!(ret.is_ok());
-
-    let orig = Node::new(
-        node::Kind::Anchor,
-        "i-123123",
-        "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
-        "1.2.3.4",
-        "http",
-        9650,
-    );
-    assert_eq!(node, orig);
-
-    // manually check to make sure the serde deserializer works
-    assert_eq!(node.kind, String::from("anchor"));
-    assert_eq!(node.machine_id, String::from("i-123123"));
-    assert_eq!(
-        node.node_id,
-        String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg")
-    );
-    assert_eq!(node.public_ip, String::from("1.2.3.4"));
-    assert_eq!(node.http_endpoint, String::from("http://1.2.3.4:9650"));
-
-    let encoded_yaml = node.encode_yaml().unwrap();
-    log::info!("node.encode_yaml: {}", encoded_yaml);
-    let compressed = node.compress_base58().unwrap();
-    log::info!("node.compress_base64: {}", compressed);
-    let decompressed_node = Node::decompress_base58(compressed).unwrap();
-    assert_eq!(node, decompressed_node);
-}
-
-/// Default machine anchor nodes size.
-/// only required for custom networks
-pub const DEFAULT_MACHINE_ANCHOR_NODES: u32 = 1;
-pub const MIN_MACHINE_ANCHOR_NODES: u32 = 1;
-pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10;
-
-/// Default machine non-anchor nodes size.
-/// "1" is better in order to choose only one AZ for static EBS provision.
-/// If one wants to run multiple nodes, it should create multiple groups
-/// of avalanche ops clusters.
-pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
-pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
-pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20;
+pub const VERSION: usize = 0;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
@@ -200,6 +29,9 @@ pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Spec {
+    #[serde(default)]
+    pub version: usize,
+
     /// User-provided ID of the cluster/test.
     /// This is NOT the avalanche node ID.
     /// This is NOT the avalanche network ID.
@@ -275,181 +107,6 @@ pub struct Spec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metrics_rules: Option<prometheus_manager::Rules>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Endpoints {
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc_x: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc_p: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_rpc_c: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metrics: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub health: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub liveness: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metamask_rpc_c: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub websocket_rpc_c: Option<String>,
-}
-
-impl Default for Endpoints {
-    fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl Endpoints {
-    pub fn default() -> Self {
-        Self {
-            http_rpc: None,
-            http_rpc_x: None,
-            http_rpc_p: None,
-            http_rpc_c: None,
-            metrics: None,
-            health: None,
-            liveness: None,
-            metamask_rpc_c: None,
-            websocket_rpc_c: None,
-        }
-    }
-
-    /// Converts to string in YAML format.
-    pub fn encode_yaml(&self) -> io::Result<String> {
-        match serde_yaml::to_string(&self) {
-            Ok(s) => Ok(s),
-            Err(e) => Err(Error::new(
-                ErrorKind::Other,
-                format!("failed to serialize Endpoints to YAML {}", e),
-            )),
-        }
-    }
-}
-
-/// Defines how the underlying infrastructure is set up.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Machine {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub anchor_nodes: Option<u32>,
-    #[serde(default)]
-    pub non_anchor_nodes: u32,
-    #[serde(default)]
-    pub arch: String,
-    #[serde(default)]
-    pub instance_types: Vec<String>,
-    /// Either "spot" or "on-demand".
-    #[serde(default)]
-    pub instance_mode: String,
-    #[serde(default)]
-    pub disable_spot_instance_for_anchor_nodes: bool,
-
-    /// Either "elastic" or "ephemeral".
-    #[serde(default)]
-    pub ip_mode: String,
-
-    /// Initial EBS volume size in GB.
-    /// Can be resized with no downtime.
-    /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html
-    #[serde(default)]
-    pub volume_size_in_gb: u32,
-}
-
-/// Represents artifacts for installation, to be shared with
-/// remote machines. All paths are local to the caller's environment.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct InstallArtifacts {
-    /// "aws-volume-provisioner" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/aws-volume-provisioner" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
-    pub aws_volume_provisioner_bin: Option<String>,
-
-    /// "aws-ip-provisioner" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/aws-ip-provisioner" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
-    pub aws_ip_provisioner_bin: Option<String>,
-
-    /// "aws-telemetry-cloudwatch" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/aws-telemetry-cloudwatch" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
-    pub avalanche_telemetry_cloudwatch_bin: Option<String>,
-
-    /// "avalanched" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/avalanched" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
-    pub avalanched_bin: Option<String>,
-
-    /// AvalancheGo binary path in the local environment.
-    /// The file is "compressed" and uploaded to remote storage
-    /// to be shared with remote machines.
-    ///
-    ///  build
-    ///    ├── avalanchego (the binary from compiling the app directory)
-    ///    └── plugins
-    ///        └── evm
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
-    pub avalanchego_bin: Option<String>,
-
-    /// Plugin directories in the local environment.
-    /// Files (if any) are uploaded to the remote storage to be shared
-    /// with remote machiens.
-    #[serde(default)]
-    pub plugins_dir: Option<String>,
-}
-
-/// Represents the CloudFormation stack name.
-pub enum StackName {
-    Ec2InstanceRole(String),
-    Vpc(String),
-    AsgAnchorNodes(String),
-    AsgNonAnchorNodes(String),
-    SsmDocRestartNodeWhitelistSubnet(String),
-    SsmDocRestartNodeChanConfig(String),
-}
-
-impl StackName {
-    pub fn encode(&self) -> String {
-        match self {
-            StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
-            StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
-            StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
-            StackName::SsmDocRestartNodeWhitelistSubnet(id) => {
-                format!("{}-ssm-doc-restart-node-whitelist-subnet", id)
-            }
-            StackName::SsmDocRestartNodeChanConfig(id) => {
-                format!("{}-ssm-doc-restart-node-chain-config", id)
-            }
-        }
-    }
 }
 
 /// Defines "default-spec" option.
@@ -937,6 +594,8 @@ impl Spec {
         };
 
         Self {
+            version: 0,
+
             id,
             aad_tag: opts.aad_tag,
 
@@ -1217,6 +876,8 @@ fn test_spec() {
 
     let contents = format!(
         r#"
+version: 0
+
 
 id: {}
 
@@ -1320,6 +981,8 @@ coreth_chain_config:
 
     let avalanchego_config = avalanchego_config::Config::default_main();
     let orig = Spec {
+        version: VERSION,
+
         id: id.clone(),
         aad_tag: String::from("test"),
 
@@ -1445,6 +1108,354 @@ coreth_chain_config:
         cfg.avalanchego_config.clone().db_dir,
         avalanchego_config::DEFAULT_DB_DIR,
     );
+}
+
+/// Represents each anchor/non-anchor node.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Node {
+    pub kind: String,
+    pub machine_id: String,
+    pub node_id: String,
+
+    /// Overwrites with the persistent elastic IP
+    /// if provisioned and mounted via EBS.
+    pub public_ip: String,
+
+    pub http_endpoint: String,
+}
+
+impl Node {
+    pub fn new(
+        kind: node::Kind,
+        machine_id: &str,
+        node_id: &str,
+        public_ip: &str,
+        http_scheme: &str,
+        http_port: u32,
+    ) -> Self {
+        Self {
+            kind: String::from(kind.as_str()),
+            machine_id: String::from(machine_id),
+            node_id: String::from(node_id),
+            public_ip: String::from(public_ip),
+            http_endpoint: format!("{}://{}:{}", http_scheme, public_ip, http_port),
+        }
+    }
+
+    /// Converts to string with YAML encoder.
+    pub fn encode_yaml(&self) -> io::Result<String> {
+        match serde_yaml::to_string(&self) {
+            Ok(s) => Ok(s),
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize to YAML {}", e),
+            )),
+        }
+    }
+
+    /// Saves the current anchor node to disk
+    /// and overwrites the file.
+    pub fn sync(&self, file_path: &str) -> io::Result<()> {
+        log::info!("syncing Node to '{}'", file_path);
+        let path = Path::new(file_path);
+        let parent_dir = path.parent().expect("unexpected None parent");
+        fs::create_dir_all(parent_dir)?;
+
+        let d = serde_yaml::to_string(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize Node info to YAML {}", e),
+            )
+        })?;
+
+        let mut f = File::create(file_path)?;
+        f.write_all(d.as_bytes())?;
+
+        Ok(())
+    }
+
+    pub fn load(file_path: &str) -> io::Result<Self> {
+        log::info!("loading node from {}", file_path);
+
+        if !Path::new(file_path).exists() {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("file {} does not exists", file_path),
+            ));
+        }
+
+        let f = File::open(file_path).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", file_path, e),
+            )
+        })?;
+
+        serde_yaml::from_reader(f)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
+    }
+
+    /// Encodes the object in YAML format, compresses, and apply base58.
+    /// Used for shortening S3 file name.
+    pub fn compress_base58(&self) -> io::Result<String> {
+        let d = serde_yaml::to_string(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed serde_yaml::to_string {}", e),
+            )
+        })?;
+        let compressed =
+            compress_manager::pack(d.as_bytes(), compress_manager::Encoder::ZstdBase58(3))?;
+        Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
+    }
+
+    /// Reverse of "compress_base64".
+    pub fn decompress_base58(d: String) -> io::Result<Self> {
+        let decompressed =
+            compress_manager::unpack(d.as_bytes(), compress_manager::Decoder::ZstdBase58)?;
+        serde_yaml::from_slice(&decompressed)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
+    }
+}
+
+#[test]
+fn test_node() {
+    let d = r#"
+kind: anchor
+machine_id: i-123123
+node_id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
+public_ip: 1.2.3.4
+http_endpoint: http://1.2.3.4:9650
+
+"#;
+    let mut f = tempfile::NamedTempFile::new().unwrap();
+    let ret = f.write_all(d.as_bytes());
+    assert!(ret.is_ok());
+    let node_path = f.path().to_str().unwrap();
+
+    let ret = Node::load(node_path);
+    assert!(ret.is_ok());
+    let node = ret.unwrap();
+
+    let ret = node.sync(node_path);
+    assert!(ret.is_ok());
+
+    let orig = Node::new(
+        node::Kind::Anchor,
+        "i-123123",
+        "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
+        "1.2.3.4",
+        "http",
+        9650,
+    );
+    assert_eq!(node, orig);
+
+    // manually check to make sure the serde deserializer works
+    assert_eq!(node.kind, String::from("anchor"));
+    assert_eq!(node.machine_id, String::from("i-123123"));
+    assert_eq!(
+        node.node_id,
+        String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg")
+    );
+    assert_eq!(node.public_ip, String::from("1.2.3.4"));
+    assert_eq!(node.http_endpoint, String::from("http://1.2.3.4:9650"));
+
+    let encoded_yaml = node.encode_yaml().unwrap();
+    log::info!("node.encode_yaml: {}", encoded_yaml);
+    let compressed = node.compress_base58().unwrap();
+    log::info!("node.compress_base64: {}", compressed);
+    let decompressed_node = Node::decompress_base58(compressed).unwrap();
+    assert_eq!(node, decompressed_node);
+}
+
+/// Default machine anchor nodes size.
+/// only required for custom networks
+pub const DEFAULT_MACHINE_ANCHOR_NODES: u32 = 1;
+pub const MIN_MACHINE_ANCHOR_NODES: u32 = 1;
+pub const MAX_MACHINE_ANCHOR_NODES: u32 = 10;
+
+/// Default machine non-anchor nodes size.
+/// "1" is better in order to choose only one AZ for static EBS provision.
+/// If one wants to run multiple nodes, it should create multiple groups
+/// of avalanche ops clusters.
+pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
+pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
+pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 20;
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Endpoints {
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_rpc: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_rpc_x: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_rpc_p: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_rpc_c: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub health: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub liveness: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metamask_rpc_c: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub websocket_rpc_c: Option<String>,
+}
+
+impl Default for Endpoints {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl Endpoints {
+    pub fn default() -> Self {
+        Self {
+            http_rpc: None,
+            http_rpc_x: None,
+            http_rpc_p: None,
+            http_rpc_c: None,
+            metrics: None,
+            health: None,
+            liveness: None,
+            metamask_rpc_c: None,
+            websocket_rpc_c: None,
+        }
+    }
+
+    /// Converts to string in YAML format.
+    pub fn encode_yaml(&self) -> io::Result<String> {
+        match serde_yaml::to_string(&self) {
+            Ok(s) => Ok(s),
+            Err(e) => Err(Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize Endpoints to YAML {}", e),
+            )),
+        }
+    }
+}
+
+/// Defines how the underlying infrastructure is set up.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Machine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anchor_nodes: Option<u32>,
+    #[serde(default)]
+    pub non_anchor_nodes: u32,
+    #[serde(default)]
+    pub arch: String,
+    #[serde(default)]
+    pub instance_types: Vec<String>,
+    /// Either "spot" or "on-demand".
+    #[serde(default)]
+    pub instance_mode: String,
+    #[serde(default)]
+    pub disable_spot_instance_for_anchor_nodes: bool,
+
+    /// Either "elastic" or "ephemeral".
+    #[serde(default)]
+    pub ip_mode: String,
+
+    /// Initial EBS volume size in GB.
+    /// Can be resized with no downtime.
+    /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html
+    #[serde(default)]
+    pub volume_size_in_gb: u32,
+}
+
+/// Represents artifacts for installation, to be shared with
+/// remote machines. All paths are local to the caller's environment.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct InstallArtifacts {
+    /// "aws-volume-provisioner" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/aws-volume-provisioner" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub aws_volume_provisioner_bin: Option<String>,
+
+    /// "aws-ip-provisioner" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/aws-ip-provisioner" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub aws_ip_provisioner_bin: Option<String>,
+
+    /// "aws-telemetry-cloudwatch" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/aws-telemetry-cloudwatch" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub avalanche_telemetry_cloudwatch_bin: Option<String>,
+
+    /// "avalanched" agent binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/avalanched" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub avalanched_bin: Option<String>,
+
+    /// AvalancheGo binary path in the local environment.
+    /// The file is "compressed" and uploaded to remote storage
+    /// to be shared with remote machines.
+    ///
+    ///  build
+    ///    ├── avalanchego (the binary from compiling the app directory)
+    ///    └── plugins
+    ///        └── evm
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub avalanchego_bin: Option<String>,
+
+    /// Plugin directories in the local environment.
+    /// Files (if any) are uploaded to the remote storage to be shared
+    /// with remote machiens.
+    #[serde(default)]
+    pub plugins_dir: Option<String>,
+}
+
+/// Represents the CloudFormation stack name.
+pub enum StackName {
+    Ec2InstanceRole(String),
+    Vpc(String),
+    AsgAnchorNodes(String),
+    AsgNonAnchorNodes(String),
+    SsmDocRestartNodeWhitelistSubnet(String),
+    SsmDocRestartNodeChanConfig(String),
+}
+
+impl StackName {
+    pub fn encode(&self) -> String {
+        match self {
+            StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
+            StackName::Vpc(id) => format!("{}-vpc", id),
+            StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
+            StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
+            StackName::SsmDocRestartNodeWhitelistSubnet(id) => {
+                format!("{}-ssm-doc-restart-node-whitelist-subnet", id)
+            }
+            StackName::SsmDocRestartNodeChanConfig(id) => {
+                format!("{}-ssm-doc-restart-node-chain-config", id)
+            }
+        }
+    }
 }
 
 /// Represents the S3/storage key path.
