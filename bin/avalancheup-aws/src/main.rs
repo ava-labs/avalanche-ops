@@ -98,29 +98,29 @@ fn main() {
                     .unwrap_or(&String::new())
                     .to_string(),
 
-                install_artifacts_aws_volume_provisioner_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_VOLUME_PROVISIONER_BIN")
+                install_artifacts_aws_volume_provisioner_local_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_VOLUME_PROVISIONER_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_aws_ip_provisioner_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_IP_PROVISIONER_BIN")
+                install_artifacts_aws_ip_provisioner_local_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_IP_PROVISIONER_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_avalanche_telemetry_cloudwatch_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_BIN")
+                install_artifacts_avalanche_telemetry_cloudwatch_local_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
 
-                install_artifacts_avalanched_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHED_BIN")
+                install_artifacts_avalanched_local_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHED_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_avalanche_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_BIN")
+                install_artifacts_avalanche_local_bin: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_plugins_dir: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_PLUGINS_DIR")
+                install_artifacts_plugins_local_dir: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_PLUGINS_LOCAL_DIR")
                     .unwrap_or(&String::new())
                     .to_string(),
 

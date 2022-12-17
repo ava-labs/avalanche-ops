@@ -222,7 +222,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ResetColor
     )?;
 
-    if let Some(v) = &spec.install_artifacts.aws_volume_provisioner_bin {
+    if let Some(v) = &spec.install_artifacts.aws_volume_provisioner_local_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
         rt.block_on(
@@ -242,7 +242,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
     }
 
-    if let Some(v) = &spec.install_artifacts.aws_ip_provisioner_bin {
+    if let Some(v) = &spec.install_artifacts.aws_ip_provisioner_local_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
         rt.block_on(
@@ -262,7 +262,10 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         );
     }
 
-    if let Some(v) = &spec.install_artifacts.avalanche_telemetry_cloudwatch_bin {
+    if let Some(v) = &spec
+        .install_artifacts
+        .avalanche_telemetry_cloudwatch_local_bin
+    {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
         rt.block_on(
@@ -284,7 +287,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         );
     }
 
-    if let Some(v) = &spec.install_artifacts.avalanched_bin {
+    if let Some(v) = &spec.install_artifacts.avalanched_local_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
         rt.block_on(s3_manager.put_object(
@@ -299,7 +302,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         log::info!("skipping uploading avalanched_bin, will be downloaded on remote machines...");
     }
 
-    if let Some(avalanchego_bin) = &spec.install_artifacts.avalanchego_bin {
+    if let Some(avalanchego_bin) = &spec.install_artifacts.avalanchego_local_bin {
         // upload without compression first
         rt.block_on(s3_manager.put_object(
             Arc::new(avalanchego_bin.clone()),
@@ -313,8 +316,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
     }
 
-    if spec.install_artifacts.plugins_dir.is_some() {
-        let plugins_dir = spec.install_artifacts.plugins_dir.clone().unwrap();
+    if spec.install_artifacts.plugins_local_dir.is_some() {
+        let plugins_dir = spec.install_artifacts.plugins_local_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
             let entry = entry.unwrap();
             let entry_path = entry.path();
@@ -447,7 +450,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
     }
 
-    if let Some(metrics_rules) = &spec.metrics_rules {
+    if let Some(metrics_rules) = &spec.prometheus_metrics_rules {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -693,23 +696,29 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         ));
     }
 
-    let aws_volume_provisioner_download_source =
-        if spec.install_artifacts.aws_volume_provisioner_bin.is_some() {
-            "s3"
-        } else {
-            "github"
-        };
+    let aws_volume_provisioner_download_source = if spec
+        .install_artifacts
+        .aws_volume_provisioner_bin_install_from_s3
+        .unwrap_or_default()
+    {
+        "s3"
+    } else {
+        "github"
+    };
     asg_parameters.push(build_param(
         "VolumeProvisionerDownloadSource",
         aws_volume_provisioner_download_source,
     ));
 
-    let aws_ip_provisioner_download_source =
-        if spec.install_artifacts.aws_ip_provisioner_bin.is_some() {
-            "s3"
-        } else {
-            "github"
-        };
+    let aws_ip_provisioner_download_source = if spec
+        .install_artifacts
+        .aws_ip_provisioner_bin_install_from_s3
+        .unwrap_or_default()
+    {
+        "s3"
+    } else {
+        "github"
+    };
     asg_parameters.push(build_param(
         "IpProvisionerDownloadSource",
         aws_ip_provisioner_download_source,
@@ -717,8 +726,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let avalanche_telemetry_cloudwatch_download_source = if spec
         .install_artifacts
-        .avalanche_telemetry_cloudwatch_bin
-        .is_some()
+        .avalanche_telemetry_cloudwatch_bin_install_from_s3
+        .unwrap_or_default()
     {
         "s3"
     } else {
@@ -729,7 +738,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         avalanche_telemetry_cloudwatch_download_source,
     ));
 
-    let avalanched_download_source = if spec.install_artifacts.avalanched_bin.is_some() {
+    let avalanched_download_source = if spec
+        .install_artifacts
+        .avalanched_bin_install_from_s3
+        .unwrap_or_default()
+    {
         "s3"
     } else {
         "github"
@@ -1724,7 +1737,7 @@ aws ssm start-session --region {} --target {}
         all_instance_ids.push(node.machine_id.clone())
     }
 
-    if let Some(keys_with_balances) = &spec.test_keys_with_funds {
+    if let Some(keys_with_balances) = &spec.test_keys {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -1843,7 +1856,7 @@ $ cat /tmp/{node_id}.crt
             .expect("failed subnet_evm_genesis.sync");
 
         if spec.avalanchego_config.is_custom_network() {
-            if let Some(keys_with_balances) = &spec.test_keys_with_funds {
+            if let Some(keys_with_balances) = &spec.test_keys {
                 // create a wallet
                 let pk = key::secp256k1::private_key::Key::from_cb58(
                     keys_with_balances[0].private_key_cb58.clone(),
@@ -2229,7 +2242,7 @@ default-spec \\
 --blizzard-load-kinds=x-transfers,c-transfers
 ",
             exec_parent_dir = exec_parent_dir,
-            funded_keys = if let Some(keys) = &spec.test_keys_with_funds {
+            funded_keys = if let Some(keys) = &spec.test_keys {
                 keys.len()
             } else {
                 1
@@ -2263,7 +2276,7 @@ default-spec \\
 --blizzard-load-kinds=subnet-evm-transfers
 ",
                 exec_parent_dir = exec_parent_dir,
-                funded_keys = if let Some(keys) = &spec.test_keys_with_funds {
+                funded_keys = if let Some(keys) = &spec.test_keys {
                     keys.len()
                 } else {
                     1
