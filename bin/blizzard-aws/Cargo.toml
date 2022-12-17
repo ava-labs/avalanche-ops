@@ -2,7 +2,7 @@
 name = "blizzard-aws"
 version = "0.2.22" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.66"
 
 [[bin]]
 name = "blizzard-aws"
@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-types = { version = "0.0.162", features = ["client", "evm"] } # https://crates.io/crates/avalanche-types
-aws-manager = "0.22.1" # https://github.com/gyuho/aws-manager/tags
+aws-manager = "0.22.2" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
@@ -20,5 +20,5 @@ env_logger = "0.10.0"
 ethers-signers = { version = "1.0.2", optional = false }
 log = "0.4.17"
 primitive-types = { version = "0.12.1", optional = false } # https://crates.io/crates/primitive-types
-random-manager = "0.0.1"
+random-manager = "0.0.2"
 tokio = { version = "1.23.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
