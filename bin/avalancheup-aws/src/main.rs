@@ -51,7 +51,7 @@ fn main() {
                 .unwrap_or(&0)
                 .clone();
 
-            let opt = avalancheup_aws::DefaultSpecOption {
+            let opt = avalancheup_aws::spec::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))

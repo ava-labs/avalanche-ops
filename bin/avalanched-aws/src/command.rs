@@ -72,7 +72,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             coreth_chain_config,
             None,
             true,
-            avalancheup_aws::default_rules(),
+            avalancheup_aws::spec::default_rules(),
             true,
             3600,
         )
@@ -92,7 +92,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         let metrics_rules = if let Some(mm) = spec.metrics_rules {
             mm
         } else {
-            avalancheup_aws::default_rules()
+            avalancheup_aws::spec::default_rules()
         };
         let metrics_fetch_interval_seconds = if spec.metrics_fetch_interval_seconds > 0 {
             spec.metrics_fetch_interval_seconds
@@ -283,7 +283,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 aws_creds.s3_manager.clone(),
                 &avalanchego_config.clone().genesis.unwrap(),
                 &tags.s3_bucket,
-                &avalancheup_aws::StorageNamespace::GenesisFile(tags.id.clone()).encode(),
+                &avalancheup_aws::spec::StorageNamespace::GenesisFile(tags.id.clone()).encode(),
             )
             .await
             .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e)))?;
@@ -325,7 +325,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             avalanchego_config.bootstrap_ids = Some(bootstrap_ids.join(","));
             avalanchego_config.bootstrap_ips = Some(bootstrap_ips.join(","));
 
-            let mut spec = avalancheup_aws::Spec::load(&tags.avalancheup_spec_path)?;
+            let mut spec = avalancheup_aws::spec::Spec::load(&tags.avalancheup_spec_path)?;
             spec.avalanchego_config = avalanchego_config.clone();
 
             spec.sync(&tags.avalancheup_spec_path)?;
@@ -617,7 +617,7 @@ async fn download_and_update_local_spec(
     id: &str,
     public_ipv4: &str,
     avalancheup_spec_path: &str,
-) -> io::Result<avalancheup_aws::Spec> {
+) -> io::Result<avalancheup_aws::spec::Spec> {
     log::info!("STEP: downloading avalancheup spec file from S3...");
 
     let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
@@ -626,13 +626,13 @@ async fn download_and_update_local_spec(
     s3::spawn_get_object(
         s3_manager.to_owned(),
         s3_bucket,
-        &avalancheup_aws::StorageNamespace::ConfigFile(id.to_string()).encode(),
+        &avalancheup_aws::spec::StorageNamespace::ConfigFile(id.to_string()).encode(),
         &tmp_spec_file_path,
     )
     .await
     .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
 
-    let mut spec = avalancheup_aws::Spec::load(&tmp_spec_file_path)?;
+    let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
 
     if let Some(config_file) = &spec.avalanchego_config.config_file {
         // if exists, load the existing one in case manually updated
@@ -710,7 +710,7 @@ fn write_default_coreth_chain_config(
     Ok(coreth_config)
 }
 
-fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::spec::Spec) -> io::Result<()> {
     log::info!("STEP: writing coreth chain config file from spec for the C-chain...");
 
     let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
@@ -738,7 +738,7 @@ fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Resu
     Ok(())
 }
 
-fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::spec::Spec) -> io::Result<()> {
     if let Some(subnet_evm_subnet_config) = &spec.subnet_evm_subnet_config {
         let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
         log::info!(
@@ -771,7 +771,7 @@ fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::Spec) -> io:
     Ok(())
 }
 
-fn write_subnet_evm_chain_config_from_spec(spec: &avalancheup_aws::Spec) -> io::Result<()> {
+fn write_subnet_evm_chain_config_from_spec(spec: &avalancheup_aws::spec::Spec) -> io::Result<()> {
     if let Some(subnet_evm_chain_config) = &spec.subnet_evm_chain_config {
         let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
         log::info!(
@@ -885,7 +885,7 @@ async fn install_avalanche_from_s3(
     if !Path::new(avalanche_bin_path).exists() {
         log::info!("STEP: downloading avalanche binary from S3");
 
-        let s3_key = avalancheup_aws::StorageNamespace::AvalancheBin(id.to_string()).encode();
+        let s3_key = avalancheup_aws::spec::StorageNamespace::AvalancheBin(id.to_string()).encode();
         let tmp_avalanche_bin_path = random_manager::tmp_path(15, Some(".zstd"))?;
 
         s3::spawn_get_object(
@@ -915,7 +915,7 @@ async fn install_avalanche_from_s3(
             s3_manager.to_owned(),
             s3_bucket,
             Some(s3::append_slash(
-                &avalancheup_aws::StorageNamespace::PluginsDir(id.to_string()).encode(),
+                &avalancheup_aws::spec::StorageNamespace::PluginsDir(id.to_string()).encode(),
             )),
         )
         .await
@@ -1058,7 +1058,7 @@ async fn discover_other_bootstrapping_anchor_nodes_from_s3(
 ) -> io::Result<Vec<String>> {
     log::info!("STEP: publishing bootstrapping local anchor node information for discovery...");
 
-    let spec = avalancheup_aws::Spec::load(avalancheup_spec_path)?;
+    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path)?;
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -1072,7 +1072,7 @@ async fn discover_other_bootstrapping_anchor_nodes_from_s3(
             "http"
         }
     };
-    let local_node = avalancheup_aws::Node::new(
+    let local_node = avalancheup_aws::spec::Node::new(
         node::Kind::Anchor,
         local_ec2_instance_id,
         local_node_id,
@@ -1088,7 +1088,7 @@ async fn discover_other_bootstrapping_anchor_nodes_from_s3(
             .expect("failed to encode node Info")
     );
 
-    let node_info = avalancheup_aws::NodeInfo::new(
+    let node_info = avalancheup_aws::spec::NodeInfo::new(
         local_node.clone(),
         spec.avalanchego_config.clone(),
         spec.coreth_chain_config.clone(),
@@ -1101,7 +1101,7 @@ async fn discover_other_bootstrapping_anchor_nodes_from_s3(
         s3_manager.clone(),
         node_info_path.as_str(),
         s3_bucket,
-        &avalancheup_aws::StorageNamespace::DiscoverBootstrappingAnchorNode(
+        &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNode(
             spec.id.clone(),
             local_node.clone(),
         )
@@ -1119,7 +1119,8 @@ async fn discover_other_bootstrapping_anchor_nodes_from_s3(
     log::info!("waiting for all other seed/bootstrapping anchor nodes to publish their own (expected total {target_nodes} nodes)");
 
     let s3_key_prefix = s3::append_slash(
-        &avalancheup_aws::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(spec.id).encode(),
+        &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(spec.id)
+            .encode(),
     );
 
     log::info!("listing s3 for other anchor nodes with the prefix {s3_key_prefix}");
@@ -1169,7 +1170,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
         bootstrapping_anchor_node_s3_keys.len()
     );
 
-    let spec = avalancheup_aws::Spec::load(avalancheup_spec_path)?;
+    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path)?;
 
     // "initial_staked_funds" is reserved for locked P-chain balance
     // with "spec.generated_seed_private_key_with_locked_p_chain_balance"
@@ -1180,7 +1181,8 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
     for s3_key in bootstrapping_anchor_node_s3_keys.iter() {
         // just parse the s3 key name
         // to reduce "s3_manager.get_object" call volume
-        let seed_anchor_node = avalancheup_aws::StorageNamespace::parse_node_from_path(s3_key)?;
+        let seed_anchor_node =
+            avalancheup_aws::spec::StorageNamespace::parse_node_from_path(s3_key)?;
 
         let mut staker = avalanchego_genesis::Staker::default();
         staker.node_id = Some(seed_anchor_node.node_id);
@@ -1218,14 +1220,14 @@ async fn download_genesis_from_ready_anchor_nodes(
 ) -> io::Result<()> {
     log::info!("STEP: downloading genesis file from S3 (updated from other anchor nodes)");
 
-    let spec = avalancheup_aws::Spec::load(avalancheup_spec_path)?;
+    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path)?;
     let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
 
     let s3_manager: &s3::Manager = s3_manager.as_ref();
     s3::spawn_get_object(
         s3_manager.clone(),
         s3_bucket,
-        &avalancheup_aws::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
+        &avalancheup_aws::spec::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
         &tmp_genesis_path,
     )
     .await
@@ -1255,7 +1257,7 @@ async fn discover_ready_anchor_nodes_from_s3(
 ) -> io::Result<(Vec<String>, Vec<String>)> {
     log::info!("STEP: listing S3 directory to discover ready anchor nodes...");
 
-    let spec = avalancheup_aws::Spec::load(avalancheup_spec_path)?;
+    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path)?;
 
     // "avalanche-ops" should always set up anchor nodes first
     // so here we assume anchor nodes are already set up
@@ -1275,7 +1277,8 @@ async fn discover_ready_anchor_nodes_from_s3(
         .expect("unexpected None machine.anchor_nodes for custom network");
 
     let s3_key_prefix = s3::append_slash(
-        &avalancheup_aws::StorageNamespace::DiscoverReadyAnchorNodesDir(spec.id.clone()).encode(),
+        &avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(spec.id.clone())
+            .encode(),
     );
     let s3_manager: &s3::Manager = s3_manager.as_ref();
     let mut objects: Vec<aws_sdk_s3::model::Object>;
@@ -1327,7 +1330,8 @@ async fn discover_ready_anchor_nodes_from_s3(
     for s3_key in s3_keys.iter() {
         // just parse the s3 key name
         // to reduce "s3_manager.get_object" call volume
-        let ready_anchor_node = avalancheup_aws::StorageNamespace::parse_node_from_path(s3_key)?;
+        let ready_anchor_node =
+            avalancheup_aws::spec::StorageNamespace::parse_node_from_path(s3_key)?;
 
         let machine_id = ready_anchor_node.machine_id;
         if !running_machine_ids.contains(&machine_id) {
@@ -1549,8 +1553,8 @@ async fn publish_node_info_ready_loop(
 ) {
     log::info!("STEP: publishing node info for its readiness...");
 
-    let spec =
-        avalancheup_aws::Spec::load(avalancheup_spec_path.as_str()).expect("failed to load spec");
+    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path.as_str())
+        .expect("failed to load spec");
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -1564,7 +1568,7 @@ async fn publish_node_info_ready_loop(
             "http"
         }
     };
-    let local_node = avalancheup_aws::Node::new(
+    let local_node = avalancheup_aws::spec::Node::new(
         node_kind.clone(),
         ec2_instance_id.as_str(),
         node_id.as_str(),
@@ -1572,7 +1576,7 @@ async fn publish_node_info_ready_loop(
         http_scheme,
         spec.avalanchego_config.http_port,
     );
-    let node_info = avalancheup_aws::NodeInfo::new(
+    let node_info = avalancheup_aws::spec::NodeInfo::new(
         local_node.clone(),
         spec.avalanchego_config.clone(),
         spec.coreth_chain_config.clone(),
@@ -1583,13 +1587,13 @@ async fn publish_node_info_ready_loop(
 
     let node_info_ready_s3_key = {
         if matches!(node_kind, node::Kind::Anchor) {
-            avalancheup_aws::StorageNamespace::DiscoverReadyAnchorNode(
+            avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNode(
                 spec.id.clone(),
                 local_node.clone(),
             )
             .encode()
         } else {
-            avalancheup_aws::StorageNamespace::DiscoverReadyNonAnchorNode(
+            avalancheup_aws::spec::StorageNamespace::DiscoverReadyNonAnchorNode(
                 spec.id.clone(),
                 local_node.clone(),
             )
