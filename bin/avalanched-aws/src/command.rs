@@ -892,7 +892,7 @@ async fn install_avalanche_and_plugins_from_s3(
         log::info!("STEP: downloading avalanche binary from S3");
 
         let s3_key = avalancheup_aws::spec::StorageNamespace::AvalancheBin(id.to_string()).encode();
-        let tmp_avalanche_bin_path = random_manager::tmp_path(15, Some(".zstd"))?;
+        let tmp_avalanche_bin_path = random_manager::tmp_path(15, None)?;
 
         s3::spawn_get_object(
             s3_manager.to_owned(),
