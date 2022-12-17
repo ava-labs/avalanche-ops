@@ -650,8 +650,10 @@ async fn download_and_update_local_spec(
     spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
     spec.avalanchego_config.sync(None)?;
 
+    // always overwrites in case we update and upload to s3
+    // "avalanched" never updates "spec" file, runs in read-only mode
     fs::copy(&tmp_spec_file_path, &avalancheup_spec_path)?;
-    fs::remove_file(&tmp_spec_file_path)?; // "avalanched" never updates "spec" file, runs in read-only mode
+    fs::remove_file(&tmp_spec_file_path)?;
 
     Ok(spec)
 }
