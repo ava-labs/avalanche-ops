@@ -1747,7 +1747,7 @@ aws ssm start-session --region {} --target {}
 
         // create a wallet
         let pk = key::secp256k1::private_key::Key::from_cb58(
-            keys_with_balances[0].private_key_cb58.clone(),
+            keys_with_balances[0].private_key_cb58.clone().unwrap(),
         )?;
         let w = rt
             .block_on(
@@ -1859,7 +1859,7 @@ $ cat /tmp/{node_id}.crt
             if let Some(keys_with_balances) = &spec.test_keys {
                 // create a wallet
                 let pk = key::secp256k1::private_key::Key::from_cb58(
-                    keys_with_balances[0].private_key_cb58.clone(),
+                    keys_with_balances[0].private_key_cb58.clone().unwrap(),
                 )?;
                 let w = rt
                     .block_on(
