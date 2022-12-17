@@ -85,6 +85,16 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             &tags.avalancheup_spec_path,
         )
         .await?;
+        if spec.version != avalancheup_aws::spec::VERSION {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "invalid avalancheup_aws::spec::VERSION {} (expected {})",
+                    spec.version,
+                    avalancheup_aws::spec::VERSION
+                ),
+            ));
+        }
 
         write_coreth_chain_config_from_spec(&spec)?;
         write_subnet_evm_subnet_config_from_spec(&spec)?;
