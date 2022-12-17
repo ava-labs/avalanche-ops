@@ -698,8 +698,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let aws_volume_provisioner_download_source = if spec
         .install_artifacts
-        .aws_volume_provisioner_local_bin
-        .is_some()
+        .aws_volume_provisioner_bin_install_from_s3
+        .unwrap_or_default()
     {
         "s3"
     } else {
@@ -712,8 +712,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let aws_ip_provisioner_download_source = if spec
         .install_artifacts
-        .aws_ip_provisioner_local_bin
-        .is_some()
+        .aws_ip_provisioner_bin_install_from_s3
+        .unwrap_or_default()
     {
         "s3"
     } else {
@@ -726,8 +726,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     let avalanche_telemetry_cloudwatch_download_source = if spec
         .install_artifacts
-        .avalanche_telemetry_cloudwatch_local_bin
-        .is_some()
+        .avalanche_telemetry_cloudwatch_bin_install_from_s3
+        .unwrap_or_default()
     {
         "s3"
     } else {
@@ -738,7 +738,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         avalanche_telemetry_cloudwatch_download_source,
     ));
 
-    let avalanched_download_source = if spec.install_artifacts.avalanched_local_bin.is_some() {
+    let avalanched_download_source = if spec
+        .install_artifacts
+        .avalanched_bin_install_from_s3
+        .unwrap_or_default()
+    {
         "s3"
     } else {
         "github"

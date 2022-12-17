@@ -104,7 +104,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             spec.avalanchego_config.clone(),
             spec.coreth_chain_config.clone(),
             spec.subnet_evm_chain_config.clone(),
-            spec.install_artifacts.avalanchego_local_bin.is_none(),
+            !spec
+                .install_artifacts
+                .avalanchego_bin_install_from_s3
+                .unwrap_or_default(),
             metrics_rules,
             !spec.disable_logs_auto_removal,
             metrics_fetch_interval_seconds,
@@ -132,7 +135,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             )
             .await?;
         } else {
-            install_avalanche_from_s3(
+            install_avalanche_and_plugins_from_s3(
                 Arc::clone(&s3_manager_arc),
                 &tags.s3_bucket,
                 &tags.id,
@@ -874,7 +877,7 @@ async fn install_avalanche_from_github(
     Ok(())
 }
 
-async fn install_avalanche_from_s3(
+async fn install_avalanche_and_plugins_from_s3(
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
     id: &str,
