@@ -72,7 +72,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             coreth_chain_config,
             None,
             true,
-            avalancheup_aws::spec::default_rules(),
+            avalancheup_aws::spec::default_prometheus_rules(),
             true,
             3600,
         )
@@ -85,14 +85,15 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             &tags.avalancheup_spec_path,
         )
         .await?;
+
         write_coreth_chain_config_from_spec(&spec)?;
         write_subnet_evm_subnet_config_from_spec(&spec)?;
         write_subnet_evm_chain_config_from_spec(&spec)?;
 
-        let metrics_rules = if let Some(mm) = spec.metrics_rules {
+        let metrics_rules = if let Some(mm) = spec.prometheus_metrics_rules {
             mm
         } else {
-            avalancheup_aws::spec::default_rules()
+            avalancheup_aws::spec::default_prometheus_rules()
         };
         let metrics_fetch_interval_seconds = if spec.metrics_fetch_interval_seconds > 0 {
             spec.metrics_fetch_interval_seconds
@@ -103,18 +104,17 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             spec.avalanchego_config.clone(),
             spec.coreth_chain_config.clone(),
             spec.subnet_evm_chain_config.clone(),
-            spec.install_artifacts.avalanchego_bin.is_none(),
+            spec.install_artifacts.avalanchego_local_bin.is_none(),
             metrics_rules,
             !spec.disable_logs_auto_removal,
             metrics_fetch_interval_seconds,
         )
     };
 
-    if !Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
-        metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
-    } else {
-        log::warn!("skipping writing avalanche-telemetry-cloudwatch rules file (already exists)")
+    if Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
+        log::warn!("overwriting avalanche-telemetry-cloudwatch rules file (already exists)")
     }
+    metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
 
     create_config_dirs(
         &avalanchego_config,
@@ -251,10 +251,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     }
 
+    // check if the file "exists" for idempotency
     if avalanchego_config.is_custom_network()
         && avalanchego_config.genesis.is_some()
         && !Path::new(&avalanchego_config.clone().genesis.unwrap()).exists()
-    // check "exists" for idempotency
     {
         log::info!("STEP: running discover/genesis updates for custom network...");
 
@@ -634,6 +634,7 @@ async fn download_and_update_local_spec(
 
     let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
 
+    // do not overwrite since the config file could have been updated with subnet ids
     if let Some(config_file) = &spec.avalanchego_config.config_file {
         // if exists, load the existing one in case manually updated
         if Path::new(&config_file).exists() {
@@ -642,7 +643,7 @@ async fn download_and_update_local_spec(
         }
     }
 
-    // always overwrite public-ip flag in case of EC2 instance replacement
+    // always "only" overwrite public-ip flag in case of EC2 instance replacement
     spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
     spec.avalanchego_config.sync(None)?;
 
@@ -673,7 +674,7 @@ fn write_default_avalanche_config(
 
     avalanchego_config.network_id = network_id;
 
-    // always overwrite public-ip flag in case of EC2 instance replacement
+    // always "only" overwrite public-ip flag in case of EC2 instance replacement
     avalanchego_config.public_ip = Some(public_ipv4.to_string());
     avalanchego_config.sync(None)?;
 
@@ -1174,7 +1175,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
 
     // "initial_staked_funds" is reserved for locked P-chain balance
     // with "spec.generated_seed_private_key_with_locked_p_chain_balance"
-    let seed_priv_keys = spec.clone().test_keys_with_funds.unwrap();
+    let seed_priv_keys = spec.clone().test_keys.unwrap();
     let seed_priv_key = seed_priv_keys[0].clone();
 
     let mut initial_stakers: Vec<avalanchego_genesis::Staker> = vec![];

@@ -56,9 +56,6 @@ pub struct Spec {
     /// Set "true" to disable CloudWatch log auto removal.
     #[serde(default)]
     pub disable_logs_auto_removal: bool,
-    /// Interval in seconds to fetch metrics.
-    #[serde(default)]
-    pub metrics_fetch_interval_seconds: u64,
 
     /// Represents the configuration for "avalanchego".
     /// Set as if run in remote machines.
@@ -81,29 +78,36 @@ pub struct Spec {
     /// TODO: support multiple subnets
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_genesis: Option<subnet_evm_genesis::Genesis>,
-    /// TODO: support multiple subnets
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_chain_config: Option<subnet_evm_chain_config::Config>,
-    /// TODO: support multiple subnets
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evm_subnet_config: Option<subnet::config::Config>,
 
     /// NOTE: Only required for custom networks with pre-funded wallets!
-    /// These are used for custom primary network genesis generation.
+    /// These are used for custom primary network genesis generation and will be pre-funded.
     /// The first key will have locked P-chain balance with initial stake duration in genesis.
     /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
     /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub test_keys_with_funds: Option<Vec<key::secp256k1::Info>>,
+    pub test_keys: Option<Vec<key::secp256k1::Info>>,
 
-    /// Current all nodes. May be stale.
+    /// Created nodes at the start of the network.
+    /// May become stale.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_nodes: Option<Vec<Node>>,
+    /// Created endpoints at the start of the network.
+    /// May become stale.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_endpoints: Option<Endpoints>,
 
+    /// Interval in seconds to fetch system and avalanche node metrics.
+    #[serde(default)]
+    pub metrics_fetch_interval_seconds: u64,
+
+    /// Prometheus rules for telemetry.
+    /// "avalanched" reads this metrics and writes to disk (ALWAYS OVERWRITE).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metrics_rules: Option<prometheus_manager::Rules>,
+    pub prometheus_metrics_rules: Option<prometheus_manager::Rules>,
 }
 
 /// Defines "default-spec" option.
@@ -131,12 +135,12 @@ pub struct DefaultSpecOption {
 
     pub nlb_acm_certificate_arn: String,
 
-    pub install_artifacts_aws_volume_provisioner_bin: String,
-    pub install_artifacts_aws_ip_provisioner_bin: String,
-    pub install_artifacts_avalanche_telemetry_cloudwatch_bin: String,
-    pub install_artifacts_avalanched_bin: String,
-    pub install_artifacts_avalanche_bin: String,
-    pub install_artifacts_plugins_dir: String,
+    pub install_artifacts_aws_volume_provisioner_local_bin: String,
+    pub install_artifacts_aws_ip_provisioner_local_bin: String,
+    pub install_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
+    pub install_artifacts_avalanched_local_bin: String,
+    pub install_artifacts_avalanche_local_bin: String,
+    pub install_artifacts_plugins_local_dir: String,
 
     pub avalanched_log_level: String,
     pub avalanched_use_default_config: bool,
@@ -263,7 +267,7 @@ lazy_static! {
     ];
 }
 
-pub fn default_rules() -> prometheus_manager::Rules {
+pub fn default_prometheus_rules() -> prometheus_manager::Rules {
     #[derive(RustEmbed)]
     #[folder = "artifacts/"]
     #[prefix = "artifacts/"]
@@ -488,36 +492,61 @@ impl Spec {
         }
 
         let mut install_artifacts = InstallArtifacts {
-            aws_volume_provisioner_bin: None,
-            aws_ip_provisioner_bin: None,
-            avalanche_telemetry_cloudwatch_bin: None,
-            avalanched_bin: None,
-            avalanchego_bin: None,
-            plugins_dir: None,
+            aws_volume_provisioner_local_bin: None,
+            aws_volume_provisioner_bin_install_from_s3: None,
+
+            aws_ip_provisioner_local_bin: None,
+            aws_ip_provisioner_bin_install_from_s3: None,
+
+            avalanche_telemetry_cloudwatch_local_bin: None,
+            avalanche_telemetry_cloudwatch_bin_install_from_s3: None,
+
+            avalanched_local_bin: None,
+            avalanched_bin_install_from_s3: None,
+
+            avalanchego_local_bin: None,
+            avalanchego_bin_install_from_s3: None,
+
+            plugins_local_dir: None,
+            plugins_dir_install_from_s3: None,
         };
-        if !opts.install_artifacts_aws_volume_provisioner_bin.is_empty() {
-            install_artifacts.aws_volume_provisioner_bin =
-                Some(opts.install_artifacts_aws_volume_provisioner_bin);
-        }
-        if !opts.install_artifacts_aws_ip_provisioner_bin.is_empty() {
-            install_artifacts.aws_ip_provisioner_bin =
-                Some(opts.install_artifacts_aws_ip_provisioner_bin);
-        }
         if !opts
-            .install_artifacts_avalanche_telemetry_cloudwatch_bin
+            .install_artifacts_aws_volume_provisioner_local_bin
             .is_empty()
         {
-            install_artifacts.avalanche_telemetry_cloudwatch_bin =
-                Some(opts.install_artifacts_avalanche_telemetry_cloudwatch_bin);
+            install_artifacts.aws_volume_provisioner_local_bin =
+                Some(opts.install_artifacts_aws_volume_provisioner_local_bin);
+            install_artifacts.aws_volume_provisioner_bin_install_from_s3 = Some(true);
         }
-        if !opts.install_artifacts_avalanched_bin.is_empty() {
-            install_artifacts.avalanched_bin = Some(opts.install_artifacts_avalanched_bin);
+        if !opts
+            .install_artifacts_aws_ip_provisioner_local_bin
+            .is_empty()
+        {
+            install_artifacts.aws_ip_provisioner_local_bin =
+                Some(opts.install_artifacts_aws_ip_provisioner_local_bin);
+            install_artifacts.aws_ip_provisioner_bin_install_from_s3 = Some(true);
         }
-        if !opts.install_artifacts_avalanche_bin.is_empty() {
-            install_artifacts.avalanchego_bin = Some(opts.install_artifacts_avalanche_bin);
+        if !opts
+            .install_artifacts_avalanche_telemetry_cloudwatch_local_bin
+            .is_empty()
+        {
+            install_artifacts.avalanche_telemetry_cloudwatch_local_bin =
+                Some(opts.install_artifacts_avalanche_telemetry_cloudwatch_local_bin);
+            install_artifacts.avalanche_telemetry_cloudwatch_bin_install_from_s3 = Some(true);
         }
-        if !opts.install_artifacts_plugins_dir.is_empty() {
-            install_artifacts.plugins_dir = Some(opts.install_artifacts_plugins_dir);
+        if !opts.install_artifacts_avalanched_local_bin.is_empty() {
+            install_artifacts.avalanched_local_bin =
+                Some(opts.install_artifacts_avalanched_local_bin);
+            install_artifacts.avalanched_bin_install_from_s3 = Some(true);
+        }
+        if !opts.install_artifacts_avalanche_local_bin.is_empty() {
+            install_artifacts.avalanchego_local_bin =
+                Some(opts.install_artifacts_avalanche_local_bin);
+            install_artifacts.avalanchego_bin_install_from_s3 = Some(true);
+        }
+        if !opts.install_artifacts_plugins_local_dir.is_empty() {
+            install_artifacts.plugins_local_dir = Some(opts.install_artifacts_plugins_local_dir);
+            install_artifacts.plugins_dir_install_from_s3 = Some(true);
         }
 
         let mut coreth_chain_config = coreth_chain_config::Config::default();
@@ -604,7 +633,6 @@ impl Spec {
 
             enable_nlb: opts.enable_nlb,
             disable_logs_auto_removal: opts.disable_logs_auto_removal,
-            metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
 
             avalanchego_config,
             coreth_chain_config,
@@ -614,12 +642,13 @@ impl Spec {
             subnet_evm_chain_config,
             subnet_evm_subnet_config,
 
-            test_keys_with_funds: Some(test_key_infos),
+            test_keys: Some(test_key_infos),
 
             created_nodes: None,
             created_endpoints: None,
 
-            metrics_rules: Some(default_rules()),
+            metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
+            prometheus_metrics_rules: Some(default_prometheus_rules()),
         }
     }
 
@@ -735,7 +764,7 @@ impl Spec {
             ));
         }
 
-        if let Some(v) = &self.install_artifacts.aws_volume_provisioner_bin {
+        if let Some(v) = &self.install_artifacts.aws_volume_provisioner_local_bin {
             if !Path::new(v).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -743,7 +772,7 @@ impl Spec {
                 ));
             }
         }
-        if let Some(v) = &self.install_artifacts.aws_ip_provisioner_bin {
+        if let Some(v) = &self.install_artifacts.aws_ip_provisioner_local_bin {
             if !Path::new(v).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -752,7 +781,7 @@ impl Spec {
             }
         }
 
-        if let Some(v) = &self.install_artifacts.avalanched_bin {
+        if let Some(v) = &self.install_artifacts.avalanched_local_bin {
             if !Path::new(v).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -760,7 +789,7 @@ impl Spec {
                 ));
             }
         }
-        if let Some(v) = &self.install_artifacts.avalanchego_bin {
+        if let Some(v) = &self.install_artifacts.avalanchego_local_bin {
             if !Path::new(v).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -768,7 +797,7 @@ impl Spec {
                 ));
             }
         }
-        if let Some(v) = &self.install_artifacts.plugins_dir {
+        if let Some(v) = &self.install_artifacts.plugins_local_dir {
             if !Path::new(v).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
@@ -901,9 +930,12 @@ machine:
   ip_mode: elastic
 
 install_artifacts:
-  avalanched_bin: {}
-  avalanchego_bin: {}
-  plugins_dir: {}
+  avalanched_local_bin: {}
+  avalanched_bin_install_from_s3: true
+  avalanchego_local_bin: {}
+  avalanchego_bin_install_from_s3: true
+  plugins_local_dir: {}
+  plugins_dir_install_from_s3: true
 
 avalanched_config:
   log_level: info
@@ -912,7 +944,6 @@ avalanched_config:
 
 enable_nlb: false
 disable_logs_auto_removal: false
-metrics_fetch_interval_seconds: 5000
 
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
@@ -963,6 +994,7 @@ coreth_chain_config:
   - internal-blockchain
   - internal-transaction
 
+metrics_fetch_interval_seconds: 5000
 
 "#,
         id, bucket, avalanched_bin, avalanchego_bin, plugins_dir,
@@ -1008,12 +1040,18 @@ coreth_chain_config:
         },
 
         install_artifacts: InstallArtifacts {
-            aws_volume_provisioner_bin: None,
-            aws_ip_provisioner_bin: None,
-            avalanche_telemetry_cloudwatch_bin: None,
-            avalanched_bin: Some(avalanched_bin.to_string()),
-            avalanchego_bin: Some(avalanchego_bin.to_string()),
-            plugins_dir: Some(plugins_dir.to_string()),
+            aws_volume_provisioner_local_bin: None,
+            aws_volume_provisioner_bin_install_from_s3: None,
+            aws_ip_provisioner_local_bin: None,
+            aws_ip_provisioner_bin_install_from_s3: None,
+            avalanche_telemetry_cloudwatch_local_bin: None,
+            avalanche_telemetry_cloudwatch_bin_install_from_s3: None,
+            avalanched_local_bin: Some(avalanched_bin.to_string()),
+            avalanched_bin_install_from_s3: Some(true),
+            avalanchego_local_bin: Some(avalanchego_bin.to_string()),
+            avalanchego_bin_install_from_s3: Some(true),
+            plugins_local_dir: Some(plugins_dir.to_string()),
+            plugins_dir_install_from_s3: Some(true),
         },
 
         avalanched_config: crate::avalanched::Flags {
@@ -1034,11 +1072,11 @@ coreth_chain_config:
         subnet_evm_chain_config: None,
         subnet_evm_subnet_config: None,
 
-        test_keys_with_funds: None,
+        test_keys: None,
         created_nodes: None,
         created_endpoints: None,
 
-        metrics_rules: None,
+        prometheus_metrics_rules: None,
     };
 
     assert_eq!(cfg, orig);
@@ -1055,18 +1093,20 @@ coreth_chain_config:
 
     assert_eq!(
         cfg.install_artifacts
-            .avalanched_bin
+            .avalanched_local_bin
             .unwrap_or(String::new()),
         avalanched_bin
     );
     assert_eq!(
         cfg.install_artifacts
-            .avalanchego_bin
+            .avalanchego_local_bin
             .unwrap_or(String::new()),
         avalanchego_bin
     );
     assert_eq!(
-        cfg.install_artifacts.plugins_dir.unwrap_or(String::new()),
+        cfg.install_artifacts
+            .plugins_local_dir
+            .unwrap_or(String::new()),
         plugins_dir.to_string()
     );
 
@@ -1380,7 +1420,9 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub aws_volume_provisioner_bin: Option<String>,
+    pub aws_volume_provisioner_local_bin: Option<String>,
+    #[serde(default)]
+    pub aws_volume_provisioner_bin_install_from_s3: Option<bool>,
 
     /// "aws-ip-provisioner" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
@@ -1389,7 +1431,9 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub aws_ip_provisioner_bin: Option<String>,
+    pub aws_ip_provisioner_local_bin: Option<String>,
+    #[serde(default)]
+    pub aws_ip_provisioner_bin_install_from_s3: Option<bool>,
 
     /// "aws-telemetry-cloudwatch" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
@@ -1398,7 +1442,9 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub avalanche_telemetry_cloudwatch_bin: Option<String>,
+    pub avalanche_telemetry_cloudwatch_local_bin: Option<String>,
+    #[serde(default)]
+    pub avalanche_telemetry_cloudwatch_bin_install_from_s3: Option<bool>,
 
     /// "avalanched" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
@@ -1407,7 +1453,9 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub avalanched_bin: Option<String>,
+    pub avalanched_local_bin: Option<String>,
+    #[serde(default)]
+    pub avalanched_bin_install_from_s3: Option<bool>,
 
     /// AvalancheGo binary path in the local environment.
     /// The file is "compressed" and uploaded to remote storage
@@ -1420,13 +1468,17 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub avalanchego_bin: Option<String>,
+    pub avalanchego_local_bin: Option<String>,
+    #[serde(default)]
+    pub avalanchego_bin_install_from_s3: Option<bool>,
 
     /// Plugin directories in the local environment.
     /// Files (if any) are uploaded to the remote storage to be shared
     /// with remote machiens.
     #[serde(default)]
-    pub plugins_dir: Option<String>,
+    pub plugins_local_dir: Option<String>,
+    #[serde(default)]
+    pub plugins_dir_install_from_s3: Option<bool>,
 }
 
 /// Represents the CloudFormation stack name.
