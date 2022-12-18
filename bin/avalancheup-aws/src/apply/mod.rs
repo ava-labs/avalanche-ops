@@ -2082,7 +2082,6 @@ default-spec \\
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
             for instance_id in all_instance_ids.iter() {
-                let mut status = CommandInvocationStatus::Pending;
                 loop {
                     let inv_out = rt
                         .block_on(
@@ -2094,27 +2093,25 @@ default-spec \\
                         )
                         .unwrap();
 
-                    if let Some(sv) = inv_out.status() {
+                    let status = if let Some(sv) = inv_out.status() {
                         log::info!(
                             "command {} status {:?} for instance {}",
                             ssm_command_id,
                             sv,
                             instance_id
                         );
-                        if sv.eq(&CommandInvocationStatus::Success) {
-                            status = CommandInvocationStatus::Success;
-                            break;
-                        }
-                        if sv.eq(&CommandInvocationStatus::Failed) {
-                            status = CommandInvocationStatus::Failed;
-                            break;
-                        }
+                        sv.clone()
+                    } else {
+                        CommandInvocationStatus::Pending
+                    };
+                    if status.eq(&CommandInvocationStatus::Success) {
+                        break;
+                    }
+                    if status.eq(&CommandInvocationStatus::Failed) {
+                        panic!("SSM command failed");
                     }
 
                     thread::sleep(Duration::from_secs(5));
-                }
-                if status.eq(&CommandInvocationStatus::Failed) {
-                    panic!("SSM command failed");
                 }
             }
             thread::sleep(Duration::from_secs(5));
@@ -2223,7 +2220,6 @@ default-spec \\
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
             for instance_id in all_instance_ids.iter() {
-                let mut status = CommandInvocationStatus::Pending;
                 loop {
                     let inv_out = rt
                         .block_on(
@@ -2235,27 +2231,25 @@ default-spec \\
                         )
                         .unwrap();
 
-                    if let Some(sv) = inv_out.status() {
+                    let status = if let Some(sv) = inv_out.status() {
                         log::info!(
                             "command {} status {:?} for instance {}",
                             ssm_command_id,
                             sv,
                             instance_id
                         );
-                        if sv.eq(&CommandInvocationStatus::Success) {
-                            status = CommandInvocationStatus::Success;
-                            break;
-                        }
-                        if sv.eq(&CommandInvocationStatus::Failed) {
-                            status = CommandInvocationStatus::Failed;
-                            break;
-                        }
+                        sv.clone()
+                    } else {
+                        CommandInvocationStatus::Pending
+                    };
+                    if status.eq(&CommandInvocationStatus::Success) {
+                        break;
+                    }
+                    if status.eq(&CommandInvocationStatus::Failed) {
+                        panic!("SSM command failed");
                     }
 
                     thread::sleep(Duration::from_secs(5));
-                }
-                if status.eq(&CommandInvocationStatus::Failed) {
-                    panic!("SSM command failed");
                 }
             }
         }
