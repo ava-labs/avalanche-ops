@@ -298,10 +298,12 @@ pub fn command() -> Command {
         )
         .arg(
             Arg::new("SUBNET_EVMS")
-                .long("enable-subnet-evm")
-                .help("Sets to enable subnet-evm")
+                .long("subnet-evms")
+                .help("Sets the number of subnet-evms")
                 .required(false)
-                .num_args(0),
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("0"),
         )
         .arg(
             Arg::new("SUBNET_EVM_GAS_LIMIT")
