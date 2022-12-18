@@ -1886,6 +1886,10 @@ default-spec \\
     // need subnet-evm installation
     let mut subnet_evm_blockchain_ids = BTreeSet::new();
     if let Some(subnet_evms) = &spec.subnet_evms {
+        println!();
+        log::info!("non-empty subnet_evms and custom network, so install with test keys");
+        println!();
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -2239,6 +2243,9 @@ default-spec \\
         }
     }
 
+    if subnet_evm_blockchain_ids.is_empty() {
+        log::info!("no created subnet-evm blockchain Ids");
+    }
     for subnet_evm_blockchain_id in subnet_evm_blockchain_ids.iter() {
         execute!(
             stdout(),
