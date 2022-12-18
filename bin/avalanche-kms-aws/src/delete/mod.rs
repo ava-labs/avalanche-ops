@@ -85,6 +85,7 @@ pub fn execute(
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
     log::info!("current identity {:?}", current_identity);
+    println!("");
 
     execute!(
         stdout(),
@@ -102,7 +103,10 @@ pub fn execute(
         ))
         .expect("failed to key::secp256k1::kms::aws::Signer::create");
     let cmk_signer_info = cmk_signer.to_info(1).unwrap();
-    log::info!("loaded CMK signer (info for mainnet: {})", cmk_signer_info);
+
+    println!("");
+    println!("loaded CMK signer\n\n{}\n(mainnet info)\n", cmk_signer_info);
+    println!("");
 
     if !skip_prompt {
         let options = &[
