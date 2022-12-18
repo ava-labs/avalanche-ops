@@ -9,11 +9,14 @@ fi
 # "--bin" can be specified multiple times for each directory in "bin/*" or workspaces
 cargo build \
 --release \
+--bin avalanche-config \
 --bin avalanched-aws \
 --bin avalancheup-aws \
 --bin blizzard-aws \
 --bin blizzardup-aws \
 --bin staking-key-cert-s3-downloader
+
+./target/release/avalanche-config --help
 
 ./target/release/avalanched-aws --help
 

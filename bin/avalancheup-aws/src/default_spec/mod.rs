@@ -143,9 +143,16 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("INSTALL_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN") 
+                .long("install-artifacts-avalanche-config-local-bin")
+                .help("Sets the avalanche-config binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_LOCAL_BIN") 
                 .long("install-artifacts-avalanched-local-bin")
-                .help("Sets the Avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .help("Sets the avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )
@@ -169,6 +176,7 @@ pub fn command() -> Command {
                 .help("Sets the type of network by name (e.g., mainnet, fuji, custom)")
                 .required(false)
                 .num_args(1)
+                .value_parser(["mainnet", "fuji", "custom"])
                 .default_value("custom"),
         )
         .arg(
@@ -186,7 +194,7 @@ pub fn command() -> Command {
                 .help("Sets the log level for 'avalanched'")
                 .required(false)
                 .num_args(1)
-                 .value_parser(["debug", "info"])
+                .value_parser(["debug", "info"])
                 .default_value("info"),
         )
         .arg(

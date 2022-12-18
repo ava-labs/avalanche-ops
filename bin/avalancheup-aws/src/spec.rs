@@ -9,7 +9,7 @@ use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
     constants,
     coreth::chain_config as coreth_chain_config,
-    ids, key, node, subnet,
+    key, node, subnet,
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
 };
 use lazy_static::lazy_static;
@@ -143,6 +143,7 @@ pub struct DefaultSpecOption {
     pub install_artifacts_aws_volume_provisioner_local_bin: String,
     pub install_artifacts_aws_ip_provisioner_local_bin: String,
     pub install_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
+    pub install_artifacts_avalanche_config_local_bin: String,
     pub install_artifacts_avalanched_local_bin: String,
     pub install_artifacts_avalanche_local_bin: String,
     pub install_artifacts_plugins_local_dir: String,
@@ -337,16 +338,6 @@ impl Spec {
             avalanchego_config.profile_continuous_max_files = Some(profile_continuous_max_files);
         };
 
-        if opts.subnet_evms > 0 {
-            // use this as a placeholder since we don't know the subnet Ids yet
-            // the spec subnet_evms must be set in the same order as this whitelist
-            let mut whitelisted_subnets = Vec::new();
-            for i in 0..opts.subnet_evms {
-                whitelisted_subnets.push(ids::Id::from_slice(&[i as u8]).to_string());
-            }
-            avalanchego_config.whitelisted_subnets = Some(whitelisted_subnets.join(","));
-        }
-
         let network_id = avalanchego_config.network_id;
         let id = {
             if !opts.spec_file_path.is_empty() {
@@ -519,6 +510,9 @@ impl Spec {
             avalanche_telemetry_cloudwatch_local_bin: None,
             avalanche_telemetry_cloudwatch_bin_install_from_s3: None,
 
+            avalanche_config_local_bin: None,
+            avalanche_config_bin_install_from_s3: None,
+
             avalanched_local_bin: None,
             avalanched_bin_install_from_s3: None,
 
@@ -551,6 +545,11 @@ impl Spec {
             install_artifacts.avalanche_telemetry_cloudwatch_local_bin =
                 Some(opts.install_artifacts_avalanche_telemetry_cloudwatch_local_bin);
             install_artifacts.avalanche_telemetry_cloudwatch_bin_install_from_s3 = Some(true);
+        }
+        if !opts.install_artifacts_avalanche_config_local_bin.is_empty() {
+            install_artifacts.avalanche_config_local_bin =
+                Some(opts.install_artifacts_avalanche_config_local_bin);
+            install_artifacts.avalanche_config_bin_install_from_s3 = Some(true);
         }
         if !opts.install_artifacts_avalanched_local_bin.is_empty() {
             install_artifacts.avalanched_local_bin =
@@ -771,13 +770,6 @@ impl Spec {
             ));
         }
 
-        if self.subnet_evms.is_some() && self.avalanchego_config.whitelisted_subnets.is_none() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "'subnet_evms' is some but 'avalanchego_config.whitelisted_subnets' is none",
-            ));
-        }
-
         if let Some(v) = &self.install_artifacts.aws_volume_provisioner_local_bin {
             if !Path::new(v).exists() {
                 return Err(Error::new(
@@ -890,6 +882,11 @@ fn test_spec() {
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(&vec![0]);
     assert!(ret.is_ok());
+    let avalanche_config_bin = f.path().to_str().unwrap();
+
+    let mut f = tempfile::NamedTempFile::new().unwrap();
+    let ret = f.write_all(&vec![0]);
+    assert!(ret.is_ok());
     let avalanched_bin = f.path().to_str().unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
@@ -917,7 +914,7 @@ fn test_spec() {
     let contents = format!(
         r#"
 
-version: 0
+version: 1
 
 
 id: {}
@@ -944,6 +941,8 @@ machine:
   ip_mode: elastic
 
 install_artifacts:
+  avalanche_config_local_bin: {}
+  avalanche_config_bin_install_from_s3: true
   avalanched_local_bin: {}
   avalanched_bin_install_from_s3: true
   avalanchego_local_bin: {}
@@ -1011,7 +1010,7 @@ coreth_chain_config:
 metrics_fetch_interval_seconds: 5000
 
 "#,
-        id, bucket, avalanched_bin, avalanchego_bin, plugins_dir,
+        id, bucket, avalanche_config_bin, avalanched_bin, avalanchego_bin, plugins_dir,
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
@@ -1060,6 +1059,8 @@ metrics_fetch_interval_seconds: 5000
             aws_ip_provisioner_bin_install_from_s3: None,
             avalanche_telemetry_cloudwatch_local_bin: None,
             avalanche_telemetry_cloudwatch_bin_install_from_s3: None,
+            avalanche_config_local_bin: Some(avalanche_config_bin.to_string()),
+            avalanche_config_bin_install_from_s3: Some(true),
             avalanched_local_bin: Some(avalanched_bin.to_string()),
             avalanched_bin_install_from_s3: Some(true),
             avalanchego_local_bin: Some(avalanchego_bin.to_string()),
@@ -1103,6 +1104,12 @@ metrics_fetch_interval_seconds: 5000
     assert_eq!(cfg.aws_resources.preferred_az_index, 2);
     assert_eq!(cfg.aws_resources.s3_bucket, bucket);
 
+    assert_eq!(
+        cfg.install_artifacts
+            .avalanche_config_local_bin
+            .unwrap_or(String::new()),
+        avalanche_config_bin
+    );
     assert_eq!(
         cfg.install_artifacts
             .avalanched_local_bin
@@ -1458,6 +1465,17 @@ pub struct InstallArtifacts {
     #[serde(default)]
     pub avalanche_telemetry_cloudwatch_bin_install_from_s3: Option<bool>,
 
+    /// "avalanche-config" binary path in the local environment.
+    /// The file is uploaded to the remote storage with the path
+    /// "bootstrap/install/avalanche-config" to be shared with remote machines.
+    /// The file is NOT compressed when uploaded.
+    ///
+    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub avalanche_config_local_bin: Option<String>,
+    #[serde(default)]
+    pub avalanche_config_bin_install_from_s3: Option<bool>,
+
     /// "avalanched" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
     /// "bootstrap/install/avalanched" to be shared with remote machines.
@@ -1534,6 +1552,7 @@ pub enum StorageNamespace {
     AwsIpProvisionerBin(String),
     AvalancheTelemetryCloudwatchBin(String),
 
+    AvalancheConfigBin(String),
     AvalanchedBin(String),
     AvalancheBin(String),
     PluginsDir(String),
@@ -1584,6 +1603,9 @@ impl StorageNamespace {
                 format!("{}/bootstrap/install/avalanche-telemetry-cloudwatch", id)
             }
 
+            StorageNamespace::AvalancheConfigBin(id) => {
+                format!("{}/bootstrap/install/avalanche-config", id)
+            }
             StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),
             StorageNamespace::AvalancheBin(id) => {
                 format!("{}/bootstrap/install/avalanche", id)
