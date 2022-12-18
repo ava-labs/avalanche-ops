@@ -70,7 +70,11 @@ Resources:
                   #!/bin/bash
                   set -xeu
 
+                  # do not use bash/sed hacks....
+                  /usr/local/bin/avalanche-config --version
+
                   # assume "avalanched" already wrote chain config based on place holder whitelisted subnet id
+                  # TODO: implement with "avalanche-config"
                   sudo cp -rf {{ chainConfigDirectory }}/{{ placeHolderWhitelistedSubnetId }} {{ chainConfigDirectory }}/{{ newBlockchainId }}
                   sudo cat {{ chainConfigDirectory }}/{{ newBlockchainId }}/config.json
 

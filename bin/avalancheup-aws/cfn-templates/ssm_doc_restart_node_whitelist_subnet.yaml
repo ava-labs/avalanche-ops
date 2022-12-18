@@ -79,17 +79,25 @@ Resources:
                   #!/bin/bash
                   set -xeu
 
+                  # do not use bash/sed hacks....
+                  /usr/local/bin/avalanche-config --version
+
                   # sudo systemctl cat avalanche
                   /usr/local/bin/plugins/{{ vmId }} --version
 
                   # to replace the avalanche configuration
                   # sudo cat /data/avalanche-configs/config.json
-                  cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
-                  sed -i -- 's/{{ placeHolderWhitelistedSubnetId }}/{{ newWhitelistedSubnetId }}/g' /tmp/avalanche.config.json
+                  /usr/local/bin/avalanche-config add-whitelist-subnet \
+                  --log-level info \
+                  --skip-prompt \
+                  --original-config-file-path=/data/avalanche-configs/config.json \
+                  --new-config-file-path=/tmp/avalanche.config.json
+
                   cat /tmp/avalanche.config.json
                   sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
                   # assume "avalanched" already wrote subnet config based on place holder whitelisted subnet id
+                  # TODO: implement with "avalanche-config"
                   sudo cp {{ subnetConfigDirectory }}/{{ placeHolderWhitelistedSubnetId }}.json {{ subnetConfigDirectory }}/{{ newWhitelistedSubnetId }}.json
 
                   sudo systemctl restart avalanche
