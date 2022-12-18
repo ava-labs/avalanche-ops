@@ -289,7 +289,7 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("ENABLE_SUBNET_EVM")
+            Arg::new("SUBNET_EVMS")
                 .long("enable-subnet-evm")
                 .help("Sets to enable subnet-evm")
                 .required(false)

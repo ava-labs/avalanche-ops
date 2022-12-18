@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -8,14 +9,14 @@ use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
     constants,
     coreth::chain_config as coreth_chain_config,
-    key, node, subnet,
+    ids, key, node, subnet,
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
 };
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 
-pub const VERSION: usize = 0;
+pub const VERSION: usize = 1;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
@@ -75,13 +76,10 @@ pub struct Spec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
 
-    /// TODO: support multiple subnets
+    /// Use sorted map in order to map each whitelisted subnet id (placeholder)
+    /// to each subnet/chain configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub subnet_evm_genesis: Option<subnet_evm_genesis::Genesis>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subnet_evm_chain_config: Option<subnet_evm_chain_config::Config>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subnet_evm_subnet_config: Option<subnet::config::Config>,
+    pub subnet_evms: Option<BTreeMap<String, SubnetEvm>>,
 
     /// NOTE: Only required for custom networks with pre-funded wallets!
     /// These are used for custom primary network genesis generation and will be pre-funded.
@@ -108,6 +106,13 @@ pub struct Spec {
     /// "avalanched" reads this metrics and writes to disk (ALWAYS OVERWRITE).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prometheus_metrics_rules: Option<prometheus_manager::Rules>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct SubnetEvm {
+    pub genesis: subnet_evm_genesis::Genesis,
+    pub chain_config: subnet_evm_chain_config::Config,
+    pub subnet_config: subnet::config::Config,
 }
 
 /// Defines "default-spec" option.
@@ -160,7 +165,7 @@ pub struct DefaultSpecOption {
     pub coreth_state_sync_enabled: bool,
     pub coreth_state_sync_metrics_enabled: bool,
 
-    pub enable_subnet_evm: bool,
+    pub subnet_evms: usize,
 
     pub subnet_evm_gas_limit: u64,
     pub subnet_evm_min_max_gas_cost: u64,
@@ -331,11 +336,15 @@ impl Spec {
             let profile_continuous_max_files = profile_continuous_max_files.parse::<u32>().unwrap();
             avalanchego_config.profile_continuous_max_files = Some(profile_continuous_max_files);
         };
-        if opts.enable_subnet_evm {
-            // use this as a placeholder since we don't know the subnet Id yet
-            avalanchego_config.whitelisted_subnets = Some(String::from(
-                "hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf",
-            ));
+
+        if opts.subnet_evms > 0 {
+            // use this as a placeholder since we don't know the subnet Ids yet
+            // the spec subnet_evms must be set in the same order as this whitelist
+            let mut whitelisted_subnets = Vec::new();
+            for i in 0..opts.subnet_evms {
+                whitelisted_subnets.push(ids::Id::from_slice(&[i as u8]).to_string());
+            }
+            avalanchego_config.whitelisted_subnets = Some(whitelisted_subnets.join(","));
         }
 
         let network_id = avalanchego_config.network_id;
@@ -406,8 +415,8 @@ impl Spec {
             }
         };
 
-        let (subnet_evm_genesis, subnet_evm_chain_config, subnet_evm_subnet_config) = {
-            if opts.enable_subnet_evm {
+        let subnet_evms = {
+            if opts.subnet_evms > 0 {
                 let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys)
                     .expect("failed to generate genesis");
 
@@ -456,24 +465,31 @@ impl Spec {
                 }
                 genesis.config = Some(chain_config);
 
-                let subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
-
-                let mut subnet_evm_subnet_config = subnet::config::Config::default();
+                let chain_config = subnet_evm_chain_config::Config::default();
+                let mut subnet_config = subnet::config::Config::default();
                 if opts.subnet_evm_config_proposer_min_block_delay_seconds > 0 {
-                    subnet_evm_subnet_config.proposer_min_block_delay = opts
+                    subnet_config.proposer_min_block_delay = opts
                         .subnet_evm_config_proposer_min_block_delay_seconds
                         * 1000
                         * 1000
                         * 1000;
                 }
 
-                (
-                    Some(genesis),
-                    Some(subnet_evm_chain_config),
-                    Some(subnet_evm_subnet_config),
-                )
+                let subnet_evm = SubnetEvm {
+                    genesis,
+                    chain_config,
+                    subnet_config,
+                };
+                let mut subnet_evms = BTreeMap::new();
+                for i in 0..opts.subnet_evms {
+                    subnet_evms.insert(
+                        format!("{}_{}", i + 1, random_manager::string(5)),
+                        subnet_evm.clone(),
+                    );
+                }
+                Some(subnet_evms)
             } else {
-                (None, None, None)
+                None
             }
         };
 
@@ -640,9 +656,7 @@ impl Spec {
             coreth_chain_config,
             avalanchego_genesis_template,
 
-            subnet_evm_genesis,
-            subnet_evm_chain_config,
-            subnet_evm_subnet_config,
+            subnet_evms,
 
             test_keys: Some(test_key_infos),
 
@@ -757,12 +771,10 @@ impl Spec {
             ));
         }
 
-        if self.subnet_evm_chain_config.is_some()
-            && self.avalanchego_config.whitelisted_subnets.is_none()
-        {
+        if self.subnet_evms.is_some() && self.avalanchego_config.whitelisted_subnets.is_none() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                "'subnet_evm_chain_config' is some but 'avalanchego_config.whitelisted_subnets' is none",
+                "'subnet_evms' is some but 'avalanchego_config.whitelisted_subnets' is none",
             ));
         }
 
@@ -1070,9 +1082,7 @@ metrics_fetch_interval_seconds: 5000
         coreth_chain_config: coreth_chain_config::Config::default(),
         avalanchego_genesis_template: None,
 
-        subnet_evm_genesis: None,
-        subnet_evm_chain_config: None,
-        subnet_evm_subnet_config: None,
+        subnet_evms: None,
 
         test_keys: None,
         created_nodes: None,
