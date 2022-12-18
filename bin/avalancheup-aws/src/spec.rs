@@ -3,6 +3,7 @@ use std::{
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
+    str::FromStr,
 };
 
 use avalanche_types::{
@@ -123,6 +124,7 @@ pub struct DefaultSpecOption {
 
     pub key_files_dir: String,
     pub keys_to_generate: usize,
+    pub keys_to_generate_type: String,
 
     pub region: String,
     pub preferred_az_index: usize,
@@ -362,6 +364,14 @@ impl Spec {
         if !opts.key_files_dir.is_empty() {
             log::info!("creating key-files-dir '{}'", opts.key_files_dir);
             fs::create_dir_all(&opts.key_files_dir).unwrap();
+        }
+
+        let key_type = key::secp256k1::KeyType::from_str(&opts.keys_to_generate_type).unwrap();
+        if key_type == key::secp256k1::KeyType::AwsKms && opts.keys_to_generate != 2 {
+            panic!(
+                "key::secp256k1::KeyType::AwsKms only supported 2 keys, got {}",
+                opts.keys_to_generate
+            );
         }
 
         let mut test_key_infos: Vec<key::secp256k1::Info> = Vec::new();

@@ -87,16 +87,16 @@ pub fn execute(
         )),
         ResetColor
     )?;
-    let cmk_signer = rt
-        .block_on(key::secp256k1::kms::aws::Signer::create(
+    let cmk = rt
+        .block_on(key::secp256k1::kms::aws::Cmk::create(
             kms_manager.clone(),
             key_arn,
         ))
-        .expect("failed to key::secp256k1::kms::aws::Signer::create");
-    let cmk_signer_info = cmk_signer.to_info(1).unwrap();
+        .expect("failed to key::secp256k1::kms::aws::Cmk::create");
+    let cmk_info = cmk.to_info(1).unwrap();
 
     println!();
-    println!("loaded CMK signer\n\n{}\n(mainnet)\n", cmk_signer_info);
+    println!("loaded CMK\n\n{}\n(mainnet)\n", cmk_info);
     println!();
 
     let options = &[
@@ -119,8 +119,7 @@ pub fn execute(
         return Ok(());
     }
 
-    rt.block_on(cmk_signer.delete(pending_windows_in_days))
-        .unwrap();
+    rt.block_on(cmk.delete(pending_windows_in_days)).unwrap();
 
     println!();
     log::info!("successfully scheduled to delete CMK signer");

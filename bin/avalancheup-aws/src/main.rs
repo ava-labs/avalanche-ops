@@ -71,6 +71,10 @@ fn main() {
                     .unwrap_or(&String::new())
                     .to_string(),
                 keys_to_generate,
+                keys_to_generate_type: sub_matches
+                    .get_one::<String>("KEYS_TO_GENERATE_TYPE")
+                    .unwrap_or(&String::from("hot"))
+                    .clone(),
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 preferred_az_index,

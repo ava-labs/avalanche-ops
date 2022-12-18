@@ -81,19 +81,16 @@ pub fn execute(log_level: &str, region: &str, key_arn: &str, network_id: u32) ->
         )),
         ResetColor
     )?;
-    let cmk_signer = rt
-        .block_on(key::secp256k1::kms::aws::Signer::from_arn(
+    let cmk = rt
+        .block_on(key::secp256k1::kms::aws::Cmk::from_arn(
             kms_manager.clone(),
             key_arn,
         ))
-        .expect("failed to key::secp256k1::kms::aws::Signer::create");
-    let cmk_signer_info = cmk_signer.to_info(network_id).unwrap();
+        .expect("failed to key::secp256k1::kms::aws::Cmk::create");
+    let cmk_info = cmk.to_info(network_id).unwrap();
 
     println!();
-    println!(
-        "loaded CMK signer\n\n{}\n(network Id {network_id})\n",
-        cmk_signer_info
-    );
+    println!("loaded CMK\n\n{}\n(network Id {network_id})\n", cmk_info);
     println!();
 
     Ok(())

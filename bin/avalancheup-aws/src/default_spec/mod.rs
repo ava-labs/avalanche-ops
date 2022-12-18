@@ -39,6 +39,15 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
+            Arg::new("KEYS_TO_GENERATE_TYPE") 
+                .long("keys-to-generate-type")
+                .help("Sets the key type for generated keys")
+                .required(false)
+                .num_args(1)
+                .value_parser(["hot", "aws-kms"])
+                .default_value("hot"),
+        )
+        .arg(
             Arg::new("REGION")
                 .long("region")
                 .short('r')

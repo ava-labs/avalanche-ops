@@ -18,7 +18,7 @@ To create a new KMS CMK:
 ```
 
 ```yaml
-# loaded CMK signer
+# loaded CMK
 
 id: arn:aws:kms:us-west-2:931867039610:key/95a4aec8-73ef-41f5-8a17-ed8ce3802677
 key_type: aws-kms
@@ -54,7 +54,7 @@ To get the key information:
 ```
 
 ```yaml
-# loaded CMK signer
+# loaded CMK
 
 id: arn:aws:kms:us-west-2:931867039610:key/95a4aec8-73ef-41f5-8a17-ed8ce3802677
 key_type: aws-kms
