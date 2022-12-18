@@ -51,14 +51,6 @@ pub fn command() -> Command {
                 .value_parser(value_parser!(i32))
                 .default_value("7"),
         )
-        .arg(
-            Arg::new("SKIP_PROMPT")
-                .long("skip-prompt")
-                .short('s')
-                .help("Skips prompt mode")
-                .required(false)
-                .num_args(0),
-        )
 }
 
 pub fn execute(
@@ -66,7 +58,6 @@ pub fn execute(
     region: &str,
     key_arn: &str,
     pending_windows_in_days: i32,
-    skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -108,28 +99,24 @@ pub fn execute(
     println!("loaded CMK signer\n\n{}\n(mainnet)\n", cmk_signer_info);
     println!("");
 
-    if !skip_prompt {
-        let options = &[
-            format!(
-                "No, I am not ready to delete a new KMS CMK '{}' '{}' in {} days!",
-                region, key_arn, pending_windows_in_days
-            ),
-            format!(
-                "Yes, let's delete a new KMS CMK '{}' '{}' in {} days!",
-                region, key_arn, pending_windows_in_days
-            ),
-        ];
-        let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your 'delete' option")
-            .items(&options[..])
-            .default(0)
-            .interact()
-            .unwrap();
-        if selected == 0 {
-            return Ok(());
-        }
-    } else {
-        log::info!("skipping prompt...")
+    let options = &[
+        format!(
+            "No, I am not ready to delete a new KMS CMK '{}' '{}' in {} days!",
+            region, key_arn, pending_windows_in_days
+        ),
+        format!(
+            "Yes, let's delete a new KMS CMK '{}' '{}' in {} days!",
+            region, key_arn, pending_windows_in_days
+        ),
+    ];
+    let selected = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select your 'delete' option")
+        .items(&options[..])
+        .default(0)
+        .interact()
+        .unwrap();
+    if selected == 0 {
+        return Ok(());
     }
 
     rt.block_on(cmk_signer.delete(pending_windows_in_days))

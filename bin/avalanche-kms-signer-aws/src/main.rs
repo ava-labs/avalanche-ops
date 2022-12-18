@@ -47,7 +47,6 @@ fn main() {
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 &sub_matches.get_one::<String>("KEY_ARN").unwrap().clone(),
                 pending_windows_in_days,
-                sub_matches.get_flag("SKIP_PROMPT"),
             )
             .expect("failed to execute 'create'");
         }
