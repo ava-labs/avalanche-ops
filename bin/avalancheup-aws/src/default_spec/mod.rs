@@ -6,6 +6,7 @@ use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
+use tokio::runtime::Runtime;
 
 pub const NAME: &str = "default-spec";
 
@@ -395,7 +396,8 @@ pub fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()>
         ));
     }
 
-    let spec = avalancheup_aws::spec::Spec::default_aws(opts.clone());
+    let rt = Runtime::new().unwrap();
+    let spec = rt.block_on(avalancheup_aws::spec::Spec::default_aws(opts.clone()));
     spec.validate()?;
 
     let spec_file_path = {
