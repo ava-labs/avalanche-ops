@@ -474,7 +474,7 @@ impl Spec {
                 let mut subnet_evms = BTreeMap::new();
                 for i in 0..opts.subnet_evms {
                     subnet_evms.insert(
-                        format!("{}_{}", i + 1, random_manager::string(5)),
+                        format!("{}{}", i + 1, random_manager::string(5)),
                         subnet_evm.clone(),
                     );
                 }
