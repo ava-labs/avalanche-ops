@@ -36,7 +36,7 @@ For instance, to download the latest `avalanchego` release:
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
@@ -214,7 +214,7 @@ vi /data/avalanche-telemetry-cloudwatch.rules.yaml
 
 ```bash
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
@@ -312,6 +312,16 @@ GOOS=linux GOARCH=amd64 ./scripts/build.sh
 
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -324,26 +334,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -408,6 +419,16 @@ See https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config for more.
 
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -420,26 +441,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -458,6 +480,16 @@ cd ${HOME}/avalanche-ops
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -470,26 +502,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -520,6 +553,16 @@ ACM_CERT_ARN=arn:aws:acm:...:...:certificate/...
 
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -532,26 +575,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -574,6 +618,16 @@ cat ${HOME}/test-custom-https-for-nlb.yaml \
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -586,26 +640,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -625,6 +680,16 @@ See https://pkg.go.dev/github.com/ava-labs/snow-machine for more.
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -637,26 +702,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -711,6 +777,16 @@ subnet-cli create VMID subnetevm
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -723,21 +799,21 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 
@@ -748,6 +824,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -880,6 +957,16 @@ This will sync from peer (rather than downloading from S3):
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -892,26 +979,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -955,6 +1043,16 @@ This will sync from peer (rather than downloading from S3):
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -968,6 +1066,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --avalanched-use-default-config \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO
@@ -983,6 +1082,16 @@ This will fast-sync from peer (rather than downloading from S3):
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -995,26 +1104,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
@@ -1035,6 +1145,16 @@ This will sync from peer (rather than downloading from S3):
 ```bash
 ##
 # if compiled locally
+AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
+# download from https://github.com/ava-labs/avalanche-ops/releases
+curl -L \
+https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
+-o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
+AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
+
+##
+# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -1047,26 +1167,27 @@ AVALANCHED_BIN_PATH=${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 # if compiled locally
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_BIN_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
 
 ##
 # if compiled locally
 AVALANCHE_PLUGINS_DIR_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/plugins
 # https://github.com/ava-labs/avalanchego/releases
-VERSION=1.9.2
+VERSION=1.9.4
 DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/
 rm -rf /tmp/avalanchego.tar.gz /tmp/avalanchego-v${VERSION}
 curl -L ${DOWNLOAD_URL}/v${VERSION}/avalanchego-linux-amd64-v${VERSION}.tar.gz -o /tmp/avalanchego.tar.gz
 tar xzvf /tmp/avalanchego.tar.gz -C /tmp
 find /tmp/avalanchego-v${VERSION}
 # if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-VERSION=1.9.2
+VERSION=1.9.4
 AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
+--install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
