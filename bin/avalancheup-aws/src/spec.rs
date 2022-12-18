@@ -16,7 +16,7 @@ use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 
-pub const VERSION: usize = 0;
+pub const VERSION: usize = 1;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
