@@ -337,16 +337,6 @@ impl Spec {
             avalanchego_config.profile_continuous_max_files = Some(profile_continuous_max_files);
         };
 
-        if opts.subnet_evms > 0 {
-            // use this as a placeholder since we don't know the subnet Ids yet
-            // the spec subnet_evms must be set in the same order as this whitelist
-            let mut whitelisted_subnets = Vec::new();
-            for i in 0..opts.subnet_evms {
-                whitelisted_subnets.push(ids::Id::from_slice(&[i as u8]).to_string());
-            }
-            avalanchego_config.whitelisted_subnets = Some(whitelisted_subnets.join(","));
-        }
-
         let network_id = avalanchego_config.network_id;
         let id = {
             if !opts.spec_file_path.is_empty() {
@@ -768,13 +758,6 @@ impl Spec {
                     "'machine.non_anchor_nodes' must be 1 (set to {}) in order to maximize the benefit of static EBS provision per AZ",
                     self.machine.non_anchor_nodes
                 ),
-            ));
-        }
-
-        if self.subnet_evms.is_some() && self.avalanchego_config.whitelisted_subnets.is_none() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "'subnet_evms' is some but 'avalanchego_config.whitelisted_subnets' is none",
             ));
         }
 
