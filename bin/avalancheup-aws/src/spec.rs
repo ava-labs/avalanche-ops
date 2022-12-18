@@ -637,7 +637,7 @@ impl Spec {
         };
 
         Self {
-            version: 0,
+            version: VERSION,
 
             id,
             aad_tag: opts.aad_tag,
