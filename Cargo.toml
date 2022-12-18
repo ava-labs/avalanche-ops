@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "bin/avalanche-config",
+    "bin/avalanche-kms-aws",
     "bin/avalanched-aws",
     "bin/avalancheup-aws",
     "bin/blizzard-aws",

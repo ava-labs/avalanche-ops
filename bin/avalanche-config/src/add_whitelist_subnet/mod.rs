@@ -96,7 +96,7 @@ pub fn execute(
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your 'apply' option")
+            .with_prompt("Select your 'add-whitelist-subnet' option")
             .items(&options[..])
             .default(0)
             .interact()
