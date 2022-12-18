@@ -1,4 +1,7 @@
-use std::io::{self, stdout};
+use std::{
+    io::{self, stdout},
+    str::FromStr,
+};
 
 use avalanche_types::{avalanchego::config as avalanchego_config, ids};
 use clap::{Arg, Command};
@@ -12,7 +15,14 @@ pub const NAME: &str = "add-whitelist-subnet";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Adds a whitelisted subnet")
+        .about("Adds a whitelisted subnet (no overwrite)")
+        .long_about(
+            "
+
+Requires configuration file that's compatible to avalanche_types::avalanchego::config.
+
+",
+        )
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -66,10 +76,23 @@ pub fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
+    log::info!(
+        "adding subnet-id '{}' to whitelisted-subnets flag",
+        subnet_id
+    );
+    let converted = ids::Id::from_str(subnet_id)?;
+    log::info!("validated subnet-id '{}'", converted);
+
     if !skip_prompt {
         let options = &[
-            "No, I am not ready to update configuration with whitelisted subnet Id!",
-            "Yes, let's update configuration with whitelisted subnet Id!",
+            format!(
+                "No, I am not ready to update configuration with whitelisted subnet Id '{}'!",
+                converted
+            ),
+            format!(
+                "Yes, let's update configuration with whitelisted subnet Id '{}'!",
+                converted
+            ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select your 'apply' option")
@@ -83,9 +106,6 @@ pub fn execute(
     } else {
         log::info!("skipping prompt...")
     }
-
-    log::info!("adding subnet-id {} to whitelisted-subnets flag", subnet_id);
-    assert_eq!(subnet_id.len(), ids::LEN);
 
     execute!(
         stdout(),
