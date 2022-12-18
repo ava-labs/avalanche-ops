@@ -2184,7 +2184,7 @@ default-spec \\
             execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet...\n\n"),
+                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with chain config...\n\n"),
                     ResetColor
                 )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
@@ -2194,10 +2194,6 @@ default-spec \\
                         .send_command()
                         .document_name(ssm_document_name_restart_node_chain_config.clone())
                         .set_instance_ids(Some(all_instance_ids.clone()))
-                        .parameters(
-                            "chainConfigDirectory",
-                            vec![spec.avalanchego_config.chain_config_dir.clone()],
-                        )
                         .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
                         .parameters("subnetEvmName", vec![subnet_name.clone()])
                         .parameters("newBlockchainId", vec![blockchain_id.to_string()])
