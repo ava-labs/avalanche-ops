@@ -15,7 +15,7 @@ async fn main() {
 
 Downloads the avalanched-aws generated certificates from S3.
 
-$ staking-key-cert-s3-downloader \
+staking-key-cert-s3-downloader \
 --log-level=info \
 --aws-region=us-west-2 \
 --s3-bucket=info \

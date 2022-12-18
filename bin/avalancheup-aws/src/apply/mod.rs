@@ -1080,6 +1080,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
+        println!();
         for d in droplets {
             let (instance_ip, ip_kind) =
                 if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
@@ -1494,6 +1495,7 @@ aws ssm start-session --region {} --target {}
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
+        println!();
         for d in droplets {
             let (instance_ip, ip_kind) =
                 if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
@@ -1827,7 +1829,8 @@ aws ssm start-session --region {} --target {}
 --aad-tag='{aad_tag}' \\
 --tls-key-path=/tmp/{node_id}.key \\
 --tls-cert-path=/tmp/{node_id}.crt
-$ cat /tmp/{node_id}.crt
+
+cat /tmp/{node_id}.crt
 ",
                 exec_parent_dir = exec_parent_dir,
                 region = spec.aws_resources.region,

@@ -540,6 +540,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
+        println!();
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
