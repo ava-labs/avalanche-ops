@@ -244,7 +244,7 @@ pub fn execute(
             .unwrap();
     }
 
-    if spec.subnet_evm_genesis.is_some() && spec.avalanchego_config.is_custom_network() {
+    if spec.subnet_evms.is_some() && spec.avalanchego_config.is_custom_network() {
         thread::sleep(Duration::from_secs(1));
 
         execute!(

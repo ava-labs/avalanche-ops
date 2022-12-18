@@ -41,6 +41,11 @@ fn main() {
                 .unwrap_or(&0)
                 .clone();
 
+            let subnet_evms = sub_matches
+                .get_one::<usize>("SUBNET_EVMS")
+                .unwrap_or(&0)
+                .clone();
+
             let subnet_evm_gas_limit = sub_matches
                 .get_one::<u64>("SUBNET_EVM_GAS_LIMIT")
                 .unwrap_or(&8000000)
@@ -166,7 +171,7 @@ fn main() {
                 coreth_state_sync_metrics_enabled: sub_matches
                     .get_flag("CORETH_STATE_SYNC_METRICS_ENABLED"),
 
-                enable_subnet_evm: sub_matches.get_flag("ENABLE_SUBNET_EVM"),
+                subnet_evms,
 
                 subnet_evm_gas_limit,
                 subnet_evm_min_max_gas_cost,

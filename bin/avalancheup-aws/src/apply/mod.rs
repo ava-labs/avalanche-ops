@@ -151,7 +151,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.aws_resources.cloudwatch_avalanche_metrics_namespace =
             Some(format!("{}-avalanche", spec.id));
     }
-    if spec.subnet_evm_genesis.is_some() {
+    if spec.subnet_evms.is_some() {
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_whitelist_subnet = Some(
             avalancheup_aws::spec::StackName::SsmDocRestartNodeWhitelistSubnet(spec.id.clone())
@@ -1841,380 +1841,387 @@ $ cat /tmp/{node_id}.crt
 
     // need subnet-evm installation
     let mut subnet_evm_blockchain_id = String::new();
-    if let Some(subnet_evm_genesis) = &spec.subnet_evm_genesis {
-        let subnet_evm_genesis_file_path =
-            dir_manager::home::named(&spec.id, Some(".subnet-evm.genesis.json"));
+    if let Some(subnet_evms) = &spec.subnet_evms {
+        for (subnet_name, subnet_evm) in subnet_evms.iter() {
+            log::info!("creating subnet {}", subnet_name);
+            let subnet_evm_genesis_file_path =
+                dir_manager::home::named(&spec.id, Some(".subnet-evm.genesis.json"));
 
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: writing subnet-evm genesis...\n\n"),
-            ResetColor
-        )?;
-        subnet_evm_genesis
-            .sync(&subnet_evm_genesis_file_path)
-            .expect("failed subnet_evm_genesis.sync");
+            let subnet_evm_genesis = subnet_evm.genesis.clone();
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: writing subnet-evm genesis...\n\n"),
+                ResetColor
+            )?;
+            subnet_evm_genesis
+                .sync(&subnet_evm_genesis_file_path)
+                .expect("failed subnet_evm_genesis.sync");
 
-        if spec.avalanchego_config.is_custom_network() {
-            if let Some(keys_with_balances) = &spec.test_keys {
-                // create a wallet
-                let pk = key::secp256k1::private_key::Key::from_cb58(
-                    keys_with_balances[0].private_key_cb58.clone().unwrap(),
-                )?;
-                let w = rt
-                    .block_on(
-                        wallet::Builder::new(&pk)
-                            .http_rpcs(http_rpcs.clone())
-                            .build(),
-                    )
-                    .unwrap();
+            if spec.avalanchego_config.is_custom_network() {
+                if let Some(keys_with_balances) = &spec.test_keys {
+                    // create a wallet
+                    let pk = key::secp256k1::private_key::Key::from_cb58(
+                        keys_with_balances[0].private_key_cb58.clone().unwrap(),
+                    )?;
+                    let w = rt
+                        .block_on(
+                            wallet::Builder::new(&pk)
+                                .http_rpcs(http_rpcs.clone())
+                                .build(),
+                        )
+                        .unwrap();
 
-                execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: creating a new subnet...\n\n"),
-                    ResetColor
-                )?;
-                let subnet_id = rt
-                    .block_on(w.p().create_subnet().dry_mode(true).issue())
-                    .unwrap();
-                log::info!("dry mode create_subnet Id {}", subnet_id);
+                    execute!(
+                        stdout(),
+                        SetForegroundColor(Color::Green),
+                        Print("\n\n\nSTEP: creating a new subnet...\n\n"),
+                        ResetColor
+                    )?;
+                    let subnet_id = rt
+                        .block_on(w.p().create_subnet().dry_mode(true).issue())
+                        .unwrap();
+                    log::info!("dry mode create_subnet Id {}", subnet_id);
 
-                let created_subnet_id = rt
-                    .block_on(w.p().create_subnet().check_acceptance(true).issue())
-                    .unwrap();
-                log::info!(
-                    "created subnet {} (still need whitelist)",
-                    created_subnet_id
-                );
-                thread::sleep(Duration::from_secs(5));
+                    let created_subnet_id = rt
+                        .block_on(w.p().create_subnet().check_acceptance(true).issue())
+                        .unwrap();
+                    log::info!(
+                        "created subnet {} (still need whitelist)",
+                        created_subnet_id
+                    );
+                    thread::sleep(Duration::from_secs(5));
 
-                let placeholder_whitelisted_subnet_id = if let Some(v) =
-                    &spec.avalanchego_config.whitelisted_subnets
-                {
-                    v.clone()
-                } else {
-                    // TODO: would not work... because SSM doc does simple string replacement on config file
-                    // TODO: parse avalanchego config JSON and in-place replace the config
-                    log::warn!("spec.avalanchego_config.whitelisted_subnets is empty... using default... may not work!");
-                    String::from("hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf")
-                };
+                    let placeholder_whitelisted_subnet_id = if let Some(v) =
+                        &spec.avalanchego_config.whitelisted_subnets
+                    {
+                        v.clone()
+                    } else {
+                        // TODO: would not work... because SSM doc does simple string replacement on config file
+                        // TODO: parse avalanchego config JSON and in-place replace the config
+                        log::warn!("spec.avalanchego_config.whitelisted_subnets is empty... using default... may not work!");
+                        String::from("hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf")
+                    };
 
-                execute!(
+                    execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
                     Print("\n\n\nSTEP: creating an SSM document for restarting node with whitelisted subnet...\n\n"),
                     ResetColor
                 )?;
-                let ssm_doc_yaml =
-                    Asset::get("cfn-templates/ssm_doc_restart_node_whitelist_subnet.yaml").unwrap();
-                let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
-                let ssm_doc_stack_name = spec
-                    .aws_resources
-                    .cloudformation_ssm_doc_restart_node_whitelist_subnet
-                    .clone()
+                    let ssm_doc_yaml =
+                        Asset::get("cfn-templates/ssm_doc_restart_node_whitelist_subnet.yaml")
+                            .unwrap();
+                    let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
+                    let ssm_doc_stack_name = spec
+                        .aws_resources
+                        .cloudformation_ssm_doc_restart_node_whitelist_subnet
+                        .clone()
+                        .unwrap();
+                    let ssm_document_name =
+                        avalancheup_aws::spec::StackName::SsmDocRestartNodeWhitelistSubnet(
+                            spec.id.clone(),
+                        )
+                        .encode();
+                    let cfn_params = Vec::from([
+                        build_param("DocumentName", &ssm_document_name),
+                        build_param("VmId", "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"),
+                        build_param(
+                            "SubnetConfigDirectory",
+                            &spec.avalanchego_config.subnet_config_dir,
+                        ),
+                        build_param(
+                            "PlaceHolderWhitelistedSubnetId",
+                            &placeholder_whitelisted_subnet_id.clone(),
+                        ),
+                        build_param(
+                            "NewWhitelistedSubnetId",
+                            &placeholder_whitelisted_subnet_id.to_string(),
+                        ),
+                    ]);
+                    rt.block_on(cloudformation_manager.create_stack(
+                        ssm_doc_stack_name.as_str(),
+                        Some(vec![Capability::CapabilityNamedIam]),
+                        OnFailure::Delete,
+                        ssm_doc_tmpl,
+                        Some(Vec::from([
+                            Tag::builder().key("KIND").value("avalanche-ops").build(),
+                        ])),
+                        Some(cfn_params),
+                    ))
                     .unwrap();
-                let ssm_document_name =
-                    avalancheup_aws::spec::StackName::SsmDocRestartNodeWhitelistSubnet(
-                        spec.id.clone(),
-                    )
-                    .encode();
-                let cfn_params = Vec::from([
-                    build_param("DocumentName", &ssm_document_name),
-                    build_param("VmId", "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"),
-                    build_param(
-                        "SubnetConfigDirectory",
-                        &spec.avalanchego_config.subnet_config_dir,
-                    ),
-                    build_param(
-                        "PlaceHolderWhitelistedSubnetId",
-                        &placeholder_whitelisted_subnet_id.clone(),
-                    ),
-                    build_param(
-                        "NewWhitelistedSubnetId",
-                        &placeholder_whitelisted_subnet_id.to_string(),
-                    ),
-                ]);
-                rt.block_on(cloudformation_manager.create_stack(
-                    ssm_doc_stack_name.as_str(),
-                    Some(vec![Capability::CapabilityNamedIam]),
-                    OnFailure::Delete,
-                    ssm_doc_tmpl,
-                    Some(Vec::from([
-                        Tag::builder().key("KIND").value("avalanche-ops").build(),
-                    ])),
-                    Some(cfn_params),
-                ))
-                .unwrap();
-                thread::sleep(Duration::from_secs(10));
-                rt.block_on(cloudformation_manager.poll_stack(
-                    ssm_doc_stack_name.as_str(),
-                    StackStatus::CreateComplete,
-                    Duration::from_secs(500),
-                    Duration::from_secs(30),
-                ))
-                .unwrap();
-                log::info!("created ssm document for {}", created_subnet_id);
+                    thread::sleep(Duration::from_secs(10));
+                    rt.block_on(cloudformation_manager.poll_stack(
+                        ssm_doc_stack_name.as_str(),
+                        StackStatus::CreateComplete,
+                        Duration::from_secs(500),
+                        Duration::from_secs(30),
+                    ))
+                    .unwrap();
+                    log::info!("created ssm document for {}", created_subnet_id);
 
-                execute!(
+                    execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
                     Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet...\n\n"),
                     ResetColor
                 )?;
-                // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-                let ssm_output = rt
-                    .block_on(
-                        ssm_cli
-                            .send_command()
-                            .document_name(ssm_document_name)
-                            .set_instance_ids(Some(all_instance_ids.clone()))
-                            .parameters(
-                                "vmId",
-                                vec![String::from(
-                                    "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
-                                )],
-                            )
-                            .parameters(
-                                "subnetConfigDirectory",
-                                vec![spec.avalanchego_config.subnet_config_dir.clone()],
-                            )
-                            .parameters(
-                                "placeHolderWhitelistedSubnetId",
-                                vec![placeholder_whitelisted_subnet_id.clone()],
-                            )
-                            .parameters(
-                                "newWhitelistedSubnetId",
-                                vec![created_subnet_id.to_string()],
-                            )
-                            .output_s3_region(spec.aws_resources.region.clone())
-                            .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
-                            .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                            .send(),
-                    )
-                    .unwrap();
-                let ssm_output = ssm_output.command().unwrap();
-                let ssm_command_id = ssm_output.command_id().unwrap();
-                log::info!("sent SSM command {}", ssm_command_id);
-                thread::sleep(Duration::from_secs(30));
+                    // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
+                    let ssm_output = rt
+                        .block_on(
+                            ssm_cli
+                                .send_command()
+                                .document_name(ssm_document_name)
+                                .set_instance_ids(Some(all_instance_ids.clone()))
+                                .parameters(
+                                    "vmId",
+                                    vec![String::from(
+                                        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                                    )],
+                                )
+                                .parameters(
+                                    "subnetConfigDirectory",
+                                    vec![spec.avalanchego_config.subnet_config_dir.clone()],
+                                )
+                                .parameters(
+                                    "placeHolderWhitelistedSubnetId",
+                                    vec![placeholder_whitelisted_subnet_id.clone()],
+                                )
+                                .parameters(
+                                    "newWhitelistedSubnetId",
+                                    vec![created_subnet_id.to_string()],
+                                )
+                                .output_s3_region(spec.aws_resources.region.clone())
+                                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
+                                .send(),
+                        )
+                        .unwrap();
+                    let ssm_output = ssm_output.command().unwrap();
+                    let ssm_command_id = ssm_output.command_id().unwrap();
+                    log::info!("sent SSM command {}", ssm_command_id);
+                    thread::sleep(Duration::from_secs(30));
 
-                execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
-                    ResetColor
-                )?;
-                // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
-                for instance_id in all_instance_ids.iter() {
-                    loop {
-                        let inv_out = rt
-                            .block_on(
-                                ssm_cli
-                                    .get_command_invocation()
-                                    .command_id(ssm_command_id)
-                                    .instance_id(instance_id)
-                                    .send(),
-                            )
-                            .unwrap();
+                    execute!(
+                        stdout(),
+                        SetForegroundColor(Color::Green),
+                        Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+                        ResetColor
+                    )?;
+                    // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
+                    for instance_id in all_instance_ids.iter() {
+                        loop {
+                            let inv_out = rt
+                                .block_on(
+                                    ssm_cli
+                                        .get_command_invocation()
+                                        .command_id(ssm_command_id)
+                                        .instance_id(instance_id)
+                                        .send(),
+                                )
+                                .unwrap();
 
-                        if let Some(sv) = inv_out.status() {
-                            log::info!(
-                                "command {} status {:?} for instance {}",
-                                ssm_command_id,
-                                sv,
-                                instance_id
-                            );
-                            if sv.eq(&CommandInvocationStatus::Success) {
-                                break;
+                            if let Some(sv) = inv_out.status() {
+                                log::info!(
+                                    "command {} status {:?} for instance {}",
+                                    ssm_command_id,
+                                    sv,
+                                    instance_id
+                                );
+                                if sv.eq(&CommandInvocationStatus::Success) {
+                                    break;
+                                }
                             }
+
+                            thread::sleep(Duration::from_secs(5));
                         }
-
-                        thread::sleep(Duration::from_secs(5));
                     }
-                }
-                thread::sleep(Duration::from_secs(5));
+                    thread::sleep(Duration::from_secs(5));
 
-                execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: adding all nodes as subnet validator...\n\n"),
-                    ResetColor
-                )?;
-                for node_id in all_node_ids.iter() {
-                    rt.block_on(
-                        w.p()
-                            .add_subnet_validator()
-                            .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-                            .subnet_id(created_subnet_id)
-                            .check_acceptance(true)
-                            .issue(),
-                    )
-                    .unwrap();
-                }
-                log::info!("added subnet validators for {}", created_subnet_id);
-                thread::sleep(Duration::from_secs(5));
+                    execute!(
+                        stdout(),
+                        SetForegroundColor(Color::Green),
+                        Print("\n\n\nSTEP: adding all nodes as subnet validator...\n\n"),
+                        ResetColor
+                    )?;
+                    for node_id in all_node_ids.iter() {
+                        rt.block_on(
+                            w.p()
+                                .add_subnet_validator()
+                                .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+                                .subnet_id(created_subnet_id)
+                                .check_acceptance(true)
+                                .issue(),
+                        )
+                        .unwrap();
+                    }
+                    log::info!("added subnet validators for {}", created_subnet_id);
+                    thread::sleep(Duration::from_secs(5));
 
-                let subnet_evm_genesis_bytes = subnet_evm_genesis.to_bytes().unwrap();
-                execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
-                    ResetColor
-                )?;
-                let blockchain_id = rt
-                    .block_on(
-                        w.p()
-                            .create_chain()
-                            .subnet_id(created_subnet_id)
-                            .genesis_data(subnet_evm_genesis_bytes.clone())
-                            .vm_id(
-                                ids::Id::from_str(
-                                    "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                    let subnet_evm_genesis_bytes = subnet_evm_genesis.to_bytes().unwrap();
+                    execute!(
+                        stdout(),
+                        SetForegroundColor(Color::Green),
+                        Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
+                        ResetColor
+                    )?;
+                    let blockchain_id = rt
+                        .block_on(
+                            w.p()
+                                .create_chain()
+                                .subnet_id(created_subnet_id)
+                                .genesis_data(subnet_evm_genesis_bytes.clone())
+                                .vm_id(
+                                    ids::Id::from_str(
+                                        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                                    )
+                                    .unwrap(),
                                 )
-                                .unwrap(),
-                            )
-                            .chain_name(String::from("subnetevm"))
-                            .dry_mode(true)
-                            .issue(),
-                    )
-                    .unwrap();
-                log::info!("dry mode create_chain Id {}", blockchain_id);
+                                .chain_name(String::from("subnetevm"))
+                                .dry_mode(true)
+                                .issue(),
+                        )
+                        .unwrap();
+                    log::info!("dry mode create_chain Id {}", blockchain_id);
 
-                let blockchain_id = rt
-                    .block_on(
-                        w.p()
-                            .create_chain()
-                            .subnet_id(created_subnet_id)
-                            .genesis_data(subnet_evm_genesis_bytes)
-                            .vm_id(
-                                ids::Id::from_str(
-                                    "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                    let blockchain_id = rt
+                        .block_on(
+                            w.p()
+                                .create_chain()
+                                .subnet_id(created_subnet_id)
+                                .genesis_data(subnet_evm_genesis_bytes)
+                                .vm_id(
+                                    ids::Id::from_str(
+                                        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                                    )
+                                    .unwrap(),
                                 )
-                                .unwrap(),
-                            )
-                            .chain_name(String::from("subnetevm"))
-                            .check_acceptance(true)
-                            .issue(),
-                    )
-                    .unwrap();
-                log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-                subnet_evm_blockchain_id = blockchain_id.to_string();
+                                .chain_name(String::from("subnetevm"))
+                                .check_acceptance(true)
+                                .issue(),
+                        )
+                        .unwrap();
+                    log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
+                    subnet_evm_blockchain_id = blockchain_id.to_string();
 
-                execute!(
+                    execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
                     Print("\n\n\nSTEP: creating an SSM document for restarting node to load chain config...\n\n"),
                     ResetColor
                 )?;
-                let ssm_doc_yaml =
-                    Asset::get("cfn-templates/ssm_doc_restart_node_chain_config.yaml").unwrap();
-                let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
-                let ssm_doc_stack_name = spec
-                    .aws_resources
-                    .cloudformation_ssm_doc_restart_node_chain_config
-                    .clone()
-                    .unwrap();
-                let ssm_document_name =
-                    avalancheup_aws::spec::StackName::SsmDocRestartNodeChanConfig(spec.id.clone())
+                    let ssm_doc_yaml =
+                        Asset::get("cfn-templates/ssm_doc_restart_node_chain_config.yaml").unwrap();
+                    let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
+                    let ssm_doc_stack_name = spec
+                        .aws_resources
+                        .cloudformation_ssm_doc_restart_node_chain_config
+                        .clone()
+                        .unwrap();
+                    let ssm_document_name =
+                        avalancheup_aws::spec::StackName::SsmDocRestartNodeChanConfig(
+                            spec.id.clone(),
+                        )
                         .encode();
-                let cfn_params = Vec::from([
-                    build_param("DocumentName", &ssm_document_name),
-                    build_param(
-                        "ChainConfigDirectory",
-                        &spec.avalanchego_config.chain_config_dir,
-                    ),
-                    build_param(
-                        "PlaceHolderWhitelistedSubnetId",
-                        &placeholder_whitelisted_subnet_id.clone(),
-                    ),
-                    build_param("NewBlockchainId", &blockchain_id.to_string()),
-                ]);
-                rt.block_on(cloudformation_manager.create_stack(
-                    ssm_doc_stack_name.as_str(),
-                    Some(vec![Capability::CapabilityNamedIam]),
-                    OnFailure::Delete,
-                    ssm_doc_tmpl,
-                    Some(Vec::from([
-                        Tag::builder().key("KIND").value("avalanche-ops").build(),
-                    ])),
-                    Some(cfn_params),
-                ))
-                .unwrap();
-                thread::sleep(Duration::from_secs(10));
-                rt.block_on(cloudformation_manager.poll_stack(
-                    ssm_doc_stack_name.as_str(),
-                    StackStatus::CreateComplete,
-                    Duration::from_secs(500),
-                    Duration::from_secs(30),
-                ))
-                .unwrap();
-                log::info!("created ssm document for {}", created_subnet_id);
+                    let cfn_params = Vec::from([
+                        build_param("DocumentName", &ssm_document_name),
+                        build_param(
+                            "ChainConfigDirectory",
+                            &spec.avalanchego_config.chain_config_dir,
+                        ),
+                        build_param(
+                            "PlaceHolderWhitelistedSubnetId",
+                            &placeholder_whitelisted_subnet_id.clone(),
+                        ),
+                        build_param("NewBlockchainId", &blockchain_id.to_string()),
+                    ]);
+                    rt.block_on(cloudformation_manager.create_stack(
+                        ssm_doc_stack_name.as_str(),
+                        Some(vec![Capability::CapabilityNamedIam]),
+                        OnFailure::Delete,
+                        ssm_doc_tmpl,
+                        Some(Vec::from([
+                            Tag::builder().key("KIND").value("avalanche-ops").build(),
+                        ])),
+                        Some(cfn_params),
+                    ))
+                    .unwrap();
+                    thread::sleep(Duration::from_secs(10));
+                    rt.block_on(cloudformation_manager.poll_stack(
+                        ssm_doc_stack_name.as_str(),
+                        StackStatus::CreateComplete,
+                        Duration::from_secs(500),
+                        Duration::from_secs(30),
+                    ))
+                    .unwrap();
+                    log::info!("created ssm document for {}", created_subnet_id);
 
-                execute!(
+                    execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
                     Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet...\n\n"),
                     ResetColor
                 )?;
-                // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-                let ssm_output = rt
-                    .block_on(
-                        ssm_cli
-                            .send_command()
-                            .document_name(ssm_document_name)
-                            .set_instance_ids(Some(all_instance_ids.clone()))
-                            .parameters(
-                                "chainConfigDirectory",
-                                vec![spec.avalanchego_config.chain_config_dir.clone()],
-                            )
-                            .parameters(
-                                "placeHolderWhitelistedSubnetId",
-                                vec![placeholder_whitelisted_subnet_id.clone()],
-                            )
-                            .parameters("newBlockchainId", vec![blockchain_id.to_string()])
-                            .output_s3_region(spec.aws_resources.region.clone())
-                            .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
-                            .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                            .send(),
-                    )
-                    .unwrap();
-                let ssm_output = ssm_output.command().unwrap();
-                let ssm_command_id = ssm_output.command_id().unwrap();
-                log::info!("sent SSM command {}", ssm_command_id);
-                thread::sleep(Duration::from_secs(30));
+                    // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
+                    let ssm_output = rt
+                        .block_on(
+                            ssm_cli
+                                .send_command()
+                                .document_name(ssm_document_name)
+                                .set_instance_ids(Some(all_instance_ids.clone()))
+                                .parameters(
+                                    "chainConfigDirectory",
+                                    vec![spec.avalanchego_config.chain_config_dir.clone()],
+                                )
+                                .parameters(
+                                    "placeHolderWhitelistedSubnetId",
+                                    vec![placeholder_whitelisted_subnet_id.clone()],
+                                )
+                                .parameters("newBlockchainId", vec![blockchain_id.to_string()])
+                                .output_s3_region(spec.aws_resources.region.clone())
+                                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
+                                .send(),
+                        )
+                        .unwrap();
+                    let ssm_output = ssm_output.command().unwrap();
+                    let ssm_command_id = ssm_output.command_id().unwrap();
+                    log::info!("sent SSM command {}", ssm_command_id);
+                    thread::sleep(Duration::from_secs(30));
 
-                execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
-                    ResetColor
-                )?;
-                // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
-                for instance_id in all_instance_ids.iter() {
-                    loop {
-                        let inv_out = rt
-                            .block_on(
-                                ssm_cli
-                                    .get_command_invocation()
-                                    .command_id(ssm_command_id)
-                                    .instance_id(instance_id)
-                                    .send(),
-                            )
-                            .unwrap();
+                    execute!(
+                        stdout(),
+                        SetForegroundColor(Color::Green),
+                        Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+                        ResetColor
+                    )?;
+                    // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
+                    for instance_id in all_instance_ids.iter() {
+                        loop {
+                            let inv_out = rt
+                                .block_on(
+                                    ssm_cli
+                                        .get_command_invocation()
+                                        .command_id(ssm_command_id)
+                                        .instance_id(instance_id)
+                                        .send(),
+                                )
+                                .unwrap();
 
-                        if let Some(sv) = inv_out.status() {
-                            log::info!(
-                                "command {} status {:?} for instance {}",
-                                ssm_command_id,
-                                sv,
-                                instance_id
-                            );
-                            if sv.eq(&CommandInvocationStatus::Success) {
-                                break;
+                            if let Some(sv) = inv_out.status() {
+                                log::info!(
+                                    "command {} status {:?} for instance {}",
+                                    ssm_command_id,
+                                    sv,
+                                    instance_id
+                                );
+                                if sv.eq(&CommandInvocationStatus::Success) {
+                                    break;
+                                }
                             }
-                        }
 
-                        thread::sleep(Duration::from_secs(5));
+                            thread::sleep(Duration::from_secs(5));
+                        }
                     }
                 }
             }
@@ -2253,7 +2260,7 @@ default-spec \\
         )),
         ResetColor
     )?;
-    if spec.subnet_evm_chain_config.is_some() {
+    if spec.subnet_evms.is_some() {
         execute!(
             stdout(),
             SetForegroundColor(Color::DarkGreen),
