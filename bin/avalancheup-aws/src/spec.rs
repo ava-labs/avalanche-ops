@@ -356,7 +356,10 @@ impl Spec {
         };
         let (anchor_nodes, non_anchor_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
-                Some(_) => (None, DEFAULT_MACHINE_NON_ANCHOR_NODES),
+                // non-custom network only single node to utilize single AZ
+                Some(_) => (None, 1),
+
+                // custom network
                 None => (
                     Some(DEFAULT_MACHINE_ANCHOR_NODES),
                     DEFAULT_MACHINE_NON_ANCHOR_NODES,
