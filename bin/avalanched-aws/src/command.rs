@@ -95,8 +95,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
 
         write_coreth_chain_config_from_spec(&spec)?;
-        write_subnet_evm_subnet_config_from_spec(&spec)?;
-        write_subnet_evm_chain_config_from_spec(&spec)?;
 
         let metrics_rules = if let Some(mm) = spec.prometheus_metrics_rules {
             mm
@@ -740,103 +738,9 @@ fn write_coreth_chain_config_from_spec(spec: &avalancheup_aws::spec::Spec) -> io
     fs::remove_file(&tmp_path)?;
 
     log::info!(
-        "saved coreth chain config file to {:?}",
-        chain_config_c_path.as_os_str()
+        "saved coreth chain config file to {} for C-chain",
+        chain_config_c_path.display()
     );
-
-    Ok(())
-}
-
-fn write_subnet_evm_subnet_config_from_spec(spec: &avalancheup_aws::spec::Spec) -> io::Result<()> {
-    if let Some(subnet_evms) = &spec.subnet_evms {
-        for (subnet_name, subnet_evm) in subnet_evms.iter() {
-            log::info!(
-                "writing subnet-evm subnet config for the subnet {}",
-                subnet_name
-            );
-            let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
-            log::info!(
-                "STEP: writing subnet-evm subnet config file from spec for '{}'",
-                whitelisted_subnet
-            );
-
-            let subnet_config = subnet_evm.subnet_config.clone();
-            let subnet_config_dir = spec.avalanchego_config.subnet_config_dir.clone();
-            let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
-
-            // If a subnet id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
-            // the config file for this subnet is located at {subnet-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt.json.
-            fs::create_dir_all(Path::new(&subnet_config_dir))?;
-            let subnet_config_path =
-                Path::new(&subnet_config_dir).join(whitelisted_subnet + ".json");
-
-            subnet_config.sync(&tmp_path)?;
-            fs::copy(&tmp_path, &subnet_config_path)?;
-            fs::remove_file(&tmp_path)?;
-
-            log::info!(
-                "saved subnet-evm subnet config file to {}",
-                subnet_config_path.display()
-            );
-        }
-    } else {
-        log::info!(
-            "STEP: no subnet-evm subnet config is found, skipping writing subnet config file"
-        );
-    }
-
-    Ok(())
-}
-
-fn write_subnet_evm_chain_config_from_spec(spec: &avalancheup_aws::spec::Spec) -> io::Result<()> {
-    if let Some(subnet_evms) = &spec.subnet_evms {
-        for (subnet_name, subnet_evm) in subnet_evms.iter() {
-            log::info!(
-                "writing subnet-evm chain config for the subnet {}",
-                subnet_name
-            );
-
-            let whitelisted_subnet = spec.avalanchego_config.whitelisted_subnets.clone().unwrap();
-            log::info!(
-                "STEP: writing subnet-evm chain config file from spec for '{}' (could be placeholder)",
-                whitelisted_subnet
-            );
-
-            let chain_config = subnet_evm.chain_config.clone();
-            if let Some(v) = &chain_config.continuous_profiler_dir {
-                fs::create_dir_all(v)?;
-            }
-
-            let chain_config_dir = spec.avalanchego_config.chain_config_dir.clone();
-            let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
-
-            // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
-            // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
-            // so this file needs to be moved again once the blockchain is created
-            // SSM doc will do such updates
-            // ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
-            // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-precompile-configurations
-            // ref. https://docs.avax.network/subnets/customize-a-subnet#initial-configuration-3
-            // ref. https://github.com/ava-labs/public-chain-assets/blob/main/chains/53935/genesis.json
-            fs::create_dir_all(Path::new(&chain_config_dir).join(&whitelisted_subnet))?;
-            let chain_config_path = Path::new(&chain_config_dir)
-                .join(whitelisted_subnet)
-                .join("config.json");
-
-            chain_config.sync(&tmp_path)?;
-            fs::copy(&tmp_path, &chain_config_path)?;
-            fs::remove_file(&tmp_path)?;
-
-            log::info!(
-                "saved subnet-evm chain config file to {}",
-                chain_config_path.display()
-            );
-        }
-    } else {
-        log::info!(
-            "STEP: no subnet-evm chain config is found, skipping writing subnet-evm config file"
-        );
-    }
 
     Ok(())
 }
@@ -1196,7 +1100,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
 
     // "initial_staked_funds" is reserved for locked P-chain balance
     // with "spec.generated_seed_private_key_with_locked_p_chain_balance"
-    let seed_priv_keys = spec.clone().test_keys.unwrap();
+    let seed_priv_keys = spec.clone().test_key_infos.unwrap();
     let seed_priv_key = seed_priv_keys[0].clone();
 
     let mut initial_stakers: Vec<avalanchego_genesis::Staker> = vec![];

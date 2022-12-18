@@ -14,7 +14,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         http_rpcs.push(ep.http_rpc.clone());
     }
 
-    let total_funded_keys = spec.test_keys.len();
+    let total_funded_keys = spec.test_key_infos.len();
 
     //
     //
@@ -31,7 +31,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         let idx = (faucet_idx + i) % total_funded_keys;
 
         let k = key::secp256k1::private_key::Key::from_cb58(
-            spec.test_keys[idx].private_key_cb58.clone().unwrap(),
+            spec.test_key_infos[idx].private_key_cb58.clone().unwrap(),
         )
         .unwrap();
 
@@ -75,7 +75,10 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     //
     log::info!("[WORKER #{worker_idx}] STEP 3: loading faucet key and wallet");
     let faucet_key = key::secp256k1::private_key::Key::from_cb58(
-        spec.test_keys[faucet_idx].private_key_cb58.clone().unwrap(),
+        spec.test_key_infos[faucet_idx]
+            .private_key_cb58
+            .clone()
+            .unwrap(),
     )
     .unwrap();
 

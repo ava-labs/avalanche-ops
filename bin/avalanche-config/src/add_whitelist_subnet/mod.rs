@@ -84,7 +84,7 @@ pub fn execute(
     let converted = ids::Id::from_str(subnet_id)?;
     log::info!("validated subnet-id '{}'", converted);
 
-    println!("");
+    println!();
     if !skip_prompt {
         let options = &[
             format!(

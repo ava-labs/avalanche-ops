@@ -87,7 +87,7 @@ pub struct Spec {
     /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
     /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub test_keys: Option<Vec<key::secp256k1::Info>>,
+    pub test_key_infos: Option<Vec<key::secp256k1::Info>>,
 
     /// Created nodes at the start of the network.
     /// May become stale.
@@ -657,7 +657,7 @@ impl Spec {
 
             subnet_evms,
 
-            test_keys: Some(test_key_infos),
+            test_key_infos: Some(test_key_infos),
 
             created_nodes: None,
             created_endpoints: None,
@@ -1085,7 +1085,7 @@ metrics_fetch_interval_seconds: 5000
 
         subnet_evms: None,
 
-        test_keys: None,
+        test_key_infos: None,
         created_nodes: None,
         created_endpoints: None,
 

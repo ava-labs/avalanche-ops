@@ -1,6 +1,8 @@
 mod cloudwatch;
 mod command;
 mod flags;
+mod sync_subnet_evm_chain_config;
+mod sync_subnet_evm_subnet_config;
 
 use clap::{crate_version, Arg, Command};
 
@@ -35,16 +37,66 @@ async fn main() {
                 .required(false)
                 .num_args(0),
         )
+        .subcommands(vec![
+            sync_subnet_evm_chain_config::command(),
+            sync_subnet_evm_subnet_config::command(),
+        ])
         .get_matches();
 
     println!("{} version: {}", APP_NAME, crate_version!());
-    let opts = flags::Options {
-        log_level: matches
-            .get_one::<String>("LOG_LEVEL")
-            .unwrap_or(&String::from("info"))
-            .clone(),
-        use_default_config: matches.get_flag("USE_DEFAULT_CONFIG"),
-        publish_periodic_node_info: matches.get_flag("PUBLISH_PERIODIC_NODE_INFO"),
-    };
-    command::execute(opts).await.unwrap();
+
+    match matches.subcommand() {
+        Some((sync_subnet_evm_subnet_config::NAME, sub_matches)) => {
+            sync_subnet_evm_subnet_config::execute(
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap()
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SUBNET_EVM_NAME")
+                    .unwrap()
+                    .clone(),
+                &sub_matches.get_one::<String>("SUBNET_ID").unwrap().clone(),
+            )
+            .expect("failed to execute 'sync_subnet_evm_subnet_config'");
+        }
+
+        Some((sync_subnet_evm_chain_config::NAME, sub_matches)) => {
+            sync_subnet_evm_chain_config::execute(
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap()
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SUBNET_EVM_NAME")
+                    .unwrap()
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("BLOCKCHAIN_ID")
+                    .unwrap()
+                    .clone(),
+            )
+            .expect("failed to execute 'sync_subnet_evm_chain_config'");
+        }
+
+        _ => {
+            let opts = flags::Options {
+                log_level: matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                use_default_config: matches.get_flag("USE_DEFAULT_CONFIG"),
+                publish_periodic_node_info: matches.get_flag("PUBLISH_PERIODIC_NODE_INFO"),
+            };
+            command::execute(opts).await.unwrap();
+        }
+    }
 }
