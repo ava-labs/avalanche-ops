@@ -900,7 +900,7 @@ fn test_spec() {
     let contents = format!(
         r#"
 
-version: 0
+version: 1
 
 
 id: {}
