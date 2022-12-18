@@ -216,7 +216,7 @@ pub fn execute(
             .aws_resources
             .kms_cmk_symmetric_default_encrypt_key
             .unwrap();
-        rt.block_on(kms_manager.schedule_to_delete(k.id.as_str()))
+        rt.block_on(kms_manager.schedule_to_delete(k.id.as_str(), 7))
             .unwrap();
     }
 

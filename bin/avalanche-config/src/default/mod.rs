@@ -72,7 +72,7 @@ pub fn execute(log_level: &str, config_file_path: &str, network_name: &str) -> i
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nCreated configuration: '{}'\n",
+            "\nCreated configuration:\n'{}'\n",
             config.encode_json()?
         )),
         ResetColor

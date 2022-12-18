@@ -85,7 +85,7 @@ fn main() {
     ab!(s3_manager.delete_objects(Arc::new(s3_bucket.clone()), None)).unwrap();
     thread::sleep(time::Duration::from_secs(3));
     ab!(s3_manager.delete_bucket(&s3_bucket)).unwrap();
-    ab!(kms_manager.schedule_to_delete(&cmk.id)).unwrap();
+    ab!(kms_manager.schedule_to_delete(&cmk.id, 7)).unwrap();
 
     let mut src_file = File::open(tls_key_path1).unwrap();
     let mut src_file_contents = Vec::new();

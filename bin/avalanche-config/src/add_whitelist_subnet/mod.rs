@@ -84,6 +84,7 @@ pub fn execute(
     let converted = ids::Id::from_str(subnet_id)?;
     log::info!("validated subnet-id '{}'", converted);
 
+    println!("");
     if !skip_prompt {
         let options = &[
             format!(
@@ -96,7 +97,7 @@ pub fn execute(
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your 'apply' option")
+            .with_prompt("Select your 'add-whitelist-subnet' option")
             .items(&options[..])
             .default(0)
             .interact()
@@ -123,7 +124,7 @@ pub fn execute(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nLoaded configuration: '{}'\n",
+            "\nLoaded configuration:\n'{}'\n",
             config.encode_json()?
         )),
         ResetColor
@@ -152,7 +153,7 @@ pub fn execute(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nUpdated configuration: '{}'\n",
+            "\nUpdated configuration:\n'{}'\n",
             config.encode_json()?
         )),
         ResetColor

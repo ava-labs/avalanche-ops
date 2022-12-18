@@ -10,6 +10,7 @@ fi
 cargo build \
 --release \
 --bin avalanche-config \
+--bin avalanche-kms-aws \
 --bin avalanched-aws \
 --bin avalancheup-aws \
 --bin blizzard-aws \
@@ -17,6 +18,8 @@ cargo build \
 --bin staking-key-cert-s3-downloader
 
 ./target/release/avalanche-config --help
+
+./target/release/avalanche-kms-aws --help
 
 ./target/release/avalanched-aws --help
 
