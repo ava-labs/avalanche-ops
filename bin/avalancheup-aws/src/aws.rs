@@ -42,7 +42,7 @@ pub struct Resources {
     pub kms_cmk_symmetric_default_encrypt_key: Option<KmsCmk>,
     #[serde(skip_serializing_if = "Option::is_none")]
     /// Generated CMKs.
-    pub kms_cmk_secp256k1_signing_keys: Option<Vec<KmsCmk>>,
+    pub kms_cmk_secp256k1_cmks: Option<Vec<KmsCmk>>,
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// READ ONLY -- DO NOT SET.
@@ -149,7 +149,7 @@ impl Resources {
             nlb_acm_certificate_arn: None,
 
             kms_cmk_symmetric_default_encrypt_key: None,
-            kms_cmk_secp256k1_signing_keys: None,
+            kms_cmk_secp256k1_cmks: None,
 
             ec2_key_name: None,
             ec2_key_path: None,
