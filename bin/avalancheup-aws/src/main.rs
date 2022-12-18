@@ -121,7 +121,7 @@ fn main() {
                     .to_string(),
 
                 install_artifacts_avalanche_config_local_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHED_LOCAL_BIN")
+                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
                 install_artifacts_avalanched_local_bin: sub_matches
