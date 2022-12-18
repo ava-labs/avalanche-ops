@@ -208,7 +208,7 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete KMS key\n"),
+            Print("\n\n\nSTEP: delete KMS key for encryption\n"),
             ResetColor
         )?;
 
@@ -218,6 +218,22 @@ pub fn execute(
             .unwrap();
         rt.block_on(kms_manager.schedule_to_delete(k.id.as_str(), 7))
             .unwrap();
+    }
+
+    if let Some(cmks) = &spec.aws_resources.kms_cmk_secp256k1_cmks {
+        thread::sleep(Duration::from_secs(1));
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: delete KMS key for signing\n"),
+            ResetColor
+        )?;
+
+        for cmk in cmks.iter() {
+            rt.block_on(kms_manager.schedule_to_delete(cmk.id.as_str(), 7))
+                .unwrap();
+        }
     }
 
     // IAM roles can be deleted without being blocked on ASG/VPC

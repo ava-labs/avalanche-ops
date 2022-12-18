@@ -13,9 +13,11 @@ use avalanche_types::{
     key, node, subnet,
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
 };
+use aws_manager::kms;
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
+use tokio::runtime::Runtime;
 
 pub const VERSION: usize = 1;
 
@@ -288,7 +290,7 @@ pub fn default_prometheus_rules() -> prometheus_manager::Rules {
 
 impl Spec {
     /// Creates a default spec.
-    pub fn default_aws(opts: DefaultSpecOption) -> Self {
+    pub async fn default_aws(opts: DefaultSpecOption) -> Self {
         let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opts.network_name.as_str())
         {
             Some(v) => *v,
@@ -367,40 +369,70 @@ impl Spec {
         }
 
         let key_type = key::secp256k1::KeyType::from_str(&opts.keys_to_generate_type).unwrap();
-        if key_type == key::secp256k1::KeyType::AwsKms && opts.keys_to_generate != 2 {
+        match key_type {
+            key::secp256k1::KeyType::Hot => log::info!("generating hot keys..."),
+            key::secp256k1::KeyType::AwsKms => log::info!("generating AWS KMS CMKs..."),
+            _ => panic!("unknown key type {}", key_type),
+        }
+        if key_type == key::secp256k1::KeyType::AwsKms && opts.keys_to_generate > 2 {
             panic!(
-                "key::secp256k1::KeyType::AwsKms only supported 2 keys, got {}",
+                "key::secp256k1::KeyType::AwsKms only supported up to 2 keys, got {}",
                 opts.keys_to_generate
             );
         }
 
-        let mut test_key_infos: Vec<key::secp256k1::Info> = Vec::new();
-        let mut test_keys: Vec<key::secp256k1::private_key::Key> = Vec::new();
+        let mut test_keys_infos: Vec<key::secp256k1::Info> = Vec::new();
+        let mut test_keys_read_only: Vec<key::secp256k1::public_key::Key> = Vec::new();
         for i in 0..opts.keys_to_generate {
-            let k = {
-                if i < key::secp256k1::TEST_KEYS.len() {
-                    key::secp256k1::TEST_KEYS[i].clone()
-                } else {
-                    key::secp256k1::private_key::Key::generate()
-                        .expect("unexpected key generate failure")
+            let (key_info, key_read_only) = {
+                match key_type {
+                    key::secp256k1::KeyType::Hot => {
+                        if i < key::secp256k1::TEST_KEYS.len() {
+                            (
+                                key::secp256k1::TEST_KEYS[i].to_info(network_id).unwrap(),
+                                key::secp256k1::TEST_KEYS[i].to_public_key(),
+                            )
+                        } else {
+                            let k = key::secp256k1::private_key::Key::generate().unwrap();
+                            (k.to_info(network_id).unwrap(), k.to_public_key())
+                        }
+                    }
+
+                    key::secp256k1::KeyType::AwsKms => {
+                        let rt = Runtime::new().unwrap();
+                        let shared_config = rt
+                            .block_on(aws_manager::load_config(Some(opts.region.clone())))
+                            .expect("failed to aws_manager::load_config");
+
+                        let kms_manager = kms::Manager::new(&shared_config);
+
+                        let cmk = rt
+                            .block_on(key::secp256k1::kms::aws::Cmk::create(
+                                kms_manager.clone(),
+                                &format!("{id}-cmk-{i}"),
+                            ))
+                            .unwrap();
+
+                        let cmk_info = cmk.to_info(network_id).unwrap();
+                        println!("cmk_info: {}", cmk_info);
+
+                        (cmk_info, cmk.to_public_key())
+                    }
+
+                    _ => panic!("unknown key type {}", key_type),
                 }
             };
+            test_keys_infos.push(key_info.clone());
+            test_keys_read_only.push(key_read_only);
 
-            let info = k
-                .to_info(network_id)
-                .expect("unexpected private_key_info_entry failure");
-            test_key_infos.push(info.clone());
-
-            test_keys.push(k);
-
-            if !opts.key_files_dir.is_empty() {
+            if key_type == key::secp256k1::KeyType::Hot && !opts.key_files_dir.is_empty() {
                 // file name is eth address with 0x, contents are "private_key_hex"
-                let p = Path::new(&opts.key_files_dir).join(Path::new(&info.eth_address));
+                let p = Path::new(&opts.key_files_dir).join(Path::new(&key_info.eth_address));
                 log::info!("writing key file {:?}", p);
 
                 let mut f = File::create(p).unwrap();
                 f.write_all(
-                    prefix_manager::strip_0x(&info.private_key_hex.clone().unwrap()).as_bytes(),
+                    prefix_manager::strip_0x(&key_info.private_key_hex.clone().unwrap()).as_bytes(),
                 )
                 .unwrap();
             }
@@ -408,7 +440,7 @@ impl Spec {
 
         let avalanchego_genesis_template = {
             if avalanchego_config.is_custom_network() {
-                let g = avalanchego_genesis::Genesis::new(network_id, &test_keys)
+                let g = avalanchego_genesis::Genesis::new(network_id, &test_keys_read_only)
                     .expect("unexpected None genesis");
                 Some(g)
             } else {
@@ -418,11 +450,11 @@ impl Spec {
 
         let subnet_evms = {
             if opts.subnet_evms > 0 {
-                let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys)
+                let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys_read_only)
                     .expect("failed to generate genesis");
 
                 let mut admin_addresses: Vec<String> = Vec::new();
-                for key_info in test_key_infos.iter() {
+                for key_info in test_keys_infos.iter() {
                     admin_addresses.push(key_info.eth_address.clone());
                 }
 
@@ -508,6 +540,18 @@ impl Spec {
         };
         if !opts.nlb_acm_certificate_arn.is_empty() {
             aws_resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
+        }
+        let mut kms_cmk_secp256k1_cmks = Vec::new();
+        for test_key_info in test_keys_infos.iter() {
+            if test_key_info.key_type == key::secp256k1::KeyType::AwsKms {
+                kms_cmk_secp256k1_cmks.push(crate::aws::KmsCmk {
+                    id: test_key_info.id.clone().unwrap(),
+                    arn: test_key_info.id.clone().unwrap(),
+                })
+            }
+        }
+        if !kms_cmk_secp256k1_cmks.is_empty() {
+            aws_resources.kms_cmk_secp256k1_cmks = Some(kms_cmk_secp256k1_cmks);
         }
 
         let mut install_artifacts = InstallArtifacts {
@@ -667,7 +711,7 @@ impl Spec {
 
             subnet_evms,
 
-            test_key_infos: Some(test_key_infos),
+            test_key_infos: Some(test_keys_infos),
 
             created_nodes: None,
             created_endpoints: None,
