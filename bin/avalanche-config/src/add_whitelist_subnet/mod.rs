@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeSet,
     io::{self, stdout},
     str::FromStr,
 };
@@ -128,12 +129,24 @@ pub fn execute(
         ResetColor
     )?;
 
-    let mut new_whitelisted_subnets = config.whitelisted_subnets.unwrap_or(String::new());
-    if !new_whitelisted_subnets.is_empty() {
-        new_whitelisted_subnets.push(',');
+    let mut new_whitelisted_subnets = BTreeSet::new();
+    new_whitelisted_subnets.insert(subnet_id.to_string());
+
+    let existing_whitelisted_subnets = config.whitelisted_subnets.clone().unwrap_or(String::new());
+    for existing_subnet_id in existing_whitelisted_subnets.split(',').into_iter() {
+        if existing_subnet_id.is_empty() {
+            continue;
+        }
+        new_whitelisted_subnets.insert(existing_subnet_id.to_string());
     }
-    new_whitelisted_subnets.push_str(subnet_id);
-    config.whitelisted_subnets = Some(new_whitelisted_subnets);
+
+    let mut whitelisted_subnets = Vec::new();
+    for new_subnet_id in new_whitelisted_subnets {
+        whitelisted_subnets.push(new_subnet_id);
+    }
+    if !whitelisted_subnets.is_empty() {
+        config.whitelisted_subnets = Some(whitelisted_subnets.join(","));
+    }
 
     execute!(
         stdout(),

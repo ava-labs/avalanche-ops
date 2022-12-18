@@ -9,13 +9,42 @@
 
 ./target/release/avalanche-config default --help
 ./target/release/avalanche-config add-whitelist-subnet --help
+```
 
-./target/release/avalanche-config default --network-name=mainnet
+To write some default configuration file:
+
+```bash
+./target/release/avalanche-config default \
+--network-name=mainnet \
+--config-file-path=/tmp/test.config.json
 # ...
-# Saved configuration to '/var/folders/jp/0bxslj2n0hbg2dx1ypk_y6j40000gn/T/9k5DPbXeuD.json'
+# Saved configuration to '/tmp/test.config.json'
+```
 
+To add new whitelisted subnets:
+
+```bash
+# new subnet id is successfully added
 ./target/release/avalanche-config add-whitelist-subnet \
---original-config-file-path /var/folders/jp/0bxslj2n0hbg2dx1ypk_y6j40000gn/T/9k5DPbXeuD.json \
---new-config-file-path /tmp/new-whitelisted-subnet.json \
+--skip-prompt \
+--original-config-file-path /tmp/test.config.json \
+--new-config-file-path /tmp/test.config.2.json \
 --subnet-id hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
+# ... "whitelisted-subnets":"hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
+
+# duplicate subnet id is ignored
+./target/release/avalanche-config add-whitelist-subnet \
+--skip-prompt \
+--original-config-file-path /tmp/test.config.2.json \
+--new-config-file-path /tmp/test.config.3.json \
+--subnet-id hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
+# ... "whitelisted-subnets":"hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
+
+# new subnet id is successfully added
+./target/release/avalanche-config add-whitelist-subnet \
+--skip-prompt \
+--original-config-file-path /tmp/test.config.3.json \
+--new-config-file-path /tmp/test.config.3.json \
+--subnet-id 2ybKHWNFLh8kpWQwCpuaQLdinTLRTt6s6nkbr14gnrtjk5YMr
+# ... "whitelisted-subnets":"2ybKHWNFLh8kpWQwCpuaQLdinTLRTt6s6nkbr14gnrtjk5YMr,hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
 ```
