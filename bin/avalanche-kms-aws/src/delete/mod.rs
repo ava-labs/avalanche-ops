@@ -89,9 +89,9 @@ pub fn execute(
 
     execute!(
         stdout(),
-        SetForegroundColor(Color::Green),
+        SetForegroundColor(Color::Red),
         Print(format!(
-            "\nLoading the KMS CMK {} in region {}\n",
+            "\nLoading the KMS CMK {} in region {} for deletion\n",
             key_arn, region
         )),
         ResetColor
@@ -105,7 +105,7 @@ pub fn execute(
     let cmk_signer_info = cmk_signer.to_info(1).unwrap();
 
     println!("");
-    println!("loaded CMK signer\n\n{}\n(mainnet info)\n", cmk_signer_info);
+    println!("loaded CMK signer\n\n{}\n(mainnet)\n", cmk_signer_info);
     println!("");
 
     if !skip_prompt {
@@ -135,6 +135,8 @@ pub fn execute(
     rt.block_on(cmk_signer.delete(pending_windows_in_days))
         .unwrap();
 
+    println!("");
     log::info!("successfully delete CMK signer");
+
     Ok(())
 }
