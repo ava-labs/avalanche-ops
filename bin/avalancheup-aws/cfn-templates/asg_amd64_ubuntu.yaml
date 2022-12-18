@@ -250,7 +250,7 @@ Parameters:
     Default: "github"
     Description: Set to "github" to download from github, or "s3" to download from S3.
 
-  AvalancheConfigUpdaterDownloadSource:
+  AvalancheConfigDownloadSource:
     Type: String
     AllowedValues: ["github", "s3"]
     Default: "github"
@@ -554,7 +554,7 @@ Resources:
               fi;
               /usr/local/bin/avalanche-telemetry-cloudwatch --version
 
-              if [[ ${AvalancheConfigUpdaterDownloadSource} == "github" ]]; then
+              if [[ ${AvalancheConfigDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
                 sudo rm -f ./avalanche-config.x86_64-unknown-linux-gnu
                 sudo rm -f /tmp/avalanche-config
