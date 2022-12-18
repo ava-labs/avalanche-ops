@@ -39,7 +39,7 @@ pub struct Spec {
     pub blizzard_spec: blizzard::Spec,
 
     #[serde(default)]
-    pub test_keys: Vec<key::secp256k1::Info>,
+    pub test_key_infos: Vec<key::secp256k1::Info>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -233,12 +233,12 @@ impl Spec {
         // same order as avalanche-types genesis
         // assume they are pre-funded
         assert!(key::secp256k1::TEST_KEYS.len() >= opts.funded_keys);
-        let mut test_keys: Vec<key::secp256k1::Info> = Vec::new();
+        let mut test_key_infos: Vec<key::secp256k1::Info> = Vec::new();
         for i in 0..opts.funded_keys {
             let info = key::secp256k1::TEST_KEYS[i]
                 .to_info(opts.network_id)
                 .expect("unexpected to_info failure");
-            test_keys.push(info.clone());
+            test_key_infos.push(info.clone());
         }
 
         // [year][month][date]-[system host-based id]
@@ -279,7 +279,7 @@ impl Spec {
 
             blizzard_spec,
 
-            test_keys,
+            test_key_infos,
         }
     }
 
@@ -488,7 +488,7 @@ blizzard_spec:
             workers: 10,
         },
 
-        test_keys: Vec::new(),
+        test_key_infos: Vec::new(),
     };
 
     assert_eq!(cfg, orig);

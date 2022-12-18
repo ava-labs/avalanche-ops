@@ -70,7 +70,7 @@ pub fn execute(log_level: &str, region: &str, key_name: &str, skip_prompt: bool)
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
     log::info!("current identity {:?}", current_identity);
-    println!("");
+    println!();
 
     if !skip_prompt {
         let options = &[
@@ -113,9 +113,9 @@ pub fn execute(log_level: &str, region: &str, key_name: &str, skip_prompt: bool)
         .expect("failed to key::secp256k1::kms::aws::Signer::create");
     let cmk_signer_info = cmk_signer.to_info(1).unwrap();
 
-    println!("");
+    println!();
     println!("loaded CMK signer\n\n{}\n(mainnet)\n", cmk_signer_info);
-    println!("");
+    println!();
 
     Ok(())
 }

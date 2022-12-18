@@ -8,27 +8,6 @@ Parameters:
     Default: WhitelistSubnetWhitelistSubnetV0
     Description: SSM document Name.
 
-  VmId:
-    Type: String
-    Default: srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy
-    Description: Vm Id (must match with the binary path).
-
-  # e.g., avalanchego_config.subnet_config_dir).join("...")
-  SubnetConfigDirectory:
-    Type: String
-    Default: /data/avalanche-configs/subnets
-    Description: Subnet configuration directory (e.g., /data/avalanche-configs/subnets/C.json)
-
-  PlaceHolderWhitelistedSubnetId:
-    Type: String
-    Default: hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
-    Description: Whitelisted subnet Id that was used as a placeholder.
-
-  NewWhitelistedSubnetId:
-    Type: String
-    Default: ""
-    Description: New subnet id to whitelist.
-
 Resources:
   RestartAvalancheNodeWhitelistSubnet:
     # https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_CreateDocument.html
@@ -53,22 +32,19 @@ Resources:
             type: String
             description: "timeout for script on individual instance"
             default: "3600"
+          # e.g., "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"
           vmId:
             type: String
-            description: Vm Id (must match with the binary path).
-            default: !Ref VmId
-          subnetConfigDirectory:
+            description: Vm Id (must match with the binary path), used for making sure vm binary works!
+          specPath:
             type: String
-            description: Subnet configuration directory (e.g., /data/avalanche-configs/subnets/C.json).
-            default: !Ref SubnetConfigDirectory
-          placeHolderWhitelistedSubnetId:
+            description: avalancheup spec path (e.g., /data/avalancheup.yaml).
+          subnetEvmName:
             type: String
-            description: Whitelisted subnet Id that was used as a placeholder.
-            default: !Ref PlaceHolderWhitelistedSubnetId
+            description: Name of subnet-evm in "Spec.subnet_evms".
           newWhitelistedSubnetId:
             type: String
             description: New subnet id to whitelist.
-            default: !Ref NewWhitelistedSubnetId
         mainSteps:
           - action: aws:runShellScript
             name: WhitelistSubnetWhitelistSubnet
@@ -79,8 +55,10 @@ Resources:
                   #!/bin/bash
                   set -xeu
 
-                  # do not use bash/sed hacks....
+                  # to not use bash/sed hacks....
                   /usr/local/bin/avalanche-config --version
+                  # to write subnet/chain config
+                  /usr/local/bin/avalanched --version
 
                   # sudo systemctl cat avalanche
                   /usr/local/bin/plugins/{{ vmId }} --version
@@ -91,14 +69,19 @@ Resources:
                   --log-level info \
                   --skip-prompt \
                   --original-config-file-path=/data/avalanche-configs/config.json \
-                  --new-config-file-path=/tmp/avalanche.config.json
+                  --new-config-file-path=/tmp/avalanche.config.json \
+                  --subnet-id {{ newWhitelistedSubnetId }}
 
                   cat /tmp/avalanche.config.json
                   sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
 
-                  # assume "avalanched" already wrote subnet config based on place holder whitelisted subnet id
-                  # TODO: implement with "avalanche-config"
-                  sudo cp {{ subnetConfigDirectory }}/{{ placeHolderWhitelistedSubnetId }}.json {{ subnetConfigDirectory }}/{{ newWhitelistedSubnetId }}.json
+                  # use "avalanched" to write subnet config based on spec and new subnet-id
+                  /usr/local/bin/avalanched \
+                  sync-subnet-evm-subnet-config \
+                  --log-level info \
+                  --spec-file-path {{ specPath }} \
+                  --subnet-evm-name {{ subnetEvmName }} \
+                  --subnet-id {{ newWhitelistedSubnetId }}
 
                   sudo systemctl restart avalanche
                   sleep 5
