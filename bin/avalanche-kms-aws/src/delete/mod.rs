@@ -136,7 +136,7 @@ pub fn execute(
         .unwrap();
 
     println!("");
-    log::info!("successfully delete CMK signer");
+    log::info!("successfully scheduled to delete CMK signer");
 
     Ok(())
 }
