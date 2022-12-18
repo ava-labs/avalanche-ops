@@ -143,9 +143,16 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("INSTALL_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN") 
+                .long("install-artifacts-avalanche-config-local-bin")
+                .help("Sets the avalanche-config binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("INSTALL_ARTIFACTS_AVALANCHED_LOCAL_BIN") 
                 .long("install-artifacts-avalanched-local-bin")
-                .help("Sets the Avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
+                .help("Sets the avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )

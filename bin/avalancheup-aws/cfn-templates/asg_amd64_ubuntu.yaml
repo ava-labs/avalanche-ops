@@ -250,13 +250,13 @@ Parameters:
     Default: "github"
     Description: Set to "github" to download from github, or "s3" to download from S3.
 
-  AvalanchedDownloadSource:
+  AvalancheConfigUpdaterDownloadSource:
     Type: String
     AllowedValues: ["github", "s3"]
     Default: "github"
     Description: Set to "github" to download from github, or "s3" to download from S3.
 
-  AvalancheConfigUpdaterDownloadSource:
+  AvalanchedDownloadSource:
     Type: String
     AllowedValues: ["github", "s3"]
     Default: "github"
@@ -553,6 +553,23 @@ Resources:
                 sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
               fi;
               /usr/local/bin/avalanche-telemetry-cloudwatch --version
+
+              if [[ ${AvalancheConfigUpdaterDownloadSource} == "github" ]]; then
+                # TODO: support ARM64
+                sudo rm -f ./avalanche-config.x86_64-unknown-linux-gnu
+                sudo rm -f /tmp/avalanche-config
+                sudo rm -f /usr/local/bin/avalanche-config
+                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu
+                mv ./avalanche-config.x86_64-unknown-linux-gnu /tmp/avalanche-config
+                chmod +x /tmp/avalanche-config
+                sudo mv /tmp/avalanche-config /usr/local/bin/avalanche-config
+              else
+                sudo rm -f /tmp/avalanche-config
+                aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-config /tmp/avalanche-config
+                chmod +x /tmp/avalanche-config
+                sudo mv /tmp/avalanche-config /usr/local/bin/avalanche-config
+              fi;
+              /usr/local/bin/avalanche-config --version
 
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
