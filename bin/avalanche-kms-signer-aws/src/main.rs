@@ -4,7 +4,7 @@ mod info;
 
 use clap::{crate_version, Command};
 
-const APP_NAME: &str = "avalanche-kms-aws";
+const APP_NAME: &str = "avalanche-kms-signer-aws";
 
 fn main() {
     let matches = Command::new(APP_NAME)
