@@ -2083,39 +2083,17 @@ default-spec \\
                 Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
                 ResetColor
             )?;
-            // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
             for instance_id in all_instance_ids.iter() {
-                loop {
-                    let inv_out = rt
-                        .block_on(
-                            ssm_cli
-                                .get_command_invocation()
-                                .command_id(ssm_command_id)
-                                .instance_id(instance_id)
-                                .send(),
-                        )
-                        .unwrap();
-
-                    let status = if let Some(sv) = inv_out.status() {
-                        log::info!(
-                            "command {} status {:?} for instance {}",
-                            ssm_command_id,
-                            sv,
-                            instance_id
-                        );
-                        sv.clone()
-                    } else {
-                        CommandInvocationStatus::Pending
-                    };
-                    if status.eq(&CommandInvocationStatus::Success) {
-                        break;
-                    }
-                    if status.eq(&CommandInvocationStatus::Failed) {
-                        panic!("SSM command failed");
-                    }
-
-                    thread::sleep(Duration::from_secs(5));
-                }
+                let status = rt
+                    .block_on(ssm_manager.poll_command(
+                        ssm_command_id,
+                        instance_id,
+                        CommandInvocationStatus::Success,
+                        Duration::from_secs(300),
+                        Duration::from_secs(5),
+                    ))
+                    .unwrap();
+                log::info!("status {:?} for instance id {}", status, instance_id);
             }
             thread::sleep(Duration::from_secs(5));
 
@@ -2217,39 +2195,17 @@ default-spec \\
                 Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
                 ResetColor
             )?;
-            // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetCommandInvocation.html
             for instance_id in all_instance_ids.iter() {
-                loop {
-                    let inv_out = rt
-                        .block_on(
-                            ssm_cli
-                                .get_command_invocation()
-                                .command_id(ssm_command_id)
-                                .instance_id(instance_id)
-                                .send(),
-                        )
-                        .unwrap();
-
-                    let status = if let Some(sv) = inv_out.status() {
-                        log::info!(
-                            "command {} status {:?} for instance {}",
-                            ssm_command_id,
-                            sv,
-                            instance_id
-                        );
-                        sv.clone()
-                    } else {
-                        CommandInvocationStatus::Pending
-                    };
-                    if status.eq(&CommandInvocationStatus::Success) {
-                        break;
-                    }
-                    if status.eq(&CommandInvocationStatus::Failed) {
-                        panic!("SSM command failed");
-                    }
-
-                    thread::sleep(Duration::from_secs(5));
-                }
+                let status = rt
+                    .block_on(ssm_manager.poll_command(
+                        ssm_command_id,
+                        instance_id,
+                        CommandInvocationStatus::Success,
+                        Duration::from_secs(300),
+                        Duration::from_secs(5),
+                    ))
+                    .unwrap();
+                log::info!("status {:?} for instance id {}", status, instance_id);
             }
         }
     }
