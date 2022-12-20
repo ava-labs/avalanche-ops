@@ -2113,7 +2113,7 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: adding all nodes as subnet validator...\n\n"),
+                Print("\n\n\nSTEP: adding all nodes as subnet validator subnet-evm..\n\n"),
                 ResetColor
             )?;
             for node_id in all_node_ids.iter() {
@@ -2395,7 +2395,7 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: adding all nodes as subnet validator...\n\n"),
+                Print("\n\n\nSTEP: adding all nodes as subnet validator xsvm...\n\n"),
                 ResetColor
             )?;
             for node_id in all_node_ids.iter() {
