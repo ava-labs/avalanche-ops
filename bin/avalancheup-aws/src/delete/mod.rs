@@ -292,6 +292,24 @@ pub fn execute(
             .unwrap();
     }
 
+    if spec.xsvms.is_some() && spec.avalanchego_config.is_custom_network() {
+        thread::sleep(Duration::from_secs(1));
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with xsvm whitelist\n"),
+            ResetColor
+        )?;
+        let ssm_doc_stack_name = spec
+            .aws_resources
+            .cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm
+            .clone()
+            .unwrap();
+        rt.block_on(cloudformation_manager.delete_stack(ssm_doc_stack_name.as_str()))
+            .unwrap();
+    }
+
     // delete no matter what, in case node provision failed
     thread::sleep(Duration::from_secs(1));
 
