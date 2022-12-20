@@ -56,6 +56,8 @@ fn main() {
                 .unwrap_or(&0)
                 .clone();
 
+            let xsvms = sub_matches.get_one::<usize>("XSVMS").unwrap_or(&0).clone();
+
             let opt = avalancheup_aws::spec::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -194,6 +196,8 @@ fn main() {
                     .get_one::<u64>("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY_SECONDS")
                     .unwrap_or(&1)
                     .clone(),
+
+                xsvms,
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")

@@ -12,7 +12,7 @@ pub const NAME: &str = "sync-subnet-evm-chain-config";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Writes a default configuration file")
+        .about("Loads the avalanceup spec file and writes the subnet-evm chain config file")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
