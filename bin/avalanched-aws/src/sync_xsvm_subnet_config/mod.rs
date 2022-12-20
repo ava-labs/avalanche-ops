@@ -32,7 +32,7 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("xsvm_name")
+            Arg::new("XSVM_NAME")
                 .long("xsvm-name")
                 .help("xsvm name in the spec")
                 .required(true)
