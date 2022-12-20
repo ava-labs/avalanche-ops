@@ -3,6 +3,7 @@ mod command;
 mod flags;
 mod sync_subnet_evm_chain_config;
 mod sync_subnet_evm_subnet_config;
+mod sync_xsvm_subnet_config;
 
 use clap::{crate_version, Arg, Command};
 
@@ -40,6 +41,7 @@ async fn main() {
         .subcommands(vec![
             sync_subnet_evm_chain_config::command(),
             sync_subnet_evm_subnet_config::command(),
+            sync_xsvm_subnet_config::command(),
         ])
         .get_matches();
 
@@ -85,6 +87,22 @@ async fn main() {
                     .clone(),
             )
             .expect("failed to execute 'sync_subnet_evm_chain_config'");
+        }
+
+        Some((sync_xsvm_subnet_config::NAME, sub_matches)) => {
+            sync_xsvm_subnet_config::execute(
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap()
+                    .clone(),
+                &sub_matches.get_one::<String>("XSVM_NAME").unwrap().clone(),
+                &sub_matches.get_one::<String>("SUBNET_ID").unwrap().clone(),
+            )
+            .expect("failed to execute 'sync_xsvm_subnet_config'");
         }
 
         _ => {

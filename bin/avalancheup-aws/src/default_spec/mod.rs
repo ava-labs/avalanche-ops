@@ -364,6 +364,15 @@ pub fn command() -> Command {
                 .default_value("1"),
         )
         .arg(
+            Arg::new("XSVMS")
+                .long("xsvms")
+                .help("Sets the number of XSVMs")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("0"),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')

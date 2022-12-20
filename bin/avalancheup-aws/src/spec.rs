@@ -12,6 +12,7 @@ use avalanche_types::{
     coreth::chain_config as coreth_chain_config,
     key, node, subnet,
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
+    xsvm::genesis as xsvm_genesis,
 };
 use aws_manager::kms;
 use lazy_static::lazy_static;
@@ -83,6 +84,10 @@ pub struct Spec {
     /// to each subnet/chain configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evms: Option<BTreeMap<String, SubnetEvm>>,
+    /// Use sorted map in order to map each whitelisted subnet id (placeholder)
+    /// to each subnet configuration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub xsvms: Option<BTreeMap<String, Xsvm>>,
 
     /// NOTE: Only required for custom networks with pre-funded wallets!
     /// These are used for custom primary network genesis generation and will be pre-funded.
@@ -115,6 +120,12 @@ pub struct Spec {
 pub struct SubnetEvm {
     pub genesis: subnet_evm_genesis::Genesis,
     pub chain_config: subnet_evm_chain_config::Config,
+    pub subnet_config: subnet::config::Config,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct Xsvm {
+    pub genesis: xsvm_genesis::Genesis,
     pub subnet_config: subnet::config::Config,
 }
 
@@ -179,6 +190,8 @@ pub struct DefaultSpecOption {
     pub subnet_evm_auto_contract_native_minter_config: bool,
     pub subnet_evm_auto_fee_manager_config: bool,
     pub subnet_evm_config_proposer_min_block_delay_seconds: u64,
+
+    pub xsvms: usize,
 
     pub spec_file_path: String,
 }
@@ -529,6 +542,37 @@ impl Spec {
             }
         };
 
+        let xsvms = {
+            if opts.xsvms > 0 {
+                let genesis = xsvm_genesis::Genesis::new(&test_keys_read_only)
+                    .expect("failed to generate genesis");
+
+                let mut subnet_config = subnet::config::Config::default();
+                if opts.subnet_evm_config_proposer_min_block_delay_seconds > 0 {
+                    subnet_config.proposer_min_block_delay = opts
+                        .subnet_evm_config_proposer_min_block_delay_seconds
+                        * 1000
+                        * 1000
+                        * 1000;
+                }
+
+                let xsvm = Xsvm {
+                    genesis,
+                    subnet_config,
+                };
+                let mut xsvms = BTreeMap::new();
+                for i in 0..opts.xsvms {
+                    xsvms.insert(
+                        format!("{}{}", i + 1, random_manager::string(5)),
+                        xsvm.clone(),
+                    );
+                }
+                Some(xsvms)
+            } else {
+                None
+            }
+        };
+
         // [year][month][date]-[system host-based id]
         let s3_bucket = format!(
             "avalanche-ops-{}-{}-{}",
@@ -713,6 +757,7 @@ impl Spec {
             avalanchego_genesis_template,
 
             subnet_evms,
+            xsvms,
 
             test_key_infos: Some(test_keys_infos),
 
@@ -1141,6 +1186,7 @@ metrics_fetch_interval_seconds: 5000
         avalanchego_genesis_template: None,
 
         subnet_evms: None,
+        xsvms: None,
 
         test_key_infos: None,
         created_nodes: None,
@@ -1574,8 +1620,9 @@ pub enum StackName {
     Vpc(String),
     AsgAnchorNodes(String),
     AsgNonAnchorNodes(String),
-    SsmDocRestartNodeWhitelistSubnet(String),
-    SsmDocRestartNodeChanConfig(String),
+    SsmDocRestartNodeWhitelistSubnetSubnetEvm(String),
+    SsmDocRestartNodeWhitelistSubnetXsvm(String),
+    SsmDocRestartNodeChanConfigSubnetEvm(String),
 }
 
 impl StackName {
@@ -1585,11 +1632,14 @@ impl StackName {
             StackName::Vpc(id) => format!("{}-vpc", id),
             StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
             StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
-            StackName::SsmDocRestartNodeWhitelistSubnet(id) => {
-                format!("{}-ssm-doc-restart-node-whitelist-subnet", id)
+            StackName::SsmDocRestartNodeWhitelistSubnetSubnetEvm(id) => {
+                format!("{}-ssm-doc-restart-node-whitelist-subnet-subnet-evm", id)
             }
-            StackName::SsmDocRestartNodeChanConfig(id) => {
-                format!("{}-ssm-doc-restart-node-chain-config", id)
+            StackName::SsmDocRestartNodeWhitelistSubnetXsvm(id) => {
+                format!("{}-ssm-doc-restart-node-whitelist-subnet-xsvm", id)
+            }
+            StackName::SsmDocRestartNodeChanConfigSubnetEvm(id) => {
+                format!("{}-ssm-doc-restart-node-chain-config-subnet-evm", id)
             }
         }
     }
