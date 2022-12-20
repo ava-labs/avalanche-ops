@@ -2413,7 +2413,7 @@ default-spec \\
             log::info!("added subnet validators for {}", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
 
-            let xsvm_genesis_bytes = xsvm.genesis.to_bytes().unwrap();
+            let xsvm_genesis_bytes = xsvm.genesis.to_packer_bytes().unwrap();
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
