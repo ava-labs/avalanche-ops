@@ -1636,9 +1636,9 @@ aws ssm start-session --region {} --target {}
     } else {
         Vec::new()
     };
-    let mut rpc_hosts_to_nodes = HashMap::new();
+    let mut rpc_host_to_node = HashMap::new();
     for node in created_nodes.iter() {
-        rpc_hosts_to_nodes.insert(node.public_ip.clone(), node.clone());
+        rpc_host_to_node.insert(node.public_ip.clone(), node.clone());
         rpc_hosts.push(node.public_ip.clone())
     }
 
@@ -2224,6 +2224,7 @@ default-spec \\
                 )
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
+
             subnet_evm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
 
             execute!(
@@ -2548,6 +2549,7 @@ default-spec \\
                 )
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
+
             xsvm_blockchain_ids.insert(blockchain_id.to_string(), selected_node_ids.clone());
         }
     }
@@ -2593,7 +2595,7 @@ default-spec \\
             println!();
         }
         for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
-            if let Some(node) = rpc_hosts_to_nodes.get(host) {
+            if let Some(node) = rpc_host_to_node.get(host) {
                 println!(
                     "subnet-evm RPC for node '{}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
                     node.node_id
@@ -2610,7 +2612,8 @@ default-spec \\
             println!();
         }
         for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
-            if let Some(node) = rpc_hosts_to_nodes.get(host) {
+            log::info!("{xsvm_blockchain_id} validators {:?}:", node_ids);
+            if let Some(node) = rpc_host_to_node.get(host) {
                 println!(
                     "xsvm RPC for node '{}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
                     node.node_id
