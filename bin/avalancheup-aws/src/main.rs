@@ -198,6 +198,7 @@ fn main() {
                     .clone(),
 
                 xsvms,
+                xsvms_split_validators: sub_matches.get_flag("XSVMS_SPLIT_VALIDATORS"),
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")

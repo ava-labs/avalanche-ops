@@ -373,6 +373,13 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
+            Arg::new("XSVMS_SPLIT_VALIDATORS")
+                .long("xsvms-split-validators")
+                .help("Sets to split multiple XSVMs to a separate group of subnet validators")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
@@ -401,6 +408,15 @@ pub fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()>
             format!(
                 "can't --keys-to-generate={} (>0) for {} network",
                 opts.keys_to_generate, opts.network_name
+            ),
+        ));
+    }
+    if opts.xsvms_split_validators && opts.xsvms < 2 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!(
+                "not enough XSVMs ({}) to split the subenet validators",
+                opts.xsvms
             ),
         ));
     }

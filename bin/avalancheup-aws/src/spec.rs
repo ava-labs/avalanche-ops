@@ -88,6 +88,8 @@ pub struct Spec {
     /// to each subnet configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub xsvms: Option<BTreeMap<String, Xsvm>>,
+    #[serde(default)]
+    pub xsvms_split_validators: bool,
 
     /// NOTE: Only required for custom networks with pre-funded wallets!
     /// These are used for custom primary network genesis generation and will be pre-funded.
@@ -192,6 +194,7 @@ pub struct DefaultSpecOption {
     pub subnet_evm_config_proposer_min_block_delay_seconds: u64,
 
     pub xsvms: usize,
+    pub xsvms_split_validators: bool,
 
     pub spec_file_path: String,
 }
@@ -758,6 +761,7 @@ impl Spec {
 
             subnet_evms,
             xsvms,
+            xsvms_split_validators: opts.xsvms_split_validators,
 
             test_key_infos: Some(test_keys_infos),
 
@@ -1187,6 +1191,7 @@ metrics_fetch_interval_seconds: 5000
 
         subnet_evms: None,
         xsvms: None,
+        xsvms_split_validators: false,
 
         test_key_infos: None,
         created_nodes: None,

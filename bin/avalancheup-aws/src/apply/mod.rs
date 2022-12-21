@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap},
     env,
     fs::{self, File},
     io::{self, stdout, Error, ErrorKind},
@@ -1636,7 +1636,9 @@ aws ssm start-session --region {} --target {}
     } else {
         Vec::new()
     };
+    let mut rpc_hosts_to_nodes = HashMap::new();
     for node in created_nodes.iter() {
+        rpc_hosts_to_nodes.insert(node.public_ip.clone(), node.clone());
         rpc_hosts.push(node.public_ip.clone())
     }
 
@@ -1668,23 +1670,20 @@ aws ssm start-session --region {} --target {}
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
     let mut http_rpcs = Vec::new();
     for host in rpc_hosts.iter() {
-        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
-
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
         http_rpcs.push(http_rpc.clone());
 
+        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
         endpoints.http_rpc = Some(http_rpc.clone());
-        endpoints.http_rpc_x = Some(format!("{}/ext/bc/X", http_rpc));
-        endpoints.http_rpc_p = Some(format!("{}/ext/bc/P", http_rpc));
-        endpoints.http_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-        endpoints.metrics = Some(format!("{}/ext/metrics", http_rpc));
-        endpoints.health = Some(format!("{}/ext/health", http_rpc));
-        endpoints.liveness = Some(format!("{}/ext/health/liveness", http_rpc));
-        endpoints.metamask_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-        endpoints.websocket_rpc_c = Some(format!("ws://{}:{}/ext/bc/C/ws", host, port_for_dns));
-
+        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+        endpoints.health = Some(format!("{http_rpc}/ext/health"));
+        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
         spec.created_endpoints = Some(endpoints.clone());
-
         println!(
             "{}",
             spec.created_endpoints
@@ -1772,13 +1771,19 @@ aws ssm start-session --region {} --target {}
     }
     println!("\nURIs: {}", uris.join(","));
 
-    let mut all_node_ids: Vec<String> = Vec::new();
-    let mut all_instance_ids: Vec<String> = Vec::new();
+    let mut all_node_ids = Vec::new();
+    let mut all_instance_ids = Vec::new();
+    let mut node_ids_to_instance_ids = HashMap::new();
     for node in created_nodes.iter() {
         let node_id = node.node_id.clone();
-        all_node_ids.push(node_id);
-        all_instance_ids.push(node.machine_id.clone())
+        let instance_id = node.machine_id.clone();
+
+        all_node_ids.push(node_id.clone());
+        all_instance_ids.push(instance_id.clone());
+
+        node_ids_to_instance_ids.insert(node_id, instance_id);
     }
+
     println!();
     log::info!(
         "apply all success with node Ids {:?} and instance Ids {:?}",
@@ -1893,6 +1898,46 @@ default-spec \\
             "skipping installing subnets for network Id {}",
             spec.avalanchego_config.network_id
         );
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+            ResetColor
+        )?;
+        // TODO: check "/ext/info"
+        // TODO: check "/ext/bc/C/rpc"
+        // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+        // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+        //
+        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+        // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
+        for host in rpc_hosts.iter() {
+            let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+
+            let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+            endpoints.http_rpc = Some(http_rpc.clone());
+            endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+            endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+            endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+            endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+            endpoints.health = Some(format!("{http_rpc}/ext/health"));
+            endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+            endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+            endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+            spec.created_endpoints = Some(endpoints.clone());
+
+            println!(
+                "{}",
+                spec.created_endpoints
+                    .clone()
+                    .unwrap()
+                    .encode_yaml()
+                    .unwrap()
+            );
+        }
+
         return Ok(());
     }
 
@@ -1933,11 +1978,12 @@ default-spec \\
         log::info!("validator tx id {}, added {}", tx_id, added);
     }
 
+    // maps subnet-evm blockchain id to its validator node Ids
+    let mut subnet_evm_blockchain_ids = BTreeMap::new();
     if let Some(subnet_evms) = &spec.subnet_evms {
         println!();
         log::info!("non-empty subnet_evms and custom network, so install with test keys");
         println!();
-        let mut subnet_evm_blockchain_ids = BTreeSet::new();
 
         execute!(
             stdout(),
@@ -2026,12 +2072,13 @@ default-spec \\
         .unwrap();
         log::info!("created ssm document for restarting node to load chain config");
 
-        for (subnet_name, subnet_evm) in subnet_evms.iter() {
-            log::info!("creating subnet {}", subnet_name);
+        for (subnet_evm_name, subnet_evm) in subnet_evms.iter() {
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new subnet...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new subnet for subnet-evm {subnet_evm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             let subnet_id = rt
@@ -2055,11 +2102,11 @@ default-spec \\
             thread::sleep(Duration::from_secs(5));
 
             execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet subnet-evm...\n\n"),
-                    ResetColor
-                )?;
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet subnet-evm...\n\n"),
+                ResetColor
+            )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
             let ssm_output = rt
                 .block_on(
@@ -2074,7 +2121,7 @@ default-spec \\
                             )],
                         )
                         .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                        .parameters("subnetEvmName", vec![subnet_name.clone()])
+                        .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
                         .parameters(
                             "newWhitelistedSubnetId",
                             vec![created_subnet_id.to_string()],
@@ -2113,7 +2160,9 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: adding all nodes as subnet validator subnet-evm..\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: adding selected nodes as subnet validator for subnet-evm {subnet_evm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             for node_id in all_node_ids.iter() {
@@ -2135,7 +2184,9 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new blockchain for subnet-evm {subnet_evm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             let blockchain_id = rt
@@ -2173,14 +2224,14 @@ default-spec \\
                 )
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-            subnet_evm_blockchain_ids.insert(blockchain_id.to_string());
+            subnet_evm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
 
             execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with chain config...\n\n"),
-                    ResetColor
-                )?;
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with chain config...\n\n"),
+                ResetColor
+            )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
             let ssm_output = rt
                 .block_on(
@@ -2189,7 +2240,7 @@ default-spec \\
                         .document_name(ssm_document_name_restart_node_chain_config.clone())
                         .set_instance_ids(Some(all_instance_ids.clone()))
                         .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                        .parameters("subnetEvmName", vec![subnet_name.clone()])
+                        .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
                         .parameters("newBlockchainId", vec![blockchain_id.to_string()])
                         .output_s3_region(spec.aws_resources.region.clone())
                         .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
@@ -2222,7 +2273,11 @@ default-spec \\
             }
         }
 
-        for subnet_evm_blockchain_id in subnet_evm_blockchain_ids.iter() {
+        for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
+            log::info!(
+                "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
+                node_ids
+            );
             execute!(
                 stdout(),
                 SetForegroundColor(Color::DarkGreen),
@@ -2260,11 +2315,12 @@ default-spec \\
         }
     }
 
+    // maps xsvm blockchain id to its validator node Ids
+    let mut xsvm_blockchain_ids = BTreeMap::new();
     if let Some(xsvms) = &spec.xsvms {
         println!();
         log::info!("non-empty xsvms and custom network, so install with test keys");
         println!();
-        let mut xsvm_blockchain_ids = BTreeSet::new();
 
         execute!(
             stdout(),
@@ -2308,12 +2364,44 @@ default-spec \\
         .unwrap();
         log::info!("created ssm document for restarting node with whitelisted subnet");
 
+        // in case we need split subnet validator set
+        // we want batch set to be 2, for 4 nodes + 2 subnets
+        // we want batch set to be 2, for 3 nodes + 2 subnets
+        // we don't want batch set 1, for 3 nodes + 2 subnets
+        let mut batch_size = all_node_ids.len() / xsvms.len();
+        if all_node_ids.len() % 2 == 1 {
+            batch_size += 1;
+        }
+
+        let mut batch_cur = 0_usize;
         for (xsvm_name, xsvm) in xsvms.iter() {
-            log::info!("creating subnet {}", xsvm_name);
+            let selected_node_ids = if spec.xsvms_split_validators {
+                let mut nodes = Vec::new();
+                for (idx, chunks) in all_node_ids.chunks(batch_size).enumerate() {
+                    if idx != batch_cur {
+                        continue;
+                    }
+                    nodes = chunks.to_vec();
+                    break;
+                }
+                nodes
+            } else {
+                all_node_ids.clone()
+            };
+            batch_cur += 1;
+            log::info!(
+                "selected XSVM nodes {:?} out of {:?} (split validators {})",
+                selected_node_ids,
+                all_node_ids,
+                spec.xsvms_split_validators
+            );
+
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new subnet...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new subnet for xsvm {xsvm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             let subnet_id = rt
@@ -2337,11 +2425,11 @@ default-spec \\
             thread::sleep(Duration::from_secs(5));
 
             execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet xsvm...\n\n"),
-                    ResetColor
-                )?;
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet xsvm...\n\n"),
+                ResetColor
+            )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
             let ssm_output = rt
                 .block_on(
@@ -2395,10 +2483,12 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: adding all nodes as subnet validator xsvm...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: adding selected nodes as subnet validator for xsvm {xsvm_name}...\n\n"
+                )),
                 ResetColor
             )?;
-            for node_id in all_node_ids.iter() {
+            for node_id in selected_node_ids.iter() {
                 rt.block_on(
                     wallet_to_spend
                         .p()
@@ -2413,11 +2503,14 @@ default-spec \\
             log::info!("added subnet validators for {}", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
 
+            // do not use JSON bytes
             let xsvm_genesis_bytes = xsvm.genesis.to_packer_bytes().unwrap();
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new blockchain for xsvm {xsvm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             let blockchain_id = rt
@@ -2455,11 +2548,79 @@ default-spec \\
                 )
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-            xsvm_blockchain_ids.insert(blockchain_id.to_string());
+            xsvm_blockchain_ids.insert(blockchain_id.to_string(), selected_node_ids.clone());
+        }
+    }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::DarkGreen),
+        Print("\n\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+        ResetColor
+    )?;
+    // TODO: check "/ext/info"
+    // TODO: check "/ext/bc/C/rpc"
+    // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+    // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+    //
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+    // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
+    for host in rpc_hosts.iter() {
+        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+
+        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+        endpoints.http_rpc = Some(http_rpc.clone());
+        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+        endpoints.health = Some(format!("{http_rpc}/ext/health"));
+        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+        spec.created_endpoints = Some(endpoints.clone());
+        println!(
+            "{}",
+            spec.created_endpoints
+                .clone()
+                .unwrap()
+                .encode_yaml()
+                .unwrap()
+        );
+
+        if !subnet_evm_blockchain_ids.is_empty() {
+            println!();
+        }
+        for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
+            if let Some(node) = rpc_hosts_to_nodes.get(host) {
+                println!(
+                    "subnet-evm RPC for node '{}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
+                    node.node_id
+                );
+            } else {
+                println!(
+                    "[NLB DNS] subnet-evm RPC for nodes '{:?}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
+                    node_ids
+                );
+            }
         }
 
-        for xsvm_blockchain_id in xsvm_blockchain_ids.iter() {
-            log::info!("created XSVM on {xsvm_blockchain_id}");
+        if !xsvm_blockchain_ids.is_empty() {
+            println!();
+        }
+        for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
+            if let Some(node) = rpc_hosts_to_nodes.get(host) {
+                println!(
+                    "xsvm RPC for node '{}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
+                    node.node_id
+                );
+            } else {
+                println!(
+                    "[NLB DNS] xsvm RPC for nodes '{:?}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
+                    node_ids
+                );
+            }
         }
     }
 
