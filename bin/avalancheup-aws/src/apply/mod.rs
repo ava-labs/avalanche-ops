@@ -1636,7 +1636,9 @@ aws ssm start-session --region {} --target {}
     } else {
         Vec::new()
     };
+    let mut rpc_hosts_to_nodes = HashMap::new();
     for node in created_nodes.iter() {
+        rpc_hosts_to_nodes.insert(node.public_ip.clone(), node.clone());
         rpc_hosts.push(node.public_ip.clone())
     }
 
@@ -2071,13 +2073,13 @@ default-spec \\
         log::info!("created ssm document for restarting node to load chain config");
 
         for (subnet_name, subnet_evm) in subnet_evms.iter() {
-            log::info!("creating subnet {}", subnet_name);
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
                 Print("\n\n\nSTEP: creating a new subnet...\n\n"),
                 ResetColor
             )?;
+            log::info!("creating subnet-evm subnet {subnet_name}");
             let subnet_id = rt
                 .block_on(wallet_to_spend.p().create_subnet().dry_mode(true).issue())
                 .unwrap();
@@ -2220,11 +2222,11 @@ default-spec \\
             subnet_evm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
 
             execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with chain config...\n\n"),
-                    ResetColor
-                )?;
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with chain config...\n\n"),
+                ResetColor
+            )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
             let ssm_output = rt
                 .block_on(
@@ -2358,13 +2360,13 @@ default-spec \\
         log::info!("created ssm document for restarting node with whitelisted subnet");
 
         for (xsvm_name, xsvm) in xsvms.iter() {
-            log::info!("creating subnet {}", xsvm_name);
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
                 Print("\n\n\nSTEP: creating a new subnet...\n\n"),
                 ResetColor
             )?;
+            log::info!("creating xsvm subnet {xsvm_name}");
             let subnet_id = rt
                 .block_on(wallet_to_spend.p().create_subnet().dry_mode(true).issue())
                 .unwrap();
@@ -2386,11 +2388,11 @@ default-spec \\
             thread::sleep(Duration::from_secs(5));
 
             execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet xsvm...\n\n"),
-                    ResetColor
-                )?;
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet xsvm...\n\n"),
+                ResetColor
+            )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
             let ssm_output = rt
                 .block_on(
@@ -2506,19 +2508,12 @@ default-spec \\
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
             xsvm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
         }
-
-        for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
-            log::info!(
-                "created XSVM with blockchain Id '{xsvm_blockchain_id}' in nodes {:?}",
-                node_ids
-            );
-        }
     }
 
     execute!(
         stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+        SetForegroundColor(Color::DarkGreen),
+        Print("\n\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
         ResetColor
     )?;
     // TODO: check "/ext/info"
@@ -2556,20 +2551,34 @@ default-spec \\
             println!();
         }
         for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
-            println!(
-                "subnet-evm RPC for '{:?}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
-                node_ids
-            );
+            if let Some(node) = rpc_hosts_to_nodes.get(host) {
+                println!(
+                    "subnet-evm RPC for node '{}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
+                    node.node_id
+                );
+            } else {
+                println!(
+                    "[NLB DNS] subnet-evm RPC for nodes '{:?}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
+                    node_ids
+                );
+            }
         }
 
         if !xsvm_blockchain_ids.is_empty() {
             println!();
         }
         for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
-            println!(
-                "xsvm RPC for '{:?}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
-                node_ids
-            );
+            if let Some(node) = rpc_hosts_to_nodes.get(host) {
+                println!(
+                    "xsvm RPC for node '{}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
+                    node.node_id
+                );
+            } else {
+                println!(
+                    "[NLB DNS] xsvm RPC for nodes '{:?}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
+                    node_ids
+                );
+            }
         }
     }
 
