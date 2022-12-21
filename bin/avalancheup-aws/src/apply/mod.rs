@@ -2072,14 +2072,15 @@ default-spec \\
         .unwrap();
         log::info!("created ssm document for restarting node to load chain config");
 
-        for (subnet_name, subnet_evm) in subnet_evms.iter() {
+        for (subnet_evm_name, subnet_evm) in subnet_evms.iter() {
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new subnet...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new subnet for subnet-evm {subnet_evm_name}...\n\n"
+                )),
                 ResetColor
             )?;
-            log::info!("creating subnet-evm subnet {subnet_name}");
             let subnet_id = rt
                 .block_on(wallet_to_spend.p().create_subnet().dry_mode(true).issue())
                 .unwrap();
@@ -2101,11 +2102,11 @@ default-spec \\
             thread::sleep(Duration::from_secs(5));
 
             execute!(
-                    stdout(),
-                    SetForegroundColor(Color::Green),
-                    Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet subnet-evm...\n\n"),
-                    ResetColor
-                )?;
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet subnet-evm...\n\n"),
+                ResetColor
+            )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
             let ssm_output = rt
                 .block_on(
@@ -2120,7 +2121,7 @@ default-spec \\
                             )],
                         )
                         .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                        .parameters("subnetEvmName", vec![subnet_name.clone()])
+                        .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
                         .parameters(
                             "newWhitelistedSubnetId",
                             vec![created_subnet_id.to_string()],
@@ -2159,7 +2160,9 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: adding all nodes as subnet validator subnet-evm..\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: adding selected nodes as subnet validator for subnet-evm {subnet_evm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             for node_id in all_node_ids.iter() {
@@ -2181,7 +2184,9 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new blockchain for subnet-evm {subnet_evm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             let blockchain_id = rt
@@ -2235,7 +2240,7 @@ default-spec \\
                         .document_name(ssm_document_name_restart_node_chain_config.clone())
                         .set_instance_ids(Some(all_instance_ids.clone()))
                         .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                        .parameters("subnetEvmName", vec![subnet_name.clone()])
+                        .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
                         .parameters("newBlockchainId", vec![blockchain_id.to_string()])
                         .output_s3_region(spec.aws_resources.region.clone())
                         .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
@@ -2359,14 +2364,46 @@ default-spec \\
         .unwrap();
         log::info!("created ssm document for restarting node with whitelisted subnet");
 
+        // in case we need split subnet validator set
+        // we want batch set to be 2, for 4 nodes + 2 subnets
+        // we want batch set to be 2, for 3 nodes + 2 subnets
+        // we don't want batch set 1, for 3 nodes + 2 subnets
+        let mut batch_size = all_node_ids.len() / xsvms.len();
+        if all_node_ids.len() % 2 == 1 {
+            batch_size += 1;
+        }
+
+        let mut batch_cur = 0_usize;
         for (xsvm_name, xsvm) in xsvms.iter() {
+            let selected_node_ids = if spec.xsvms_split_validators {
+                let mut nodes = Vec::new();
+                for (idx, chunks) in all_node_ids.chunks(batch_size).enumerate() {
+                    if idx != batch_cur {
+                        continue;
+                    }
+                    nodes = chunks.to_vec();
+                    break;
+                }
+                nodes
+            } else {
+                all_node_ids.clone()
+            };
+            batch_cur += 1;
+            log::info!(
+                "selected XSVM nodes {:?} out of {:?} (split validators {})",
+                selected_node_ids,
+                all_node_ids,
+                spec.xsvms_split_validators
+            );
+
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new subnet...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new subnet for xsvm {xsvm_name}...\n\n"
+                )),
                 ResetColor
             )?;
-            log::info!("creating xsvm subnet {xsvm_name}");
             let subnet_id = rt
                 .block_on(wallet_to_spend.p().create_subnet().dry_mode(true).issue())
                 .unwrap();
@@ -2446,10 +2483,12 @@ default-spec \\
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: adding all nodes as subnet validator xsvm...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: adding selected nodes as subnet validator for xsvm {xsvm_name}...\n\n"
+                )),
                 ResetColor
             )?;
-            for node_id in all_node_ids.iter() {
+            for node_id in selected_node_ids.iter() {
                 rt.block_on(
                     wallet_to_spend
                         .p()
@@ -2464,11 +2503,14 @@ default-spec \\
             log::info!("added subnet validators for {}", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
 
+            // do not use JSON bytes
             let xsvm_genesis_bytes = xsvm.genesis.to_packer_bytes().unwrap();
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: creating a new blockchain...\n\n"),
+                Print(format!(
+                    "\n\n\nSTEP: creating a new blockchain for xsvm {xsvm_name}...\n\n"
+                )),
                 ResetColor
             )?;
             let blockchain_id = rt
@@ -2506,7 +2548,7 @@ default-spec \\
                 )
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-            xsvm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
+            xsvm_blockchain_ids.insert(blockchain_id.to_string(), selected_node_ids.clone());
         }
     }
 
