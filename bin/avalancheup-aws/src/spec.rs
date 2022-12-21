@@ -18,7 +18,6 @@ use aws_manager::kms;
 use lazy_static::lazy_static;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use tokio::runtime::Runtime;
 
 pub const VERSION: usize = 1;
 
@@ -418,19 +417,18 @@ impl Spec {
                     }
 
                     key::secp256k1::KeyType::AwsKms => {
-                        let rt = Runtime::new().unwrap();
-                        let shared_config = rt
-                            .block_on(aws_manager::load_config(Some(opts.region.clone())))
-                            .expect("failed to aws_manager::load_config");
+                        let shared_config = aws_manager::load_config(Some(opts.region.clone()))
+                            .await
+                            .unwrap();
 
                         let kms_manager = kms::Manager::new(&shared_config);
 
-                        let cmk = rt
-                            .block_on(key::secp256k1::kms::aws::Cmk::create(
-                                kms_manager.clone(),
-                                &format!("{id}-cmk-{i}"),
-                            ))
-                            .unwrap();
+                        let cmk = key::secp256k1::kms::aws::Cmk::create(
+                            kms_manager.clone(),
+                            &format!("{id}-cmk-{i}"),
+                        )
+                        .await
+                        .unwrap();
 
                         let cmk_info = cmk.to_info(network_id).unwrap();
                         println!("cmk_info: {}", cmk_info);
