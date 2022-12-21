@@ -2569,6 +2569,11 @@ default-spec \\
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
     for host in rpc_hosts.iter() {
+        let node_id = if let Some(node) = rpc_host_to_node.get(host) {
+            node.node_id.clone()
+        } else {
+            String::from("NLB DNS")
+        };
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
 
         let mut endpoints = avalancheup_aws::spec::Endpoints::default();
@@ -2583,7 +2588,7 @@ default-spec \\
         endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
         spec.created_endpoints = Some(endpoints.clone());
         println!(
-            "\n---\n{}",
+            "\n---\n{node_id}\n{}",
             spec.created_endpoints
                 .clone()
                 .unwrap()
@@ -2620,6 +2625,11 @@ default-spec \\
                 "xsvm chain {xsvm_blockchain_id} validators: {:?}:",
                 node_ids
             );
+            if !node_ids.contains(&node_id) {
+                log::info!("{node_id} is not validating subnet chain {xsvm_blockchain_id}");
+                continue;
+            }
+
             if let Some(node) = rpc_host_to_node.get(host) {
                 println!(
                     "\nxsvm RPC for node '{}':\n{http_rpc}/ext/bc/{xsvm_blockchain_id}\n",
