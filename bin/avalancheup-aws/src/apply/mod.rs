@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap},
     env,
     fs::{self, File},
     io::{self, stdout, Error, ErrorKind},
@@ -1668,23 +1668,20 @@ aws ssm start-session --region {} --target {}
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
     let mut http_rpcs = Vec::new();
     for host in rpc_hosts.iter() {
-        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
-
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
         http_rpcs.push(http_rpc.clone());
 
+        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
         endpoints.http_rpc = Some(http_rpc.clone());
-        endpoints.http_rpc_x = Some(format!("{}/ext/bc/X", http_rpc));
-        endpoints.http_rpc_p = Some(format!("{}/ext/bc/P", http_rpc));
-        endpoints.http_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-        endpoints.metrics = Some(format!("{}/ext/metrics", http_rpc));
-        endpoints.health = Some(format!("{}/ext/health", http_rpc));
-        endpoints.liveness = Some(format!("{}/ext/health/liveness", http_rpc));
-        endpoints.metamask_rpc_c = Some(format!("{}/ext/bc/C/rpc", http_rpc));
-        endpoints.websocket_rpc_c = Some(format!("ws://{}:{}/ext/bc/C/ws", host, port_for_dns));
-
+        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+        endpoints.health = Some(format!("{http_rpc}/ext/health"));
+        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
         spec.created_endpoints = Some(endpoints.clone());
-
         println!(
             "{}",
             spec.created_endpoints
@@ -1772,13 +1769,19 @@ aws ssm start-session --region {} --target {}
     }
     println!("\nURIs: {}", uris.join(","));
 
-    let mut all_node_ids: Vec<String> = Vec::new();
-    let mut all_instance_ids: Vec<String> = Vec::new();
+    let mut all_node_ids = Vec::new();
+    let mut all_instance_ids = Vec::new();
+    let mut node_ids_to_instance_ids = HashMap::new();
     for node in created_nodes.iter() {
         let node_id = node.node_id.clone();
-        all_node_ids.push(node_id);
-        all_instance_ids.push(node.machine_id.clone())
+        let instance_id = node.machine_id.clone();
+
+        all_node_ids.push(node_id.clone());
+        all_instance_ids.push(instance_id.clone());
+
+        node_ids_to_instance_ids.insert(node_id, instance_id);
     }
+
     println!();
     log::info!(
         "apply all success with node Ids {:?} and instance Ids {:?}",
@@ -1893,6 +1896,46 @@ default-spec \\
             "skipping installing subnets for network Id {}",
             spec.avalanchego_config.network_id
         );
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+            ResetColor
+        )?;
+        // TODO: check "/ext/info"
+        // TODO: check "/ext/bc/C/rpc"
+        // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+        // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+        //
+        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+        // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
+        for host in rpc_hosts.iter() {
+            let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+
+            let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+            endpoints.http_rpc = Some(http_rpc.clone());
+            endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+            endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+            endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+            endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+            endpoints.health = Some(format!("{http_rpc}/ext/health"));
+            endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+            endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+            endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+            spec.created_endpoints = Some(endpoints.clone());
+
+            println!(
+                "{}",
+                spec.created_endpoints
+                    .clone()
+                    .unwrap()
+                    .encode_yaml()
+                    .unwrap()
+            );
+        }
+
         return Ok(());
     }
 
@@ -1933,11 +1976,12 @@ default-spec \\
         log::info!("validator tx id {}, added {}", tx_id, added);
     }
 
+    // maps subnet-evm blockchain id to its validator node Ids
+    let mut subnet_evm_blockchain_ids = BTreeMap::new();
     if let Some(subnet_evms) = &spec.subnet_evms {
         println!();
         log::info!("non-empty subnet_evms and custom network, so install with test keys");
         println!();
-        let mut subnet_evm_blockchain_ids = BTreeSet::new();
 
         execute!(
             stdout(),
@@ -2173,7 +2217,7 @@ default-spec \\
                 )
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-            subnet_evm_blockchain_ids.insert(blockchain_id.to_string());
+            subnet_evm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
 
             execute!(
                     stdout(),
@@ -2222,7 +2266,11 @@ default-spec \\
             }
         }
 
-        for subnet_evm_blockchain_id in subnet_evm_blockchain_ids.iter() {
+        for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
+            log::info!(
+                "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
+                node_ids
+            );
             execute!(
                 stdout(),
                 SetForegroundColor(Color::DarkGreen),
@@ -2260,11 +2308,12 @@ default-spec \\
         }
     }
 
+    // maps xsvm blockchain id to its validator node Ids
+    let mut xsvm_blockchain_ids = BTreeMap::new();
     if let Some(xsvms) = &spec.xsvms {
         println!();
         log::info!("non-empty xsvms and custom network, so install with test keys");
         println!();
-        let mut xsvm_blockchain_ids = BTreeSet::new();
 
         execute!(
             stdout(),
@@ -2455,11 +2504,72 @@ default-spec \\
                 )
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-            xsvm_blockchain_ids.insert(blockchain_id.to_string());
+            xsvm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
         }
 
-        for xsvm_blockchain_id in xsvm_blockchain_ids.iter() {
-            log::info!("created XSVM on {xsvm_blockchain_id}");
+        for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
+            log::info!(
+                "created XSVM with blockchain Id '{xsvm_blockchain_id}' in nodes {:?}",
+                node_ids
+            );
+        }
+    }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+        ResetColor
+    )?;
+    // TODO: check "/ext/info"
+    // TODO: check "/ext/bc/C/rpc"
+    // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+    // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+    //
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+    // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
+    for host in rpc_hosts.iter() {
+        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+
+        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+        endpoints.http_rpc = Some(http_rpc.clone());
+        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+        endpoints.health = Some(format!("{http_rpc}/ext/health"));
+        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+        spec.created_endpoints = Some(endpoints.clone());
+        println!(
+            "{}",
+            spec.created_endpoints
+                .clone()
+                .unwrap()
+                .encode_yaml()
+                .unwrap()
+        );
+
+        if !subnet_evm_blockchain_ids.is_empty() {
+            println!();
+        }
+        for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
+            println!(
+                "subnet-evm RPC for '{:?}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
+                node_ids
+            );
+        }
+
+        if !xsvm_blockchain_ids.is_empty() {
+            println!();
+        }
+        for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
+            println!(
+                "xsvm RPC for '{:?}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
+                node_ids
+            );
         }
     }
 
