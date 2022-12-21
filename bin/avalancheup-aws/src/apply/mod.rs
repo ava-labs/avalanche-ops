@@ -2583,7 +2583,7 @@ default-spec \\
         endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
         spec.created_endpoints = Some(endpoints.clone());
         println!(
-            "{}",
+            "\n---\n{}",
             spec.created_endpoints
                 .clone()
                 .unwrap()
@@ -2595,14 +2595,18 @@ default-spec \\
             println!();
         }
         for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
+            log::info!(
+                "subnet-evm chain {subnet_evm_blockchain_id} validators: {:?}:",
+                node_ids
+            );
             if let Some(node) = rpc_host_to_node.get(host) {
                 println!(
-                    "subnet-evm RPC for node '{}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
+                    "\nsubnet-evm RPC for node '{}':\n{http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc\n",
                     node.node_id
                 );
             } else {
                 println!(
-                    "[NLB DNS] subnet-evm RPC for nodes '{:?}': {http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc",
+                    "\n[NLB DNS] subnet-evm RPC for nodes '{:?}':\n{http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc\n",
                     node_ids
                 );
             }
@@ -2612,15 +2616,18 @@ default-spec \\
             println!();
         }
         for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
-            log::info!("{xsvm_blockchain_id} validators {:?}:", node_ids);
+            log::info!(
+                "xsvm chain {xsvm_blockchain_id} validators: {:?}:",
+                node_ids
+            );
             if let Some(node) = rpc_host_to_node.get(host) {
                 println!(
-                    "xsvm RPC for node '{}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
+                    "\nxsvm RPC for node '{}':\n{http_rpc}/ext/bc/{xsvm_blockchain_id}\n",
                     node.node_id
                 );
             } else {
                 println!(
-                    "[NLB DNS] xsvm RPC for nodes '{:?}': {http_rpc}/ext/bc/{xsvm_blockchain_id}",
+                    "\n[NLB DNS] xsvm RPC for nodes '{:?}':\n{http_rpc}/ext/bc/{xsvm_blockchain_id}\n",
                     node_ids
                 );
             }
