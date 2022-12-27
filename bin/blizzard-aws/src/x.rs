@@ -92,7 +92,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] faucet '{}' can now distribute funds to new keys",
         faucet_key
             .to_public_key()
-            .hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
 
@@ -128,7 +128,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] STEP 5: requesting a bulk of funds from faucet to the first generated new key {}",
         ephemeral_test_keys[0]
             .to_public_key()
-            .hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
 
@@ -198,7 +198,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] first generated new key '{}' can now distribute funds to new keys",
         ephemeral_test_keys[0]
             .to_public_key()
-            .hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
 
@@ -211,7 +211,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] STEP 7: distributing funds from first generated new key {} to all other keys",
         ephemeral_test_keys[0]
             .to_public_key()
-            .hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(spec.blizzard_spec.network_id, "X")
             .unwrap()
     );
     // save some for gas
@@ -226,11 +226,11 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             deposit_amount,
             ephemeral_test_keys[0]
                 .to_public_key()
-                .hrp_address(spec.blizzard_spec.network_id, "X")
+                .to_hrp_address(spec.blizzard_spec.network_id, "X")
                 .unwrap(),
             ephemeral_test_keys[i]
                 .to_public_key()
-                .hrp_address(spec.blizzard_spec.network_id, "X")
+                .to_hrp_address(spec.blizzard_spec.network_id, "X")
                 .unwrap()
         );
 
@@ -299,11 +299,11 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                 transfer_amount,
                 ephemeral_test_keys[i]
                     .to_public_key()
-                    .hrp_address(spec.blizzard_spec.network_id, "X")
+                    .to_hrp_address(spec.blizzard_spec.network_id, "X")
                     .unwrap(),
                 ephemeral_test_keys[(i + 1) % spec.blizzard_spec.keys_to_generate]
                     .to_public_key()
-                    .hrp_address(spec.blizzard_spec.network_id, "X")
+                    .to_hrp_address(spec.blizzard_spec.network_id, "X")
                     .unwrap()
             );
 

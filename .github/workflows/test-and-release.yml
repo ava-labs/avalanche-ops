@@ -171,7 +171,7 @@ jobs:
 
       - name: Install cross
         if: ${{ matrix.job.use-cross == true }}
-        run: cargo install cross
+        run: cargo install cross --locked
 
       - name: Build
         run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanche-config --bin avalanche-kms-signer-aws --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader
