@@ -9,8 +9,8 @@ name = "avalancheup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.179", features = ["avalanchego", "cert", "client", "subnet", "subnet_evm", "kms_aws", "xsvm"] } # https://crates.io/crates/avalanche-types
-aws-manager = "0.22.13" # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.180", features = ["avalanchego", "cert", "client", "subnet", "subnet_evm", "kms_aws", "xsvm"] } # https://crates.io/crates/avalanche-types
+aws-manager = "0.22.14" # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudformation = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
@@ -29,7 +29,7 @@ primitive-types = { version = "0.12.1", features = ["impl-rlp", "impl-serde"], o
 prometheus-manager = "0.0.21"
 random-manager = "0.0.2"
 rust-embed = "6.4.2"
-serde = { version = "1.0.151", features = ["derive"] }
+serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.91" # https://github.com/serde-rs/json/releases
 serde_yaml = "0.9.16" # https://github.com/dtolnay/serde-yaml/releases
 signal-hook = "0.3.14"
