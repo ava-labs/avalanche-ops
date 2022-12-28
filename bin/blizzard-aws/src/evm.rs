@@ -276,7 +276,7 @@ pub async fn make_transfers(
         loop {
             match first_ephemeral_evm_wallet
                 .eip1559()
-                .to(receiver_h160)
+                .recipient(receiver_h160)
                 .value(deposit_amount)
                 .signer_nonce(sender_nonce)
                 .submit()
