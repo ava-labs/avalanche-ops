@@ -174,7 +174,7 @@ pub async fn make_transfers(
         // do not set nonce, so we can fetch the latest
         match faucet_evm_wallet
             .eip1559()
-            .to(ephemeral_test_keys[0].to_public_key().to_h160())
+            .recipient(ephemeral_test_keys[0].to_public_key().to_h160())
             .value(total_to_distribute)
             .submit()
             .await
@@ -371,7 +371,7 @@ pub async fn make_transfers(
             loop {
                 match evm_wallet
                     .eip1559()
-                    .to(receiver_h160)
+                    .recipient(receiver_h160)
                     .value(transfer_amount)
                     .signer_nonce(sender_nonce)
                     .submit()
