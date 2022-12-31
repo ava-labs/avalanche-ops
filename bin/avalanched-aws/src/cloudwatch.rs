@@ -18,9 +18,8 @@ pub struct ConfigManager {
     /// Set "true" to collect instance-level system logs.
     /// Useful to check OOMs via "oom-kill" or "Out of memory: Killed process 8266 (...)"
     pub instance_system_logs: bool,
-    /// Set "true" to collect instance-level system metrics.
-    pub instance_system_metrics: bool,
-    /// Required if "instance_system_metrics" is set "true".
+    /// Required if metrics collection is abled.
+    /// Only used when metrics collection interval is >0.
     pub data_volume_path: Option<String>,
 
     /// CloudWatch agent configuration file path.
@@ -126,7 +125,10 @@ impl ConfigManager {
         if metrics_collect_interval > 172800 {
             log::warn!("invalid metrics_collect_interval {metrics_collect_interval} so disabling instance_system_metrics");
         }
-        if self.instance_system_metrics && metrics_collect_interval <= 172800 {
+        if metrics_collect_interval == 0 {
+            log::warn!("zero metrics_collect_interval, so disabling instance_system_metrics")
+        }
+        if metrics_collect_interval > 0 && metrics_collect_interval <= 172800 {
             let mut cw_metrics = cloudwatch::Metrics::new(metrics_collect_interval);
             cw_metrics.namespace = self.id.clone();
             cw_metrics.metrics_collected.disk = Some(cloudwatch::Disk::new_with_resources(

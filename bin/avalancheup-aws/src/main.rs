@@ -33,7 +33,7 @@ fn main() {
 
             let metrics_fetch_interval_seconds = sub_matches
                 .get_one::<u64>("METRICS_FETCH_INTERVAL_SECONDS")
-                .unwrap_or(&3600)
+                .unwrap_or(&0)
                 .clone();
 
             let preferred_az_index = sub_matches

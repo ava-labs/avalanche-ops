@@ -108,6 +108,7 @@ pub struct Spec {
     pub created_endpoints: Option<Endpoints>,
 
     /// Interval in seconds to fetch system and avalanche node metrics.
+    /// Set to 0 to disable metrics collection.
     #[serde(default)]
     pub metrics_fetch_interval_seconds: u64,
 

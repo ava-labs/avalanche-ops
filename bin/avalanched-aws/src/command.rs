@@ -72,7 +72,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             true,
             avalancheup_aws::spec::default_prometheus_rules(),
             true,
-            3600,
+            0,
         )
     } else {
         let spec = download_and_update_local_spec(
@@ -101,11 +101,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         } else {
             avalancheup_aws::spec::default_prometheus_rules()
         };
-        let metrics_fetch_interval_seconds = if spec.metrics_fetch_interval_seconds > 0 {
-            spec.metrics_fetch_interval_seconds
-        } else {
-            3600
-        };
         (
             spec.avalanchego_config.clone(),
             spec.coreth_chain_config.clone(),
@@ -115,7 +110,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 .unwrap_or_default(),
             metrics_rules,
             !spec.disable_logs_auto_removal,
-            metrics_fetch_interval_seconds,
+            spec.metrics_fetch_interval_seconds,
         )
     };
 
@@ -895,12 +890,8 @@ fn create_cloudwatch_config(
         id: id.to_string(),
         node_kind,
         log_dir: avalanche_logs_dir.to_string(),
-
         instance_system_logs: true,
-        instance_system_metrics: true,
-
         data_volume_path: Some(avalanche_data_volume_path.to_string()),
-
         config_file_path: cloudwatch_config_file_path.to_string(),
     };
     cw_config_manager.sync(
