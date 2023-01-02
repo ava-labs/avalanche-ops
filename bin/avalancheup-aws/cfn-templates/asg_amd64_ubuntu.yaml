@@ -498,8 +498,10 @@ Resources:
               /usr/local/bin/aws-volume-provisioner \
               --log-level=info \
               --initial-wait-random-seconds=${VolumeProvisionerInitialWaitRandomSeconds} \
-              --kind-tag=aws-volume-provisioner \
-              --id-tag=${Id} \
+              --id-tag-key=Id \
+              --id-tag-value=${Id} \
+              --kind-tag-key=Kind \
+              --kind-tag-value=aws-volume-provisioner \
               --volume-type=${VolumeType} \
               --volume-size=${VolumeSize} \
               --volume-iops=${VolumeIops} \
@@ -530,8 +532,10 @@ Resources:
                 echo "Running /usr/local/bin/aws-ip-provisioner..."
                 /usr/local/bin/aws-ip-provisioner \
                 --log-level=info \
-                --kind-tag=aws-ip-provisioner \
-                --id-tag=${Id} \
+                --id-tag-key=Id \
+                --id-tag-value=${Id} \
+                --kind-tag-key=Kind \
+                --kind-tag-value=aws-ip-provisioner \
                 --mounted-eip-file-path=/data/eip.yaml
               else
                 echo "skipping allocating elastic IP address..."

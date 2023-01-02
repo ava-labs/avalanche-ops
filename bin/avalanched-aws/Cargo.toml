@@ -12,7 +12,7 @@ path = "src/main.rs"
 avalanche-installer = "0.0.12" # https://crates.io/crates/avalanche-installer
 avalanche-types = { version = "0.0.185", features = ["avalanchego", "client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
-aws-manager = { version = "0.22.17", features = ["autoscaling", "cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
+aws-manager = { version = "0.22.18", features = ["autoscaling", "cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.22.0" # https://github.com/awslabs/aws-sdk-rust/releases
