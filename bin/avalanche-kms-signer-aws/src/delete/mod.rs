@@ -101,11 +101,11 @@ pub fn execute(
 
     let options = &[
         format!(
-            "No, I am not ready to delete a new KMS CMK '{}' '{}' in {} days!",
+            "No, I am not ready to delete a new KMS CMK '{}' '{}' in {} days",
             region, key_arn, pending_windows_in_days
         ),
         format!(
-            "Yes, let's delete a new KMS CMK '{}' '{}' in {} days!",
+            "Yes, let's delete a new KMS CMK '{}' '{}' in {} days",
             region, key_arn, pending_windows_in_days
         ),
     ];

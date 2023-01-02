@@ -88,11 +88,11 @@ pub fn execute(
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to update configuration with whitelisted subnet Id '{}'!",
+                "No, I am not ready to update configuration with whitelisted subnet Id '{}'.",
                 converted
             ),
             format!(
-                "Yes, let's update configuration with whitelisted subnet Id '{}'!",
+                "Yes, let's update configuration with whitelisted subnet Id '{}'.",
                 converted
             ),
         ];

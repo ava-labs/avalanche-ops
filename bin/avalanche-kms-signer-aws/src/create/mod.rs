@@ -75,11 +75,11 @@ pub fn execute(log_level: &str, region: &str, key_name: &str, skip_prompt: bool)
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to create a new KMS CMK '{}' '{}'!",
+                "No, I am not ready to create a new KMS CMK '{}' '{}'.",
                 region, key_name
             ),
             format!(
-                "Yes, let's create a new KMS CMK '{}' '{}'!",
+                "Yes, let's create a new KMS CMK '{}' '{}'.",
                 region, key_name
             ),
         ];

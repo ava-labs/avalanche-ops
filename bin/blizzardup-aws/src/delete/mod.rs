@@ -128,8 +128,8 @@ pub fn execute(
 
     if !skip_prompt {
         let options = &[
-            "No, I am not ready to delete resources!",
-            "Yes, let's delete resources!",
+            "No, I am not ready to delete resources.",
+            "Yes, let's delete resources.",
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select your 'delete' option")

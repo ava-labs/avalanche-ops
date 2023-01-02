@@ -185,8 +185,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     if !skip_prompt {
         let options = &[
-            "No, I am not ready to create resources!",
-            "Yes, let's create resources!",
+            "No, I am not ready to create resources.",
+            "Yes, let's create resources.",
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select your 'apply' option")
