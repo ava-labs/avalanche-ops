@@ -581,7 +581,7 @@ impl Spec {
             opts.region
         );
         let mut aws_resources = crate::aws::Resources {
-            region: opts.region,
+            region: opts.region.clone(),
             s3_bucket,
             ..crate::aws::Resources::default()
         };
@@ -716,13 +716,22 @@ impl Spec {
             }
         };
 
+        let mut instance_types = Vec::new();
+        for instance_type in DEFAULT_EC2_INSTANCE_TYPES_AMD64.iter() {
+            if opts.region == "ap-northeast-2".to_string() {
+                if instance_type.starts_with("c6a.") || instance_type.starts_with("m6a.") {
+                    continue;
+                }
+            }
+            instance_types.push(instance_type.clone());
+        }
         let machine = Machine {
             anchor_nodes,
             non_anchor_nodes,
 
             // TODO: support "arm64"
             arch: ARCH_AMD64.to_string(),
-            instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
+            instance_types,
 
             instance_mode: opts.instance_mode,
             disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
