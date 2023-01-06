@@ -177,11 +177,9 @@ pub struct DefaultSpecOption {
     pub avalanchego_profile_continuous_freq: String,
     pub avalanchego_profile_continuous_max_files: String,
 
-    pub coreth_metrics_enabled: bool,
     pub coreth_continuous_profiler_enabled: bool,
     pub coreth_offline_pruning_enabled: bool,
     pub coreth_state_sync_enabled: bool,
-    pub coreth_state_sync_metrics_enabled: bool,
 
     pub subnet_evms: usize,
 
@@ -670,9 +668,6 @@ impl Spec {
         }
 
         let mut coreth_chain_config = coreth_chain_config::Config::default();
-        if opts.coreth_metrics_enabled {
-            coreth_chain_config.metrics_enabled = Some(true);
-        }
         if opts.coreth_continuous_profiler_enabled {
             coreth_chain_config.continuous_profiler_dir =
                 Some(String::from(coreth_chain_config::DEFAULT_PROFILE_DIR));
@@ -689,9 +684,6 @@ impl Spec {
             if !opts.avalanchego_state_sync_ids.is_empty() {
                 coreth_chain_config.state_sync_ids = Some(opts.avalanchego_state_sync_ids.clone());
             }
-        }
-        if opts.coreth_state_sync_metrics_enabled {
-            coreth_chain_config.state_sync_metrics_enabled = Some(true);
         }
 
         let state_sync_enabled = if let Some(b) = coreth_chain_config.state_sync_enabled {

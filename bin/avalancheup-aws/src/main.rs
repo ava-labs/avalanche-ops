@@ -172,14 +172,11 @@ fn main() {
                     .unwrap_or(&String::new())
                     .clone(),
 
-                coreth_metrics_enabled: sub_matches.get_flag("CORETH_METRICS_ENABLED"),
                 coreth_continuous_profiler_enabled: sub_matches
                     .get_flag("CORETH_CONTINUOUS_PROFILER_ENABLED"),
                 coreth_offline_pruning_enabled: sub_matches
                     .get_flag("CORETH_OFFLINE_PRUNING_ENABLED"),
                 coreth_state_sync_enabled: sub_matches.get_flag("CORETH_STATE_SYNC_ENABLED"),
-                coreth_state_sync_metrics_enabled: sub_matches
-                    .get_flag("CORETH_STATE_SYNC_METRICS_ENABLED"),
 
                 subnet_evms,
 

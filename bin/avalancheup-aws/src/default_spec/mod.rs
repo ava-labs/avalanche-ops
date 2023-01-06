@@ -272,13 +272,6 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("CORETH_METRICS_ENABLED")
-                .long("coreth-metrics-enabled")
-                .help("Sets metrics-enabled for coreth")
-                .required(false)
-                .num_args(0),
-        )
-        .arg(
             Arg::new("CORETH_CONTINUOUS_PROFILER_ENABLED")
                 .long("coreth-continuous-profiler-enabled")
                 .help("Sets to enable coreth profiler with default values")
@@ -296,13 +289,6 @@ pub fn command() -> Command {
             Arg::new("CORETH_STATE_SYNC_ENABLED")
                 .long("coreth-state-sync-enabled")
                 .help("Sets state-sync-enabled for coreth")
-                .required(false)
-                .num_args(0),
-        )
-        .arg(
-            Arg::new("CORETH_STATE_SYNC_METRICS_ENABLED")
-                .long("coreth-state-sync-metrics-enabled")
-                .help("Sets state-sync-metrics-enabled for coreth")
                 .required(false)
                 .num_args(0),
         )
