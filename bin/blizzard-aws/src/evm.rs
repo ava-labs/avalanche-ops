@@ -1,9 +1,6 @@
 use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 
-use avalanche_types::{
-    client::{evm as client_evm, wallet},
-    key,
-};
+use avalanche_types::{jsonrpc::client::evm as client_evm, key, wallet};
 
 pub async fn make_transfers(
     worker_idx: usize,

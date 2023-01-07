@@ -15,9 +15,9 @@ use std::{
 };
 
 use avalanche_types::{
-    client::{health as client_health, wallet},
     ids::{self, node},
-    key,
+    jsonrpc::client::health as client_health,
+    key, wallet,
 };
 use aws_manager::{
     self, cloudformation, ec2,

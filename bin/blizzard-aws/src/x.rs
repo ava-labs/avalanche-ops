@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use avalanche_types::{client::wallet, key};
+use avalanche_types::{key, wallet};
 
 pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();

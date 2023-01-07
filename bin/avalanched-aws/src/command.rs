@@ -10,8 +10,8 @@ use std::{
 use crate::{cloudwatch, flags};
 use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
-    client::health as client_health,
     coreth,
+    jsonrpc::client::health as client_health,
     key::cert::x509,
     node,
 };
