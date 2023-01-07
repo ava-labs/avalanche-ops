@@ -48,7 +48,7 @@ fn main() {
 
             let subnet_evm_gas_limit = sub_matches
                 .get_one::<u64>("SUBNET_EVM_GAS_LIMIT")
-                .unwrap_or(&8000000)
+                .unwrap_or(&0)
                 .clone();
 
             let subnet_evm_min_max_gas_cost = sub_matches

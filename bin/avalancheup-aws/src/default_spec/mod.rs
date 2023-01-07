@@ -304,11 +304,11 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_EVM_GAS_LIMIT")
                 .long("subnet-evm-gas-limit")
-                .help("Sets subnet-evm gas limit")
+                .help("Sets subnet-evm gas limit (zero then use defaults)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("8000000"),
+                .default_value("0"),
         )
         .arg(
             Arg::new("SUBNET_EVM_MIN_MAX_GAS_COST")
