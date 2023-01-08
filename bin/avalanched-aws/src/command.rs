@@ -341,6 +341,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             avalanchego_config.http_port,
             metrics_fetch_interval_seconds,
         )?;
+    } else {
+        log::info!("skipping avalanche-telemetry-cloudwatch setup since interval is 0");
     }
 
     let http_scheme = {
