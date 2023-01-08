@@ -333,13 +333,15 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     }
 
     stop_and_start_avalanche_systemd_service(&tags.avalanche_bin_path, &avalanchego_config)?;
-    stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
-        &tags.avalanche_telemetry_cloudwatch_bin_path,
-        &tags.avalanche_telemetry_cloudwatch_rules_file_path,
-        &tags.id,
-        avalanchego_config.http_port,
-        metrics_fetch_interval_seconds,
-    )?;
+    if metrics_fetch_interval_seconds > 0 {
+        stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
+            &tags.avalanche_telemetry_cloudwatch_bin_path,
+            &tags.avalanche_telemetry_cloudwatch_rules_file_path,
+            &tags.id,
+            avalanchego_config.http_port,
+            metrics_fetch_interval_seconds,
+        )?;
+    }
 
     let http_scheme = {
         if avalanchego_config.http_tls_enabled.is_some()
@@ -1350,6 +1352,11 @@ fn stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
     http_port: u32,
     metrics_fetch_interval_seconds: u64,
 ) -> io::Result<()> {
+    if metrics_fetch_interval_seconds == 0 {
+        log::info!("skipping avalanche-telemetry-cloudwatch setup since interval is 0");
+        return Ok(());
+    };
+
     log::info!("STEP: setting up and starting avalanche-telemetry-cloudwatch systemd service with namespace {} and fetch interval seconds {}", namespace, metrics_fetch_interval_seconds);
 
     // don't use "Type=notify"
@@ -1369,17 +1376,12 @@ TimeoutStartSec=300
 Restart=always
 RestartSec=5s
 LimitNOFILE=40000
-ExecStart={} --log-level=info --initial-wait-seconds=10 --rules-file-path={} --namespace={} --rpc-endpoint=http://localhost:{} --fetch-interval-seconds={}
+ExecStart={avalanche_telemetry_cloudwatch_bin_path} --log-level=info --initial-wait-seconds=10 --rules-file-path={avalanche_telemetry_cloudwatch_rules_file_path} --namespace={namespace} --rpc-endpoint=http://localhost:{http_port} --fetch-interval-seconds={metrics_fetch_interval_seconds}
 StandardOutput=append:/var/log/avalanche-telemetry-cloudwatch.log
 StandardError=append:/var/log/avalanche-telemetry-cloudwatch.log
 
 [Install]
 WantedBy=multi-user.target",
-        avalanche_telemetry_cloudwatch_bin_path,
-        avalanche_telemetry_cloudwatch_rules_file_path,
-        namespace,
-        http_port,
-        metrics_fetch_interval_seconds,
     );
 
     let mut service_file = tempfile::NamedTempFile::new()?;

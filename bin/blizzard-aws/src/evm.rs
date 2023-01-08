@@ -18,10 +18,9 @@ pub async fn make_transfers(
     for ep in spec.blizzard_spec.rpc_endpoints.iter() {
         http_rpcs.push(ep.http_rpc.clone());
     }
-    let resp = client_evm::chain_id(&http_rpcs[0], &chain_id_alias)
+    let chain_id = client_evm::chain_id(&http_rpcs[0], &chain_id_alias)
         .await
         .unwrap();
-    let chain_id = resp.result;
 
     let total_funded_keys = spec.test_key_infos.len();
 
@@ -296,15 +295,7 @@ pub async fn make_transfers(
                     // e.g., (code: -32000, message: nonce too low: address 0x557FDFCAEff5daDF7287344f4E30172e56EC7aec current nonce (1) > tx nonce (0), data: None)
                     if e.to_string().contains("nonce too low") {
                         log::info!("retrying latest nonce fetch");
-                        let new_nonce = match first_ephemeral_evm_wallet.latest_nonce().await {
-                            Ok(v) => v,
-                            Err(e) => {
-                                log::warn!("failed to get latest nonce {}", e);
-                                sender_nonce
-                                    .checked_add(primitive_types::U256::from(1))
-                                    .unwrap()
-                            }
-                        };
+                        let new_nonce = first_ephemeral_evm_wallet.picked_middleware.next();
                         h160_to_nonce.insert(sender_h160, new_nonce);
                     }
 
@@ -400,15 +391,7 @@ pub async fn make_transfers(
                         // e.g., (code: -32000, message: nonce too low: address 0x557FDFCAEff5daDF7287344f4E30172e56EC7aec current nonce (1) > tx nonce (0), data: None)
                         if e.to_string().contains("nonce too low") {
                             log::info!("retrying latest nonce fetch");
-                            let new_nonce = match evm_wallet.latest_nonce().await {
-                                Ok(v) => v,
-                                Err(e) => {
-                                    log::warn!("failed to get latest nonce {}", e);
-                                    sender_nonce
-                                        .checked_add(primitive_types::U256::from(1))
-                                        .unwrap()
-                                }
-                            };
+                            let new_nonce = evm_wallet.picked_middleware.next();
                             h160_to_nonce.insert(sender_h160, new_nonce);
                         }
 
