@@ -487,7 +487,7 @@ Resources:
                 sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
               else
                 sudo rm -f /tmp/aws-volume-provisioner 
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=6 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-volume-provisioner /tmp/aws-volume-provisioner
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-volume-provisioner /tmp/aws-volume-provisioner
                 chmod +x /tmp/aws-volume-provisioner
                 sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
               fi;
@@ -523,7 +523,7 @@ Resources:
                   sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
                 else
                   sudo rm -f /tmp/aws-ip-provisioner
-                  AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=6 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-ip-provisioner /tmp/aws-ip-provisioner
+                  AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-ip-provisioner /tmp/aws-ip-provisioner
                   chmod +x /tmp/aws-ip-provisioner
                   sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
                 fi;
@@ -552,7 +552,7 @@ Resources:
                 sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
               else
                 sudo rm -f /tmp/avalanche-telemetry-cloudwatch
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=6 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-telemetry-cloudwatch /tmp/avalanche-telemetry-cloudwatch
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-telemetry-cloudwatch /tmp/avalanche-telemetry-cloudwatch
                 chmod +x /tmp/avalanche-telemetry-cloudwatch
                 sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
               fi;
@@ -569,7 +569,7 @@ Resources:
                 sudo mv /tmp/avalanche-config /usr/local/bin/avalanche-config
               else
                 sudo rm -f /tmp/avalanche-config
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=6 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-config /tmp/avalanche-config
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-config /tmp/avalanche-config
                 chmod +x /tmp/avalanche-config
                 sudo mv /tmp/avalanche-config /usr/local/bin/avalanche-config
               fi;
@@ -586,7 +586,7 @@ Resources:
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               else
                 sudo rm -f /tmp/avalanched
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=6 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               fi;
