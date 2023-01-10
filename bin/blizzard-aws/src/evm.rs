@@ -172,6 +172,7 @@ pub async fn make_transfers(
             .eip1559()
             .recipient(ephemeral_test_keys[0].to_public_key().to_h160())
             .value(total_to_distribute)
+            .urgent()
             .submit()
             .await
         {
@@ -275,6 +276,7 @@ pub async fn make_transfers(
                 .recipient(receiver_h160)
                 .value(deposit_amount)
                 .signer_nonce(sender_nonce)
+                .urgent()
                 .submit()
                 .await
             {
@@ -362,6 +364,7 @@ pub async fn make_transfers(
                     .recipient(receiver_h160)
                     .value(transfer_amount)
                     .signer_nonce(sender_nonce)
+                    .urgent()
                     .submit()
                     .await
                 {
