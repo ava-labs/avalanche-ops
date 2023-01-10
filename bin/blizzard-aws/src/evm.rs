@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 
-use avalanche_types::{jsonrpc::client::evm as client_evm, key, wallet};
+use avalanche_types::{jsonrpc::client::evm as jsonrpc_client_evm, key, wallet};
 
 pub async fn make_transfers(
     worker_idx: usize,
@@ -18,9 +18,12 @@ pub async fn make_transfers(
     for ep in spec.blizzard_spec.rpc_endpoints.iter() {
         http_rpcs.push(ep.http_rpc.clone());
     }
-    let chain_id = client_evm::chain_id(&http_rpcs[0], &chain_id_alias)
-        .await
-        .unwrap();
+
+    let chain_id = jsonrpc_client_evm::chain_id(
+        format!("{}/ext/bc/{chain_id_alias}/rpc", http_rpcs[0]).as_str(),
+    )
+    .await
+    .unwrap();
 
     let total_funded_keys = spec.test_key_infos.len();
 
