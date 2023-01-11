@@ -1,11 +1,11 @@
 [package]
 name = "avalanche-config"
-version = "0.2.32" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.2.33" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.66"
 
 [dependencies]
-avalanche-types = { version = "0.0.205", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.206", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
 clap = { version = "4.0.32", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.25.0"
 dialoguer = "0.10.2"
