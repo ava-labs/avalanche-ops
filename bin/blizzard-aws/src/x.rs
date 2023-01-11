@@ -9,9 +9,9 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         total_rpc_eps
     );
 
-    let mut http_rpcs = Vec::new();
+    let mut base_http_urls = Vec::new();
     for ep in spec.blizzard_spec.rpc_endpoints.iter() {
-        http_rpcs.push(ep.http_rpc.clone());
+        base_http_urls.push(ep.http_rpc.clone());
     }
 
     let total_funded_keys = spec.test_key_infos.len();
@@ -36,7 +36,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         .unwrap();
 
         let faucet_wallet = wallet::Builder::new(&k)
-            .http_rpcs(http_rpcs.clone())
+            .base_http_urls(base_http_urls.clone())
             .build()
             .await
             .unwrap();
@@ -83,7 +83,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     .unwrap();
 
     let faucet_wallet = wallet::Builder::new(&faucet_key)
-        .http_rpcs(http_rpcs.clone())
+        .base_http_urls(base_http_urls.clone())
         .build()
         .await
         .unwrap();
@@ -190,7 +190,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     //
     log::info!("[WORKER #{worker_idx}] STEP 6: loading first generated new key and wallet");
     let first_ephemeral_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
-        .http_rpcs(http_rpcs.clone())
+        .base_http_urls(base_http_urls.clone())
         .build()
         .await
         .unwrap();
@@ -274,7 +274,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     let mut ephmeral_wallets = Vec::new();
     for i in 0..spec.blizzard_spec.keys_to_generate {
         let wallet = wallet::Builder::new(&ephemeral_test_keys[i])
-            .http_rpcs(http_rpcs.clone())
+            .base_http_urls(base_http_urls.clone())
             .build()
             .await
             .unwrap();

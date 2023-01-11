@@ -14,16 +14,14 @@ pub async fn make_transfers(
         chain_id_alias,
     );
 
-    let mut http_rpcs = Vec::new();
+    let mut chain_rpc_urls = Vec::new();
     for ep in spec.blizzard_spec.rpc_endpoints.iter() {
-        http_rpcs.push(ep.http_rpc.clone());
+        chain_rpc_urls.push(format!("{}/ext/bc/{chain_id_alias}/rpc", ep.http_rpc));
     }
 
-    let chain_id = jsonrpc_client_evm::chain_id(
-        format!("{}/ext/bc/{chain_id_alias}/rpc", http_rpcs[0]).as_str(),
-    )
-    .await
-    .unwrap();
+    let chain_id = jsonrpc_client_evm::chain_id(&chain_rpc_urls[0])
+        .await
+        .unwrap();
 
     let total_funded_keys = spec.test_key_infos.len();
 
@@ -47,7 +45,7 @@ pub async fn make_transfers(
         .unwrap();
 
         let faucet_wallet = wallet::Builder::new(&k)
-            .http_rpcs(http_rpcs.clone())
+            .base_http_urls(chain_rpc_urls.clone())
             .build()
             .await
             .unwrap();
@@ -55,7 +53,11 @@ pub async fn make_transfers(
         let faucet_local_wallet: ethers_signers::LocalWallet = k.signing_key().into();
 
         let faucet_evm_wallet = faucet_wallet
-            .evm(&faucet_local_wallet, chain_id_alias.to_string(), chain_id)
+            .evm(
+                &faucet_local_wallet,
+                &chain_rpc_urls[i % chain_rpc_urls.len()],
+                chain_id,
+            )
             .unwrap();
 
         let faucet_bal = match faucet_evm_wallet.balance().await {
@@ -99,7 +101,7 @@ pub async fn make_transfers(
     .unwrap();
 
     let faucet_wallet = wallet::Builder::new(&faucet_key)
-        .http_rpcs(http_rpcs.clone())
+        .base_http_urls(chain_rpc_urls.clone())
         .build()
         .await
         .unwrap();
@@ -107,7 +109,7 @@ pub async fn make_transfers(
     let faucet_local_wallet: ethers_signers::LocalWallet = faucet_key.signing_key().into();
 
     let faucet_evm_wallet = faucet_wallet
-        .evm(&faucet_local_wallet, chain_id_alias.to_string(), chain_id)
+        .evm(&faucet_local_wallet, &chain_rpc_urls[0], chain_id)
         .unwrap();
 
     log::info!(
@@ -205,7 +207,7 @@ pub async fn make_transfers(
     //
     log::info!("[WORKER #{worker_idx}] STEP 6: loading first generated new key and wallet");
     let first_ephemeral_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
-        .http_rpcs(http_rpcs.clone())
+        .base_http_urls(chain_rpc_urls.clone())
         .build()
         .await
         .unwrap();
@@ -214,11 +216,7 @@ pub async fn make_transfers(
         ephemeral_test_keys[0].signing_key().into();
 
     let first_ephemeral_evm_wallet = first_ephemeral_wallet
-        .evm(
-            &first_ephemeral_local_wallet,
-            chain_id_alias.to_string(),
-            chain_id,
-        )
+        .evm(&first_ephemeral_local_wallet, &chain_rpc_urls[0], chain_id)
         .unwrap();
 
     log::info!(
@@ -300,7 +298,7 @@ pub async fn make_transfers(
                     // e.g., (code: -32000, message: nonce too low: address 0x557FDFCAEff5daDF7287344f4E30172e56EC7aec current nonce (1) > tx nonce (0), data: None)
                     if e.to_string().contains("nonce too low") {
                         log::info!("retrying latest nonce fetch");
-                        let new_nonce = first_ephemeral_evm_wallet.picked_middleware.next();
+                        let new_nonce = first_ephemeral_evm_wallet.middleware.next();
                         h160_to_nonce.insert(sender_h160, new_nonce);
                     }
 
@@ -319,7 +317,7 @@ pub async fn make_transfers(
     let mut ephmeral_wallets = Vec::new();
     for i in 0..spec.blizzard_spec.keys_to_generate {
         let wallet = wallet::Builder::new(&ephemeral_test_keys[i])
-            .http_rpcs(http_rpcs.clone())
+            .base_http_urls(chain_rpc_urls.clone())
             .build()
             .await
             .unwrap();
@@ -357,7 +355,11 @@ pub async fn make_transfers(
                 ephemeral_test_keys[i].signing_key().into();
 
             let evm_wallet = ephmeral_wallets[i]
-                .evm(&local_wallet, chain_id_alias.to_string(), chain_id)
+                .evm(
+                    &local_wallet,
+                    &chain_rpc_urls[i % chain_rpc_urls.len()],
+                    chain_id,
+                )
                 .unwrap();
 
             let sender_nonce = h160_to_nonce.get(&sender_h160).unwrap().clone();
@@ -397,7 +399,7 @@ pub async fn make_transfers(
                         // e.g., (code: -32000, message: nonce too low: address 0x557FDFCAEff5daDF7287344f4E30172e56EC7aec current nonce (1) > tx nonce (0), data: None)
                         if e.to_string().contains("nonce too low") {
                             log::info!("retrying latest nonce fetch");
-                            let new_nonce = evm_wallet.picked_middleware.next();
+                            let new_nonce = evm_wallet.middleware.next();
                             h160_to_nonce.insert(sender_h160, new_nonce);
                         }
 

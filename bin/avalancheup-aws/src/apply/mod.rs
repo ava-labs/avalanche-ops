@@ -1951,7 +1951,7 @@ default-spec \\
     let wallet_to_spend = rt
         .block_on(
             wallet::Builder::new(&test_key_pk)
-                .http_rpcs(http_rpcs.clone())
+                .base_http_urls(http_rpcs.clone())
                 .build(),
         )
         .unwrap();
