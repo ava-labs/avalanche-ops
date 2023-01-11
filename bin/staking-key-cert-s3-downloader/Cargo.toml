@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.66"
 
 [dependencies]
-aws-manager = { version = "0.22.21", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
+aws-manager = { version = "0.22.22", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
 certs-manager = { path = "../../certs-manager" }
 clap = { version = "4.0.32", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
