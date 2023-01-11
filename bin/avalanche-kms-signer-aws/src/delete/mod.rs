@@ -88,7 +88,7 @@ pub fn execute(
         ResetColor
     )?;
     let cmk = rt
-        .block_on(key::secp256k1::kms::aws::Cmk::create(
+        .block_on(key::secp256k1::kms::aws::Cmk::from_arn(
             kms_manager.clone(),
             key_arn,
         ))

@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -422,12 +422,11 @@ impl Spec {
 
                         let kms_manager = kms::Manager::new(&shared_config);
 
-                        let cmk = key::secp256k1::kms::aws::Cmk::create(
-                            kms_manager.clone(),
-                            &format!("{id}-cmk-{i}"),
-                        )
-                        .await
-                        .unwrap();
+                        let mut tags = HashMap::new();
+                        tags.insert(String::from("Name"), format!("{id}-cmk-{i}"));
+                        let cmk = key::secp256k1::kms::aws::Cmk::create(kms_manager.clone(), tags)
+                            .await
+                            .unwrap();
 
                         let cmk_info = cmk.to_info(network_id).unwrap();
                         println!("cmk_info: {}", cmk_info);

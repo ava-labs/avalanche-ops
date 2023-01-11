@@ -1,4 +1,7 @@
-use std::io::{self, stdout};
+use std::{
+    collections::HashMap,
+    io::{self, stdout},
+};
 
 use avalanche_types::key;
 use aws_manager::{self, kms, sts};
@@ -105,10 +108,12 @@ pub fn execute(log_level: &str, region: &str, key_name: &str, skip_prompt: bool)
         )),
         ResetColor
     )?;
+    let mut tags = HashMap::new();
+    tags.insert(String::from("Name"), key_name.to_string());
     let cmk = rt
         .block_on(key::secp256k1::kms::aws::Cmk::create(
             kms_manager.clone(),
-            key_name,
+            tags,
         ))
         .expect("failed to key::secp256k1::kms::aws::Cmk::create");
     let cmk_info = cmk.to_info(1).unwrap();
