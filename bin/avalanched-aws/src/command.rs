@@ -128,6 +128,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 &tags.os_type.clone(),
                 &tags.arch_type.clone(),
                 &tags.avalanche_bin_path.clone(),
+                &avalanchego_config.plugin_dir,
             )
             .await?;
         } else {
@@ -136,6 +137,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 &tags.s3_bucket,
                 &tags.id,
                 &tags.avalanche_bin_path.clone(),
+                &avalanchego_config.plugin_dir,
             )
             .await?;
         }
@@ -637,7 +639,7 @@ async fn download_and_update_local_spec(
 
     let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
 
-    // do not overwrite since the config file could have been updated with subnet ids
+    // do not overwrite since the config file could have been updated with whitelisted subnet ids
     if let Some(config_file) = &spec.avalanchego_config.config_file {
         // if exists, load the existing one in case manually updated
         if Path::new(&config_file).exists() {
@@ -752,6 +754,7 @@ fn create_config_dirs(
 
     fs::create_dir_all(&avalanchego_config.log_dir)?;
     fs::create_dir_all(&avalanchego_config.subnet_config_dir)?;
+    fs::create_dir_all(&avalanchego_config.plugin_dir)?;
     fs::create_dir_all(&avalanchego_config.chain_config_dir)?;
 
     if let Some(v) = &avalanchego_config.profile_dir {
@@ -772,6 +775,7 @@ async fn install_avalanche_from_github(
     arch_type: &str,
     os_type: &str,
     avalanche_bin_path: &str,
+    plugin_dir: &str,
 ) -> io::Result<()> {
     log::info!("STEP: installing Avalanche from github...");
 
@@ -789,10 +793,9 @@ async fn install_avalanche_from_github(
     let (binary_path, _) = avalanche_installer::avalanchego::download_latest(arch, os).await?;
     fs::copy(&binary_path, avalanche_bin_path)?;
 
-    let plugins_dir = avalanche_installer::avalanchego::get_plugins_dir(avalanche_bin_path);
-    if !Path::new(&plugins_dir).exists() {
-        log::info!("creating '{}' directory for plugins", plugins_dir);
-        fs::create_dir_all(plugins_dir)?;
+    if !Path::new(plugin_dir).exists() {
+        log::info!("creating '{}' directory for plugins", plugin_dir);
+        fs::create_dir_all(plugin_dir)?;
     };
 
     Ok(())
@@ -803,6 +806,7 @@ async fn install_avalanche_and_plugins_from_s3(
     s3_bucket: &str,
     id: &str,
     avalanche_bin_path: &str,
+    plugin_dir: &str,
 ) -> io::Result<()> {
     let s3_manager: &s3::Manager = s3_manager.as_ref();
 
@@ -830,10 +834,9 @@ async fn install_avalanche_and_plugins_from_s3(
     }
 
     // don't overwrite in case of avalanched restarts
-    let plugins_dir = avalanche_installer::avalanchego::get_plugins_dir(&avalanche_bin_path);
-    if !Path::new(&plugins_dir).exists() {
-        log::info!("STEP: creating '{}' for plugins", plugins_dir);
-        fs::create_dir_all(plugins_dir.clone())?;
+    if !Path::new(plugin_dir).exists() {
+        log::info!("STEP: creating '{}' for plugins", plugin_dir);
+        fs::create_dir_all(plugin_dir.clone())?;
 
         log::info!("STEP: downloading plugins from S3 (if any)");
         let objects = s3::spawn_list_objects(
@@ -846,7 +849,7 @@ async fn install_avalanche_and_plugins_from_s3(
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e)))?;
 
-        log::info!("listed {} plugins from S3", objects.len());
+        log::info!("listed {} plugin(s) from S3", objects.len());
         for obj in objects.iter() {
             let s3_key = obj.key().expect("unexpected None s3 object").to_string();
             let s3_file_name = extract_filename(&s3_key);
@@ -854,7 +857,7 @@ async fn install_avalanche_and_plugins_from_s3(
                 log::info!("s3 file name is '{}' directory, so skip", s3_file_name);
                 continue;
             }
-            let download_file_path = format!("{}/{}", plugins_dir, s3_file_name);
+            let download_file_path = format!("{}/{}", plugin_dir, s3_file_name);
 
             log::info!(
                 "downloading plugin {} to {}",
