@@ -830,7 +830,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
---enable-subnet-evm
+--subnet-evms 1
 
 #####
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
@@ -846,7 +846,7 @@ cd ${HOME}/avalanche-ops
 --avalanchego-log-level INFO \
 --keys-to-generate 30 \
 --key-files-dir ${HOME}/subnet-evm-test-keys \
---enable-subnet-evm
+--subnet-evms 1
 
 #####
 AVALANCHE_BIN_PATH=${HOME}/go/src/github.com/ava-labs/avalanchego/build/avalanchego
@@ -862,7 +862,7 @@ cd ${HOME}/avalanche-ops
 --avalanchego-log-level INFO \
 --keys-to-generate 30 \
 --key-files-dir ${HOME}/subnet-evm-test-keys \
---enable-subnet-evm
+--subnet-evms 1
 
 # e.g., adjust gas limit
 # https://www.rapidtables.com/convert/number/hex-to-decimal.html
