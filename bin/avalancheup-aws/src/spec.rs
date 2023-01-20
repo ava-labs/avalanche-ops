@@ -163,7 +163,7 @@ pub struct DefaultSpecOption {
     pub install_artifacts_avalanche_config_local_bin: String,
     pub install_artifacts_avalanched_local_bin: String,
     pub install_artifacts_avalanche_local_bin: String,
-    pub install_artifacts_plugins_local_dir: String,
+    pub install_artifacts_plugin_local_dir: String,
 
     pub avalanched_log_level: String,
     pub avalanched_use_default_config: bool,
@@ -661,8 +661,8 @@ impl Spec {
                 Some(opts.install_artifacts_avalanche_local_bin);
             install_artifacts.avalanchego_bin_install_from_s3 = Some(true);
         }
-        if !opts.install_artifacts_plugins_local_dir.is_empty() {
-            install_artifacts.plugins_local_dir = Some(opts.install_artifacts_plugins_local_dir);
+        if !opts.install_artifacts_plugin_local_dir.is_empty() {
+            install_artifacts.plugins_local_dir = Some(opts.install_artifacts_plugin_local_dir);
             install_artifacts.plugins_dir_install_from_s3 = Some(true);
         }
 
