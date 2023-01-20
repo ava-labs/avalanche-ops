@@ -268,7 +268,7 @@ Resources:
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
               else
-                aws s3 cp s3://${S3BucketName}/${Id}/install/blizzard /tmp/blizzard
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/install/blizzard /tmp/blizzard
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
               fi;
