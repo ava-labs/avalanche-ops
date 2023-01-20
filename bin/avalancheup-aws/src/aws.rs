@@ -117,14 +117,14 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_nlb_dns_name: Option<String>,
 
-    /// CloudFormation stack name for SSM document that restarts node with subnet whitelisting.
+    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ssm_doc_restart_node_whitelist_subnet_subnet_evm: Option<String>,
-    /// CloudFormation stack name for SSM document that restarts node with subnet whitelisting.
+    pub cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: Option<String>,
+    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm: Option<String>,
+    pub cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: Option<String>,
     /// CloudFormation stack name for SSM document that restarts node to load chain config.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -176,8 +176,8 @@ impl Resources {
             cloudformation_asg_nlb_target_group_arn: None,
             cloudformation_asg_nlb_dns_name: None,
 
-            cloudformation_ssm_doc_restart_node_whitelist_subnet_subnet_evm: None,
-            cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm: None,
+            cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: None,
+            cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,
             cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: None,
             cloudwatch_avalanche_metrics_namespace: None,
         }

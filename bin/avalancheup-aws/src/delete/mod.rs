@@ -266,12 +266,12 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with subnet-evm whitelist\n"),
+            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with subnet-evm track\n"),
             ResetColor
         )?;
         let ssm_doc_stack_name = spec
             .aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_subnet_evm
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
             .clone()
             .unwrap();
         rt.block_on(cloudformation_manager.delete_stack(ssm_doc_stack_name.as_str()))
@@ -298,12 +298,12 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with xsvm whitelist\n"),
+            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with xsvm track\n"),
             ResetColor
         )?;
         let ssm_doc_stack_name = spec
             .aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .clone()
             .unwrap();
         rt.block_on(cloudformation_manager.delete_stack(ssm_doc_stack_name.as_str()))
@@ -453,7 +453,7 @@ pub fn execute(
 
     if spec
         .aws_resources
-        .cloudformation_ssm_doc_restart_node_whitelist_subnet_subnet_evm
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
         .is_some()
     {
         thread::sleep(Duration::from_secs(1));
@@ -461,13 +461,13 @@ pub fn execute(
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete SSM document for node restart subnet whitelist subnet-evm\n"),
+            Print("\n\n\nSTEP: confirming delete SSM document for node restart subnet track subnet-evm\n"),
             ResetColor
         )?;
 
         let ssm_doc_stack_name = spec
             .aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_subnet_evm
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
             .unwrap();
         rt.block_on(cloudformation_manager.poll_stack(
             ssm_doc_stack_name.as_str(),
@@ -480,21 +480,23 @@ pub fn execute(
 
     if spec
         .aws_resources
-        .cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
         .is_some()
     {
         thread::sleep(Duration::from_secs(1));
 
         execute!(
-        stdout(),
-        SetForegroundColor(Color::Red),
-        Print("\n\n\nSTEP: confirming delete SSM document for node restart subnet whitelist xsvm\n"),
-        ResetColor
-    )?;
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print(
+                "\n\n\nSTEP: confirming delete SSM document for node restart subnet track xsvm\n"
+            ),
+            ResetColor
+        )?;
 
         let ssm_doc_stack_name = spec
             .aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .unwrap();
         rt.block_on(cloudformation_manager.poll_stack(
             ssm_doc_stack_name.as_str(),

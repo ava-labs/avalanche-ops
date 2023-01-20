@@ -639,7 +639,7 @@ async fn download_and_update_local_spec(
 
     let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
 
-    // do not overwrite since the config file could have been updated with whitelisted subnet ids
+    // do not overwrite since the config file could have been updated with tracked subnet ids
     if let Some(config_file) = &spec.avalanchego_config.config_file {
         // if exists, load the existing one in case manually updated
         if Path::new(&config_file).exists() {

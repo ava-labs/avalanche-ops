@@ -19,7 +19,7 @@ Resources:
         - Key: DocumentName
           Value: !Ref DocumentName
         - Key: DocumentVersion
-          Value: "v0"
+          Value: "v1"
       Content:
         schemaVersion: "2.2"
         description: restartAvalancheNodeChainConfig

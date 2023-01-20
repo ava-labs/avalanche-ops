@@ -79,11 +79,11 @@ pub struct Spec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
 
-    /// Use sorted map in order to map each whitelisted subnet id (placeholder)
+    /// Use sorted map in order to map each tracked subnet id (placeholder)
     /// to each subnet/chain configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evms: Option<BTreeMap<String, SubnetEvm>>,
-    /// Use sorted map in order to map each whitelisted subnet id (placeholder)
+    /// Use sorted map in order to map each tracked subnet id (placeholder)
     /// to each subnet configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub xsvms: Option<BTreeMap<String, Xsvm>>,
@@ -1624,9 +1624,9 @@ pub enum StackName {
     Vpc(String),
     AsgAnchorNodes(String),
     AsgNonAnchorNodes(String),
-    SsmDocRestartNodeWhitelistSubnetSubnetEvm(String),
-    SsmDocRestartNodeWhitelistSubnetXsvm(String),
-    SsmDocRestartNodeChanConfigSubnetEvm(String),
+    SsmDocRestartNodeTrackedSubnetSubnetEvm(String),
+    SsmDocRestartNodeTrackedSubnetXsvm(String),
+    SsmDocRestartNodeChainConfigSubnetEvm(String),
 }
 
 impl StackName {
@@ -1636,13 +1636,13 @@ impl StackName {
             StackName::Vpc(id) => format!("{}-vpc", id),
             StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
             StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
-            StackName::SsmDocRestartNodeWhitelistSubnetSubnetEvm(id) => {
-                format!("{}-ssm-doc-restart-node-whitelist-subnet-subnet-evm", id)
+            StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(id) => {
+                format!("{}-ssm-doc-restart-node-tracked-subnet-subnet-evm", id)
             }
-            StackName::SsmDocRestartNodeWhitelistSubnetXsvm(id) => {
-                format!("{}-ssm-doc-restart-node-whitelist-subnet-xsvm", id)
+            StackName::SsmDocRestartNodeTrackedSubnetXsvm(id) => {
+                format!("{}-ssm-doc-restart-node-tracked-subnet-xsvm", id)
             }
-            StackName::SsmDocRestartNodeChanConfigSubnetEvm(id) => {
+            StackName::SsmDocRestartNodeChainConfigSubnetEvm(id) => {
                 format!("{}-ssm-doc-restart-node-chain-config-subnet-evm", id)
             }
         }

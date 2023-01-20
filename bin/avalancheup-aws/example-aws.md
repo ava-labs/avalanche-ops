@@ -139,7 +139,7 @@ To create a custom blockchain for `subnet-evm`:
 
 ![example-aws/37](./img/example-aws/37.png)
 
-Restart the nodes with the whitelisted subnet ID as instructed **(this will be automated in future `avalanche-ops` releases)**:
+Restart the nodes with the tracked subnet ID as instructed **(this will be automated in future `avalanche-ops` releases)**:
 
 ![example-aws/38](./img/example-aws/38.png)
 
