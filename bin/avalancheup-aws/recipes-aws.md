@@ -915,7 +915,7 @@ chmod 400 /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key
 ```bash
 # when "2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7" is the subnet ID from subnet-cli
 sudo systemctl cat avalanche
-/usr/local/bin/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy --version
+/usr/local/bin/plugin/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy --version
 
 # to replace the avalanche configuration
 sudo cat /data/avalanche-configs/config.json

@@ -61,7 +61,7 @@ Resources:
                   /usr/local/bin/avalanched --version
 
                   # sudo systemctl cat avalanche
-                  /usr/local/bin/plugins/{{ vmId }} --version
+                  /usr/local/bin/plugin/{{ vmId }} --version
 
                   # to replace the avalanche configuration
                   # sudo cat /data/avalanche-configs/config.json
