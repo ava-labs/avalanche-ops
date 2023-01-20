@@ -837,6 +837,8 @@ async fn install_avalanche_and_plugin_from_s3(
     if !Path::new(plugin_dir).exists() {
         log::info!("STEP: creating '{}' for plugin", plugin_dir);
         fs::create_dir_all(plugin_dir.clone())?;
+    } else {
+        log::info!("plugin-dir {plugin_dir} already exists -- skipping create_dir_all");
     }
 
     log::info!("STEP: downloading plugin from S3 (if any)");
