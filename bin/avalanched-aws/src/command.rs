@@ -837,46 +837,48 @@ async fn install_avalanche_and_plugin_from_s3(
     if !Path::new(plugin_dir).exists() {
         log::info!("STEP: creating '{}' for plugin", plugin_dir);
         fs::create_dir_all(plugin_dir.clone())?;
+    }
 
-        log::info!("STEP: downloading plugin from S3 (if any)");
-        let objects = s3::spawn_list_objects(
-            s3_manager.to_owned(),
-            s3_bucket,
-            Some(s3::append_slash(
-                &avalancheup_aws::spec::StorageNamespace::PluginDir(id.to_string()).encode(),
-            )),
-        )
-        .await
-        .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e)))?;
+    log::info!("STEP: downloading plugin from S3 (if any)");
+    let objects = s3::spawn_list_objects(
+        s3_manager.to_owned(),
+        s3_bucket,
+        Some(s3::append_slash(
+            &avalancheup_aws::spec::StorageNamespace::PluginDir(id.to_string()).encode(),
+        )),
+    )
+    .await
+    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e)))?;
 
-        log::info!("listed {} plugin(s) from S3", objects.len());
-        for obj in objects.iter() {
-            let s3_key = obj.key().expect("unexpected None s3 object").to_string();
-            let s3_file_name = extract_filename(&s3_key);
-            if s3_file_name.ends_with("plugin") || s3_file_name.ends_with("plugin/") {
-                log::info!("s3 file name is '{}' directory, so skip", s3_file_name);
-                continue;
-            }
-            let download_file_path = format!("{}/{}", plugin_dir, s3_file_name);
-
-            log::info!(
-                "downloading plugin {} to {}",
-                s3_file_name,
-                download_file_path
-            );
-            let tmp_path = random_manager::tmp_path(15, None)?;
-            s3::spawn_get_object(s3_manager.to_owned(), s3_bucket, &s3_key, &tmp_path)
-                .await
-                .map_err(|e| {
-                    Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e))
-                })?;
-
-            fs::copy(&tmp_path, &download_file_path)?;
-            fs::remove_file(&tmp_path)?;
-
-            let f = File::open(download_file_path).expect("failed to open plugin file");
-            f.set_permissions(PermissionsExt::from_mode(0o777))?;
+    log::info!("listed {} plugin(s) from S3", objects.len());
+    for obj in objects.iter() {
+        let s3_key = obj.key().expect("unexpected None s3 object").to_string();
+        let s3_file_name = extract_filename(&s3_key);
+        if s3_file_name.ends_with("plugin") || s3_file_name.ends_with("plugin/") {
+            log::info!("s3 file name is '{}' directory, so skip", s3_file_name);
+            continue;
         }
+        let download_file_path = format!("{}/{}", plugin_dir, s3_file_name);
+        if Path::new(&download_file_path).exists() {
+            log::info!("{download_file_path} already exists -- skipping...");
+            continue;
+        }
+
+        log::info!(
+            "downloading plugin {} to {}",
+            s3_file_name,
+            download_file_path
+        );
+        let tmp_path = random_manager::tmp_path(15, None)?;
+        s3::spawn_get_object(s3_manager.to_owned(), s3_bucket, &s3_key, &tmp_path)
+            .await
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+
+        fs::copy(&tmp_path, &download_file_path)?;
+        fs::remove_file(&tmp_path)?;
+
+        let f = File::open(download_file_path).expect("failed to open plugin file");
+        f.set_permissions(PermissionsExt::from_mode(0o777))?;
     }
 
     Ok(())
