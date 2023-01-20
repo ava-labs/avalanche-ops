@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.66"
 
 [dependencies]
-avalanche-types = { version = "0.0.217", features = ["kms_aws"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.221", features = ["kms_aws"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.23.0", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.1.1", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.25.0"
@@ -13,4 +13,4 @@ dialoguer = "0.10.3"
 env_logger = "0.10.0"
 id-manager = "0.0.2"
 log = "0.4.17"
-tokio = { version = "1.24.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.24.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases

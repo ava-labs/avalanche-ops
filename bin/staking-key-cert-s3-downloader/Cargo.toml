@@ -10,4 +10,4 @@ certs-manager = { path = "../../certs-manager" }
 clap = { version = "4.1.1", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
 log = "0.4.17"
-tokio = { version = "1.24.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.24.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases

@@ -153,22 +153,24 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     }
     if spec.subnet_evms.is_some() {
         spec.aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_subnet_evm = Some(
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeWhitelistSubnetSubnetEvm(
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm = Some(
+            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
                 spec.id.clone(),
             )
             .encode(),
         );
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm = Some(
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeChanConfigSubnetEvm(spec.id.clone())
-                .encode(),
+            avalancheup_aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
+                spec.id.clone(),
+            )
+            .encode(),
         );
     }
     if spec.xsvms.is_some() {
         spec.aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm = Some(
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeWhitelistSubnetXsvm(spec.id.clone())
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm = Some(
+            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
                 .encode(),
         );
     }
@@ -1988,26 +1990,26 @@ default-spec \\
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: creating an SSM document for restarting node with whitelisted subnet subnet-evm...\n\n"),
+            Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet subnet-evm...\n\n"),
             ResetColor
         )?;
         let ssm_doc_yaml =
-            Asset::get("cfn-templates/ssm_doc_restart_node_whitelist_subnet_subnet_evm.yaml")
+            Asset::get("cfn-templates/ssm_doc_restart_node_tracked_subnet_subnet_evm.yaml")
                 .unwrap();
         let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_subnet_evm
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
             .clone()
             .unwrap();
-        let ssm_document_name_restart_whitelist_subnet =
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeWhitelistSubnetSubnetEvm(
+        let ssm_document_name_restart_tracked_subnet =
+            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
                 spec.id.clone(),
             )
             .encode();
         let cfn_params = Vec::from([build_param(
             "DocumentName",
-            &ssm_document_name_restart_whitelist_subnet,
+            &ssm_document_name_restart_tracked_subnet,
         )]);
         rt.block_on(cloudformation_manager.create_stack(
             ssm_doc_stack_name.as_str(),
@@ -2028,7 +2030,7 @@ default-spec \\
             Duration::from_secs(30),
         ))
         .unwrap();
-        log::info!("created ssm document for restarting node with whitelisted subnet");
+        log::info!("created ssm document for restarting node with tracked subnet");
 
         execute!(
             stdout(),
@@ -2045,8 +2047,10 @@ default-spec \\
             .clone()
             .unwrap();
         let ssm_document_name_restart_node_chain_config =
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeChanConfigSubnetEvm(spec.id.clone())
-                .encode();
+            avalancheup_aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
+                spec.id.clone(),
+            )
+            .encode();
         let cfn_params = Vec::from([build_param(
             "DocumentName",
             &ssm_document_name_restart_node_chain_config,
@@ -2095,16 +2099,13 @@ default-spec \\
                         .issue(),
                 )
                 .unwrap();
-            log::info!(
-                "created subnet '{}' (still need whitelist)",
-                created_subnet_id
-            );
+            log::info!("created subnet '{}' (still need track)", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
 
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet subnet-evm...\n\n"),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with tracked subnet subnet-evm...\n\n"),
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
@@ -2112,7 +2113,7 @@ default-spec \\
                 .block_on(
                     ssm_cli
                         .send_command()
-                        .document_name(ssm_document_name_restart_whitelist_subnet.clone())
+                        .document_name(ssm_document_name_restart_tracked_subnet.clone())
                         .set_instance_ids(Some(all_instance_ids.clone()))
                         .parameters(
                             "vmId",
@@ -2122,10 +2123,7 @@ default-spec \\
                         )
                         .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
                         .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
-                        .parameters(
-                            "newWhitelistedSubnetId",
-                            vec![created_subnet_id.to_string()],
-                        )
+                        .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
                         .output_s3_region(spec.aws_resources.region.clone())
                         .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
                         .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
@@ -2326,23 +2324,23 @@ default-spec \\
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: creating an SSM document for restarting node with whitelisted subnet xsvm...\n\n"),
+            Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet xsvm...\n\n"),
             ResetColor
         )?;
         let ssm_doc_yaml =
-            Asset::get("cfn-templates/ssm_doc_restart_node_whitelist_subnet_xsvm.yaml").unwrap();
+            Asset::get("cfn-templates/ssm_doc_restart_node_tracked_subnet_xsvm.yaml").unwrap();
         let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
-            .cloudformation_ssm_doc_restart_node_whitelist_subnet_xsvm
+            .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .clone()
             .unwrap();
-        let ssm_document_name_restart_whitelist_subnet =
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeWhitelistSubnetXsvm(spec.id.clone())
+        let ssm_document_name_restart_tracked_subnet =
+            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
                 .encode();
         let cfn_params = Vec::from([build_param(
             "DocumentName",
-            &ssm_document_name_restart_whitelist_subnet,
+            &ssm_document_name_restart_tracked_subnet,
         )]);
         rt.block_on(cloudformation_manager.create_stack(
             ssm_doc_stack_name.as_str(),
@@ -2363,7 +2361,7 @@ default-spec \\
             Duration::from_secs(30),
         ))
         .unwrap();
-        log::info!("created ssm document for restarting node with whitelisted subnet");
+        log::info!("created ssm document for restarting node with tracked subnet");
 
         // in case we need split subnet validator set
         // we want batch set to be 2, for 4 nodes + 2 subnets
@@ -2419,16 +2417,13 @@ default-spec \\
                         .issue(),
                 )
                 .unwrap();
-            log::info!(
-                "created subnet '{}' (still need whitelist)",
-                created_subnet_id
-            );
+            log::info!("created subnet '{}' (still need track)", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
 
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with whitelisted subnet xsvm...\n\n"),
+                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with tracked subnet xsvm...\n\n"),
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
@@ -2436,7 +2431,7 @@ default-spec \\
                 .block_on(
                     ssm_cli
                         .send_command()
-                        .document_name(ssm_document_name_restart_whitelist_subnet.clone())
+                        .document_name(ssm_document_name_restart_tracked_subnet.clone())
                         .set_instance_ids(Some(all_instance_ids.clone()))
                         .parameters(
                             "vmId",
@@ -2446,10 +2441,7 @@ default-spec \\
                         )
                         .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
                         .parameters("xsvmName", vec![xsvm_name.clone()])
-                        .parameters(
-                            "newWhitelistedSubnetId",
-                            vec![created_subnet_id.to_string()],
-                        )
+                        .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
                         .output_s3_region(spec.aws_resources.region.clone())
                         .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
                         .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))

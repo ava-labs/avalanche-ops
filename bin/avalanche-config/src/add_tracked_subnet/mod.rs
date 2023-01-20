@@ -12,11 +12,11 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 
-pub const NAME: &str = "add-whitelist-subnet";
+pub const NAME: &str = "add-tracked-subnet";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Adds a whitelisted subnet (no overwrite)")
+        .about("Adds a tracked subnet (no overwrite)")
         .long_about(
             "
 
@@ -51,7 +51,7 @@ Requires configuration file that's compatible to avalanche_types::avalanchego::c
         .arg(
             Arg::new("SUBNET_ID")
                 .long("subnet-id")
-                .help("Sets the subnet Id to add")
+                .help("Sets the subnet Id to add/track")
                 .required(true)
                 .num_args(1),
         )
@@ -77,10 +77,7 @@ pub fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    log::info!(
-        "adding subnet-id '{}' to whitelisted-subnets flag",
-        subnet_id
-    );
+    log::info!("adding subnet-id '{}' to tracked-subnets flag", subnet_id);
     let converted = ids::Id::from_str(subnet_id)?;
     log::info!("validated subnet-id '{}'", converted);
 
@@ -88,16 +85,16 @@ pub fn execute(
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to update configuration with whitelisted subnet Id '{}'.",
+                "No, I am not ready to update configuration with tracked subnet Id '{}'.",
                 converted
             ),
             format!(
-                "Yes, let's update configuration with whitelisted subnet Id '{}'.",
+                "Yes, let's update configuration with tracked subnet Id '{}'.",
                 converted
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your 'add-whitelist-subnet' option")
+            .with_prompt("Select your 'add-tracked-subnet' option")
             .items(&options[..])
             .default(0)
             .interact()
@@ -130,23 +127,23 @@ pub fn execute(
         ResetColor
     )?;
 
-    let mut new_whitelisted_subnets = BTreeSet::new();
-    new_whitelisted_subnets.insert(subnet_id.to_string());
+    let mut new_tracked_subnets = BTreeSet::new();
+    new_tracked_subnets.insert(subnet_id.to_string());
 
-    let existing_whitelisted_subnets = config.whitelisted_subnets.clone().unwrap_or(String::new());
-    for existing_subnet_id in existing_whitelisted_subnets.split(',').into_iter() {
+    let existing_tracked_subnets = config.tracked_subnets.clone().unwrap_or(String::new());
+    for existing_subnet_id in existing_tracked_subnets.split(',').into_iter() {
         if existing_subnet_id.is_empty() {
             continue;
         }
-        new_whitelisted_subnets.insert(existing_subnet_id.to_string());
+        new_tracked_subnets.insert(existing_subnet_id.to_string());
     }
 
-    let mut whitelisted_subnets = Vec::new();
-    for new_subnet_id in new_whitelisted_subnets {
-        whitelisted_subnets.push(new_subnet_id);
+    let mut tracked_subnets = Vec::new();
+    for new_subnet_id in new_tracked_subnets {
+        tracked_subnets.push(new_subnet_id);
     }
-    if !whitelisted_subnets.is_empty() {
-        config.whitelisted_subnets = Some(whitelisted_subnets.join(","));
+    if !tracked_subnets.is_empty() {
+        config.tracked_subnets = Some(tracked_subnets.join(","));
     }
 
     execute!(

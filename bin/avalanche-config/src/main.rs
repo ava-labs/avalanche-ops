@@ -1,4 +1,4 @@
-mod add_whitelist_subnet;
+mod add_tracked_subnet;
 mod default;
 
 use clap::{crate_version, Command};
@@ -9,12 +9,12 @@ fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
         .about("Avalanche configuration tools")
-        .subcommands(vec![add_whitelist_subnet::command(), default::command()])
+        .subcommands(vec![add_tracked_subnet::command(), default::command()])
         .get_matches();
 
     match matches.subcommand() {
-        Some((add_whitelist_subnet::NAME, sub_matches)) => {
-            add_whitelist_subnet::execute(
+        Some((add_tracked_subnet::NAME, sub_matches)) => {
+            add_tracked_subnet::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
@@ -30,7 +30,7 @@ fn main() {
                 &sub_matches.get_one::<String>("SUBNET_ID").unwrap().clone(),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
-            .expect("failed to execute 'add_whitelist_subnet'");
+            .expect("failed to execute 'add_tracked_subnet'");
         }
 
         Some((default::NAME, sub_matches)) => {
