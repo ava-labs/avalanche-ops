@@ -21,7 +21,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 NOTES
 - Runs `avalanched` lite mode
 - `avalanched` envelope-encrypts the generated node certificate, so nobody else has access to the certificate
-- Runs `aws-volume-provisioner` to reuse EBS volumes https://github.com/gyuho/volume-manager
+- Runs `aws-volume-provisioner` to reuse EBS volumes https://github.com/ava-labs/volume-manager
 - Need manual EBS volume cleanups
 
 ### Step 1. Clone 

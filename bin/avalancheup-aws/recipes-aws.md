@@ -281,7 +281,7 @@ cd ${HOME}/avalanche-ops
 
 ### Use static IP
 
-Set `--ip-mode=elastic` to provision elastic IPs to be 1:1 mapped to a node ID via [`aws-ip-provisioners`](https://github.com/gyuho/ip-manager):
+Set `--ip-mode=elastic` to provision elastic IPs to be 1:1 mapped to a node ID via [`aws-ip-provisioners`](https://github.com/ava-labs/ip-manager):
 
 ```bash
 cd ${HOME}/avalanche-ops
