@@ -348,8 +348,8 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
     }
 
-    if spec.install_artifacts.plugins_local_dir.is_some() {
-        let plugins_dir = spec.install_artifacts.plugins_local_dir.clone().unwrap();
+    if spec.install_artifacts.plugin_local_dir.is_some() {
+        let plugins_dir = spec.install_artifacts.plugin_local_dir.clone().unwrap();
         for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
             let entry = entry.unwrap();
             let entry_path = entry.path();
@@ -368,7 +368,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
                 Arc::new(format!(
                     "{}/{}",
-                    &avalancheup_aws::spec::StorageNamespace::PluginsDir(spec.id.clone()).encode(),
+                    &avalancheup_aws::spec::StorageNamespace::PluginDir(spec.id.clone()).encode(),
                     file_name,
                 )),
             ))

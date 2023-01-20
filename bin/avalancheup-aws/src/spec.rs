@@ -619,8 +619,8 @@ impl Spec {
             avalanchego_local_bin: None,
             avalanchego_bin_install_from_s3: None,
 
-            plugins_local_dir: None,
-            plugins_dir_install_from_s3: None,
+            plugin_local_dir: None,
+            plugin_dir_install_from_s3: None,
         };
         if !opts
             .install_artifacts_aws_volume_provisioner_local_bin
@@ -662,8 +662,8 @@ impl Spec {
             install_artifacts.avalanchego_bin_install_from_s3 = Some(true);
         }
         if !opts.install_artifacts_plugin_local_dir.is_empty() {
-            install_artifacts.plugins_local_dir = Some(opts.install_artifacts_plugin_local_dir);
-            install_artifacts.plugins_dir_install_from_s3 = Some(true);
+            install_artifacts.plugin_local_dir = Some(opts.install_artifacts_plugin_local_dir);
+            install_artifacts.plugin_dir_install_from_s3 = Some(true);
         }
 
         let mut coreth_chain_config = coreth_chain_config::Config::default();
@@ -908,11 +908,11 @@ impl Spec {
                 ));
             }
         }
-        if let Some(v) = &self.install_artifacts.plugins_local_dir {
+        if let Some(v) = &self.install_artifacts.plugin_local_dir {
             if !Path::new(v).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("plugins_dir {} does not exist", v),
+                    format!("plugin_dir {} does not exist", v),
                 ));
             }
         }
@@ -1004,10 +1004,10 @@ fn test_spec() {
     let mut f = File::create(&plugin_path).unwrap();
     let ret = f.write_all(&vec![0]);
     assert!(ret.is_ok());
-    let plugins_dir = tmp_dir.path().as_os_str().to_str().unwrap();
+    let plugin_dir = tmp_dir.path().as_os_str().to_str().unwrap();
 
     // test just to see how "read_dir" works in Rust
-    for entry in fs::read_dir(plugins_dir).unwrap() {
+    for entry in fs::read_dir(plugin_dir).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
         log::info!("read_dir: {:?}", path);
@@ -1052,8 +1052,8 @@ install_artifacts:
   avalanched_bin_install_from_s3: true
   avalanchego_local_bin: {}
   avalanchego_bin_install_from_s3: true
-  plugins_local_dir: {}
-  plugins_dir_install_from_s3: true
+  plugin_local_dir: {}
+  plugin_dir_install_from_s3: true
 
 avalanched_config:
   log_level: info
@@ -1115,7 +1115,7 @@ coreth_chain_config:
 metrics_fetch_interval_seconds: 5000
 
 "#,
-        id, bucket, avalanche_config_bin, avalanched_bin, avalanchego_bin, plugins_dir,
+        id, bucket, avalanche_config_bin, avalanched_bin, avalanchego_bin, plugin_dir,
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
@@ -1170,8 +1170,8 @@ metrics_fetch_interval_seconds: 5000
             avalanched_bin_install_from_s3: Some(true),
             avalanchego_local_bin: Some(avalanchego_bin.to_string()),
             avalanchego_bin_install_from_s3: Some(true),
-            plugins_local_dir: Some(plugins_dir.to_string()),
-            plugins_dir_install_from_s3: Some(true),
+            plugin_local_dir: Some(plugin_dir.to_string()),
+            plugin_dir_install_from_s3: Some(true),
         },
 
         avalanched_config: crate::avalanched::Flags {
@@ -1231,9 +1231,9 @@ metrics_fetch_interval_seconds: 5000
     );
     assert_eq!(
         cfg.install_artifacts
-            .plugins_local_dir
+            .plugin_local_dir
             .unwrap_or(String::new()),
-        plugins_dir.to_string()
+        plugin_dir.to_string()
     );
 
     assert!(cfg.machine.anchor_nodes.is_none());
@@ -1600,7 +1600,7 @@ pub struct InstallArtifacts {
     ///
     ///  build
     ///    ├── avalanchego (the binary from compiling the app directory)
-    ///    └── plugins
+    ///    └── plugin
     ///        └── evm
     ///
     /// If none, it downloads the latest from github.
@@ -1613,9 +1613,9 @@ pub struct InstallArtifacts {
     /// Files (if any) are uploaded to the remote storage to be shared
     /// with remote machiens.
     #[serde(default)]
-    pub plugins_local_dir: Option<String>,
+    pub plugin_local_dir: Option<String>,
     #[serde(default)]
-    pub plugins_dir_install_from_s3: Option<bool>,
+    pub plugin_dir_install_from_s3: Option<bool>,
 }
 
 /// Represents the CloudFormation stack name.
@@ -1666,7 +1666,7 @@ pub enum StorageNamespace {
     AvalancheConfigBin(String),
     AvalanchedBin(String),
     AvalancheBin(String),
-    PluginsDir(String),
+    PluginDir(String),
 
     PkiKeyDir(String),
     MetricsRules(String),
@@ -1691,7 +1691,7 @@ pub enum StorageNamespace {
     /// avalanched triggers updates events based on the install artifacts
     /// in "EventsUpdateArtifactsInstallDir"
     EventsUpdateArtifactsEvent(String),
-    EventsUpdateArtifactsInstallDirPluginsDir(String),
+    EventsUpdateArtifactsInstallDirPluginDir(String),
 }
 
 impl StorageNamespace {
@@ -1721,7 +1721,7 @@ impl StorageNamespace {
             StorageNamespace::AvalancheBin(id) => {
                 format!("{}/bootstrap/install/avalanche", id)
             }
-            StorageNamespace::PluginsDir(id) => format!("{}/bootstrap/install/plugins", id),
+            StorageNamespace::PluginDir(id) => format!("{}/bootstrap/install/plugin", id),
 
             StorageNamespace::PkiKeyDir(id) => {
                 format!("{}/pki", id)
@@ -1790,8 +1790,8 @@ impl StorageNamespace {
             StorageNamespace::EventsUpdateArtifactsEvent(id) => {
                 format!("{}/events/update-artifacts/event", id)
             }
-            StorageNamespace::EventsUpdateArtifactsInstallDirPluginsDir(id) => {
-                format!("{}/events/update-artifacts/install/plugins", id)
+            StorageNamespace::EventsUpdateArtifactsInstallDirPluginDir(id) => {
+                format!("{}/events/update-artifacts/install/plugin", id)
             }
         }
     }

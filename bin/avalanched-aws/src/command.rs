@@ -132,7 +132,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             )
             .await?;
         } else {
-            install_avalanche_and_plugins_from_s3(
+            install_avalanche_and_plugin_from_s3(
                 Arc::clone(&s3_manager_arc),
                 &tags.s3_bucket,
                 &tags.id,
@@ -794,14 +794,14 @@ async fn install_avalanche_from_github(
     fs::copy(&binary_path, avalanche_bin_path)?;
 
     if !Path::new(plugin_dir).exists() {
-        log::info!("creating '{}' directory for plugins", plugin_dir);
+        log::info!("creating '{}' directory for plugin", plugin_dir);
         fs::create_dir_all(plugin_dir)?;
     };
 
     Ok(())
 }
 
-async fn install_avalanche_and_plugins_from_s3(
+async fn install_avalanche_and_plugin_from_s3(
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
     id: &str,
@@ -835,15 +835,15 @@ async fn install_avalanche_and_plugins_from_s3(
 
     // don't overwrite in case of avalanched restarts
     if !Path::new(plugin_dir).exists() {
-        log::info!("STEP: creating '{}' for plugins", plugin_dir);
+        log::info!("STEP: creating '{}' for plugin", plugin_dir);
         fs::create_dir_all(plugin_dir.clone())?;
 
-        log::info!("STEP: downloading plugins from S3 (if any)");
+        log::info!("STEP: downloading plugin from S3 (if any)");
         let objects = s3::spawn_list_objects(
             s3_manager.to_owned(),
             s3_bucket,
             Some(s3::append_slash(
-                &avalancheup_aws::spec::StorageNamespace::PluginsDir(id.to_string()).encode(),
+                &avalancheup_aws::spec::StorageNamespace::PluginDir(id.to_string()).encode(),
             )),
         )
         .await
@@ -853,7 +853,7 @@ async fn install_avalanche_and_plugins_from_s3(
         for obj in objects.iter() {
             let s3_key = obj.key().expect("unexpected None s3 object").to_string();
             let s3_file_name = extract_filename(&s3_key);
-            if s3_file_name.ends_with("plugins") || s3_file_name.ends_with("plugins/") {
+            if s3_file_name.ends_with("plugin") || s3_file_name.ends_with("plugin/") {
                 log::info!("s3 file name is '{}' directory, so skip", s3_file_name);
                 continue;
             }
