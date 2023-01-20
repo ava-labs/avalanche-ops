@@ -83,7 +83,7 @@ avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanched-local-bin ./avalanched-aws.x86_64-unknown-linux-gnu \
 --install-artifacts-avalanche-local-bin [AVALANCHE_BUILD_DIR]/avalanchego \
---install-artifacts-plugins-local-dir [AVALANCHE_BUILD_DIR]/plugins \
+--install-artifacts-plugin-local-dir [AVALANCHE_BUILD_DIR]/plugins \
 --network-name custom \
 --avalanchego-log-level INFO \
 --spec-file-path spec.yaml
@@ -357,7 +357,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level DEBUG
 
@@ -464,7 +464,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --coreth-metrics-enabled \
 --coreth-continuous-profiler-enabled \
 --coreth-offline-pruning-enabled \
@@ -525,7 +525,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO
 
@@ -537,7 +537,7 @@ cd ${HOME}/avalanche-ops
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws events update-artifacts \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
 
@@ -598,7 +598,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --nlb-acm-certificate-arn $ACM_CERT_ARN \
 --network-name custom \
 --avalanchego-log-level INFO
@@ -663,7 +663,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
 --avalanchego-http-tls-enabled \
@@ -725,7 +725,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --install-artifacts-snow-machine-file-path ${HOME}/coreth.json \
 --network-name custom \
 ---keys-to-generate 5 \
@@ -827,7 +827,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
 --enable-subnet-evm
@@ -840,7 +840,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --instance-mode spot \
 --network-name custom \
 --avalanchego-log-level INFO \
@@ -856,7 +856,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --instance-mode spot \
 --network-name custom \
 --avalanchego-log-level INFO \
@@ -1002,7 +1002,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO
 
@@ -1127,7 +1127,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO \
 --avalanchego-state-sync-ids ... \
@@ -1190,7 +1190,7 @@ cd ${HOME}/avalanche-ops
 --install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugins-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
+--install-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name mainnet \
 --avalanchego-log-level INFO
 

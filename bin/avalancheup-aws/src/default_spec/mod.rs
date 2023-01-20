@@ -174,8 +174,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_PLUGINS_LOCAL_DIR") 
-                .long("install-artifacts-plugins-local-dir")
+            Arg::new("INSTALL_ARTIFACTS_PLUGIN_LOCAL_DIR") 
+                .long("install-artifacts-plugin-local-dir")
                 .help("Sets 'plugins' directory in the local machine to be shared with remote machines")
                 .required(false)
                 .num_args(1),

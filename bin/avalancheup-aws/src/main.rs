@@ -134,8 +134,8 @@ fn main() {
                     .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_plugins_local_dir: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_PLUGINS_LOCAL_DIR")
+                install_artifacts_plugin_local_dir: sub_matches
+                    .get_one::<String>("INSTALL_ARTIFACTS_PLUGIN_LOCAL_DIR")
                     .unwrap_or(&String::new())
                     .to_string(),
 
