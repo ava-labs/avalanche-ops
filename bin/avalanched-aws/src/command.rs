@@ -1,8 +1,7 @@
 use std::{
     collections::HashSet,
-    fs::{self, File},
+    fs,
     io::{self, Error, ErrorKind, Write},
-    os::unix::fs::PermissionsExt,
     path::Path,
     sync::Arc,
 };
@@ -780,17 +779,17 @@ async fn install_avalanche_from_github(
     log::info!("STEP: installing Avalanche from github...");
 
     let arch = if arch_type == "amd64" {
-        Some(avalanche_installer::avalanchego::Arch::Amd64)
+        Some(avalanche_installer::avalanchego::github::Arch::Amd64)
     } else {
         None
     };
     let os = if os_type == "linux" {
-        Some(avalanche_installer::avalanchego::Os::Linux)
+        Some(avalanche_installer::avalanchego::github::Os::Linux)
     } else {
         None
     };
 
-    let (binary_path, _) = avalanche_installer::avalanchego::download_latest(arch, os).await?;
+    let binary_path = avalanche_installer::avalanchego::github::download_latest(arch, os).await?;
     fs::copy(&binary_path, avalanche_bin_path)?;
 
     if !Path::new(plugin_dir).exists() {
@@ -805,85 +804,25 @@ async fn install_avalanche_and_plugin_from_s3(
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
     id: &str,
-    avalanche_bin_path: &str,
-    plugin_dir: &str,
+    target_avalanchego_bin_path: &str,
+    target_plugin_dir: &str,
 ) -> io::Result<()> {
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
+    let s3_key_avalanchego_bin =
+        avalancheup_aws::spec::StorageNamespace::AvalancheBin(id.to_string()).encode();
+    let s3_prefix_plugin = s3::append_slash(
+        &avalancheup_aws::spec::StorageNamespace::PluginDir(id.to_string()).encode(),
+    );
 
-    // don't overwrite in case of avalanched restarts
-    if !Path::new(avalanche_bin_path).exists() {
-        log::info!("STEP: downloading avalanche binary from S3");
-
-        let s3_key = avalancheup_aws::spec::StorageNamespace::AvalancheBin(id.to_string()).encode();
-        let tmp_avalanche_bin_path = random_manager::tmp_path(15, None)?;
-
-        s3::spawn_get_object(
-            s3_manager.to_owned(),
-            s3_bucket,
-            &s3_key,
-            &tmp_avalanche_bin_path,
-        )
-        .await
-        .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
-
-        fs::copy(&tmp_avalanche_bin_path, &avalanche_bin_path)?;
-        fs::remove_file(&tmp_avalanche_bin_path)?;
-
-        let f = File::open(&avalanche_bin_path).expect("failed to open avalanche_bin");
-        f.set_permissions(PermissionsExt::from_mode(0o777))?;
-    }
-
-    // don't overwrite in case of avalanched restarts
-    if !Path::new(plugin_dir).exists() {
-        log::info!("STEP: creating '{}' for plugin", plugin_dir);
-        fs::create_dir_all(plugin_dir.clone())?;
-    } else {
-        log::info!("plugin-dir {plugin_dir} already exists -- skipping create_dir_all");
-    }
-
-    log::info!("STEP: downloading plugin from S3 (if any)");
-    let objects = s3::spawn_list_objects(
-        s3_manager.to_owned(),
+    avalanche_installer::avalanchego::s3::download_avalanche_and_plugins(
+        false,
+        s3_manager.clone(),
         s3_bucket,
-        Some(s3::append_slash(
-            &avalancheup_aws::spec::StorageNamespace::PluginDir(id.to_string()).encode(),
-        )),
+        &s3_key_avalanchego_bin,
+        target_avalanchego_bin_path,
+        &s3_prefix_plugin,
+        target_plugin_dir,
     )
     .await
-    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e)))?;
-
-    log::info!("listed {} plugin(s) from S3", objects.len());
-    for obj in objects.iter() {
-        let s3_key = obj.key().expect("unexpected None s3 object").to_string();
-        let s3_file_name = extract_filename(&s3_key);
-        if s3_file_name.ends_with("plugin") || s3_file_name.ends_with("plugin/") {
-            log::info!("s3 file name is '{}' directory, so skip", s3_file_name);
-            continue;
-        }
-        let download_file_path = format!("{}/{}", plugin_dir, s3_file_name);
-        if Path::new(&download_file_path).exists() {
-            log::info!("{download_file_path} already exists -- skipping...");
-            continue;
-        }
-
-        log::info!(
-            "downloading plugin {} to {}",
-            s3_file_name,
-            download_file_path
-        );
-        let tmp_path = random_manager::tmp_path(15, None)?;
-        s3::spawn_get_object(s3_manager.to_owned(), s3_bucket, &s3_key, &tmp_path)
-            .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
-
-        fs::copy(&tmp_path, &download_file_path)?;
-        fs::remove_file(&tmp_path)?;
-
-        let f = File::open(download_file_path).expect("failed to open plugin file");
-        f.set_permissions(PermissionsExt::from_mode(0o777))?;
-    }
-
-    Ok(())
 }
 
 fn create_cloudwatch_config(
