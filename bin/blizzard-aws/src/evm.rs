@@ -50,7 +50,7 @@ pub async fn make_transfers(
             .await
             .unwrap();
 
-        let faucet_local_wallet: ethers_signers::LocalWallet = k.signing_key().into();
+        let faucet_local_wallet: ethers_signers::LocalWallet = k.to_ethers_core_signing_key().into();
 
         let faucet_evm_wallet = faucet_wallet
             .evm(
@@ -106,7 +106,7 @@ pub async fn make_transfers(
         .await
         .unwrap();
 
-    let faucet_local_wallet: ethers_signers::LocalWallet = faucet_key.signing_key().into();
+    let faucet_local_wallet: ethers_signers::LocalWallet = faucet_key.to_ethers_core_signing_key().into();
 
     let faucet_evm_wallet = faucet_wallet
         .evm(&faucet_local_wallet, &chain_rpc_urls[0], chain_id)
@@ -213,7 +213,7 @@ pub async fn make_transfers(
         .unwrap();
 
     let first_ephemeral_local_wallet: ethers_signers::LocalWallet =
-        ephemeral_test_keys[0].signing_key().into();
+        ephemeral_test_keys[0].to_ethers_core_signing_key().into();
 
     let first_ephemeral_evm_wallet = first_ephemeral_wallet
         .evm(&first_ephemeral_local_wallet, &chain_rpc_urls[0], chain_id)
@@ -352,7 +352,7 @@ pub async fn make_transfers(
             );
 
             let local_wallet: ethers_signers::LocalWallet =
-                ephemeral_test_keys[i].signing_key().into();
+                ephemeral_test_keys[i].to_ethers_core_signing_key().into();
 
             let evm_wallet = ephmeral_wallets[i]
                 .evm(
