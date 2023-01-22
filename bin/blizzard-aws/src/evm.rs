@@ -50,7 +50,8 @@ pub async fn make_transfers(
             .await
             .unwrap();
 
-        let faucet_local_wallet: ethers_signers::LocalWallet = k.to_ethers_core_signing_key().into();
+        let faucet_local_wallet: ethers_signers::LocalWallet =
+            k.to_ethers_core_signing_key().into();
 
         let faucet_evm_wallet = faucet_wallet
             .evm(
@@ -106,7 +107,8 @@ pub async fn make_transfers(
         .await
         .unwrap();
 
-    let faucet_local_wallet: ethers_signers::LocalWallet = faucet_key.to_ethers_core_signing_key().into();
+    let faucet_local_wallet: ethers_signers::LocalWallet =
+        faucet_key.to_ethers_core_signing_key().into();
 
     let faucet_evm_wallet = faucet_wallet
         .evm(&faucet_local_wallet, &chain_rpc_urls[0], chain_id)
