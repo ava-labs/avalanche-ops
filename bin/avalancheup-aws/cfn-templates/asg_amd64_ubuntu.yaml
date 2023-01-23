@@ -561,15 +561,20 @@ Resources:
 
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
               mkdir -p /tmp/install-cloudwatch-logs
-              pushd /tmp/install-cloudwatch-logs
               while [ 1 ]; do
+                pushd /tmp/install-cloudwatch-logs
                 sudo rm -f ./amazon-cloudwatch-agent.deb || true;
                 wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
+                popd
                 if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                 sleep 2s;
               done;
-              sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
-              popd
+              while [ 1 ]; do
+                echo "installing amazon-cloudwatch-agent"
+                pushd /tmp/install-cloudwatch-logs && sudo dpkg -i -E ./amazon-cloudwatch-agent.deb && popd
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
 
               # enough time for "avalanched" to initialize cloudwatch configuration
               sleep 10
