@@ -63,6 +63,12 @@ async fn main() {
                     .get_one::<String>("S3_BUCKET")
                     .unwrap_or(&String::new()),
                 &sub_matches
+                    .get_one::<String>("AVALANCHE_CONFIG_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_CONFIG_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                    &sub_matches
                     .get_one::<String>("AWS_VOLUME_PROVISIONER_S3_KEY")
                     .unwrap_or(&String::new()),
                 &sub_matches

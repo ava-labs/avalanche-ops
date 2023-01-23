@@ -476,22 +476,40 @@ Resources:
               sudo mv /tmp/amazon-ssm-agent-10-restart-always.conf /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
-              if [[ ${VolumeProvisionerDownloadSource} == "github" ]]; then
+              if [[ ${AvalanchedDownloadSource} == "github" ]]; then
                 # TODO: support ARM64
-                sudo rm -f ./aws-volume-provisioner.x86_64-unknown-linux-gnu
-                sudo rm -f /tmp/aws-volume-provisioner 
-                sudo rm -f /usr/local/bin/aws-volume-provisioner
-                wget https://github.com/ava-labs/volume-manager/releases/download/latest/aws-volume-provisioner.x86_64-unknown-linux-gnu
-                mv ./aws-volume-provisioner.x86_64-unknown-linux-gnu /tmp/aws-volume-provisioner
-                chmod +x /tmp/aws-volume-provisioner
-                sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
+                sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu
+                sudo rm -f /tmp/avalanched
+                sudo rm -f /usr/local/bin/avalanched
+                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
+                mv ./avalanched-aws.x86_64-unknown-linux-gnu /tmp/avalanched
+                chmod +x /tmp/avalanched
+                sudo mv /tmp/avalanched /usr/local/bin/avalanched
               else
-                sudo rm -f /tmp/aws-volume-provisioner 
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-volume-provisioner /tmp/aws-volume-provisioner
-                chmod +x /tmp/aws-volume-provisioner
-                sudo mv /tmp/aws-volume-provisioner /usr/local/bin/aws-volume-provisioner
+                sudo rm -f /tmp/avalanched
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
+                chmod +x /tmp/avalanched
+                sudo mv /tmp/avalanched /usr/local/bin/avalanched
               fi;
+              /usr/local/bin/avalanched --version
+
+              /usr/local/bin/avalanched install \
+              --region ${AWS::Region} \
+              --s3-bucket ${S3BucketName} \
+              --avalanche-config-target-file-path /usr/local/bin/avalanche-config \
+              --avalanche-config-s3-key ${Id}/bootstrap/install/avalanche-config \
+              --aws-volume-provisioner-target-file-path /usr/local/bin/aws-volume-provisioner \
+              --aws-volume-provisioner-s3-key ${Id}/bootstrap/install/aws-volume-provisioner \
+              --aws-ip-provisioner-target-file-path /usr/local/bin/aws-ip-provisioner \
+              --aws-ip-provisioner-s3-key ${Id}/bootstrap/install/aws-ip-provisioner \
+              --avalanche-telemetry-cloudwatch-target-file-path /usr/local/bin/avalanche-telemetry-cloudwatch \
+              --avalanche-telemetry-cloudwatch-s3-key ${Id}/bootstrap/install/avalanche-telemetry-cloudwatch
+
+              /usr/local/bin/avalanche-config --version
               /usr/local/bin/aws-volume-provisioner --version
+              /usr/local/bin/aws-ip-provisioner --version
+              /usr/local/bin/avalanche-telemetry-cloudwatch --version
+
 
               echo "Running /usr/local/bin/aws-volume-provisioner..."
               # --initial-wait-random-seconds=X to prevent EBS volume provision contentions
@@ -512,23 +530,6 @@ Resources:
               --mount-directory-path=/data
 
               if [[ ${IpMode} == "elastic" ]]; then
-                if [[ ${IpProvisionerDownloadSource} == "github" ]]; then
-                  # TODO: support ARM64
-                  sudo rm -f ./aws-ip-provisioner.x86_64-unknown-linux-gnu
-                  sudo rm -f /tmp/aws-ip-provisioner
-                  sudo rm -f /usr/local/bin/aws-ip-provisioner
-                  wget https://github.com/ava-labs/ip-manager/releases/download/latest/aws-ip-provisioner.x86_64-unknown-linux-gnu
-                  mv ./aws-ip-provisioner.x86_64-unknown-linux-gnu /tmp/aws-ip-provisioner
-                  chmod +x /tmp/aws-ip-provisioner
-                  sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
-                else
-                  sudo rm -f /tmp/aws-ip-provisioner
-                  AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/aws-ip-provisioner /tmp/aws-ip-provisioner
-                  chmod +x /tmp/aws-ip-provisioner
-                  sudo mv /tmp/aws-ip-provisioner /usr/local/bin/aws-ip-provisioner
-                fi;
-                /usr/local/bin/aws-ip-provisioner --version
-
                 echo "Running /usr/local/bin/aws-ip-provisioner..."
                 /usr/local/bin/aws-ip-provisioner \
                 --log-level=info \
@@ -540,57 +541,6 @@ Resources:
               else
                 echo "skipping allocating elastic IP address..."
               fi;
-
-              if [[ ${AvalancheTelemetryCloudwatchDownloadSource} == "github" ]]; then
-                # TODO: support ARM64
-                sudo rm -f ./avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu
-                sudo rm -f /tmp/avalanche-telemetry-cloudwatch
-                sudo rm -f /usr/local/bin/avalanche-telemetry-cloudwatch
-                wget https://github.com/ava-labs/avalanche-telemetry/releases/download/latest/avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu
-                mv ./avalanche-telemetry-cloudwatch.x86_64-unknown-linux-gnu /tmp/avalanche-telemetry-cloudwatch
-                chmod +x /tmp/avalanche-telemetry-cloudwatch
-                sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
-              else
-                sudo rm -f /tmp/avalanche-telemetry-cloudwatch
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-telemetry-cloudwatch /tmp/avalanche-telemetry-cloudwatch
-                chmod +x /tmp/avalanche-telemetry-cloudwatch
-                sudo mv /tmp/avalanche-telemetry-cloudwatch /usr/local/bin/avalanche-telemetry-cloudwatch
-              fi;
-              /usr/local/bin/avalanche-telemetry-cloudwatch --version
-
-              if [[ ${AvalancheConfigDownloadSource} == "github" ]]; then
-                # TODO: support ARM64
-                sudo rm -f ./avalanche-config.x86_64-unknown-linux-gnu
-                sudo rm -f /tmp/avalanche-config
-                sudo rm -f /usr/local/bin/avalanche-config
-                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu
-                mv ./avalanche-config.x86_64-unknown-linux-gnu /tmp/avalanche-config
-                chmod +x /tmp/avalanche-config
-                sudo mv /tmp/avalanche-config /usr/local/bin/avalanche-config
-              else
-                sudo rm -f /tmp/avalanche-config
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanche-config /tmp/avalanche-config
-                chmod +x /tmp/avalanche-config
-                sudo mv /tmp/avalanche-config /usr/local/bin/avalanche-config
-              fi;
-              /usr/local/bin/avalanche-config --version
-
-              if [[ ${AvalanchedDownloadSource} == "github" ]]; then
-                # TODO: support ARM64
-                sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu
-                sudo rm -f /tmp/avalanched
-                sudo rm -f /usr/local/bin/avalanched
-                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
-                mv ./avalanched-aws.x86_64-unknown-linux-gnu /tmp/avalanched
-                chmod +x /tmp/avalanched
-                sudo mv /tmp/avalanched /usr/local/bin/avalanched
-              else
-                sudo rm -f /tmp/avalanched
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
-                chmod +x /tmp/avalanched
-                sudo mv /tmp/avalanched /usr/local/bin/avalanched
-              fi;
-              /usr/local/bin/avalanched --version
 
               # for logs
               mkdir -p /var/log/avalanche

@@ -40,6 +40,20 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("AVALANCHE_CONFIG_TARGET_FILE_PATH")
+                .long("avalanche-config-target-file-path")
+                .help("Non-empty to download avalanche-config")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHE_CONFIG_S3_KEY")
+                .long("avalanche-config-s3-key")
+                .help("Non-empty to download from S3")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("AWS_VOLUME_PROVISIONER_TARGET_FILE_PATH")
                 .long("aws-volume-provisioner-target-file-path")
                 .help("Non-empty to download aws-volume-provisioner")
@@ -90,6 +104,8 @@ pub async fn execute(
     log_level: &str,
     region: &str,
     s3_bucket: &str,
+    avalanche_config_s3_key: &str,
+    avalanche_config_target_file_path: &str,
     aws_volume_provisioner_s3_key: &str,
     aws_volume_provisioner_target_file_path: &str,
     aws_ip_provisioner_s3_key: &str,
@@ -105,6 +121,75 @@ pub async fn execute(
     let shared_config = aws_manager::load_config(Some(region.to_string())).await?;
     let s3_manager = s3::Manager::new(&shared_config);
     let s3_manager_arc = Arc::new(s3_manager.clone());
+
+    let need_github_download = if !avalanche_config_s3_key.is_empty() {
+        log::info!("downloading avalanche-config from s3");
+
+        let (mut success, mut exists) = (false, false);
+        for round in 0..20 {
+            log::info!("[ROUND {round}] checking if {avalanche_config_s3_key} exists");
+
+            let res = s3_manager
+                .exists(
+                    Arc::new(s3_bucket.to_string()),
+                    Arc::new(avalanche_config_s3_key.to_string()),
+                )
+                .await;
+
+            if res.is_ok() {
+                success = true;
+                exists = res.unwrap();
+                break;
+            }
+
+            let err = res.err().unwrap();
+            if err.is_retryable() {
+                log::warn!("s3 exists retriable error: {}", err);
+                sleep(Duration::from_secs((round + 1) * 5)).await;
+                continue;
+            }
+
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("s3 exists failed for non-retriable error {}", err),
+            ));
+        }
+        if !success {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "s3 exists check failed with retries",
+            ));
+        }
+        if !exists {
+            log::info!(
+                "{avalanche_config_s3_key} does not exist, falling back to github downloads"
+            );
+            true
+        } else {
+            log::info!("{avalanche_config_s3_key} exists {exists}");
+            avalanche_config_installer::s3::download(
+                true, // overwrite
+                Arc::clone(&s3_manager_arc),
+                s3_bucket,
+                avalanche_config_s3_key,
+                avalanche_config_target_file_path,
+            )
+            .await?;
+            false
+        }
+    } else {
+        true
+    };
+    if need_github_download {
+        log::info!("downloading avalanche-config from github");
+        avalanche_config_installer::github::download(
+            None,
+            None,
+            None,
+            avalanche_config_target_file_path,
+        )
+        .await?;
+    }
 
     let need_github_download = if !aws_volume_provisioner_s3_key.is_empty() {
         log::info!("downloading aws-volume-provisioner from s3");

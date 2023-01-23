@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "avalanche-config-installer",
     "bin/avalanche-config",
     "bin/avalanche-kms-signer-aws",
     "bin/avalanched-aws",

@@ -272,7 +272,8 @@ jobs:
         with:
           name: Latest release
           tag_name: latest
-          prerelease: true
+          draft: false
+          prerelease: false
           body: Latest builds from the last commit.
           files: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_config }}
@@ -299,8 +300,8 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
-          draft: true
-          prerelease: true
+          draft: false
+          prerelease: false
           body: Release builds for ${{ github.ref_name }}.
           files: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_config }}
