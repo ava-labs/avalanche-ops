@@ -601,26 +601,13 @@ impl Spec {
         }
 
         let mut install_artifacts = InstallArtifacts {
-            aws_volume_provisioner_local_bin: None,
-            aws_volume_provisioner_bin_install_from_s3: None,
-
-            aws_ip_provisioner_local_bin: None,
-            aws_ip_provisioner_bin_install_from_s3: None,
-
-            avalanche_telemetry_cloudwatch_local_bin: None,
-            avalanche_telemetry_cloudwatch_bin_install_from_s3: None,
-
-            avalanche_config_local_bin: None,
-            avalanche_config_bin_install_from_s3: None,
-
             avalanched_local_bin: None,
-            avalanched_bin_install_from_s3: None,
-
+            aws_volume_provisioner_local_bin: None,
+            aws_ip_provisioner_local_bin: None,
+            avalanche_telemetry_cloudwatch_local_bin: None,
+            avalanche_config_local_bin: None,
             avalanchego_local_bin: None,
-            avalanchego_bin_install_from_s3: None,
-
             plugin_local_dir: None,
-            plugin_dir_install_from_s3: None,
         };
         if !opts
             .install_artifacts_aws_volume_provisioner_local_bin
@@ -628,7 +615,6 @@ impl Spec {
         {
             install_artifacts.aws_volume_provisioner_local_bin =
                 Some(opts.install_artifacts_aws_volume_provisioner_local_bin);
-            install_artifacts.aws_volume_provisioner_bin_install_from_s3 = Some(true);
         }
         if !opts
             .install_artifacts_aws_ip_provisioner_local_bin
@@ -636,7 +622,6 @@ impl Spec {
         {
             install_artifacts.aws_ip_provisioner_local_bin =
                 Some(opts.install_artifacts_aws_ip_provisioner_local_bin);
-            install_artifacts.aws_ip_provisioner_bin_install_from_s3 = Some(true);
         }
         if !opts
             .install_artifacts_avalanche_telemetry_cloudwatch_local_bin
@@ -644,26 +629,21 @@ impl Spec {
         {
             install_artifacts.avalanche_telemetry_cloudwatch_local_bin =
                 Some(opts.install_artifacts_avalanche_telemetry_cloudwatch_local_bin);
-            install_artifacts.avalanche_telemetry_cloudwatch_bin_install_from_s3 = Some(true);
         }
         if !opts.install_artifacts_avalanche_config_local_bin.is_empty() {
             install_artifacts.avalanche_config_local_bin =
                 Some(opts.install_artifacts_avalanche_config_local_bin);
-            install_artifacts.avalanche_config_bin_install_from_s3 = Some(true);
         }
         if !opts.install_artifacts_avalanched_local_bin.is_empty() {
             install_artifacts.avalanched_local_bin =
                 Some(opts.install_artifacts_avalanched_local_bin);
-            install_artifacts.avalanched_bin_install_from_s3 = Some(true);
         }
         if !opts.install_artifacts_avalanche_local_bin.is_empty() {
             install_artifacts.avalanchego_local_bin =
                 Some(opts.install_artifacts_avalanche_local_bin);
-            install_artifacts.avalanchego_bin_install_from_s3 = Some(true);
         }
         if !opts.install_artifacts_plugin_local_dir.is_empty() {
             install_artifacts.plugin_local_dir = Some(opts.install_artifacts_plugin_local_dir);
-            install_artifacts.plugin_dir_install_from_s3 = Some(true);
         }
 
         let mut coreth_chain_config = coreth_chain_config::Config::default();
@@ -1046,14 +1026,10 @@ machine:
   ip_mode: elastic
 
 install_artifacts:
-  avalanche_config_local_bin: {}
-  avalanche_config_bin_install_from_s3: true
   avalanched_local_bin: {}
-  avalanched_bin_install_from_s3: true
+  avalanche_config_local_bin: {}
   avalanchego_local_bin: {}
-  avalanchego_bin_install_from_s3: true
   plugin_local_dir: {}
-  plugin_dir_install_from_s3: true
 
 avalanched_config:
   log_level: info
@@ -1159,19 +1135,12 @@ metrics_fetch_interval_seconds: 5000
 
         install_artifacts: InstallArtifacts {
             aws_volume_provisioner_local_bin: None,
-            aws_volume_provisioner_bin_install_from_s3: None,
             aws_ip_provisioner_local_bin: None,
-            aws_ip_provisioner_bin_install_from_s3: None,
             avalanche_telemetry_cloudwatch_local_bin: None,
-            avalanche_telemetry_cloudwatch_bin_install_from_s3: None,
             avalanche_config_local_bin: Some(avalanche_config_bin.to_string()),
-            avalanche_config_bin_install_from_s3: Some(true),
             avalanched_local_bin: Some(avalanched_bin.to_string()),
-            avalanched_bin_install_from_s3: Some(true),
             avalanchego_local_bin: Some(avalanchego_bin.to_string()),
-            avalanchego_bin_install_from_s3: Some(true),
             plugin_local_dir: Some(plugin_dir.to_string()),
-            plugin_dir_install_from_s3: Some(true),
         },
 
         avalanched_config: crate::avalanched::Flags {
@@ -1539,60 +1508,17 @@ pub struct Machine {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct InstallArtifacts {
-    /// "aws-volume-provisioner" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/aws-volume-provisioner" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
+    #[serde(default)]
+    pub avalanched_local_bin: Option<String>,
+
     #[serde(default)]
     pub aws_volume_provisioner_local_bin: Option<String>,
     #[serde(default)]
-    pub aws_volume_provisioner_bin_install_from_s3: Option<bool>,
-
-    /// "aws-ip-provisioner" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/aws-ip-provisioner" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
     pub aws_ip_provisioner_local_bin: Option<String>,
-    #[serde(default)]
-    pub aws_ip_provisioner_bin_install_from_s3: Option<bool>,
-
-    /// "aws-telemetry-cloudwatch" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/aws-telemetry-cloudwatch" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
     #[serde(default)]
     pub avalanche_telemetry_cloudwatch_local_bin: Option<String>,
     #[serde(default)]
-    pub avalanche_telemetry_cloudwatch_bin_install_from_s3: Option<bool>,
-
-    /// "avalanche-config" binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/avalanche-config" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
     pub avalanche_config_local_bin: Option<String>,
-    #[serde(default)]
-    pub avalanche_config_bin_install_from_s3: Option<bool>,
-
-    /// "avalanched" agent binary path in the local environment.
-    /// The file is uploaded to the remote storage with the path
-    /// "bootstrap/install/avalanched" to be shared with remote machines.
-    /// The file is NOT compressed when uploaded.
-    ///
-    /// If none, it downloads the latest from github.
-    #[serde(default)]
-    pub avalanched_local_bin: Option<String>,
-    #[serde(default)]
-    pub avalanched_bin_install_from_s3: Option<bool>,
 
     /// AvalancheGo binary path in the local environment.
     /// The file is "compressed" and uploaded to remote storage
@@ -1607,15 +1533,7 @@ pub struct InstallArtifacts {
     #[serde(default)]
     pub avalanchego_local_bin: Option<String>,
     #[serde(default)]
-    pub avalanchego_bin_install_from_s3: Option<bool>,
-
-    /// Plugin directories in the local environment.
-    /// Files (if any) are uploaded to the remote storage to be shared
-    /// with remote machiens.
-    #[serde(default)]
     pub plugin_local_dir: Option<String>,
-    #[serde(default)]
-    pub plugin_dir_install_from_s3: Option<bool>,
 }
 
 /// Represents the CloudFormation stack name.
@@ -1659,12 +1577,13 @@ pub enum StorageNamespace {
     /// Only updated after anchor nodes become active.
     GenesisFile(String),
 
+    AvalanchedBin(String),
+
     AwsVolumeProvisionerBin(String),
     AwsIpProvisionerBin(String),
     AvalancheTelemetryCloudwatchBin(String),
 
     AvalancheConfigBin(String),
-    AvalanchedBin(String),
     AvalancheBin(String),
     PluginDir(String),
 
@@ -1704,6 +1623,8 @@ impl StorageNamespace {
 
             StorageNamespace::GenesisFile(id) => format!("{}/genesis.json", id),
 
+            StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),
+
             StorageNamespace::AwsVolumeProvisionerBin(id) => {
                 format!("{}/bootstrap/install/aws-volume-provisioner", id)
             }
@@ -1717,7 +1638,6 @@ impl StorageNamespace {
             StorageNamespace::AvalancheConfigBin(id) => {
                 format!("{}/bootstrap/install/avalanche-config", id)
             }
-            StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),
             StorageNamespace::AvalancheBin(id) => {
                 format!("{}/bootstrap/install/avalanche", id)
             }

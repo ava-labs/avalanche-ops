@@ -232,30 +232,6 @@ Parameters:
     Default: ""
     Description: (Optional) Certificates for NLB HTTPs traffic.
 
-  VolumeProvisionerDownloadSource:
-    Type: String
-    AllowedValues: ["github", "s3"]
-    Default: "github"
-    Description: Set to "github" to download from github, or "s3" to download from S3.
-
-  IpProvisionerDownloadSource:
-    Type: String
-    AllowedValues: ["github", "s3"]
-    Default: "github"
-    Description: Set to "github" to download from github, or "s3" to download from S3.
-
-  AvalancheTelemetryCloudwatchDownloadSource:
-    Type: String
-    AllowedValues: ["github", "s3"]
-    Default: "github"
-    Description: Set to "github" to download from github, or "s3" to download from S3.
-
-  AvalancheConfigDownloadSource:
-    Type: String
-    AllowedValues: ["github", "s3"]
-    Default: "github"
-    Description: Set to "github" to download from github, or "s3" to download from S3.
-
   AvalanchedDownloadSource:
     Type: String
     AllowedValues: ["github", "s3"]
