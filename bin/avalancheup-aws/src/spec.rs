@@ -1002,7 +1002,7 @@ fn test_spec() {
 version: 1
 
 
-id: {}
+id: {id}
 
 aad_tag: test
 
@@ -1011,7 +1011,7 @@ aws_resources:
   preferred_az_index: 2
   use_spot_instance: false
   disable_spot_instance_for_anchor_nodes: false
-  s3_bucket: {}
+  s3_bucket: {bucket}
 
 machine:
   non_anchor_nodes: 1
@@ -1026,10 +1026,10 @@ machine:
   ip_mode: elastic
 
 install_artifacts:
-  avalanched_local_bin: {}
-  avalanche_config_local_bin: {}
-  avalanchego_local_bin: {}
-  plugin_local_dir: {}
+  avalanched_local_bin: {avalanched_bin}
+  avalanche_config_local_bin: {avalanche_config_bin}
+  avalanchego_local_bin: {avalanchego_bin}
+  plugin_local_dir: {plugin_dir}
 
 avalanched_config:
   log_level: info
@@ -1090,8 +1090,7 @@ coreth_chain_config:
 
 metrics_fetch_interval_seconds: 5000
 
-"#,
-        id, bucket, avalanche_config_bin, avalanched_bin, avalanchego_bin, plugin_dir,
+"#
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
@@ -1134,11 +1133,13 @@ metrics_fetch_interval_seconds: 5000
         },
 
         install_artifacts: InstallArtifacts {
+            avalanched_local_bin: Some(avalanched_bin.to_string()),
+
             aws_volume_provisioner_local_bin: None,
             aws_ip_provisioner_local_bin: None,
             avalanche_telemetry_cloudwatch_local_bin: None,
             avalanche_config_local_bin: Some(avalanche_config_bin.to_string()),
-            avalanched_local_bin: Some(avalanched_bin.to_string()),
+
             avalanchego_local_bin: Some(avalanchego_bin.to_string()),
             plugin_local_dir: Some(plugin_dir.to_string()),
         },
@@ -1168,7 +1169,6 @@ metrics_fetch_interval_seconds: 5000
         prometheus_metrics_rules: None,
     };
 
-    // assert_eq!(cfg, orig);
     cfg.validate().expect("unexpected validate failure");
     orig.validate().expect("unexpected validate failure");
 
