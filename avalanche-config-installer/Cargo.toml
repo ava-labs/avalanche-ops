@@ -21,4 +21,3 @@ tokio = "1.24.2" # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
 env_logger = "0.10.0"
-tempfile = "3.3.0"
