@@ -1639,7 +1639,7 @@ impl StorageNamespace {
                 format!("{}/bootstrap/install/avalanche-config", id)
             }
             StorageNamespace::AvalancheBin(id) => {
-                format!("{}/bootstrap/install/avalanche", id)
+                format!("{}/bootstrap/install/avalanchego", id)
             }
             StorageNamespace::PluginDir(id) => format!("{}/bootstrap/install/plugin", id),
 
