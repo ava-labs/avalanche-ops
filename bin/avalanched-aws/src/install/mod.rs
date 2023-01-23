@@ -1,8 +1,10 @@
 use std::{
+    fs,
     io::{self, Error, ErrorKind},
     sync::Arc,
 };
 
+use avalanche_installer;
 use avalanche_telemetry_cloudwatch_installer;
 use aws_ip_provisioner_installer;
 use aws_manager::{self, s3};
@@ -40,6 +42,41 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("AVALANCHEGO_S3_KEY")
+                .long("avalanchego-s3-key")
+                .help("Non-empty to download from S3")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_TARGET_FILE_PATH")
+                .long("avalanchego-target-file-path")
+                .help("Non-empty to download avalanchego")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_PLUGIN_S3_PREFIX")
+                .long("avalanchego-plugin-s3-prefix")
+                .help("Non-empty to download from S3")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_PLUGIN_TARGET_DIR")
+                .long("avalanchego-plugin-target-dir")
+                .help("Non-empty to download avalanchego plugins from S3")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHE_CONFIG_S3_KEY")
+                .long("avalanche-config-s3-key")
+                .help("Non-empty to download from S3")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("AVALANCHE_CONFIG_TARGET_FILE_PATH")
                 .long("avalanche-config-target-file-path")
                 .help("Non-empty to download avalanche-config")
@@ -47,8 +84,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("AVALANCHE_CONFIG_S3_KEY")
-                .long("avalanche-config-s3-key")
+            Arg::new("AWS_VOLUME_PROVISIONER_S3_KEY")
+                .long("aws-volume-provisioner-s3-key")
                 .help("Non-empty to download from S3")
                 .required(false)
                 .num_args(1),
@@ -61,8 +98,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("AWS_VOLUME_PROVISIONER_S3_KEY")
-                .long("aws-volume-provisioner-s3-key")
+            Arg::new("AWS_IP_PROVISIONER_S3_KEY")
+                .long("aws-ip-provisioner-s3-key")
                 .help("Non-empty to download from S3")
                 .required(false)
                 .num_args(1),
@@ -75,8 +112,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("AWS_IP_PROVISIONER_S3_KEY")
-                .long("aws-ip-provisioner-s3-key")
+            Arg::new("AVALANCHE_TELEMETRY_CLOUDWATCH_S3_KEY")
+                .long("avalanche-telemetry-cloudwatch-s3-key")
                 .help("Non-empty to download from S3")
                 .required(false)
                 .num_args(1),
@@ -85,13 +122,6 @@ pub fn command() -> Command {
             Arg::new("AVALANCHE_TELEMETRY_CLOUDWATCH_TARGET_FILE_PATH")
                 .long("avalanche-telemetry-cloudwatch-target-file-path")
                 .help("Non-empty to download avalanche-telemetry-cloudwatch")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("AVALANCHE_TELEMETRY_CLOUDWATCH_S3_KEY")
-                .long("avalanche-telemetry-cloudwatch-s3-key")
-                .help("Non-empty to download from S3")
                 .required(false)
                 .num_args(1),
         )
@@ -104,6 +134,10 @@ pub async fn execute(
     log_level: &str,
     region: &str,
     s3_bucket: &str,
+    avalanchego_s3_key: &str,
+    avalanchego_target_file_path: &str,
+    avalanchego_plugin_s3_prefix: &str,
+    avalanchego_plugin_target_dir: &str,
     avalanche_config_s3_key: &str,
     avalanche_config_target_file_path: &str,
     aws_volume_provisioner_s3_key: &str,
@@ -121,6 +155,72 @@ pub async fn execute(
     let shared_config = aws_manager::load_config(Some(region.to_string())).await?;
     let s3_manager = s3::Manager::new(&shared_config);
     let s3_manager_arc = Arc::new(s3_manager.clone());
+
+    let need_github_download = if !avalanchego_s3_key.is_empty() {
+        log::info!("downloading avalanche from s3");
+
+        let (mut success, mut exists) = (false, false);
+        for round in 0..20 {
+            log::info!("[ROUND {round}] checking if {avalanchego_s3_key} exists");
+
+            let res = s3_manager
+                .exists(
+                    Arc::new(s3_bucket.to_string()),
+                    Arc::new(avalanchego_s3_key.to_string()),
+                )
+                .await;
+
+            if res.is_ok() {
+                success = true;
+                exists = res.unwrap();
+                break;
+            }
+
+            let err = res.err().unwrap();
+            if err.is_retryable() {
+                log::warn!("s3 exists retriable error: {}", err);
+                sleep(Duration::from_secs((round + 1) * 5)).await;
+                continue;
+            }
+
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("s3 exists failed for non-retriable error {}", err),
+            ));
+        }
+        if !success {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "s3 exists check failed with retries",
+            ));
+        }
+        if !exists {
+            log::info!("{avalanchego_s3_key} does not exist, falling back to github downloads");
+            true
+        } else {
+            log::info!("{avalanchego_s3_key} exists {exists}");
+            avalanche_installer::avalanchego::s3::download_avalanche_and_plugins(
+                false, // not overwrite
+                Arc::clone(&s3_manager_arc),
+                s3_bucket,
+                avalanchego_s3_key,
+                avalanchego_target_file_path,
+                avalanchego_plugin_s3_prefix,
+                avalanchego_plugin_target_dir,
+            )
+            .await?;
+            false
+        }
+    } else {
+        true
+    };
+    if need_github_download {
+        log::info!("downloading avalanche-config from github");
+        let tmp_path = avalanche_installer::avalanchego::github::download(None, None, None).await?;
+
+        fs::copy(&tmp_path, &avalanchego_target_file_path)?;
+        fs::remove_file(&tmp_path)?;
+    }
 
     let need_github_download = if !avalanche_config_s3_key.is_empty() {
         log::info!("downloading avalanche-config from s3");

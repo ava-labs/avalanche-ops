@@ -63,6 +63,18 @@ async fn main() {
                     .get_one::<String>("S3_BUCKET")
                     .unwrap_or(&String::new()),
                 &sub_matches
+                    .get_one::<String>("AVALANCHEGO_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHEGO_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHEGO_PLUGIN_S3_PREFIX")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHEGO_PLUGIN_TARGET_DIR")
+                    .unwrap_or(&String::new()),
+                &sub_matches
                     .get_one::<String>("AVALANCHE_CONFIG_S3_KEY")
                     .unwrap_or(&String::new()),
                 &sub_matches

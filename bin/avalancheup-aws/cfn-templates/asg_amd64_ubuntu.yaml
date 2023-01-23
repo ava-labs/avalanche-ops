@@ -482,20 +482,25 @@ Resources:
               /usr/local/bin/avalanched install \
               --region ${AWS::Region} \
               --s3-bucket ${S3BucketName} \
-              --avalanche-config-target-file-path /usr/local/bin/avalanche-config \
+              --avalanchego-s3-key ${Id}/bootstrap/install/avalanchego \
+              --avalanchego-target-file-path /usr/local/bin/avalanchego \
+              --avalanchego-plugin-s3-prefix ${Id}/bootstrap/install/plugin \
+              --avalanchego-plugin-target-dir /usr/local/bin/plugin \
               --avalanche-config-s3-key ${Id}/bootstrap/install/avalanche-config \
-              --aws-volume-provisioner-target-file-path /usr/local/bin/aws-volume-provisioner \
+              --avalanche-config-target-file-path /usr/local/bin/avalanche-config \
               --aws-volume-provisioner-s3-key ${Id}/bootstrap/install/aws-volume-provisioner \
-              --aws-ip-provisioner-target-file-path /usr/local/bin/aws-ip-provisioner \
+              --aws-volume-provisioner-target-file-path /usr/local/bin/aws-volume-provisioner \
               --aws-ip-provisioner-s3-key ${Id}/bootstrap/install/aws-ip-provisioner \
-              --avalanche-telemetry-cloudwatch-target-file-path /usr/local/bin/avalanche-telemetry-cloudwatch \
-              --avalanche-telemetry-cloudwatch-s3-key ${Id}/bootstrap/install/avalanche-telemetry-cloudwatch
+              --aws-ip-provisioner-target-file-path /usr/local/bin/aws-ip-provisioner \
+              --avalanche-telemetry-cloudwatch-s3-key ${Id}/bootstrap/install/avalanche-telemetry-cloudwatch \
+              --avalanche-telemetry-cloudwatch-target-file-path /usr/local/bin/avalanche-telemetry-cloudwatch
 
+              /usr/local/bin/avalanchego --version
+              ls /usr/local/bin/plugin || true
               /usr/local/bin/avalanche-config --version
               /usr/local/bin/aws-volume-provisioner --version
               /usr/local/bin/aws-ip-provisioner --version
               /usr/local/bin/avalanche-telemetry-cloudwatch --version
-
 
               echo "Running /usr/local/bin/aws-volume-provisioner..."
               # --initial-wait-random-seconds=X to prevent EBS volume provision contentions
@@ -672,18 +677,12 @@ Resources:
         - Key: CLOUDWATCH_CONFIG_FILE_PATH
           PropagateAtLaunch: true
           Value: /opt/aws/amazon-cloudwatch-agent/bin/config.json
-        - Key: AVALANCHE_TELEMETRY_CLOUDWATCH_BIN_PATH
-          PropagateAtLaunch: true
-          Value: /usr/local/bin/avalanche-telemetry-cloudwatch
         - Key: AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH
           PropagateAtLaunch: true
           Value: /data/avalanche-telemetry-cloudwatch.rules.yaml
         - Key: AVALANCHEUP_SPEC_PATH
           PropagateAtLaunch: true
           Value: /data/avalancheup.yaml
-        - Key: AVALANCHE_BIN_PATH
-          PropagateAtLaunch: true
-          Value: /usr/local/bin/avalanche
         - Key: AVALANCHE_DATA_VOLUME_PATH
           PropagateAtLaunch: true
           Value: /data

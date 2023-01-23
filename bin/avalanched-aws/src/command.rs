@@ -56,7 +56,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let (
         mut avalanchego_config,
         coreth_chain_config,
-        download_avalanchego_from_github,
         metrics_rules,
         logs_auto_removal,
         metrics_fetch_interval_seconds,
@@ -68,7 +67,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         (
             avalanchego_config,
             coreth_chain_config,
-            true,
             avalancheup_aws::spec::default_prometheus_rules(),
             true,
             0,
@@ -103,10 +101,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         (
             spec.avalanchego_config.clone(),
             spec.coreth_chain_config.clone(),
-            !spec
-                .install_artifacts
-                .avalanchego_bin_install_from_s3
-                .unwrap_or_default(),
             metrics_rules,
             !spec.disable_logs_auto_removal,
             spec.metrics_fetch_interval_seconds,
@@ -119,30 +113,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
 
     create_config_dirs(&avalanchego_config, &coreth_chain_config)?;
-
-    // do not overwrite "avalanchego" binary
-    if !Path::new(&tags.avalanche_bin_path).exists() {
-        if download_avalanchego_from_github {
-            install_avalanche_from_github(
-                &tags.os_type.clone(),
-                &tags.arch_type.clone(),
-                &tags.avalanche_bin_path.clone(),
-                &avalanchego_config.plugin_dir,
-            )
-            .await?;
-        } else {
-            install_avalanche_and_plugin_from_s3(
-                Arc::clone(&s3_manager_arc),
-                &tags.s3_bucket,
-                &tags.id,
-                &tags.avalanche_bin_path.clone(),
-                &avalanchego_config.plugin_dir,
-            )
-            .await?;
-        }
-    } else {
-        log::warn!("skipping downloading avalanche binary (already exists)")
-    }
 
     // always overwrite in case we update tags
     create_cloudwatch_config(
@@ -333,10 +303,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     }
 
-    stop_and_start_avalanche_systemd_service(&tags.avalanche_bin_path, &avalanchego_config)?;
+    stop_and_start_avalanche_systemd_service("/usr/local/bin/avalanchego", &avalanchego_config)?;
     if metrics_fetch_interval_seconds > 0 {
         stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
-            &tags.avalanche_telemetry_cloudwatch_bin_path,
+            "/usr/local/bin/avalanche-telemetry-cloudwatch",
             &tags.avalanche_telemetry_cloudwatch_rules_file_path,
             &tags.id,
             avalanchego_config.http_port,
@@ -483,10 +453,8 @@ struct Tags {
     aad_tag: String,
     s3_bucket: String,
     cloudwatch_config_file_path: String,
-    avalanche_telemetry_cloudwatch_bin_path: String,
     avalanche_telemetry_cloudwatch_rules_file_path: String,
     avalancheup_spec_path: String,
-    avalanche_bin_path: String,
     avalanche_data_volume_path: String,
     avalanche_data_volume_ebs_device_name: String,
     eip_file_path: String,
@@ -514,10 +482,8 @@ async fn fetch_tags(
         aad_tag: String::new(),
         s3_bucket: String::new(),
         cloudwatch_config_file_path: String::new(),
-        avalanche_telemetry_cloudwatch_bin_path: String::new(),
         avalanche_telemetry_cloudwatch_rules_file_path: String::new(),
         avalancheup_spec_path: String::new(),
-        avalanche_bin_path: String::new(),
         avalanche_data_volume_path: String::new(),
         avalanche_data_volume_ebs_device_name: String::new(),
         eip_file_path: String::new(),
@@ -562,17 +528,11 @@ async fn fetch_tags(
             "CLOUDWATCH_CONFIG_FILE_PATH" => {
                 fetched_tags.cloudwatch_config_file_path = v.to_string();
             }
-            "AVALANCHE_TELEMETRY_CLOUDWATCH_BIN_PATH" => {
-                fetched_tags.avalanche_telemetry_cloudwatch_bin_path = v.to_string();
-            }
             "AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH" => {
                 fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path = v.to_string();
             }
             "AVALANCHEUP_SPEC_PATH" => {
                 fetched_tags.avalancheup_spec_path = v.to_string();
-            }
-            "AVALANCHE_BIN_PATH" => {
-                fetched_tags.avalanche_bin_path = v.to_string();
             }
             "AVALANCHE_DATA_VOLUME_PATH" => {
                 fetched_tags.avalanche_data_volume_path = v.to_string();
@@ -600,13 +560,9 @@ async fn fetch_tags(
     assert!(!fetched_tags.s3_bucket.is_empty());
     assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
     assert!(!fetched_tags
-        .avalanche_telemetry_cloudwatch_bin_path
-        .is_empty());
-    assert!(!fetched_tags
         .avalanche_telemetry_cloudwatch_rules_file_path
         .is_empty());
     assert!(!fetched_tags.avalancheup_spec_path.is_empty());
-    assert!(!fetched_tags.avalanche_bin_path.is_empty());
     assert!(!fetched_tags.avalanche_data_volume_path.is_empty());
     assert!(!fetched_tags
         .avalanche_data_volume_ebs_device_name
@@ -768,61 +724,6 @@ fn create_config_dirs(
     }
 
     Ok(())
-}
-
-async fn install_avalanche_from_github(
-    arch_type: &str,
-    os_type: &str,
-    avalanche_bin_path: &str,
-    plugin_dir: &str,
-) -> io::Result<()> {
-    log::info!("STEP: installing Avalanche from github...");
-
-    let arch = if arch_type == "amd64" {
-        Some(avalanche_installer::avalanchego::github::Arch::Amd64)
-    } else {
-        None
-    };
-    let os = if os_type == "linux" {
-        Some(avalanche_installer::avalanchego::github::Os::Linux)
-    } else {
-        None
-    };
-
-    let binary_path = avalanche_installer::avalanchego::github::download_latest(arch, os).await?;
-    fs::copy(&binary_path, avalanche_bin_path)?;
-
-    if !Path::new(plugin_dir).exists() {
-        log::info!("creating '{}' directory for plugin", plugin_dir);
-        fs::create_dir_all(plugin_dir)?;
-    };
-
-    Ok(())
-}
-
-async fn install_avalanche_and_plugin_from_s3(
-    s3_manager: Arc<s3::Manager>,
-    s3_bucket: &str,
-    id: &str,
-    target_avalanchego_bin_path: &str,
-    target_plugin_dir: &str,
-) -> io::Result<()> {
-    let s3_key_avalanchego_bin =
-        avalancheup_aws::spec::StorageNamespace::AvalancheBin(id.to_string()).encode();
-    let s3_prefix_plugin = s3::append_slash(
-        &avalancheup_aws::spec::StorageNamespace::PluginDir(id.to_string()).encode(),
-    );
-
-    avalanche_installer::avalanchego::s3::download_avalanche_and_plugins(
-        false,
-        s3_manager.clone(),
-        s3_bucket,
-        &s3_key_avalanchego_bin,
-        target_avalanchego_bin_path,
-        &s3_prefix_plugin,
-        target_plugin_dir,
-    )
-    .await
 }
 
 fn create_cloudwatch_config(
