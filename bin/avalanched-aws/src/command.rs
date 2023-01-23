@@ -303,7 +303,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     }
 
-    stop_and_start_avalanche_systemd_service("/usr/local/bin/avalanchego", &avalanchego_config)?;
+    stop_and_restart_avalanche_systemd_service("/usr/local/bin/avalanchego", &avalanchego_config)?;
+
     if metrics_fetch_interval_seconds > 0 {
         stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
             "/usr/local/bin/avalanche-telemetry-cloudwatch",
@@ -1129,11 +1130,11 @@ async fn discover_ready_anchor_nodes_from_s3(
     Ok((bootstrap_ids, bootstrap_ips))
 }
 
-fn stop_and_start_avalanche_systemd_service(
+fn stop_and_restart_avalanche_systemd_service(
     avalanche_bin_path: &str,
     avalanchego_config: &avalanchego::config::Config,
 ) -> io::Result<()> {
-    log::info!("STEP: setting up and starting Avalanche systemd service...");
+    log::info!("STEP: setting up and restarting Avalanche systemd service...");
 
     avalanchego_config.validate()?;
     if avalanchego_config.config_file.is_none() {
