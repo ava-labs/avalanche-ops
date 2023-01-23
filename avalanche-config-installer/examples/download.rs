@@ -1,7 +1,7 @@
 use std::{fs, io, sync::Arc};
 
-use aws_manager::{self, s3};
 use avalanche_config_installer::{github, s3 as s3_installer};
+use aws_manager::{self, s3};
 use tokio::time::{sleep, Duration};
 
 /// cargo run --example download
