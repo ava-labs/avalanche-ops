@@ -458,8 +458,13 @@ Resources:
                   curl wget unzip zip gzip tar libssl-dev \
                   python3-pip python-setuptools zsh
 
-              curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
-              unzip awscli.v2.zip
+              while [ 1 ]; do
+                sudo rm -f ./awscli-exe-linux-x86_64.zip || true;
+                wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+              unzip ./awscli-exe-linux-x86_64.zip
               sudo ./aws/install
               /usr/local/bin/aws --version
 
@@ -481,7 +486,12 @@ Resources:
                 sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu
                 sudo rm -f /tmp/avalanched
                 sudo rm -f /usr/local/bin/avalanched
-                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
+                while [ 1 ]; do
+                  sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu || true;
+                  wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
+                  if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                  sleep 2s;
+                done;
                 mv ./avalanched-aws.x86_64-unknown-linux-gnu /tmp/avalanched
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
@@ -571,7 +581,12 @@ Resources:
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
               mkdir -p /tmp/install-cloudwatch-logs
               pushd /tmp/install-cloudwatch-logs
-              wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
+              while [ 1 ]; do
+                sudo rm -f ./amazon-cloudwatch-agent.deb || true;
+                wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
               sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
               popd
 
