@@ -1,0 +1,23 @@
+[package]
+name = "avalanche-config-installer"
+version = "0.2.36" # https://github.com/ava-labs/avalanche-ops/releases
+edition = "2021"
+rust-version = "1.66"
+publish = true
+description = "avalanche-config installer"
+repository = "https://github.com/ava-labs/avalanche-ops"
+readme = "README.md"
+license = "Apache-2.0"
+
+[dependencies]
+aws-manager = { version = "0.23.2", features = ["s3"] } # https://crates.io/crates/aws-manager
+compress-manager = "0.0.4"
+http-manager = "0.0.8"
+log = "0.4.17"
+random-manager = "0.0.2"
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.91" # https://github.com/serde-rs/json
+tokio = "1.24.2" # https://github.com/tokio-rs/tokio/releases
+
+[dev-dependencies]
+env_logger = "0.10.0"

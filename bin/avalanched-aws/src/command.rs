@@ -1632,10 +1632,3 @@ async fn monitor_spot_instance_action(
         sleep(Duration::from_secs(20)).await;
     }
 }
-
-/// returns "hello" from "a/b/c/hello.zstd"
-fn extract_filename(p: &str) -> String {
-    let path = Path::new(p);
-    let file_stemp = path.file_stem().unwrap();
-    String::from(file_stemp.to_str().unwrap())
-}

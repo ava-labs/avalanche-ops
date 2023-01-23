@@ -1,6 +1,7 @@
 mod cloudwatch;
 mod command;
 mod flags;
+mod install;
 mod sync_subnet_evm_chain_config;
 mod sync_subnet_evm_subnet_config;
 mod sync_xsvm_subnet_config;
@@ -39,6 +40,7 @@ async fn main() {
                 .num_args(0),
         )
         .subcommands(vec![
+            install::command(),
             sync_subnet_evm_chain_config::command(),
             sync_subnet_evm_subnet_config::command(),
             sync_xsvm_subnet_config::command(),
@@ -48,6 +50,47 @@ async fn main() {
     println!("{} version: {}", APP_NAME, crate_version!());
 
     match matches.subcommand() {
+        Some((install::NAME, sub_matches)) => {
+            install::execute(
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("REGION")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("S3_BUCKET")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_CONFIG_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_CONFIG_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_VOLUME_PROVISIONER_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_VOLUME_PROVISIONER_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_IP_PROVISIONER_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_IP_PROVISIONER_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_TELEMETRY_CLOUDWATCH_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_TELEMETRY_CLOUDWATCH_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+            )
+            .await
+            .unwrap();
+        }
+
         Some((sync_subnet_evm_subnet_config::NAME, sub_matches)) => {
             sync_subnet_evm_subnet_config::execute(
                 &sub_matches
