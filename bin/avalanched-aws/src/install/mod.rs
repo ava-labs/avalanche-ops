@@ -215,9 +215,8 @@ pub async fn execute(
         true
     };
     if need_github_download {
-        log::info!("downloading avalanche-config from github");
+        log::info!("downloading avalanchego from github");
         let tmp_path = avalanche_installer::avalanchego::github::download(None, None, None).await?;
-
         fs::copy(&tmp_path, &avalanchego_target_file_path)?;
         fs::remove_file(&tmp_path)?;
     }
