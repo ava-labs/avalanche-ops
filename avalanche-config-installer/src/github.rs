@@ -137,6 +137,7 @@ pub async fn download(
         let f = File::open(&tmp_file_path)?;
         f.set_permissions(PermissionsExt::from_mode(0o777))?;
     }
+    log::info!("copying {tmp_file_path} to {target_file_path}");
     fs::copy(&tmp_file_path, &target_file_path)?;
     fs::remove_file(&tmp_file_path)?;
 
