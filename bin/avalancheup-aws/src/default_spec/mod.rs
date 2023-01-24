@@ -53,7 +53,7 @@ pub fn command() -> Command {
                 .long("region")
                 .short('r')
                 .help("Sets the AWS region for API calls/endpoints")
-                .required(true)
+                .required(false)
                 .num_args(1)
                 .default_value("us-west-2"),
         )
