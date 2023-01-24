@@ -7,7 +7,7 @@ rust-version = "1.66"
 [dependencies]
 aws-manager = { version = "0.23.2", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
 certs-manager = { path = "../../certs-manager" }
-clap = { version = "4.1.1", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.1.3", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
 log = "0.4.17"
 tokio = { version = "1.24.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases

@@ -21,7 +21,7 @@ aws-sdk-ec2 = "0.23.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.23.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-volume-provisioner-installer = "0.0.47" # https://crates.io/crates/aws-volume-provisioner-installer
 certs-manager = { path = "../../certs-manager" }
-clap = { version = "4.1.1", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.1.3", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.4"
 env_logger = "0.10.0"
