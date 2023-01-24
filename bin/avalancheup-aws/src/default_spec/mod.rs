@@ -33,7 +33,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("KEYS_TO_GENERATE") 
                 .long("keys-to-generate")
-                .help("Sets the number of keys to generate (only requires for custom network)")
+                .help("Sets the number of keys to generate (only requires for custom network, default if not specified)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(usize))
@@ -382,33 +382,37 @@ pub fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()>
             .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
     );
 
-    if opts.network_name == "custom" && opts.keys_to_generate == 0 {
-        return Err(Error::new(
-            ErrorKind::Other,
-            "can't --keys-to-generate=0 for custom network",
-        ));
+    let mut cloned_opts = opts.clone();
+
+    if cloned_opts.network_name == "custom" && cloned_opts.keys_to_generate == 0 {
+        log::warn!("can't --keys-to-generate=0 for custom network -- defaulting to 2");
+        cloned_opts.keys_to_generate = 2;
     }
-    if opts.network_name != "custom" && opts.keys_to_generate > 0 {
+
+    if cloned_opts.network_name != "custom" && cloned_opts.keys_to_generate > 0 {
         return Err(Error::new(
             ErrorKind::Other,
             format!(
                 "can't --keys-to-generate={} (>0) for {} network",
-                opts.keys_to_generate, opts.network_name
+                cloned_opts.keys_to_generate, cloned_opts.network_name
             ),
         ));
     }
-    if opts.xsvms_split_validators && opts.xsvms < 2 {
+
+    if cloned_opts.xsvms_split_validators && cloned_opts.xsvms < 2 {
         return Err(Error::new(
             ErrorKind::Other,
             format!(
                 "not enough XSVMs ({}) to split the subenet validators",
-                opts.xsvms
+                cloned_opts.xsvms
             ),
         ));
     }
 
     let rt = Runtime::new().unwrap();
-    let spec = rt.block_on(avalancheup_aws::spec::Spec::default_aws(opts.clone()));
+    let spec = rt.block_on(avalancheup_aws::spec::Spec::default_aws(
+        cloned_opts.clone(),
+    ));
     spec.validate()?;
 
     let spec_file_path = {

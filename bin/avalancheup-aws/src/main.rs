@@ -21,6 +21,10 @@ fn main() {
 
     match matches.subcommand() {
         Some((default_spec::NAME, sub_matches)) => {
+            let network_name = sub_matches
+                .get_one::<String>("NETWORK_NAME")
+                .unwrap_or(&String::new())
+                .clone();
             let keys_to_generate = sub_matches
                 .get_one::<usize>("KEYS_TO_GENERATE")
                 .unwrap_or(&5)
@@ -63,10 +67,7 @@ fn main() {
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .clone(),
-                network_name: sub_matches
-                    .get_one::<String>("NETWORK_NAME")
-                    .unwrap_or(&String::new())
-                    .clone(),
+                network_name,
 
                 key_files_dir: sub_matches
                     .get_one::<String>("KEY_FILES_DIR")
