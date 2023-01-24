@@ -2252,6 +2252,8 @@ default-spec \\
                 ResetColor
             )?;
         }
+        println!();
+        println!();
     }
 
     // maps xsvm blockchain id to its validator node Ids
