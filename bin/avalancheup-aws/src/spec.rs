@@ -1058,12 +1058,12 @@ avalanchego_config:
   snow-quorum-size: 15
   index-enabled: false
   index-allow-incomplete: false
-  api-admin-enabled: true
+  api-admin-enabled: false
   api-info-enabled: true
-  api-keystore-enabled: true
+  api-keystore-enabled: false
   api-metrics-enabled: true
   api-health-enabled: true
-  api-ipcs-enabled: true
+  api-ipcs-enabled: false
   chain-config-dir: /data/avalanche-configs/chains
   subnet-config-dir: /data/avalanche-configs/subnets
   profile-dir: /var/log/avalanche-profile/avalanche
