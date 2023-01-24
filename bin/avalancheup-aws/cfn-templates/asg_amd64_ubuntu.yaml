@@ -440,7 +440,7 @@ Resources:
 
               while [ 1 ]; do
                 sudo rm -f ./awscli-exe-linux-${!LINUX_ARCH_TYPE}.zip || true;
-                wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://awscli.amazonaws.com/awscli-exe-linux-${!LINUX_ARCH_TYPE}.zip
+                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://awscli.amazonaws.com/awscli-exe-linux-${!LINUX_ARCH_TYPE}.zip
                 if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                 sleep 2s;
               done;
@@ -467,7 +467,7 @@ Resources:
                 sudo rm -f /usr/local/bin/avalanched
                 while [ 1 ]; do
                   sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu || true;
-                  wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
+                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
                   if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                   sleep 2s;
                 done;
@@ -568,7 +568,7 @@ Resources:
               while [ 1 ]; do
                 pushd /tmp/install-cloudwatch-logs
                 sudo rm -f ./amazon-cloudwatch-agent.deb || true;
-                wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
+                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
                 popd
                 if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                 sleep 2s;
