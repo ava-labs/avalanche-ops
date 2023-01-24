@@ -25,7 +25,6 @@ curl -sSf https://sh.rustup.rs | sh -s -- -y \
 ```bash
 # 2. simple, subnet-evm
 /home/ubuntu/avalanche-ops/target/release/avalancheup-aws default-spec \
---region ap-northeast-2 \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugin-local-dir ${AVALANCHE_PLUGIN_DIR_PATH} \
