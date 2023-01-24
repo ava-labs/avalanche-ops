@@ -173,8 +173,6 @@ async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
 #[derive(Debug, Clone)]
 struct Tags {
     id: String,
-    arch_type: String,
-    os_type: String,
     instance_mode: String,
     node_kind: String,
     s3_bucket: String,
@@ -195,8 +193,6 @@ async fn fetch_tags(
 
     let mut fetched_tags = Tags {
         id: String::new(),
-        arch_type: String::new(),
-        os_type: String::new(),
         instance_mode: String::new(),
         node_kind: String::new(),
         s3_bucket: String::new(),
@@ -211,12 +207,6 @@ async fn fetch_tags(
         match k {
             "ID" => {
                 fetched_tags.id = v.to_string();
-            }
-            "ARCH_TYPE" => {
-                fetched_tags.arch_type = v.to_string();
-            }
-            "OS_TYPE" => {
-                fetched_tags.os_type = v.to_string();
             }
             "INSTANCE_MODE" => {
                 fetched_tags.instance_mode = v.to_string();
@@ -239,8 +229,6 @@ async fn fetch_tags(
 
     assert!(!fetched_tags.id.is_empty());
     assert!(fetched_tags.node_kind.eq("worker"));
-    assert!(!fetched_tags.arch_type.is_empty());
-    assert!(!fetched_tags.os_type.is_empty());
     assert!(!fetched_tags.s3_bucket.is_empty());
     assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
     assert!(!fetched_tags.blizzardup_spec_path.is_empty());

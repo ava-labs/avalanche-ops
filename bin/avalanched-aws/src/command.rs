@@ -447,7 +447,6 @@ struct Tags {
     id: String,
     network_id: u32,
     arch_type: String,
-    os_type: String,
     instance_mode: String,
     node_kind: node::Kind,
     kms_cmk_arn: String,
@@ -476,7 +475,6 @@ async fn fetch_tags(
         id: String::new(),
         network_id: 0,
         arch_type: String::new(),
-        os_type: String::new(),
         instance_mode: String::new(),
         node_kind: node::Kind::Unknown(String::new()),
         kms_cmk_arn: String::new(),
@@ -503,9 +501,6 @@ async fn fetch_tags(
             }
             "ARCH_TYPE" => {
                 fetched_tags.arch_type = v.to_string();
-            }
-            "OS_TYPE" => {
-                fetched_tags.os_type = v.to_string();
             }
             "INSTANCE_MODE" => {
                 fetched_tags.instance_mode = v.to_string();
@@ -555,7 +550,6 @@ async fn fetch_tags(
             || fetched_tags.node_kind == node::Kind::NonAnchor
     );
     assert!(!fetched_tags.arch_type.is_empty());
-    assert!(!fetched_tags.os_type.is_empty());
     assert!(!fetched_tags.kms_cmk_arn.is_empty());
     assert!(!fetched_tags.aad_tag.is_empty());
     assert!(!fetched_tags.s3_bucket.is_empty());

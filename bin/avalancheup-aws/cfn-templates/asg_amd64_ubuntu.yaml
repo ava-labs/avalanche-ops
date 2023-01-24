@@ -66,7 +66,7 @@ Parameters:
   Arch:
     Type: String
     Default: "amd64"
-    Description: The name of the architecture.
+    Description: The name of the CPU architecture.
 
   # Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
   # Avalanche test net ("fuji") runs "c5.2xlarge"
@@ -431,16 +431,19 @@ Resources:
               export DEBIAN_FRONTEND=noninteractive
               sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
               && sudo apt-get install -yq \
-                  curl wget unzip zip gzip tar libssl-dev \
-                  python3-pip python-setuptools zsh
+                curl wget unzip zip gzip tar libssl-dev \
+                python3-pip python-setuptools zsh
+
+              LINUX_ARCH_TYPE=$(uname -m)
+              echo LINUX_ARCH_TYPE: ${LINUX_ARCH_TYPE}
 
               while [ 1 ]; do
-                sudo rm -f ./awscli-exe-linux-x86_64.zip || true;
-                wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+                sudo rm -f ./awscli-exe-linux-${LINUX_ARCH_TYPE}.zip || true;
+                wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://awscli.amazonaws.com/awscli-exe-linux-${LINUX_ARCH_TYPE}.zip
                 if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                 sleep 2s;
               done;
-              unzip ./awscli-exe-linux-x86_64.zip
+              unzip ./awscli-exe-linux-${LINUX_ARCH_TYPE}.zip
               sudo ./aws/install
               /usr/local/bin/aws --version
 
@@ -458,17 +461,16 @@ Resources:
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
-                # TODO: support ARM64
-                sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu
+                sudo rm -f ./avalanched-aws.${LINUX_ARCH_TYPE}-unknown-linux-gnu
                 sudo rm -f /tmp/avalanched
                 sudo rm -f /usr/local/bin/avalanched
                 while [ 1 ]; do
-                  sudo rm -f ./avalanched-aws.x86_64-unknown-linux-gnu || true;
-                  wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.x86_64-unknown-linux-gnu
+                  sudo rm -f ./avalanched-aws.${LINUX_ARCH_TYPE}-unknown-linux-gnu || true;
+                  wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${LINUX_ARCH_TYPE}-unknown-linux-gnu
                   if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                   sleep 2s;
                 done;
-                mv ./avalanched-aws.x86_64-unknown-linux-gnu /tmp/avalanched
+                mv ./avalanched-aws.${LINUX_ARCH_TYPE}-unknown-linux-gnu /tmp/avalanched
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               else
@@ -495,6 +497,7 @@ Resources:
               --avalanche-telemetry-cloudwatch-s3-key ${Id}/bootstrap/install/avalanche-telemetry-cloudwatch \
               --avalanche-telemetry-cloudwatch-target-file-path /usr/local/bin/avalanche-telemetry-cloudwatch
 
+              /usr/local/bin/avalanched --version
               /usr/local/bin/avalanchego --version
               ls /usr/local/bin/plugin || true
               /usr/local/bin/avalanche-config --version
@@ -597,21 +600,6 @@ Resources:
 
               sudo timedatectl set-ntp on
 
-              # TODO: signal instance ready
-              # NOT WORKING; "print 'revision: %(revno)s' % version_info"
-              # curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz
-              # pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
-              # if [[ $? -ne 0 ]]; then
-              #   /usr/local/bin/cfn-signal --resource AutoScalingGroup \
-              #     --stack ${AWS::StackName} \
-              #     --region ${AWS::Region} \
-              #     --success false
-              # else
-              #   /usr/local/bin/cfn-signal -e $? --resource AutoScalingGroup \
-              #     --stack ${AWS::StackName} \
-              #     --region ${AWS::Region}
-              # fi
-
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
   ASG:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -650,53 +638,50 @@ Resources:
         # use tags for relatively static configurations
         # because when tags are updated, instances need be refreshed
         - Key: Name
-          PropagateAtLaunch: true
           Value: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+          PropagateAtLaunch: true
         - Key: ID
-          PropagateAtLaunch: true
           Value: !Ref Id
+          PropagateAtLaunch: true
         - Key: NETWORK_ID
-          PropagateAtLaunch: true
           Value: !Ref NetworkId
+          PropagateAtLaunch: true
         - Key: ARCH_TYPE
-          PropagateAtLaunch: true
           Value: amd64
-        - Key: OS_TYPE
           PropagateAtLaunch: true
-          Value: linux
         - Key: INSTANCE_MODE
-          PropagateAtLaunch: true
           Value: !Ref InstanceMode
+          PropagateAtLaunch: true
         - Key: NODE_KIND
-          PropagateAtLaunch: true
           Value: !Ref NodeKind
+          PropagateAtLaunch: true
         - Key: KMS_CMK_ARN
-          PropagateAtLaunch: true
           Value: !Ref KmsCmkArn
+          PropagateAtLaunch: true
         - Key: AAD_TAG
-          PropagateAtLaunch: true
           Value: !Ref AadTag
+          PropagateAtLaunch: true
         - Key: S3_BUCKET_NAME
-          PropagateAtLaunch: true
           Value: !Ref S3BucketName
+          PropagateAtLaunch: true
         - Key: CLOUDWATCH_CONFIG_FILE_PATH
-          PropagateAtLaunch: true
           Value: /opt/aws/amazon-cloudwatch-agent/bin/config.json
+          PropagateAtLaunch: true
         - Key: AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH
-          PropagateAtLaunch: true
           Value: /data/avalanche-telemetry-cloudwatch.rules.yaml
+          PropagateAtLaunch: true
         - Key: AVALANCHEUP_SPEC_PATH
-          PropagateAtLaunch: true
           Value: /data/avalancheup.yaml
+          PropagateAtLaunch: true
         - Key: AVALANCHE_DATA_VOLUME_PATH
-          PropagateAtLaunch: true
           Value: /data
+          PropagateAtLaunch: true
         - Key: AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME
-          PropagateAtLaunch: true
           Value: /dev/xvdb
-        - Key: EIP_FILE_PATH
           PropagateAtLaunch: true
+        - Key: EIP_FILE_PATH
           Value: /data/eip.yaml
+          PropagateAtLaunch: true
 
       # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-mixedinstancespolicy.html
       # https://aws.amazon.com/getting-started/hands-on/ec2-auto-scaling-spot-instances/
