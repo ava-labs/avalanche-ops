@@ -18,12 +18,20 @@ curl -sSf https://sh.rustup.rs | sh -s -- -y \
 ```
 
 ```bash
-# 1. simple, default spot + elastic
+# 1. simple, default spot instance + elastic IP
+# all plugins/binaries are downloaded automatic in the hosts
 avalancheup-aws default-spec --network-name custom
 ```
 
 ```bash
-# 2. simple, subnet-evm
+# 2. simple, default spot instance + elastic IP, subnet-evm
+# all plugins/binaries are downloaded automatic in the hosts
+avalancheup-aws default-spec --network-name custom --subnet-evms 1
+```
+
+```bash
+# 3. simple, subnet-evm with custom binaries
+# some plugins/binaries are downloaded automatic from S3 to the hosts
 avalancheup-aws default-spec \
 --install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
 --install-artifacts-plugin-local-dir ${AVALANCHE_PLUGIN_DIR_PATH} \
@@ -35,7 +43,8 @@ avalancheup-aws default-spec \
 ```
 
 ```bash
-# 3. advanced, subnet-evms
+# 4. advanced, subnet-evm with custom binaries
+# all plugins/binaries are downloaded automatic from S3 to the hosts
 AVALANCHED_BIN_PATH=/home/ubuntu/avalanche-ops/target/release/avalanched-aws
 AWS_VOLUME_PROVISIONER_BIN_PATH=/tmp/aws-volume-provisioner-new
 AWS_IP_PROVISIONER_BIN_PATH=/tmp/aws-ip-provisioner-new
@@ -45,7 +54,6 @@ AVALANCHE_BIN_PATH=/home/ubuntu/go/src/github.com/ava-labs/avalanchego/build/ava
 AVALANCHE_PLUGIN_DIR_PATH=/home/ubuntu/go/src/github.com/ava-labs/avalanchego/build/plugin
 
 cd /home/ubuntu/avalanche-ops
-rm -rf /home/ubuntu/subnet-evm-test-keys-ap-northeast-2
 avalancheup-aws default-spec \
 --region ap-northeast-2 \
 --install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
@@ -60,6 +68,5 @@ avalancheup-aws default-spec \
 --network-name custom \
 --keys-to-generate 50 \
 --keys-to-generate-type hot \
---key-files-dir /home/ubuntu/subnet-evm-test-keys-ap-northeast-2 \
 --subnet-evms 1
 ```
