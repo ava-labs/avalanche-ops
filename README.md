@@ -8,6 +8,8 @@ See https://talks.gyuho.dev/avalanche-aws-2022q3.html for slides.
 
 See ["Cheapest way to set up a network or validator"](bin/avalancheup-aws/recipes-aws.md#cheapest-way-to-set-up-a-network-or-validator).
 
+[![asciicast](https://asciinema.org/a/oHrRU83Zfd6hApexUknm8QphG.svg)](https://asciinema.org/a/oHrRU83Zfd6hApexUknm8QphG)
+
 # Avalanche Ops
 
 A **single command to launch Avalanche nodes from scratch that joins any network of choice (e.g., test, fuji, main) or create a custom Avalanche network**. Provisions all resources required to run a node or network with recommended setups (configurable).
