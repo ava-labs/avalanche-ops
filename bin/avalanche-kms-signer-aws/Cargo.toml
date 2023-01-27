@@ -2,11 +2,11 @@
 name = "avalanche-kms-signer-aws"
 version = "0.2.39" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.67"
 
 [dependencies]
-avalanche-types = { version = "0.0.227", features = ["kms_aws"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.23.2", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.231", features = ["kms_aws"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.24.0", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.1.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.25.0"
 dialoguer = "0.10.3"

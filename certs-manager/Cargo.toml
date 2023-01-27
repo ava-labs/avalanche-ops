@@ -2,11 +2,11 @@
 name = "certs-manager"
 version = "0.0.0" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.67"
 
 [dependencies]
-avalanche-types = { version = "0.0.227", features = ["cert"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.23.2", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.231", features = ["cert"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.24.0", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
 log = "0.4.17"
 tokio = { version = "1.24.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
