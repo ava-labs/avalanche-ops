@@ -8,7 +8,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use tokio::runtime::Runtime;
 
 pub const NAME: &str = "delete";
 
@@ -53,7 +52,7 @@ pub fn command() -> Command {
         )
 }
 
-pub fn execute(
+pub async fn execute(
     log_level: &str,
     region: &str,
     key_arn: &str,
@@ -66,15 +65,13 @@ pub fn execute(
 
     log::info!("requesting to delete {key_arn} ({region}) in {pending_windows_in_days} days");
 
-    let rt = Runtime::new().unwrap();
-
-    let shared_config = rt
-        .block_on(aws_manager::load_config(Some(region.to_string())))
-        .expect("failed to aws_manager::load_config");
+    let shared_config = aws_manager::load_config(Some(region.to_string()))
+        .await
+        .unwrap();
     let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);
-    let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
+    let current_identity = sts_manager.get_identity().await.unwrap();
     log::info!("current identity {:?}", current_identity);
     println!();
 
@@ -87,12 +84,9 @@ pub fn execute(
         )),
         ResetColor
     )?;
-    let cmk = rt
-        .block_on(key::secp256k1::kms::aws::Cmk::from_arn(
-            kms_manager.clone(),
-            key_arn,
-        ))
-        .expect("failed to key::secp256k1::kms::aws::Cmk::create");
+    let cmk = key::secp256k1::kms::aws::Cmk::from_arn(kms_manager.clone(), key_arn)
+        .await
+        .unwrap();
     let cmk_info = cmk.to_info(1).unwrap();
 
     println!();
@@ -119,7 +113,7 @@ pub fn execute(
         return Ok(());
     }
 
-    rt.block_on(cmk.delete(pending_windows_in_days)).unwrap();
+    cmk.delete(pending_windows_in_days).await.unwrap();
 
     println!();
     log::info!("successfully scheduled to delete CMK signer");

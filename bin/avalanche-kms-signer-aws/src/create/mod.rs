@@ -11,7 +11,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use tokio::runtime::Runtime;
 
 pub const NAME: &str = "create";
 
@@ -55,7 +54,12 @@ pub fn command() -> Command {
         )
 }
 
-pub fn execute(log_level: &str, region: &str, key_name: &str, skip_prompt: bool) -> io::Result<()> {
+pub async fn execute(
+    log_level: &str,
+    region: &str,
+    key_name: &str,
+    skip_prompt: bool,
+) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -63,15 +67,13 @@ pub fn execute(log_level: &str, region: &str, key_name: &str, skip_prompt: bool)
 
     log::info!("requesting to create a new KMS CMK {key_name} ({region})");
 
-    let rt = Runtime::new().unwrap();
-
-    let shared_config = rt
-        .block_on(aws_manager::load_config(Some(region.to_string())))
-        .expect("failed to aws_manager::load_config");
+    let shared_config = aws_manager::load_config(Some(region.to_string()))
+        .await
+        .unwrap();
     let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);
-    let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
+    let current_identity = sts_manager.get_identity().await.unwrap();
     log::info!("current identity {:?}", current_identity);
     println!();
 
@@ -110,12 +112,9 @@ pub fn execute(log_level: &str, region: &str, key_name: &str, skip_prompt: bool)
     )?;
     let mut tags = HashMap::new();
     tags.insert(String::from("Name"), key_name.to_string());
-    let cmk = rt
-        .block_on(key::secp256k1::kms::aws::Cmk::create(
-            kms_manager.clone(),
-            tags,
-        ))
-        .expect("failed to key::secp256k1::kms::aws::Cmk::create");
+    let cmk = key::secp256k1::kms::aws::Cmk::create(kms_manager.clone(), tags)
+        .await
+        .unwrap();
     let cmk_info = cmk.to_info(1).unwrap();
 
     println!();

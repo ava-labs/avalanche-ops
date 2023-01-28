@@ -1,13 +1,15 @@
 use std::io::{self, stdout};
 
-use avalanche_types::key;
+use avalanche_types::{
+    jsonrpc::client::{evm as avalanche_sdk_evm, info as json_client_info},
+    key,
+};
 use aws_manager::{self, kms, sts};
-use clap::{value_parser, Arg, Command};
+use clap::{Arg, Command};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
-use tokio::runtime::Runtime;
 
 pub const NAME: &str = "info";
 
@@ -42,33 +44,45 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("NETWORK_ID")
-                .long("network-id")
-                .help("Sets the network Id")
+            Arg::new("CHAIN_RPC_URL")
+                .long("chain-rpc-url")
+                .help("Sets to fetch other information from the RPC endpoints (e.g., balances)")
                 .required(false)
-                .num_args(1)
-                .value_parser(value_parser!(u32))
-                .default_value("1"),
+                .num_args(1),
         )
 }
 
-pub fn execute(log_level: &str, region: &str, key_arn: &str, network_id: u32) -> io::Result<()> {
+pub async fn execute(
+    log_level: &str,
+    region: &str,
+    key_arn: &str,
+    chain_rpc_url: &str,
+) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    log::info!("requesting info for KMS CMK {key_arn} ({region}) with network Id {network_id}");
+    log::info!(
+        "requesting info for KMS CMK {key_arn} ({region}) with chain RPC URL '{chain_rpc_url}'"
+    );
+    let network_id = if chain_rpc_url.is_empty() {
+        1
+    } else {
+        let resp = json_client_info::get_network_id(chain_rpc_url)
+            .await
+            .unwrap();
+        resp.result.unwrap().network_id
+    };
+    log::info!("network Id: {network_id}");
 
-    let rt = Runtime::new().unwrap();
-
-    let shared_config = rt
-        .block_on(aws_manager::load_config(Some(region.to_string())))
-        .expect("failed to aws_manager::load_config");
+    let shared_config = aws_manager::load_config(Some(region.to_string()))
+        .await
+        .unwrap();
     let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);
-    let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
+    let current_identity = sts_manager.get_identity().await.unwrap();
     log::info!("current identity {:?}", current_identity);
     println!();
 
@@ -81,17 +95,17 @@ pub fn execute(log_level: &str, region: &str, key_arn: &str, network_id: u32) ->
         )),
         ResetColor
     )?;
-    let cmk = rt
-        .block_on(key::secp256k1::kms::aws::Cmk::from_arn(
-            kms_manager.clone(),
-            key_arn,
-        ))
-        .expect("failed to key::secp256k1::kms::aws::Cmk::create");
-    let cmk_info = cmk.to_info(network_id).unwrap();
+    let cmk = key::secp256k1::kms::aws::Cmk::from_arn(kms_manager.clone(), key_arn)
+        .await
+        .unwrap();
+    let cmk_info = cmk.to_info(1).unwrap();
 
     println!();
-    println!("loaded CMK\n\n{}\n(network Id {network_id})\n", cmk_info);
+    println!("loaded CMK\n\n{}\n(network Id 1)\n", cmk_info);
     println!();
+
+    let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, cmk_info.h160_address).await?;
+    println!("{} balance: {}", cmk_info.eth_address, balance);
 
     Ok(())
 }
