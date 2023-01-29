@@ -2,7 +2,7 @@ use std::io::{self, stdout};
 
 use avalanche_types::{
     jsonrpc::client::{evm as json_client_evm, info as json_client_info},
-    key, wallet,
+    key, utils, wallet,
 };
 use clap::{Arg, Command};
 use crossterm::{
@@ -12,7 +12,6 @@ use crossterm::{
 use dialoguer::{theme::ColorfulTheme, Select};
 use ethers::utils::Units::Ether;
 use primitive_types::{H160, U256};
-use url::Url;
 
 pub const NAME: &str = "transfer-from-hot";
 
@@ -80,16 +79,21 @@ pub async fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let url = Url::parse(chain_rpc_url).unwrap();
-    let rpc_ep = format!("{}://{}", url.scheme(), url.host_str().unwrap());
-    let root_rpc_url = if let Some(port) = url.port() {
+    let (scheme, host, port, _, _) =
+        utils::urls::extract_scheme_host_port_path_chain_alias(chain_rpc_url).unwrap();
+    let scheme = if let Some(s) = scheme {
+        format!("{s}://")
+    } else {
+        String::new()
+    };
+    let rpc_ep = format!("{scheme}{host}");
+    let rpc_url = if let Some(port) = port {
         format!("{rpc_ep}:{port}")
     } else {
-        rpc_ep // e.g., DNS
+        rpc_ep.clone() // e.g., DNS
     };
-    let resp = json_client_info::get_network_id(&root_rpc_url)
-        .await
-        .unwrap();
+
+    let resp = json_client_info::get_network_id(&rpc_url).await.unwrap();
     let network_id = resp.result.unwrap().network_id;
 
     let chain_id = json_client_evm::chain_id(chain_rpc_url).await.unwrap();
