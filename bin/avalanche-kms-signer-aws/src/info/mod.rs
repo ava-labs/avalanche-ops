@@ -104,8 +104,10 @@ pub async fn execute(
     println!("loaded CMK\n\n{}\n(network Id 1)\n", cmk_info);
     println!();
 
-    let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, cmk_info.h160_address).await?;
-    println!("{} balance: {}", cmk_info.eth_address, balance);
+    if !chain_rpc_url.is_empty() {
+        let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, cmk_info.h160_address).await?;
+        println!("{} balance: {}", cmk_info.eth_address, balance);
+    }
 
     Ok(())
 }
