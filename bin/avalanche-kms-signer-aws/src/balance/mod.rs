@@ -2,7 +2,8 @@ use std::io;
 
 use avalanche_types::jsonrpc::client::evm as avalanche_sdk_evm;
 use clap::{Arg, Command};
-use primitive_types::H160;
+use ethers::utils::Units::Ether;
+use primitive_types::{H160, U256};
 
 pub const NAME: &str = "balance";
 
@@ -43,8 +44,14 @@ pub async fn execute(log_level: &str, chain_rpc_url: &str, addr: H160) -> io::Re
 
     log::info!("fetching the balance of {addr} via {chain_rpc_url}");
 
+    let eth = U256::from(10).checked_pow(Ether.as_num().into()).unwrap();
     let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, addr).await?;
-    println!("{} balance: {}", addr, balance);
+    println!(
+        "{} balance: {} ({} ETH/AVAX)",
+        addr,
+        balance,
+        balance.checked_div(eth).unwrap()
+    );
 
     Ok(())
 }

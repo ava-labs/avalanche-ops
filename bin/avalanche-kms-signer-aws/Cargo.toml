@@ -8,11 +8,13 @@ rust-version = "1.67"
 avalanche-types = { version = "0.0.231", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.24.0", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.1.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
-crossterm = "0.25.0"
+crossterm = "0.26.0"
 dialoguer = "0.10.3"
 env_logger = "0.10.0"
+ethers = "1.0.2"
 ethers-signers = { version = "1.0.2" }
 id-manager = "0.0.2"
 log = "0.4.17"
 primitive-types = { version = "0.12.1" } # https://crates.io/crates/primitive-types
 tokio = { version = "1.24.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+url = "2.3.1"

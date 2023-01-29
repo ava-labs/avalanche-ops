@@ -1,11 +1,18 @@
-use std::io;
+use std::io::{self, stdout};
 
 use avalanche_types::{
     jsonrpc::client::{evm as json_client_evm, info as json_client_info},
     key, wallet,
 };
-use clap::{value_parser, Arg, Command};
+use clap::{Arg, Command};
+use crossterm::{
+    execute,
+    style::{Color, Print, ResetColor, SetForegroundColor},
+};
+use dialoguer::{theme::ColorfulTheme, Select};
+use ethers::utils::Units::Ether;
 use primitive_types::{H160, U256};
+use url::Url;
 
 pub const NAME: &str = "transfer-from-hot";
 
@@ -41,7 +48,6 @@ pub fn command() -> Command {
                 .long("transfer-amount")
                 .help("Sets the transfer amount")
                 .required(true)
-                .value_parser(value_parser!(u64))
                 .num_args(1),
         )
         .arg(
@@ -51,6 +57,14 @@ pub fn command() -> Command {
                 .required(true)
                 .num_args(1),
         )
+        .arg(
+            Arg::new("SKIP_PROMPT")
+                .long("skip-prompt")
+                .short('s')
+                .help("Skips prompt mode")
+                .required(false)
+                .num_args(0),
+        )
 }
 
 pub async fn execute(
@@ -59,13 +73,21 @@ pub async fn execute(
     transferer_key: &str,
     transfer_amount: U256,
     transferee_addr: H160,
+    skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let resp = json_client_info::get_network_id(chain_rpc_url)
+    let url = Url::parse(chain_rpc_url).unwrap();
+    let rpc_ep = format!("{}://{}", url.scheme(), url.host_str().unwrap());
+    let root_rpc_url = if let Some(port) = url.port() {
+        format!("{rpc_ep}:{port}")
+    } else {
+        rpc_ep // e.g., DNS
+    };
+    let resp = json_client_info::get_network_id(&root_rpc_url)
         .await
         .unwrap();
     let network_id = resp.result.unwrap().network_id;
@@ -75,12 +97,43 @@ pub async fn execute(
 
     let transferer_key = key::secp256k1::private_key::Key::from_hex(transferer_key).unwrap();
     let transferer_key_info = transferer_key.to_info(network_id).unwrap();
-    log::info!("created hot key:\n\n{}\n", transferer_key_info);
+    log::info!("loaded hot key:\n\n{}\n", transferer_key_info);
 
-    log::info!(
-        "transfering {transfer_amount} from {} to {transferee_addr} via {chain_rpc_url}",
-        transferer_key_info.eth_address
-    );
+    let eth = U256::from(10).checked_pow(Ether.as_num().into()).unwrap();
+
+    if !skip_prompt {
+        let options = &[
+            format!(
+                "No, I am not ready to transfer {transfer_amount} ({} ETH/AVX) from {} to {transferee_addr}.",
+                transfer_amount.checked_div(eth).unwrap(), transferer_key_info.eth_address
+            ),
+            format!(
+                "Yes, let's transfer {transfer_amount} ({} ETH/AVX) from {} to {transferee_addr}.",
+                 transfer_amount.checked_div(eth).unwrap(), transferer_key_info.eth_address
+            ),
+        ];
+        let selected = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Select your 'create' option")
+            .items(&options[..])
+            .default(0)
+            .interact()
+            .unwrap();
+        if selected == 0 {
+            return Ok(());
+        }
+    } else {
+        log::info!("skipping prompt...")
+    }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "\ntransfering {transfer_amount} ({} ETH/AVAX) from {} to {transferee_addr} via {chain_rpc_url}\n",
+        transfer_amount.checked_div(eth).unwrap(), transferer_key_info.eth_address
+    )),
+        ResetColor
+    )?;
     let transferer_key_signer: ethers_signers::LocalWallet =
         transferer_key.to_ethers_core_signing_key().into();
 
@@ -93,13 +146,17 @@ pub async fn execute(
 
     let transferer_balance = transferer_evm_wallet.balance().await?;
     println!(
-        "transferrer {} balance: {}",
-        transferer_key_info.eth_address, transferer_balance
+        "transferrer {} current balance: {} ({} ETH/AVAX)",
+        transferer_key_info.eth_address,
+        transferer_balance,
+        transferer_balance.checked_div(eth).unwrap()
     );
     let transferee_balance = json_client_evm::get_balance(chain_rpc_url, transferee_addr).await?;
     println!(
-        "transferrer 0x{:x} balance: {}",
-        transferee_addr, transferee_balance
+        "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
+        transferee_addr,
+        transferee_balance,
+        transferee_balance.checked_div(eth).unwrap()
     );
 
     let tx_id = transferer_evm_wallet

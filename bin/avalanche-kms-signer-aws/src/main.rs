@@ -111,10 +111,10 @@ async fn main() -> io::Result<()> {
                 .clone();
 
             let transfer_amount = sub_matches
-                .get_one::<u64>("TRANSFER_AMOUNT")
-                .unwrap_or(&0)
+                .get_one::<String>("TRANSFER_AMOUNT")
+                .unwrap_or(&String::new())
                 .clone();
-            let transfer_amount = U256::from(transfer_amount);
+            let transfer_amount = U256::from_dec_str(&transfer_amount).unwrap();
 
             let transferee_addr = sub_matches
                 .get_one::<String>("TRANSFEREE_ADDRESS")
@@ -134,6 +134,7 @@ async fn main() -> io::Result<()> {
                 &transferer_key,
                 transfer_amount,
                 transferee_addr,
+                sub_matches.get_flag("SKIP_PROMPT"),
             )
             .await
             .unwrap();

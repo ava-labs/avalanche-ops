@@ -10,6 +10,9 @@ use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
+use ethers::utils::Units::Ether;
+use primitive_types::U256;
+use url::Url;
 
 pub const NAME: &str = "info";
 
@@ -69,7 +72,14 @@ pub async fn execute(
     let network_id = if chain_rpc_url.is_empty() {
         1
     } else {
-        let resp = json_client_info::get_network_id(chain_rpc_url)
+        let url = Url::parse(chain_rpc_url).unwrap();
+        let rpc_ep = format!("{}://{}", url.scheme(), url.host_str().unwrap());
+        let root_rpc_url = if let Some(port) = url.port() {
+            format!("{rpc_ep}:{port}")
+        } else {
+            rpc_ep // e.g., DNS
+        };
+        let resp = json_client_info::get_network_id(&root_rpc_url)
             .await
             .unwrap();
         resp.result.unwrap().network_id
@@ -101,12 +111,18 @@ pub async fn execute(
     let cmk_info = cmk.to_info(1).unwrap();
 
     println!();
-    println!("loaded CMK\n\n{}\n(network Id 1)\n", cmk_info);
+    println!("loaded CMK\n\n{}\n(network Id {network_id})\n", cmk_info);
     println!();
 
     if !chain_rpc_url.is_empty() {
+        let eth = U256::from(10).checked_pow(Ether.as_num().into()).unwrap();
         let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, cmk_info.h160_address).await?;
-        println!("{} balance: {}", cmk_info.eth_address, balance);
+        println!(
+            "{} balance: {} ({} ETH/AVAX)",
+            cmk_info.eth_address,
+            balance,
+            balance.checked_div(eth).unwrap()
+        );
     }
 
     Ok(())
