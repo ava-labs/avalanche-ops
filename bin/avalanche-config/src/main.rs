@@ -30,7 +30,7 @@ fn main() {
                 &sub_matches.get_one::<String>("SUBNET_ID").unwrap().clone(),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
-            .expect("failed to execute 'add_tracked_subnet'");
+            .expect("failed to execute 'add-tracked-subnet'");
         }
 
         Some((default::NAME, sub_matches)) => {
