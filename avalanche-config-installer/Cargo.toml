@@ -10,9 +10,9 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
-aws-manager = { version = "0.24.1", features = ["s3"] } # https://crates.io/crates/aws-manager
-compress-manager = "0.0.4"
-http-manager = "0.0.10"
+aws-manager = { version = "0.24.2", features = ["s3"] } # https://crates.io/crates/aws-manager
+compress-manager = "0.0.5"
+http-manager = "0.0.11"
 log = "0.4.17"
 random-manager = "0.0.2"
 serde = { version = "1.0.152", features = ["derive"] }
