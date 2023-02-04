@@ -767,6 +767,7 @@ impl Spec {
     /// and overwrites the file.
     pub fn sync(&self, file_path: &str) -> io::Result<()> {
         log::info!("syncing Spec to '{}'", file_path);
+
         let path = Path::new(file_path);
         let parent_dir = path.parent().expect("unexpected None parent");
         fs::create_dir_all(parent_dir)?;
@@ -779,9 +780,7 @@ impl Spec {
         })?;
 
         let mut f = File::create(file_path)?;
-        f.write_all(d.as_bytes())?;
-
-        Ok(())
+        f.write_all(d.as_bytes())
     }
 
     pub fn load(file_path: &str) -> io::Result<Self> {
