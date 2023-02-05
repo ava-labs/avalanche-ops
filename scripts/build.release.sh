@@ -10,7 +10,7 @@ fi
 cargo build \
 --release \
 --bin avalanche-config \
---bin avalanche-kms-signer-aws \
+--bin avalanche-kms \
 --bin avalanched-aws \
 --bin avalancheup-aws \
 --bin blizzard-aws \
@@ -19,7 +19,7 @@ cargo build \
 
 ./target/release/avalanche-config --help
 
-./target/release/avalanche-kms-signer-aws --help
+./target/release/avalanche-kms --help
 
 ./target/release/avalanched-aws --help
 

@@ -9,7 +9,7 @@ use std::{io, str::FromStr};
 use clap::{crate_version, Command};
 use primitive_types::{H160, U256};
 
-const APP_NAME: &str = "avalanche-kms-signer-aws";
+const APP_NAME: &str = "avalanche-kms";
 
 #[tokio::main]
 async fn main() -> io::Result<()> {

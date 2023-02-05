@@ -1,5 +1,5 @@
 [package]
-name = "avalanche-kms-signer-aws"
+name = "avalanche-kms"
 version = "0.2.41" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.67"

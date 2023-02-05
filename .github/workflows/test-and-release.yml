@@ -174,7 +174,7 @@ jobs:
         run: cargo install cross --locked
 
       - name: Build
-        run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanche-config --bin avalanche-kms-signer-aws --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader
+        run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanche-config --bin avalanche-kms --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader
 
       - name: Compress binaries
         id: release_artifacts
@@ -190,10 +190,10 @@ jobs:
             tar -czvf avalanche-config.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-config
             echo "file_name_avalanche_config_tar_gz=avalanche-config.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            cp ./target/${TARGET}/release/avalanche-kms-signer-aws avalanche-kms-signer-aws.${TARGET}
-            echo "file_name_avalanche_kms_signer_aws=avalanche-kms-signer-aws.${TARGET}" >> $GITHUB_OUTPUT
-            tar -czvf avalanche-kms-signer-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-kms-signer-aws
-            echo "file_name_avalanche_kms_signer_aws_tar_gz=avalanche-kms-signer-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            cp ./target/${TARGET}/release/avalanche-kms avalanche-kms.${TARGET}
+            echo "file_name_avalanche_kms=avalanche-kms.${TARGET}" >> $GITHUB_OUTPUT
+            tar -czvf avalanche-kms.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-kms
+            echo "file_name_avalanche_kms_tar_gz=avalanche-kms.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
             echo "file_name_avalanched_aws=avalanched-aws.${TARGET}" >> $GITHUB_OUTPUT
@@ -227,10 +227,10 @@ jobs:
             gtar -czvf avalanche-config.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-config
             echo "file_name_avalanche_config_tar_gz=avalanche-config.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
-            cp ./target/${TARGET}/release/avalanche-kms-signer-aws avalanche-kms-signer-aws.${TARGET}
-            echo "file_name_avalanche_kms_signer_aws=avalanche-kms-signer-aws.${TARGET}" >> $GITHUB_OUTPUT
-            gtar -czvf avalanche-kms-signer-aws.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-kms-signer-aws
-            echo "file_name_avalanche_kms_signer_aws_tar_gz=avalanche-kms-signer-aws.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+            cp ./target/${TARGET}/release/avalanche-kms avalanche-kms.${TARGET}
+            echo "file_name_avalanche_kms=avalanche-kms.${TARGET}" >> $GITHUB_OUTPUT
+            gtar -czvf avalanche-kms.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-kms
+            echo "file_name_avalanche_kms_tar_gz=avalanche-kms.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/avalanched-aws avalanched-aws.${TARGET}
             echo "file_name_avalanched_aws=avalanched-aws.${TARGET}" >> $GITHUB_OUTPUT
@@ -278,8 +278,8 @@ jobs:
           files: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_config }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_config_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_signer_aws }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_signer_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}
@@ -306,8 +306,8 @@ jobs:
           files: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_config }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_config_tar_gz }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_signer_aws }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_signer_aws_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms }}
+            ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalancheup_aws }}

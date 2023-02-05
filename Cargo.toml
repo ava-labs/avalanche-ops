@@ -2,7 +2,7 @@
 members = [
     "avalanche-config-installer",
     "bin/avalanche-config",
-    "bin/avalanche-kms-signer-aws",
+    "bin/avalanche-kms",
     "bin/avalanched-aws",
     "bin/avalancheup-aws",
     "bin/blizzard-aws",

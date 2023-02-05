@@ -1,19 +1,19 @@
 
-## Avalanche KMS tool (`avalanche-kms-signer-aws`)
+## Avalanche KMS tool (`avalanche-kms`)
 
 ```bash
 ./scripts/build.release.sh
-./target/release/avalanche-kms-signer-aws --help
+./target/release/avalanche-kms --help
 
-./target/release/avalanche-kms-signer-aws create --help
-./target/release/avalanche-kms-signer-aws delete --help
-./target/release/avalanche-kms-signer-aws info --help
+./target/release/avalanche-kms create --help
+./target/release/avalanche-kms delete --help
+./target/release/avalanche-kms info --help
 ```
 
 To create a new KMS CMK:
 
 ```bash
-./target/release/avalanche-kms-signer-aws create \
+./target/release/avalanche-kms create \
 --region=us-west-2
 ```
 
@@ -38,17 +38,17 @@ To get the key information:
 
 ```bash
 # new CMK is successfully created
-./target/release/avalanche-kms-signer-aws info \
+./target/release/avalanche-kms info \
 --region=us-west-2 \
 --network-id=1 \
 --key-arn arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439
 
-./target/release/avalanche-kms-signer-aws info \
+./target/release/avalanche-kms info \
 --region=us-west-2 \
 --network-id=5 \
 --key-arn arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439
 
-./target/release/avalanche-kms-signer-aws info \
+./target/release/avalanche-kms info \
 --region=us-west-2 \
 --network-id=1000 \
 --key-arn arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439
@@ -74,7 +74,7 @@ h160_address: 0x75e3dc1926ca033ee06b0c378b0079241921e2aa
 To schedule the key deletion:
 
 ```bash
-./target/release/avalanche-kms-signer-aws delete \
+./target/release/avalanche-kms delete \
 --region=us-west-2 \
 --key-arn arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439 \
 --pending-windows-in-days 7
