@@ -538,6 +538,8 @@ Resources:
                 --id-tag-value=${Id} \
                 --kind-tag-key=Kind \
                 --kind-tag-value=aws-ip-provisioner \
+                --asg-tag-key=autoscaling:groupName \
+                --asg-tag-value=${AsgName} \
                 --mounted-eip-file-path=/data/eip.yaml
               else
                 echo "skipping allocating elastic IP address..."
