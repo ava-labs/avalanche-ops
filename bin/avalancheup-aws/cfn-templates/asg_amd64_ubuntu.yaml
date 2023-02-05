@@ -519,6 +519,8 @@ Resources:
               --id-tag-value=${Id} \
               --kind-tag-key=Kind \
               --kind-tag-value=aws-volume-provisioner \
+              --asg-tag-key=aws:autoscaling:groupName \
+              --asg-tag-value=${AsgName} \
               --volume-type=${VolumeType} \
               --volume-size=${VolumeSize} \
               --volume-iops=${VolumeIops} \
