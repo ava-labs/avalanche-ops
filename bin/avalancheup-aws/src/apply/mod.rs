@@ -850,6 +850,11 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             format!("{}", on_demand_pct).as_str(),
         ));
 
+        // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+        asg_anchor_params.push(build_param(
+            "AsgName",
+            format!("{}-anchor-{}", spec.id, spec.machine.arch).as_str(),
+        ));
         asg_anchor_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),
@@ -1245,6 +1250,11 @@ aws ssm start-session --region {} --target {}
             format!("{}", on_demand_pct).as_str(),
         ));
 
+        // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+        asg_non_anchor_params.push(build_param(
+            "AsgName",
+            format!("{}-non-anchor-{}", spec.id, spec.machine.arch).as_str(),
+        ));
         asg_non_anchor_params.push(build_param(
             "AsgDesiredCapacity",
             format!("{}", desired_capacity).as_str(),

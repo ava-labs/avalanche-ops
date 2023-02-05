@@ -111,6 +111,10 @@ Parameters:
     Default: "spot"
     Description: Set to "spot" to run spot instance.
 
+  AsgName:
+    Type: String
+    Description: Unique identifier for this Asg.
+
   AsgMinInstancesInService:
     Type: Number
     Description: Minimum instances in service for update.
@@ -337,7 +341,8 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      # AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      AutoScalingGroupName: !Ref AsgName
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgDesiredCapacity
