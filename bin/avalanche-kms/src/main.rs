@@ -94,7 +94,8 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::from("info"))
                     .clone(),
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
-                &sub_matches.get_one::<String>("KEY_ARN").unwrap().clone(),
+                &sub_matches.get_one::<String>("KEY_TYPE").unwrap().clone(),
+                &sub_matches.get_one::<String>("KEY").unwrap().clone(),
                 &sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
                     .unwrap_or(&String::new())

@@ -2,7 +2,7 @@ use std::io::{self, stdout};
 
 use avalanche_types::{
     jsonrpc::client::{evm as json_client_evm, info as json_client_info},
-    key, utils, wallet,
+    key, units, utils, wallet,
 };
 use clap::{Arg, Command};
 use crossterm::{
@@ -10,7 +10,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use ethers::utils::Units::Ether;
 use primitive_types::{H160, U256};
 
 pub const NAME: &str = "transfer-from-hot";
@@ -103,17 +102,15 @@ pub async fn execute(
     let transferer_key_info = transferer_key.to_info(network_id).unwrap();
     log::info!("loaded hot key:\n\n{}\n", transferer_key_info);
 
-    let eth = U256::from(10).checked_pow(Ether.as_num().into()).unwrap();
-
     if !skip_prompt {
         let options = &[
             format!(
                 "No, I am not ready to transfer {transfer_amount} ({} ETH/AVX) from {} to {transferee_addr}.",
-                transfer_amount.checked_div(eth).unwrap(), transferer_key_info.eth_address
+                units::cast_navax_to_avax_i64(transfer_amount), transferer_key_info.eth_address
             ),
             format!(
                 "Yes, let's transfer {transfer_amount} ({} ETH/AVX) from {} to {transferee_addr}.",
-                 transfer_amount.checked_div(eth).unwrap(), transferer_key_info.eth_address
+                units::cast_navax_to_avax_i64(transfer_amount), transferer_key_info.eth_address
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -134,7 +131,7 @@ pub async fn execute(
         SetForegroundColor(Color::Green),
         Print(format!(
             "\ntransfering {transfer_amount} ({} ETH/AVAX) from {} to {transferee_addr} via {chain_rpc_url}\n",
-        transfer_amount.checked_div(eth).unwrap(), transferer_key_info.eth_address
+            units::cast_navax_to_avax_i64(transfer_amount), transferer_key_info.eth_address
     )),
         ResetColor
     )?;
@@ -153,14 +150,14 @@ pub async fn execute(
         "transferrer {} current balance: {} ({} ETH/AVAX)",
         transferer_key_info.eth_address,
         transferer_balance,
-        transferer_balance.checked_div(eth).unwrap()
+        units::cast_navax_to_avax_i64(transferer_balance)
     );
     let transferee_balance = json_client_evm::get_balance(chain_rpc_url, transferee_addr).await?;
     println!(
         "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
         transferee_addr,
         transferee_balance,
-        transferee_balance.checked_div(eth).unwrap()
+        units::cast_navax_to_avax_i64(transferee_balance)
     );
 
     let tx_id = transferer_evm_wallet

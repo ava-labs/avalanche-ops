@@ -1,8 +1,12 @@
-use std::io::{self, stdout};
+use std::{
+    io::{self, stdout},
+    str::FromStr,
+};
 
 use avalanche_types::{
     jsonrpc::client::{evm as avalanche_sdk_evm, info as json_client_info},
-    key, utils,
+    key::secp256k1::{self, KeyType},
+    units, utils,
 };
 use aws_manager::{self, kms, sts};
 use clap::{Arg, Command};
@@ -10,8 +14,6 @@ use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
-use ethers::utils::Units::Ether;
-use primitive_types::U256;
 
 pub const NAME: &str = "info";
 
@@ -38,10 +40,17 @@ pub fn command() -> Command {
                 .default_value("us-west-2"),
         )
         .arg(
-            Arg::new("KEY_ARN")
-                .long("key-arn")
-                .short('a')
-                .help("KMS CMK ARN")
+            Arg::new("KEY_TYPE")
+                .long("key-type")
+                .help("Sets the key type")
+                .required(true)
+                .value_parser(["aws-kms", "hot"])
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("KEY")
+                .long("key")
+                .help("Hex-encoded hot key or KMS CMK ARN")
                 .required(true)
                 .num_args(1),
         )
@@ -57,7 +66,8 @@ pub fn command() -> Command {
 pub async fn execute(
     log_level: &str,
     region: &str,
-    key_arn: &str,
+    key_type: &str,
+    key: &str,
     chain_rpc_url: &str,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -66,7 +76,7 @@ pub async fn execute(
     );
 
     log::info!(
-        "requesting info for KMS CMK {key_arn} ({region}) with chain RPC URL '{chain_rpc_url}'"
+        "requesting info for KMS CMK {key_type} ({region}) with chain RPC URL '{chain_rpc_url}'"
     );
     let network_id = if chain_rpc_url.is_empty() {
         1
@@ -93,7 +103,6 @@ pub async fn execute(
     let shared_config = aws_manager::load_config(Some(region.to_string()))
         .await
         .unwrap();
-    let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();
@@ -104,34 +113,56 @@ pub async fn execute(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nLoading the KMS CMK {} in region {}\n",
-            key_arn, region
+            "\nLoading the hotkey or KMS CMK {} in region {}\n",
+            key, region
         )),
         ResetColor
     )?;
-    let cmk = key::secp256k1::kms::aws::Cmk::from_arn(
-        kms_manager.clone(),
-        key_arn,
-        tokio::time::Duration::from_secs(300),
-        tokio::time::Duration::from_secs(10),
-    )
-    .await
-    .unwrap();
-    let cmk_info = cmk.to_info(network_id).unwrap();
+    let converted_key_type = KeyType::from_str(key).unwrap();
+    match converted_key_type {
+        KeyType::AwsKms => {
+            let kms_manager = kms::Manager::new(&shared_config);
+            let cmk = secp256k1::kms::aws::Cmk::from_arn(
+                kms_manager.clone(),
+                key,
+                tokio::time::Duration::from_secs(300),
+                tokio::time::Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+            let cmk_info = cmk.to_info(network_id).unwrap();
 
-    println!();
-    println!("loaded CMK\n\n{}\n(network Id {network_id})\n", cmk_info);
-    println!();
+            println!();
+            println!("loaded CMK\n\n{}\n(network Id {network_id})\n", cmk_info);
+            println!();
 
-    if !chain_rpc_url.is_empty() {
-        let eth = U256::from(10).checked_pow(Ether.as_num().into()).unwrap();
-        let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, cmk_info.h160_address).await?;
-        println!(
-            "{} balance: {} ({} ETH/AVAX)",
-            cmk_info.eth_address,
-            balance,
-            balance.checked_div(eth).unwrap()
-        );
+            if !chain_rpc_url.is_empty() {
+                let balance =
+                    avalanche_sdk_evm::get_balance(chain_rpc_url, cmk_info.h160_address).await?;
+                println!(
+                    "{} balance: {} ({} ETH/AVAX)",
+                    cmk_info.eth_address,
+                    balance,
+                    units::cast_navax_to_avax_i64(balance)
+                );
+            }
+        }
+        KeyType::Hot => {
+            let k = secp256k1::private_key::Key::from_hex(key).unwrap();
+
+            if !chain_rpc_url.is_empty() {
+                let balance =
+                    avalanche_sdk_evm::get_balance(chain_rpc_url, k.to_public_key().to_h160())
+                        .await?;
+                println!(
+                    "{} balance: {} ({} ETH/AVAX)",
+                    k.to_public_key().to_eth_address(),
+                    balance,
+                    units::cast_navax_to_avax_i64(balance)
+                );
+            }
+        }
+        KeyType::Unknown(s) => panic!("unknown key type {s}"),
     }
 
     Ok(())
