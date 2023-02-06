@@ -118,7 +118,7 @@ pub async fn execute(
         )),
         ResetColor
     )?;
-    let converted_key_type = KeyType::from_str(key).unwrap();
+    let converted_key_type = KeyType::from_str(key_type).unwrap();
     match converted_key_type {
         KeyType::AwsKms => {
             let kms_manager = kms::Manager::new(&shared_config);
