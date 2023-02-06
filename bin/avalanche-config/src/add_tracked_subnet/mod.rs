@@ -127,23 +127,23 @@ pub fn execute(
         ResetColor
     )?;
 
-    let mut new_tracked_subnets = BTreeSet::new();
-    new_tracked_subnets.insert(subnet_id.to_string());
+    let mut new_track_subnets = BTreeSet::new();
+    new_track_subnets.insert(subnet_id.to_string());
 
-    let existing_tracked_subnets = config.tracked_subnets.clone().unwrap_or(String::new());
-    for existing_subnet_id in existing_tracked_subnets.split(',').into_iter() {
+    let existing_track_subnets = config.track_subnets.clone().unwrap_or(String::new());
+    for existing_subnet_id in existing_track_subnets.split(',').into_iter() {
         if existing_subnet_id.is_empty() {
             continue;
         }
-        new_tracked_subnets.insert(existing_subnet_id.to_string());
+        new_track_subnets.insert(existing_subnet_id.to_string());
     }
 
-    let mut tracked_subnets = Vec::new();
-    for new_subnet_id in new_tracked_subnets {
-        tracked_subnets.push(new_subnet_id);
+    let mut track_subnets = Vec::new();
+    for new_subnet_id in new_track_subnets {
+        track_subnets.push(new_subnet_id);
     }
-    if !tracked_subnets.is_empty() {
-        config.tracked_subnets = Some(tracked_subnets.join(","));
+    if !track_subnets.is_empty() {
+        config.track_subnets = Some(track_subnets.join(","));
     }
 
     execute!(
