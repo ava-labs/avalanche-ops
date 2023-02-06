@@ -117,7 +117,7 @@ pub async fn execute(
     )
     .await
     .unwrap();
-    let cmk_info = cmk.to_info(1).unwrap();
+    let cmk_info = cmk.to_info(network_id).unwrap();
 
     println!();
     println!("loaded CMK\n\n{}\n(network Id {network_id})\n", cmk_info);
