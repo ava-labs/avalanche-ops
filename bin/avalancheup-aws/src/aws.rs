@@ -117,6 +117,15 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_nlb_dns_name: Option<String>,
 
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_id: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_version: Option<String>,
+
     /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -175,6 +184,9 @@ impl Resources {
             cloudformation_asg_nlb_arn: None,
             cloudformation_asg_nlb_target_group_arn: None,
             cloudformation_asg_nlb_dns_name: None,
+
+            cloudformation_asg_launch_template_id: None,
+            cloudformation_asg_launch_template_version: None,
 
             cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: None,
             cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,

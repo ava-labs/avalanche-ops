@@ -172,6 +172,14 @@ Parameters:
     Default: "spot"
     Description: Set to "spot" to run spot instance.
 
+  AsgLaunchTemplateId:
+    Default: ""
+    Description: (Optional) Non-empty to reuse.
+
+  AsgLaunchTemplateVersion:
+    Default: ""
+    Description: (Optional) Non-empty to reuse.
+
   AsgName:
     Type: String
     Description: Unique identifier for this Asg.
@@ -312,6 +320,12 @@ Conditions:
       - Fn::Not:
           - Condition: NlbAcmCertificateArnEmpty
 
+  # only create once
+  CreateAsgLaunchTemplate:
+    Fn::Equals:
+      - Ref: AsgLaunchTemplateId
+      - ""
+
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
   # takes 3-minute
@@ -381,6 +395,7 @@ Resources:
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
   ASGLaunchTemplate:
+    Condition: CreateAsgLaunchTemplate
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
@@ -719,8 +734,17 @@ Resources:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplate.html
         LaunchTemplate:
           LaunchTemplateSpecification:
-            LaunchTemplateId: !Ref ASGLaunchTemplate
-            Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+            LaunchTemplateId:
+              Fn::If:
+                - CreateAsgLaunchTemplate
+                - !Ref ASGLaunchTemplate
+                - !Ref AsgLaunchTemplateId
+            Version:
+              Fn::If:
+                - CreateAsgLaunchTemplate
+                - !GetAtt ASGLaunchTemplate.LatestVersionNumber
+                - !Ref AsgLaunchTemplateVersion
+
           # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-autoscaling-autoscalinggroup-launchtemplateoverrides.html
           Overrides:
             - InstanceType: !Select [0, !Ref InstanceTypes]
@@ -753,3 +777,11 @@ Outputs:
   NlbDnsName:
     Condition: CreateNlb
     Value: !GetAtt NLB.DNSName
+
+  AsgLaunchTemplateId:
+    Condition: CreateAsgLaunchTemplate
+    Value: !Ref ASGLaunchTemplate
+
+  AsgLaunchTemplateVersion:
+    Condition: CreateAsgLaunchTemplate
+    Value: !GetAtt ASGLaunchTemplate.LatestVersionNumber
