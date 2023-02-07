@@ -103,13 +103,18 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         } else {
             avalancheup_aws::spec::default_prometheus_rules()
         };
+
+        let anchor_asg_names =
+            if let Some(names) = &spec.aws_resources.cloudformation_asg_anchor_nodes {
+                names.clone()
+            } else {
+                Vec::new()
+            };
+
         (
             spec.avalanchego_config.clone(),
             spec.coreth_chain_config.clone(),
-            spec.aws_resources
-                .cloudformation_asg_anchor_nodes
-                .clone()
-                .unwrap(),
+            anchor_asg_names,
             metrics_rules,
             !spec.disable_logs_auto_removal,
             spec.metrics_fetch_interval_seconds,
