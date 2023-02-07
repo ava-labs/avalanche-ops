@@ -57,6 +57,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let (
         mut avalanchego_config,
         coreth_chain_config,
+        anchor_asg_names,
         metrics_rules,
         logs_auto_removal,
         metrics_fetch_interval_seconds,
@@ -69,6 +70,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         (
             avalanchego_config,
             coreth_chain_config,
+            Vec::new(),
             avalancheup_aws::spec::default_prometheus_rules(),
             true,
             0,
@@ -104,6 +106,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         (
             spec.avalanchego_config.clone(),
             spec.coreth_chain_config.clone(),
+            spec.aws_resources
+                .cloudformation_asg_anchor_nodes
+                .clone()
+                .unwrap(),
             metrics_rules,
             !spec.disable_logs_auto_removal,
             spec.metrics_fetch_interval_seconds,
@@ -271,18 +277,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             )
             .await?;
 
-            // "anchor_asg_name" MUST BE SAME AS THE ONE IN CLOUDFORMATION
-            // e.g.,
-            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
-            let anchor_asg_name = format!(
-                "{}-{}-{}",
-                tags.id,
-                node::Kind::Anchor.as_str(),
-                tags.arch_type
-            );
             let (bootstrap_ids, bootstrap_ips) = discover_ready_anchor_nodes_from_s3(
                 Arc::clone(&ec2_manager_arc),
-                anchor_asg_name.as_str(),
+                anchor_asg_names,
                 Arc::clone(&s3_manager_arc),
                 &tags.s3_bucket,
                 &tags.avalancheup_spec_path,
@@ -1022,7 +1019,7 @@ async fn download_genesis_from_ready_anchor_nodes(
 /// and publish itself with the new S3 key that has a new IP.
 async fn discover_ready_anchor_nodes_from_s3(
     ec2_manager: Arc<ec2::Manager>,
-    anchor_asg_name: &str,
+    anchor_asg_names: Vec<String>,
     s3_manager: Arc<s3::Manager>,
     s3_bucket: &str,
     avalancheup_spec_path: &str,
@@ -1087,14 +1084,16 @@ async fn discover_ready_anchor_nodes_from_s3(
 
     // now delete old/terminated instances that were anchor nodes
     let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
-    let droplets = ec2_manager
-        .list_asg(&anchor_asg_name)
-        .await
-        .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
     let mut running_machine_ids = HashSet::new();
-    for d in droplets.iter() {
-        log::info!("found droplet {} in anchor node ASG", d.instance_id);
-        running_machine_ids.insert(d.instance_id.clone());
+    for anchor_asg_name in anchor_asg_names.iter() {
+        let droplets = ec2_manager
+            .list_asg(anchor_asg_name)
+            .await
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
+        for d in droplets.iter() {
+            log::info!("found droplet {} in anchor node ASG", d.instance_id);
+            running_machine_ids.insert(d.instance_id.clone());
+        }
     }
 
     let mut bootstrap_ids: Vec<String> = vec![];
