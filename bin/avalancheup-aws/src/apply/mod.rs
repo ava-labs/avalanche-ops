@@ -752,6 +752,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     // TODO: support bootstrap from existing DB for anchor nodes
     let mut created_nodes: Vec<avalancheup_aws::spec::Node> = Vec::new();
 
+    let mut asg_launch_template_id = String::new();
+    let mut asg_launch_template_version = String::new();
+
     if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && spec
             .aws_resources
@@ -927,6 +930,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
             if k.eq("NlbDnsName") {
                 spec.aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
+                continue;
+            }
+            if k.eq("AsgLaunchTemplateId") {
+                asg_launch_template_id = v;
+                continue;
+            }
+            if k.eq("AsgLaunchTemplateVersion") {
+                asg_launch_template_version = v;
                 continue;
             }
         }
@@ -1192,6 +1203,16 @@ aws ssm start-session --region {} --target {}
         // must deep-copy as shared with other node kind
         let mut asg_non_anchor_params = asg_parameters.clone();
         asg_non_anchor_params.push(build_param("NodeKind", "non-anchor"));
+
+        if !asg_launch_template_id.is_empty() {
+            copied.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
+        }
+        if !asg_launch_template_version.is_empty() {
+            copied.push(build_param(
+                "AsgLaunchTemplateVersion",
+                &asg_launch_template_version,
+            ));
+        }
 
         // no competing volume provisioner in the same zone
         // TODO: if one manually updates the capacity,
