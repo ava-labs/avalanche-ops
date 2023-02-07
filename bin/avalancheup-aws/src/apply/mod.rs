@@ -1303,7 +1303,7 @@ aws ssm start-session --region {} --target {}
 
             if spec.machine.ip_mode == String::from("elastic") {
                 log::info!("using elastic IPs... wait more");
-                let mut outs = Vec::new();
+                let mut outs: Vec<Address>;
                 loop {
                     outs = rt
                         .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([
