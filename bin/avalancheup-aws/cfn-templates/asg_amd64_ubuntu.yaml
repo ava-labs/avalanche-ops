@@ -401,7 +401,7 @@ Resources:
     Condition: CreateAsgLaunchTemplate
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref Arch]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -438,7 +438,7 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${Arch}" }
+              - { Key: Name, Value: !Sub "${Id}-${Arch}" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -542,8 +542,8 @@ Resources:
               --id-tag-value=${Id} \
               --kind-tag-key=Kind \
               --kind-tag-value=aws-volume-provisioner \
+              --ec2-tag-asg-name-key=ASG_NAME \
               --asg-tag-key=autoscaling:groupName \
-              --asg-tag-value=${AsgName} \
               --volume-type=${VolumeType} \
               --volume-size=${VolumeSize} \
               --volume-iops=${VolumeIops} \
@@ -561,8 +561,8 @@ Resources:
                 --id-tag-value=${Id} \
                 --kind-tag-key=Kind \
                 --kind-tag-value=aws-ip-provisioner \
+                --ec2-tag-asg-name-key=ASG_NAME \
                 --asg-tag-key=autoscaling:groupName \
-                --asg-tag-value=${AsgName} \
                 --mounted-eip-file-path=/data/eip.yaml
               else
                 echo "skipping allocating elastic IP address..."
@@ -671,7 +671,10 @@ Resources:
         # use tags for relatively static configurations
         # because when tags are updated, instances need be refreshed
         - Key: Name
-          Value: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+          Value: !Ref AsgName
+          PropagateAtLaunch: true
+        - Key: ASG_NAME
+          Value: !Ref AsgName
           PropagateAtLaunch: true
         - Key: ID
           Value: !Ref Id
