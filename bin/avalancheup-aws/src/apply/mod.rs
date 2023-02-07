@@ -25,7 +25,6 @@ use aws_manager::{
     s3, ssm, sts,
 };
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
-use aws_sdk_s3::model::Object;
 use aws_sdk_ssm::model::CommandInvocationStatus;
 use clap::{Arg, Command};
 use crossterm::{
