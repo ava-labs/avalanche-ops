@@ -173,10 +173,12 @@ Parameters:
     Description: Set to "spot" to run spot instance.
 
   AsgLaunchTemplateId:
+    Type: String
     Default: ""
     Description: (Optional) Non-empty to reuse.
 
   AsgLaunchTemplateVersion:
+    Type: String
     Default: ""
     Description: (Optional) Non-empty to reuse.
 
