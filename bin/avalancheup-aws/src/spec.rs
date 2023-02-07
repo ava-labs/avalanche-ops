@@ -142,9 +142,7 @@ pub struct DefaultSpecOption {
     pub keys_to_generate_type: String,
 
     pub region: String,
-    pub preferred_az_index: usize,
     pub instance_mode: String,
-    pub disable_spot_instance_for_anchor_nodes: bool,
     pub volume_size_in_gb: u32,
 
     pub ip_mode: String,
@@ -718,7 +716,6 @@ impl Spec {
             instance_types,
 
             instance_mode: opts.instance_mode,
-            disable_spot_instance_for_anchor_nodes: opts.disable_spot_instance_for_anchor_nodes,
             ip_mode: opts.ip_mode,
 
             volume_size_in_gb,
@@ -1012,9 +1009,7 @@ aad_tag: test
 
 aws_resources:
   region: us-west-2
-  preferred_az_index: 2
   use_spot_instance: false
-  disable_spot_instance_for_anchor_nodes: false
   s3_bucket: {bucket}
 
 machine:
@@ -1115,7 +1110,6 @@ metrics_fetch_interval_seconds: 5000
 
         aws_resources: crate::aws::Resources {
             region: String::from("us-west-2"),
-            preferred_az_index: 2,
             s3_bucket: bucket.clone(),
             ..crate::aws::Resources::default()
         },
@@ -1131,7 +1125,6 @@ metrics_fetch_interval_seconds: 5000
                 String::from("t3.large"),
             ],
             instance_mode: String::from("spot"),
-            disable_spot_instance_for_anchor_nodes: false,
             ip_mode: String::from("elastic"),
             volume_size_in_gb: 500,
         },
@@ -1181,7 +1174,6 @@ metrics_fetch_interval_seconds: 5000
     assert_eq!(cfg.aad_tag, "test");
 
     assert_eq!(cfg.aws_resources.region, "us-west-2");
-    assert_eq!(cfg.aws_resources.preferred_az_index, 2);
     assert_eq!(cfg.aws_resources.s3_bucket, bucket);
 
     assert_eq!(
@@ -1493,8 +1485,6 @@ pub struct Machine {
     /// Either "spot" or "on-demand".
     #[serde(default)]
     pub instance_mode: String,
-    #[serde(default)]
-    pub disable_spot_instance_for_anchor_nodes: bool,
 
     /// Either "elastic" or "ephemeral".
     #[serde(default)]
@@ -1544,8 +1534,6 @@ pub struct InstallArtifacts {
 pub enum StackName {
     Ec2InstanceRole(String),
     Vpc(String),
-    AsgAnchorNodes(String),
-    AsgNonAnchorNodes(String),
     SsmDocRestartNodeTrackedSubnetSubnetEvm(String),
     SsmDocRestartNodeTrackedSubnetXsvm(String),
     SsmDocRestartNodeChainConfigSubnetEvm(String),
@@ -1556,8 +1544,6 @@ impl StackName {
         match self {
             StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
             StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::AsgAnchorNodes(id) => format!("{}-asg-anchor-nodes", id),
-            StackName::AsgNonAnchorNodes(id) => format!("{}-asg-non-anchor-nodes", id),
             StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(id) => {
                 format!("{}-ssm-doc-restart-node-tracked-subnet-subnet-evm", id)
             }

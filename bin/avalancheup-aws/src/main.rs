@@ -40,11 +40,6 @@ fn main() {
                 .unwrap_or(&0)
                 .clone();
 
-            let preferred_az_index = sub_matches
-                .get_one::<usize>("PREFERRED_AZ_INDEX")
-                .unwrap_or(&0)
-                .clone();
-
             let subnet_evms = sub_matches
                 .get_one::<usize>("SUBNET_EVMS")
                 .unwrap_or(&0)
@@ -80,14 +75,11 @@ fn main() {
                     .clone(),
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
-                preferred_az_index,
 
                 instance_mode: sub_matches
                     .get_one::<String>("INSTANCE_MODE")
                     .unwrap()
                     .clone(),
-                disable_spot_instance_for_anchor_nodes: sub_matches
-                    .get_flag("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES"),
 
                 volume_size_in_gb,
 
