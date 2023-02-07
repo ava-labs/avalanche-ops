@@ -277,6 +277,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             )
             .await?;
 
+            log::info!(
+                "non anchor nodes discover anchor nodes from {:?}",
+                anchor_asg_names
+            );
             let (bootstrap_ids, bootstrap_ips) = discover_ready_anchor_nodes_from_s3(
                 Arc::clone(&ec2_manager_arc),
                 anchor_asg_names,
@@ -285,6 +289,11 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 &tags.avalancheup_spec_path,
             )
             .await?;
+
+            if bootstrap_ids.is_empty() {
+                log::warn!("custom network but non anchor node cannot discover any anchor nodes for bootstrap Ids");
+                return Err(Error::new(ErrorKind::Other, "no anchor node"));
+            }
 
             // whenever updating "avalanchego_config", we must persist locally
             // via spec file for next spec loads
@@ -1086,10 +1095,15 @@ async fn discover_ready_anchor_nodes_from_s3(
     let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
     let mut running_machine_ids = HashSet::new();
     for anchor_asg_name in anchor_asg_names.iter() {
+        log::info!("listing anchor node ASG {anchor_asg_name}");
         let droplets = ec2_manager
             .list_asg(anchor_asg_name)
             .await
             .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
+        log::info!(
+            "listed anchor node ASG {anchor_asg_name} with {} droplets",
+            droplets.len()
+        );
         for d in droplets.iter() {
             log::info!("found droplet {} in anchor node ASG", d.instance_id);
             running_machine_ids.insert(d.instance_id.clone());
