@@ -25,6 +25,8 @@ use aws_manager::{
     s3, ssm, sts,
 };
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_ec2::model::Address;
+use aws_sdk_s3::model::Object;
 use aws_sdk_ssm::model::CommandInvocationStatus;
 use clap::{Arg, Command};
 use crossterm::{
@@ -970,7 +972,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
             if spec.machine.ip_mode == String::from("elastic") {
                 log::info!("using elastic IPs... wait more");
-                let mut outs = Vec::new();
+                let mut outs: Vec<Address>;
                 loop {
                     outs = rt
                         .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([
@@ -1061,7 +1063,7 @@ aws ssm start-session --region {} --target {}
 
         // wait for anchor nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
-        let mut objects = Vec::new();
+        let mut objects: Vec<Object>;
         let target_nodes = spec.machine.anchor_nodes.unwrap_or(0);
         loop {
             thread::sleep(Duration::from_secs(30));
