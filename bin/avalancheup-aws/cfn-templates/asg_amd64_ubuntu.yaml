@@ -433,10 +433,15 @@ Resources:
               set -xeu
 
               export DEBIAN_FRONTEND=noninteractive
-              sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
-              && sudo apt-get install -yq \
+
+              while [ 1 ]; do
+                sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
+                && sudo apt-get install -yq \
                 curl wget unzip zip gzip tar libssl-dev \
                 python3-pip python-setuptools zsh
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
 
               # http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-sub.html
               export LINUX_ARCH_TYPE=$(uname -m)
