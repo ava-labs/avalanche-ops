@@ -912,7 +912,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
 
         spec.aws_resources
-            .cloudformation_asg_anchor_nodes_logical_ids = Some(asg_local_ids);
+            .cloudformation_asg_anchor_nodes_logical_ids = Some(asg_local_ids.clone());
         spec.sync(spec_file_path)?;
 
         if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
@@ -986,13 +986,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                         ready = ready && eip_addr.instance_id.is_some();
                     }
                     if ready && outs.len() == 1 {
-                        eips.extend(outs);
                         break;
                     }
 
                     thread::sleep(Duration::from_secs(30));
                 }
-                eips.extend(outs);
+                eips.extend(outs.clone());
 
                 for eip_addr in outs.iter() {
                     let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
@@ -1244,7 +1243,7 @@ aws ssm start-session --region {} --target {}
         }
 
         spec.aws_resources
-            .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_local_ids);
+            .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_local_ids.clone());
         spec.sync(spec_file_path)?;
 
         if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
@@ -1318,13 +1317,12 @@ aws ssm start-session --region {} --target {}
                         ready = ready && eip_addr.instance_id.is_some();
                     }
                     if ready && outs.len() == 1 {
-                        eips.extend(outs);
                         break;
                     }
 
                     thread::sleep(Duration::from_secs(30));
                 }
-                eips.extend(outs);
+                eips.extend(outs.clone());
 
                 for eip_addr in outs.iter() {
                     let allocation_id = eip_addr.allocation_id.to_owned().unwrap();

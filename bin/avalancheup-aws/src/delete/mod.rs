@@ -319,30 +319,24 @@ pub fn execute(
         Print("\n\n\nSTEP: triggering delete ASG for non-anchor nodes\n"),
         ResetColor
     )?;
-    let asg_non_anchor_nodes_stack_name = spec
-        .aws_resources
-        .cloudformation_asg_non_anchor_nodes
-        .clone()
-        .unwrap();
-    rt.block_on(cloudformation_manager.delete_stack(asg_non_anchor_nodes_stack_name.as_str()))
-        .unwrap();
+    if let Some(stack_names) = &spec.aws_resources.cloudformation_asg_non_anchor_nodes {
+        for stack_name in stack_names.iter() {
+            rt.block_on(cloudformation_manager.delete_stack(stack_name))
+                .unwrap();
+        }
+    }
 
-    if spec.machine.anchor_nodes.unwrap_or(0) > 0 {
-        thread::sleep(Duration::from_secs(1));
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete ASG for anchor nodes\n"),
-            ResetColor
-        )?;
-        let asg_anchor_nodes_stack_name = spec
-            .aws_resources
-            .cloudformation_asg_anchor_nodes
-            .clone()
-            .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(asg_anchor_nodes_stack_name.as_str()))
-            .unwrap();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\n\nSTEP: triggering delete ASG for anchor nodes\n"),
+        ResetColor
+    )?;
+    if let Some(stack_names) = &spec.aws_resources.cloudformation_asg_anchor_nodes {
+        for stack_name in stack_names.iter() {
+            rt.block_on(cloudformation_manager.delete_stack(stack_name))
+                .unwrap();
+        }
     }
 
     // delete no matter what, in case node provision failed
@@ -354,43 +348,34 @@ pub fn execute(
         Print("\n\n\nSTEP: confirming delete ASG for non-anchor nodes\n"),
         ResetColor
     )?;
-    let desired_capacity = spec.machine.non_anchor_nodes;
-    let mut wait_secs = 300 + 60 * desired_capacity as u64;
-    if wait_secs > MAX_WAIT_SECONDS {
-        wait_secs = MAX_WAIT_SECONDS;
-    }
-    rt.block_on(cloudformation_manager.poll_stack(
-        asg_non_anchor_nodes_stack_name.as_str(),
-        StackStatus::DeleteComplete,
-        Duration::from_secs(wait_secs),
-        Duration::from_secs(30),
-    ))
-    .unwrap();
-
-    if spec.machine.anchor_nodes.unwrap_or(0) > 0 {
-        // delete no matter what, in case node provision failed
-        thread::sleep(Duration::from_secs(1));
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: confirming delete ASG for anchor nodes\n"),
-            ResetColor
-        )?;
-        let asg_anchor_nodes_stack_name =
-            spec.aws_resources.cloudformation_asg_anchor_nodes.unwrap();
-        let desired_capacity = spec.machine.anchor_nodes.unwrap();
-        let mut wait_secs = 300 + 60 * desired_capacity as u64;
-        if wait_secs > MAX_WAIT_SECONDS {
-            wait_secs = MAX_WAIT_SECONDS;
+    if let Some(stack_names) = &spec.aws_resources.cloudformation_asg_non_anchor_nodes {
+        for stack_name in stack_names.iter() {
+            rt.block_on(cloudformation_manager.poll_stack(
+                stack_name,
+                StackStatus::DeleteComplete,
+                Duration::from_secs(600),
+                Duration::from_secs(30),
+            ))
+            .unwrap();
         }
-        rt.block_on(cloudformation_manager.poll_stack(
-            asg_anchor_nodes_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(wait_secs),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+    }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\n\nSTEP: confirming delete ASG for anchor nodes\n"),
+        ResetColor
+    )?;
+    if let Some(stack_names) = spec.aws_resources.cloudformation_asg_anchor_nodes {
+        for stack_name in stack_names.iter() {
+            rt.block_on(cloudformation_manager.poll_stack(
+                stack_name,
+                StackStatus::DeleteComplete,
+                Duration::from_secs(600),
+                Duration::from_secs(30),
+            ))
+            .unwrap();
+        }
     }
 
     // VPC delete must run after associated EC2 instances are terminated due to dependencies
