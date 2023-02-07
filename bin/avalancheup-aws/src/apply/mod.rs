@@ -1205,10 +1205,10 @@ aws ssm start-session --region {} --target {}
         asg_non_anchor_params.push(build_param("NodeKind", "non-anchor"));
 
         if !asg_launch_template_id.is_empty() {
-            copied.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
+            asg_non_anchor_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
         }
         if !asg_launch_template_version.is_empty() {
-            copied.push(build_param(
+            asg_non_anchor_params.push(build_param(
                 "AsgLaunchTemplateVersion",
                 &asg_launch_template_version,
             ));
