@@ -87,9 +87,6 @@ pub fn command() -> Command {
         )
 }
 
-// 50-minute
-const MAX_WAIT_SECONDS: u64 = 50 * 60;
-
 pub fn execute(
     log_level: &str,
     spec_file_path: &str,

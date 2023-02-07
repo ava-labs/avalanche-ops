@@ -1394,7 +1394,7 @@ aws ssm start-session --region {} --target {}
 
         // wait for non anchor nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
-        let mut objects = Vec::new();
+        let mut objects: Vec<Object>;
         let target_nodes = spec.machine.non_anchor_nodes;
         loop {
             thread::sleep(Duration::from_secs(30));
