@@ -152,9 +152,10 @@ Parameters:
     Default: 500
     Description: The throughput to provision for a gp3 volume, with a maximum of 1,000 MiB/s.
 
+  # no need to have bigger values when each ASG only provisions one node
   VolumeProvisionerInitialWaitRandomSeconds:
     Type: Number
-    Default: 150
+    Default: 10
     MinValue: 0
     MaxValue: 500
     Description: Only set non-zero if multiple instances may compete for the same EBS volume in the same zone.
@@ -191,28 +192,28 @@ Parameters:
     Description: Minimum instances in service for update.
     Default: 1
     MinValue: 1
-    MaxValue: 1000
+    MaxValue: 1
 
   AsgMinSize:
     Type: Number
     Description: Minimum size auto scaling group
     Default: 1
     MinValue: 0
-    MaxValue: 1000
+    MaxValue: 1
 
   AsgMaxSize:
     Type: Number
     Description: Maximum size auto scaling group
     Default: 2
     MinValue: 1
-    MaxValue: 1000
+    MaxValue: 2
 
   AsgDesiredCapacity:
     Type: Number
     Description: Desired size auto scaling group
     Default: 1
     MinValue: 1
-    MaxValue: 1000
+    MaxValue: 1
 
   OnDemandPercentageAboveBaseCapacity:
     Type: Number

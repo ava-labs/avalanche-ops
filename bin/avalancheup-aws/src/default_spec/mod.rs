@@ -58,16 +58,6 @@ pub fn command() -> Command {
                 .default_value("us-west-2"),
         )
         .arg(
-            Arg::new("PREFERRED_AZ_INDEX")
-                .long("preferred-az-index")
-                .short('x')
-                .help("Sets the index to choose the preferred AZ (only use it to launch an instance other than first AZ for custom network, or second avalancheup cluster)")
-                .required(false)
-                .num_args(1)
-                .value_parser(value_parser!(usize))
-                .default_value("0"),
-        )
-        .arg(
             Arg::new("INSTANCE_MODE")
                 .long("instance-mode")
                 .help("Sets instance mode")
@@ -84,13 +74,6 @@ pub fn command() -> Command {
                 .num_args(1)
                 .value_parser(["elastic", "ephemeral"])
                 .default_value("elastic"),
-        )
-        .arg(
-            Arg::new("DISABLE_SPOT_INSTANCE_FOR_ANCHOR_NODES")
-                .long("disable-spot-instance-for-anchor-nodes")
-                .help("Sets to disable spot instance for anchor nodes")
-                .required(false)
-                .num_args(0),
         )
         .arg(
             Arg::new("ENABLE_NLB")

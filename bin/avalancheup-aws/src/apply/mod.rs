@@ -129,20 +129,33 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.aws_resources.cloudformation_vpc =
             Some(avalancheup_aws::spec::StackName::Vpc(spec.id.clone()).encode());
     }
+
     if spec.avalanchego_config.is_custom_network()
         && spec.aws_resources.cloudformation_asg_anchor_nodes.is_none()
     {
-        spec.aws_resources.cloudformation_asg_anchor_nodes =
-            Some(avalancheup_aws::spec::StackName::AsgAnchorNodes(spec.id.clone()).encode());
+        let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
+        let mut asg_names = Vec::new();
+        for i in 0..anchor_nodes {
+            let asg_name = format!("{}-asg-anchor-{}", spec.id, i + 1);
+            asg_names.push(asg_name);
+        }
+        spec.aws_resources.cloudformation_asg_anchor_nodes = Some(asg_names);
     }
+
     if spec
         .aws_resources
         .cloudformation_asg_non_anchor_nodes
         .is_none()
     {
-        spec.aws_resources.cloudformation_asg_non_anchor_nodes =
-            Some(avalancheup_aws::spec::StackName::AsgNonAnchorNodes(spec.id.clone()).encode());
+        let non_anchor_nodes = spec.machine.non_anchor_nodes;
+        let mut asg_names = Vec::new();
+        for i in 0..non_anchor_nodes {
+            let asg_name = format!("{}-asg-non-anchor-{}", spec.id, i + 1);
+            asg_names.push(asg_name);
+        }
+        spec.aws_resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
     }
+
     if spec
         .aws_resources
         .cloudwatch_avalanche_metrics_namespace
@@ -666,7 +679,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
     }
 
-    let mut asg_parameters = Vec::from([
+    let mut common_asg_params = Vec::from([
         build_param("Id", &spec.id),
         build_param(
             "NetworkId",
@@ -711,18 +724,24 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             "NlbHttpPort",
             format!("{}", spec.avalanchego_config.http_port).as_str(),
         ),
+        build_param("AsgDesiredCapacity", "1"),
+        // for CFN template updates
+        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
+        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
+        build_param("AsgMaxSize", "2"),
+        build_param(
+            "VolumeSize",
+            format!("{}", spec.machine.volume_size_in_gb).as_str(),
+        ),
+        build_param("Arch", &spec.machine.arch),
+        build_param("AvalanchedFlag", &spec.avalanched_config.to_flags()),
+        build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
     ]);
 
-    asg_parameters.push(build_param(
-        "VolumeSize",
-        format!("{}", spec.machine.volume_size_in_gb).as_str(),
-    ));
-
-    asg_parameters.push(build_param("Arch", &spec.machine.arch));
     if !spec.machine.instance_types.is_empty() {
         let instance_types = spec.machine.instance_types.clone();
-        asg_parameters.push(build_param("InstanceTypes", &instance_types.join(",")));
-        asg_parameters.push(build_param(
+        common_asg_params.push(build_param("InstanceTypes", &instance_types.join(",")));
+        common_asg_params.push(build_param(
             "InstanceTypesCount",
             format!("{}", instance_types.len()).as_str(),
         ));
@@ -733,15 +752,35 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     } else {
         "github"
     };
-    asg_parameters.push(build_param(
+    common_asg_params.push(build_param(
         "AvalanchedDownloadSource",
         avalanched_download_source,
     ));
 
-    asg_parameters.push(build_param(
-        "AvalanchedFlag",
-        &spec.avalanched_config.to_flags(),
+    let is_spot_instance = spec.machine.instance_mode == String::from("spot");
+    let on_demand_pct = if is_spot_instance { 0 } else { 100 };
+    common_asg_params.push(build_param(
+        "InstanceMode",
+        if is_spot_instance {
+            "spot"
+        } else {
+            "on-demand"
+        },
     ));
+    common_asg_params.push(build_param("IpMode", &spec.machine.ip_mode));
+    common_asg_params.push(build_param(
+        "OnDemandPercentageAboveBaseCapacity",
+        format!("{}", on_demand_pct).as_str(),
+    ));
+
+    if let Some(arn) = &spec.aws_resources.nlb_acm_certificate_arn {
+        common_asg_params.push(build_param("NlbAcmCertificateArn", arn));
+    };
+    if spec.enable_nlb {
+        common_asg_params.push(build_param("NlbEnabled", "true"));
+    } else {
+        common_asg_params.push(build_param("NlbEnabled", "false"));
+    }
 
     let public_subnet_ids = spec
         .aws_resources
@@ -758,7 +797,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && spec
             .aws_resources
-            .cloudformation_asg_anchor_nodes_logical_id
+            .cloudformation_asg_anchor_nodes_logical_ids
             .is_none()
     {
         execute!(
@@ -776,181 +815,107 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             Asset::get("cfn-templates/asg_amd64_ubuntu.yaml").unwrap();
         let cloudformation_asg_anchor_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_anchor_nodes_yaml.data.as_ref()).unwrap();
-        let cloudformation_asg_anchor_nodes_stack_name = spec
+        let stack_names = spec
             .aws_resources
             .cloudformation_asg_anchor_nodes
             .clone()
             .unwrap();
 
-        let desired_capacity = spec.machine.anchor_nodes.unwrap();
+        let anchor_nodes = spec.machine.anchor_nodes.unwrap();
 
         // must deep-copy as shared with other node kind
-        let mut asg_anchor_params = asg_parameters.clone();
-        asg_anchor_params.push(build_param("NodeKind", "anchor"));
+        let mut common_asg_params_anchor = common_asg_params.clone();
+        common_asg_params_anchor.push(build_param("NodeKind", "anchor"));
 
-        if let Some(anchor_nodes) = &spec.machine.anchor_nodes {
-            if *anchor_nodes == 1 {
-                asg_anchor_params.push(build_param(
-                    "VolumeProvisionerInitialWaitRandomSeconds",
-                    "10",
-                ));
-
-                log::info!(
-                    "using single subnet {} for {} anchor node",
-                    public_subnet_ids[spec.aws_resources.preferred_az_index],
-                    *anchor_nodes
-                );
-                asg_anchor_params.push(build_param(
-                    "PublicSubnetIds",
-                    &public_subnet_ids[spec.aws_resources.preferred_az_index],
-                ));
-            } else if *anchor_nodes == 2 {
-                asg_anchor_params.push(build_param(
-                    "VolumeProvisionerInitialWaitRandomSeconds",
-                    "20",
-                ));
-
-                log::info!(
-                    "using two subnets {} and {} for {} anchor nodes",
-                    public_subnet_ids[0],
-                    public_subnet_ids[1],
-                    *anchor_nodes
-                );
-                asg_anchor_params.push(build_param(
-                    "PublicSubnetIds",
-                    &public_subnet_ids[..2].join(","),
-                ));
-            } else {
-                asg_anchor_params.push(build_param(
-                    "VolumeProvisionerInitialWaitRandomSeconds",
-                    "200",
-                ));
-
-                log::info!(
-                    "using multiple subnets {:?} for {} anchor nodes",
-                    public_subnet_ids,
-                    *anchor_nodes
-                );
-                asg_anchor_params
-                    .push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
-            }
-        }
-
-        let is_spot_instance = spec.machine.instance_mode == String::from("spot")
-            && !spec.machine.disable_spot_instance_for_anchor_nodes;
-        let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-        asg_anchor_params.push(build_param(
-            "InstanceMode",
-            if is_spot_instance {
-                "spot"
-            } else {
-                "on-demand"
-            },
-        ));
-        asg_anchor_params.push(build_param("IpMode", &spec.machine.ip_mode));
-        asg_anchor_params.push(build_param(
-            "OnDemandPercentageAboveBaseCapacity",
-            format!("{}", on_demand_pct).as_str(),
-        ));
-
-        // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
-        asg_anchor_params.push(build_param(
-            "AsgName",
-            format!("{}-anchor-{}", spec.id, spec.machine.arch).as_str(),
-        ));
-        asg_anchor_params.push(build_param(
-            "AsgDesiredCapacity",
-            format!("{}", desired_capacity).as_str(),
-        ));
-
-        // for CFN template updates
-        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
-        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
-        asg_anchor_params.push(build_param(
-            "AsgMaxSize",
-            format!("{}", desired_capacity + 1).as_str(),
-        ));
-
-        if spec.aws_resources.nlb_acm_certificate_arn.is_some() {
-            asg_anchor_params.push(build_param(
-                "NlbAcmCertificateArn",
-                &spec.aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
+        let mut asg_local_ids = Vec::new();
+        for i in 0..anchor_nodes as usize {
+            let mut asg_params = common_asg_params_anchor.clone();
+            asg_params.push(build_param(
+                "PublicSubnetIds",
+                &public_subnet_ids[(i as usize) % public_subnet_ids.len()].clone(),
             ));
-        };
 
-        if spec.enable_nlb {
-            asg_anchor_params.push(build_param("NlbEnabled", "true"));
-        } else {
-            asg_anchor_params.push(build_param("NlbEnabled", "false"));
-        }
+            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+            let asg_name = format!("{}-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
+            asg_params.push(build_param("AsgName", &asg_name));
 
-        rt.block_on(cloudformation_manager.create_stack(
-            cloudformation_asg_anchor_nodes_stack_name.as_str(),
-            None,
-            OnFailure::Delete,
-            cloudformation_asg_anchor_nodes_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("avalanche-ops").build(),
-            ])),
-            Some(asg_anchor_params),
-        ))
-        .unwrap();
+            if !asg_launch_template_id.is_empty() {
+                asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
+            }
+            if !asg_launch_template_version.is_empty() {
+                asg_params.push(build_param(
+                    "AsgLaunchTemplateVersion",
+                    &asg_launch_template_version,
+                ));
+            }
 
-        // add 5-minute for ELB creation + volume provisioner
-        let mut wait_secs = 700 + 60 * desired_capacity as u64;
-        if wait_secs > MAX_WAIT_SECONDS {
-            wait_secs = MAX_WAIT_SECONDS;
-        }
-        thread::sleep(Duration::from_secs(60));
-        let stack = rt
-            .block_on(cloudformation_manager.poll_stack(
-                cloudformation_asg_anchor_nodes_stack_name.as_str(),
-                StackStatus::CreateComplete,
-                Duration::from_secs(wait_secs),
-                Duration::from_secs(30),
+            if let Some(arn) = &spec.aws_resources.cloudformation_asg_nlb_target_group_arn {
+                // NLB already created
+                asg_params.push(build_param("NlbTargetGroupArn", arn));
+            }
+
+            rt.block_on(cloudformation_manager.create_stack(
+                &stack_names[i],
+                None,
+                OnFailure::Delete,
+                cloudformation_asg_anchor_nodes_tmpl,
+                Some(Vec::from([
+                    Tag::builder().key("KIND").value("avalanche-ops").build(),
+                ])),
+                Some(asg_params),
             ))
             .unwrap();
 
-        for o in stack.outputs.unwrap() {
-            let k = o.output_key.unwrap();
-            let v = o.output_value.unwrap();
-            log::info!("stack output key=[{}], value=[{}]", k, v,);
-            if k.eq("AsgLogicalId") {
-                spec.aws_resources
-                    .cloudformation_asg_anchor_nodes_logical_id = Some(v);
-                continue;
+            // add 5-minute for ELB creation + volume provisioner
+            let mut wait_secs = 800;
+            if wait_secs > MAX_WAIT_SECONDS {
+                wait_secs = MAX_WAIT_SECONDS;
             }
-            if k.eq("NlbArn") {
-                spec.aws_resources.cloudformation_asg_nlb_arn = Some(v);
-                continue;
-            }
-            if k.eq("NlbTargetGroupArn") {
-                spec.aws_resources.cloudformation_asg_nlb_target_group_arn = Some(v);
-                continue;
-            }
-            if k.eq("NlbDnsName") {
-                spec.aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
-                continue;
-            }
-            if k.eq("AsgLaunchTemplateId") {
-                asg_launch_template_id = v;
-                continue;
-            }
-            if k.eq("AsgLaunchTemplateVersion") {
-                asg_launch_template_version = v;
-                continue;
+            thread::sleep(Duration::from_secs(60));
+            let stack = rt
+                .block_on(cloudformation_manager.poll_stack(
+                    &stack_names[i],
+                    StackStatus::CreateComplete,
+                    Duration::from_secs(wait_secs),
+                    Duration::from_secs(30),
+                ))
+                .unwrap();
+
+            for o in stack.outputs.unwrap() {
+                let k = o.output_key.unwrap();
+                let v = o.output_value.unwrap();
+                log::info!("stack output key=[{}], value=[{}]", k, v,);
+                if k.eq("AsgLogicalId") {
+                    asg_local_ids.push(v);
+                    continue;
+                }
+                if k.eq("NlbArn") {
+                    spec.aws_resources.cloudformation_asg_nlb_arn = Some(v);
+                    continue;
+                }
+                if k.eq("NlbTargetGroupArn") {
+                    spec.aws_resources.cloudformation_asg_nlb_target_group_arn = Some(v);
+                    continue;
+                }
+                if k.eq("NlbDnsName") {
+                    spec.aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
+                    continue;
+                }
+                if k.eq("AsgLaunchTemplateId") {
+                    asg_launch_template_id = v;
+                    continue;
+                }
+                if k.eq("AsgLaunchTemplateVersion") {
+                    asg_launch_template_version = v;
+                    continue;
+                }
             }
         }
-        if spec
-            .aws_resources
-            .cloudformation_asg_anchor_nodes_logical_id
-            .is_none()
-        {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "aws_resources.cloudformation_asg_anchor_nodes_logical_id not found",
-            ));
-        }
+
+        spec.aws_resources
+            .cloudformation_asg_anchor_nodes_logical_ids = Some(asg_local_ids);
+        spec.sync(spec_file_path)?;
+
         if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
             if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB ARN...");
@@ -986,62 +951,58 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             }
         }
 
-        let asg_name = spec
-            .aws_resources
-            .cloudformation_asg_anchor_nodes_logical_id
-            .clone()
-            .unwrap();
-
         let mut droplets: Vec<ec2::Droplet> = Vec::new();
-        let target_nodes = spec.machine.anchor_nodes.unwrap();
-        for _ in 0..20 {
-            // TODO: better retries
-            log::info!(
-                "fetching all droplets for anchor-node SSH access (target nodes {})",
-                target_nodes
-            );
-            droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
-            if (droplets.len() as u32) >= target_nodes {
-                break;
-            }
-            log::info!(
-                "retrying fetching all droplets (only got {})",
-                droplets.len()
-            );
-            thread::sleep(Duration::from_secs(30));
-        }
-
         let mut eips = Vec::new();
-        if spec.machine.ip_mode == String::from("elastic") {
-            log::info!("using elastic IPs... wait more");
-            loop {
-                eips = rt
-                    .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([(
-                        String::from("Id"),
-                        spec.id.clone(),
-                    )])))
-                    .unwrap();
-
-                log::info!("got {} EIP addresses", eips.len());
-
-                let mut ready = true;
-                for eip_addr in eips.iter() {
-                    ready = ready && eip_addr.instance_id.is_some();
-                }
-                if ready && eips.len() == target_nodes as usize {
+        let mut instance_id_to_public_ip = HashMap::new();
+        for asg_name in asg_local_ids.iter() {
+            for _ in 0..20 {
+                // TODO: better retries
+                log::info!("fetching all droplets for anchor-node SSH access");
+                droplets = rt.block_on(ec2_manager.list_asg(asg_name)).unwrap();
+                if droplets.len() >= 1 {
                     break;
                 }
-
+                log::info!(
+                    "retrying fetching all droplets (only got {})",
+                    droplets.len()
+                );
                 thread::sleep(Duration::from_secs(30));
             }
-        }
-        let mut instance_id_to_public_ip = HashMap::new();
-        for eip_addr in eips.iter() {
-            let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
-            let instance_id = eip_addr.instance_id.to_owned().unwrap();
-            let public_ip = eip_addr.public_ip.to_owned().unwrap();
-            log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
-            instance_id_to_public_ip.insert(instance_id, public_ip);
+
+            if spec.machine.ip_mode == String::from("elastic") {
+                log::info!("using elastic IPs... wait more");
+                let mut outs = Vec::new();
+                loop {
+                    outs = rt
+                        .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([
+                            (String::from("Id"), spec.id.clone()),
+                            (String::from("autoscaling:groupName"), asg_name.clone()),
+                        ])))
+                        .unwrap();
+
+                    log::info!("got {} EIP addresses", outs.len());
+
+                    let mut ready = true;
+                    for eip_addr in outs.iter() {
+                        ready = ready && eip_addr.instance_id.is_some();
+                    }
+                    if ready && outs.len() == 1 {
+                        eips.extend(outs);
+                        break;
+                    }
+
+                    thread::sleep(Duration::from_secs(30));
+                }
+                eips.extend(outs);
+
+                for eip_addr in outs.iter() {
+                    let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
+                    let instance_id = eip_addr.instance_id.to_owned().unwrap();
+                    let public_ip = eip_addr.public_ip.to_owned().unwrap();
+                    log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
+                    instance_id_to_public_ip.insert(instance_id, public_ip);
+                }
+            }
         }
 
         let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
@@ -1102,9 +1063,11 @@ aws ssm start-session --region {} --target {}
 
         // wait for anchor nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
-        let mut objects: Vec<Object>;
+        let mut objects = Vec::new();
+        let target_nodes = spec.machine.anchor_nodes.unwrap_or(0);
         loop {
             thread::sleep(Duration::from_secs(30));
+
             objects = rt
                 .block_on(
                     s3_manager.list_objects(
@@ -1167,7 +1130,7 @@ aws ssm start-session --region {} --target {}
 
     if spec
         .aws_resources
-        .cloudformation_asg_non_anchor_nodes_logical_id
+        .cloudformation_asg_non_anchor_nodes_logical_ids
         .is_none()
     {
         execute!(
@@ -1184,172 +1147,80 @@ aws ssm start-session --region {} --target {}
             Asset::get("cfn-templates/asg_amd64_ubuntu.yaml").unwrap();
         let cloudformation_asg_non_anchor_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_non_anchor_nodes_yaml.data.as_ref()).unwrap();
-        let cloudformation_asg_non_anchor_nodes_stack_name = spec
+        let stack_names = spec
             .aws_resources
             .cloudformation_asg_non_anchor_nodes
             .clone()
             .unwrap();
 
-        let desired_capacity = spec.machine.non_anchor_nodes;
-
-        // we did not create anchor nodes for mainnet/* nodes
-        // so no nlb creation before
-        // we create here for non-anchor nodes
-        let need_to_create_nlb = spec
-            .aws_resources
-            .cloudformation_asg_nlb_target_group_arn
-            .is_none();
+        let non_anchor_nodes = spec.machine.non_anchor_nodes;
 
         // must deep-copy as shared with other node kind
-        let mut asg_non_anchor_params = asg_parameters.clone();
-        asg_non_anchor_params.push(build_param("NodeKind", "non-anchor"));
+        let mut common_asg_params_non_anchor = common_asg_params.clone();
+        common_asg_params_non_anchor.push(build_param("NodeKind", "non-anchor"));
 
-        if !asg_launch_template_id.is_empty() {
-            asg_non_anchor_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
-        }
-        if !asg_launch_template_version.is_empty() {
-            asg_non_anchor_params.push(build_param(
-                "AsgLaunchTemplateVersion",
-                &asg_launch_template_version,
-            ));
-        }
-
-        // no competing volume provisioner in the same zone
-        // TODO: if one manually updates the capacity,
-        // this value is not valid... may cause contentions in EBS volume provision
-        if spec.machine.non_anchor_nodes == 1 {
-            asg_non_anchor_params.push(build_param(
-                "VolumeProvisionerInitialWaitRandomSeconds",
-                "10",
-            ));
-
-            log::info!(
-                "using single subnet {} for 1 non-anchor node",
-                public_subnet_ids[spec.aws_resources.preferred_az_index],
-            );
-            asg_non_anchor_params.push(build_param(
+        let mut asg_local_ids = Vec::new();
+        for i in 0..non_anchor_nodes as usize {
+            let mut asg_params = common_asg_params_non_anchor.clone();
+            asg_params.push(build_param(
                 "PublicSubnetIds",
-                &public_subnet_ids[spec.aws_resources.preferred_az_index],
-            ));
-        } else if spec.machine.non_anchor_nodes == 2 {
-            asg_non_anchor_params.push(build_param(
-                "VolumeProvisionerInitialWaitRandomSeconds",
-                "20",
+                &public_subnet_ids[(i as usize) % public_subnet_ids.len()].clone(),
             ));
 
-            log::info!(
-                "using two subnets {} and {} for {} non-anchor nodes",
-                public_subnet_ids[0],
-                public_subnet_ids[1],
-                spec.machine.non_anchor_nodes
-            );
-            asg_non_anchor_params.push(build_param(
-                "PublicSubnetIds",
-                &public_subnet_ids[..2].join(","),
-            ));
-        } else {
-            asg_non_anchor_params.push(build_param(
-                "VolumeProvisionerInitialWaitRandomSeconds",
-                "200",
-            ));
+            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+            let asg_name = format!("{}-non-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
+            asg_params.push(build_param("AsgName", &asg_name));
 
-            log::info!(
-                "using multiple subnets {:?} for {} non-anchor nodes",
-                public_subnet_ids,
-                spec.machine.non_anchor_nodes
-            );
-            asg_non_anchor_params
-                .push(build_param("PublicSubnetIds", &public_subnet_ids.join(",")));
-        }
-
-        let is_spot_instance = spec.machine.instance_mode == String::from("spot");
-        let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-        asg_non_anchor_params.push(build_param("InstanceMode", &spec.machine.instance_mode));
-        asg_non_anchor_params.push(build_param("IpMode", &spec.machine.ip_mode));
-        asg_non_anchor_params.push(build_param(
-            "OnDemandPercentageAboveBaseCapacity",
-            format!("{}", on_demand_pct).as_str(),
-        ));
-
-        // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
-        asg_non_anchor_params.push(build_param(
-            "AsgName",
-            format!("{}-non-anchor-{}", spec.id, spec.machine.arch).as_str(),
-        ));
-        asg_non_anchor_params.push(build_param(
-            "AsgDesiredCapacity",
-            format!("{}", desired_capacity).as_str(),
-        ));
-
-        // for CFN template updates
-        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
-        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
-        asg_non_anchor_params.push(build_param(
-            "AsgMaxSize",
-            format!("{}", desired_capacity + 1).as_str(),
-        ));
-
-        if !spec.enable_nlb {
-            asg_non_anchor_params.push(build_param("NlbEnabled", "false"));
-        } else {
-            asg_non_anchor_params.push(build_param("NlbEnabled", "true"));
-            if need_to_create_nlb {
-                if spec.aws_resources.nlb_acm_certificate_arn.is_some() {
-                    asg_non_anchor_params.push(build_param(
-                        "NlbAcmCertificateArn",
-                        &spec.aws_resources.nlb_acm_certificate_arn.clone().unwrap(),
-                    ));
-                };
-            } else {
-                // NLB already created for anchor nodes
-                asg_non_anchor_params.push(build_param(
-                    "NlbTargetGroupArn",
-                    &spec
-                        .aws_resources
-                        .cloudformation_asg_nlb_target_group_arn
-                        .clone()
-                        .unwrap(),
+            if !asg_launch_template_id.is_empty() {
+                asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
+            }
+            if !asg_launch_template_version.is_empty() {
+                asg_params.push(build_param(
+                    "AsgLaunchTemplateVersion",
+                    &asg_launch_template_version,
                 ));
             }
-        }
 
-        rt.block_on(cloudformation_manager.create_stack(
-            cloudformation_asg_non_anchor_nodes_stack_name.as_str(),
-            None,
-            OnFailure::Delete,
-            cloudformation_asg_non_anchor_nodes_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("avalanche-ops").build(),
-            ])),
-            Some(asg_non_anchor_params),
-        ))
-        .unwrap();
+            if let Some(arn) = &spec.aws_resources.cloudformation_asg_nlb_target_group_arn {
+                // NLB already created
+                asg_params.push(build_param("NlbTargetGroupArn", arn));
+            }
 
-        // add 5-minute for ELB creation + volume provisioner
-        let mut wait_secs = 700 + 60 * desired_capacity as u64;
-        if wait_secs > MAX_WAIT_SECONDS {
-            wait_secs = MAX_WAIT_SECONDS;
-        }
-        thread::sleep(Duration::from_secs(60));
-        let stack = rt
-            .block_on(cloudformation_manager.poll_stack(
-                cloudformation_asg_non_anchor_nodes_stack_name.as_str(),
-                StackStatus::CreateComplete,
-                Duration::from_secs(wait_secs),
-                Duration::from_secs(30),
+            rt.block_on(cloudformation_manager.create_stack(
+                &stack_names[i],
+                None,
+                OnFailure::Delete,
+                cloudformation_asg_non_anchor_nodes_tmpl,
+                Some(Vec::from([
+                    Tag::builder().key("KIND").value("avalanche-ops").build(),
+                ])),
+                Some(asg_params),
             ))
             .unwrap();
 
-        for o in stack.outputs.unwrap() {
-            let k = o.output_key.unwrap();
-            let v = o.output_value.unwrap();
-            log::info!("stack output key=[{}], value=[{}]", k, v,);
-            if k.eq("AsgLogicalId") {
-                spec.aws_resources
-                    .cloudformation_asg_non_anchor_nodes_logical_id = Some(v);
-                continue;
+            // add 5-minute for ELB creation + volume provisioner
+            let mut wait_secs = 800;
+            if wait_secs > MAX_WAIT_SECONDS {
+                wait_secs = MAX_WAIT_SECONDS;
             }
-            if need_to_create_nlb {
+            thread::sleep(Duration::from_secs(60));
+            let stack = rt
+                .block_on(cloudformation_manager.poll_stack(
+                    &stack_names[i],
+                    StackStatus::CreateComplete,
+                    Duration::from_secs(wait_secs),
+                    Duration::from_secs(30),
+                ))
+                .unwrap();
+
+            for o in stack.outputs.unwrap() {
+                let k = o.output_key.unwrap();
+                let v = o.output_value.unwrap();
+                log::info!("stack output key=[{}], value=[{}]", k, v,);
+                if k.eq("AsgLogicalId") {
+                    asg_local_ids.push(v);
+                    continue;
+                }
                 if k.eq("NlbArn") {
                     spec.aws_resources.cloudformation_asg_nlb_arn = Some(v);
                     continue;
@@ -1362,116 +1233,108 @@ aws ssm start-session --region {} --target {}
                     spec.aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
                     continue;
                 }
+                if k.eq("AsgLaunchTemplateId") {
+                    asg_launch_template_id = v;
+                    continue;
+                }
+                if k.eq("AsgLaunchTemplateVersion") {
+                    asg_launch_template_version = v;
+                    continue;
+                }
+            }
+        }
+
+        spec.aws_resources
+            .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_local_ids);
+        spec.sync(spec_file_path)?;
+
+        if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
+            if !spec.enable_nlb {
+                log::info!("NLB is disabled so empty NLB ARN...");
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_arn not found",
+                ));
             }
         }
         if spec
             .aws_resources
-            .cloudformation_asg_non_anchor_nodes_logical_id
+            .cloudformation_asg_nlb_target_group_arn
             .is_none()
         {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "aws_resources.cloudformation_asg_non_anchor_nodes_logical_id not found",
-            ));
-        }
-        if need_to_create_nlb {
-            if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
-                if !spec.enable_nlb {
-                    log::info!("NLB is disabled so empty NLB ARN...");
-                } else {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        "aws_resources.cloudformation_asg_nlb_arn not found",
-                    ));
-                }
-            }
-            if spec
-                .aws_resources
-                .cloudformation_asg_nlb_target_group_arn
-                .is_none()
-            {
-                if !spec.enable_nlb {
-                    log::info!("NLB is disabled so empty NLB target group ARN...");
-                } else {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
-                    ));
-                }
-            }
-            if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
-                if !spec.enable_nlb {
-                    log::info!("NLB is disabled so empty NLB DNS name...");
-                } else {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        "aws_resources.cloudformation_asg_nlb_dns_name not found",
-                    ));
-                }
+            if !spec.enable_nlb {
+                log::info!("NLB is disabled so empty NLB target group ARN...");
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
+                ));
             }
         }
-        spec.sync(spec_file_path)?;
-
-        let asg_name = spec
-            .aws_resources
-            .cloudformation_asg_non_anchor_nodes_logical_id
-            .clone()
-            .expect("unexpected None cloudformation_asg_non_anchor_nodes_logical_id");
+        if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
+            if !spec.enable_nlb {
+                log::info!("NLB is disabled so empty NLB DNS name...");
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "aws_resources.cloudformation_asg_nlb_dns_name not found",
+                ));
+            }
+        }
 
         let mut droplets: Vec<ec2::Droplet> = Vec::new();
-        let target_nodes = spec.machine.non_anchor_nodes;
-        for _ in 0..20 {
-            // TODO: better retries
-            log::info!(
-                "fetching all droplets for non-anchor node SSH access (target nodes {})",
-                target_nodes
-            );
-            droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
-            if (droplets.len() as u32) >= target_nodes {
-                break;
-            }
-            log::info!(
-                "retrying fetching all droplets (only got {})",
-                droplets.len()
-            );
-            thread::sleep(Duration::from_secs(30));
-        }
-
         let mut eips = Vec::new();
-        if spec.machine.ip_mode == String::from("elastic") {
-            log::info!("using elastic IPs... wait more");
-            loop {
-                eips = rt
-                    .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([(
-                        String::from("Id"),
-                        spec.id.clone(),
-                    )])))
-                    .unwrap();
-
-                log::info!("got {} EIP addresses", eips.len());
-
-                let mut ready = true;
-                for eip_addr in eips.iter() {
-                    ready = ready && eip_addr.instance_id.is_some();
-                }
-                if ready
-                    && eips.len()
-                        >= spec.machine.anchor_nodes.unwrap_or(0) as usize
-                            + spec.machine.non_anchor_nodes as usize
-                {
+        let mut instance_id_to_public_ip = HashMap::new();
+        for asg_name in asg_local_ids.iter() {
+            for _ in 0..20 {
+                // TODO: better retries
+                log::info!("fetching all droplets for non-anchor-node SSH access");
+                droplets = rt.block_on(ec2_manager.list_asg(asg_name)).unwrap();
+                if droplets.len() >= 1 {
                     break;
                 }
-
+                log::info!(
+                    "retrying fetching all droplets (only got {})",
+                    droplets.len()
+                );
                 thread::sleep(Duration::from_secs(30));
             }
-        }
-        let mut instance_id_to_public_ip = HashMap::new();
-        for eip_addr in eips.iter() {
-            let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
-            let instance_id = eip_addr.instance_id.to_owned().unwrap();
-            let public_ip = eip_addr.public_ip.to_owned().unwrap();
-            log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
-            instance_id_to_public_ip.insert(instance_id, public_ip);
+
+            if spec.machine.ip_mode == String::from("elastic") {
+                log::info!("using elastic IPs... wait more");
+                let mut outs = Vec::new();
+                loop {
+                    outs = rt
+                        .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([
+                            (String::from("Id"), spec.id.clone()),
+                            (String::from("autoscaling:groupName"), asg_name.clone()),
+                        ])))
+                        .unwrap();
+
+                    log::info!("got {} EIP addresses", outs.len());
+
+                    let mut ready = true;
+                    for eip_addr in outs.iter() {
+                        ready = ready && eip_addr.instance_id.is_some();
+                    }
+                    if ready && outs.len() == 1 {
+                        eips.extend(outs);
+                        break;
+                    }
+
+                    thread::sleep(Duration::from_secs(30));
+                }
+                eips.extend(outs);
+
+                for eip_addr in outs.iter() {
+                    let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
+                    let instance_id = eip_addr.instance_id.to_owned().unwrap();
+                    let public_ip = eip_addr.public_ip.to_owned().unwrap();
+                    log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
+                    instance_id_to_public_ip.insert(instance_id, public_ip);
+                }
+            }
         }
 
         let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
@@ -1530,23 +1393,28 @@ aws ssm start-session --region {} --target {}
         }
         println!();
 
-        let s3_dir = avalancheup_aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
-            spec.id.clone(),
-        );
-
-        // wait for non-anchor nodes to generate certs and node ID and post to remote storage
+        // wait for non anchor nodes to generate certs and node ID and post to remote storage
         // TODO: set timeouts
-        let mut objects: Vec<Object>;
+        let mut objects = Vec::new();
+        let target_nodes = spec.machine.non_anchor_nodes;
         loop {
             thread::sleep(Duration::from_secs(30));
+
             objects = rt
-                .block_on(s3_manager.list_objects(
-                    Arc::new(spec.aws_resources.s3_bucket.clone()),
-                    Some(Arc::new(s3::append_slash(&s3_dir.encode()))),
-                ))
+                .block_on(
+                    s3_manager.list_objects(
+                        Arc::new(spec.aws_resources.s3_bucket.clone()),
+                        Some(Arc::new(s3::append_slash(
+                            &avalancheup_aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
+                                spec.id.clone(),
+                            )
+                            .encode(),
+                        ))),
+                    ),
+                )
                 .unwrap();
             log::info!(
-                "{} non-anchor nodes are ready (expecting {} nodes)",
+                "{} non-anchor nodes are bootstrapped and ready (expecting {} nodes)",
                 objects.len(),
                 target_nodes
             );

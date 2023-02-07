@@ -15,11 +15,6 @@ pub struct Resources {
     #[serde(default)]
     pub region: String,
 
-    /// Index of the preferred AZ.
-    /// Use this other than 0 to deploy to other AZs.
-    #[serde(default)]
-    pub preferred_az_index: usize,
-
     /// Name of the bucket to store (or download from)
     /// the configuration and resources (e.g., S3).
     /// If not exists, it creates automatically.
@@ -83,26 +78,26 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
 
-    /// CloudFormation stack name of Auto Scaling Group (ASG)
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
     /// for anchor nodes.
     /// None if mainnet.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_anchor_nodes: Option<String>,
+    pub cloudformation_asg_anchor_nodes: Option<Vec<String>>,
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_anchor_nodes_logical_id: Option<String>,
+    pub cloudformation_asg_anchor_nodes_logical_ids: Option<Vec<String>>,
 
-    /// CloudFormation stack name of Auto Scaling Group (ASG)
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
     /// for non-anchor nodes.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_non_anchor_nodes: Option<String>,
+    pub cloudformation_asg_non_anchor_nodes: Option<Vec<String>>,
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_non_anchor_nodes_logical_id: Option<String>,
+    pub cloudformation_asg_non_anchor_nodes_logical_ids: Option<Vec<String>>,
 
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
@@ -155,7 +150,6 @@ impl Resources {
             identity: None,
 
             region: String::from("us-west-2"),
-            preferred_az_index: 0,
 
             s3_bucket: String::new(),
 
@@ -176,10 +170,10 @@ impl Resources {
             cloudformation_vpc_public_subnet_ids: None,
 
             cloudformation_asg_anchor_nodes: None,
-            cloudformation_asg_anchor_nodes_logical_id: None,
+            cloudformation_asg_anchor_nodes_logical_ids: None,
 
             cloudformation_asg_non_anchor_nodes: None,
-            cloudformation_asg_non_anchor_nodes_logical_id: None,
+            cloudformation_asg_non_anchor_nodes_logical_ids: None,
 
             cloudformation_asg_nlb_arn: None,
             cloudformation_asg_nlb_target_group_arn: None,
