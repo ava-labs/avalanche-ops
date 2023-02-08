@@ -83,7 +83,7 @@ impl StackName {
         match self {
             StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
             StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::AsgBlizzards(id) => format!("{}-asg-blizzards", id),
+            StackName::AsgBlizzards(id) => format!("{}-blizzards", id),
         }
     }
 }
