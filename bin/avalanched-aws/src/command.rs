@@ -354,16 +354,23 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
     check_liveness(&ep).await?;
 
-    let mut handles = vec![tokio::spawn(publish_node_info_ready_loop(
-        Arc::new(meta.ec2_instance_id.clone()),
-        tags.node_kind.clone(),
-        Arc::new(node_id.to_string()),
-        Arc::new(public_ipv4.clone()),
-        Arc::clone(&s3_manager_arc),
-        Arc::new(tags.s3_bucket.clone()),
-        Arc::new(tags.avalancheup_spec_path.clone()),
-        opts.publish_periodic_node_info,
-    ))];
+    let mut handles = Vec::new();
+
+    // if we are using default config (e.g., CDK)
+    // no need to publish the node readiness
+    // TODO: implement this better if CDK polls node status
+    if !opts.use_default_config {
+        handles.push(tokio::spawn(publish_node_info_ready_loop(
+            Arc::new(meta.ec2_instance_id.clone()),
+            tags.node_kind.clone(),
+            Arc::new(node_id.to_string()),
+            Arc::new(public_ipv4.clone()),
+            Arc::clone(&s3_manager_arc),
+            Arc::new(tags.s3_bucket.clone()),
+            Arc::new(tags.avalancheup_spec_path.clone()),
+            opts.publish_periodic_node_info,
+        )));
+    }
 
     // assume the tag value is static
     // assume we don't change on-demand to spot, or vice versa

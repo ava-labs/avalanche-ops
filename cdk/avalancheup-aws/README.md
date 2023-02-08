@@ -96,10 +96,16 @@ aws ec2 describe-key-pairs --region us-west-2 --key-name ${EC2_KEY_PAIR_NAME}
 EC2_KEY_PAIR_NAME=avalancheup-aws-test-ec2-key-with-cdk
 
 # to delete
-aws ec2 delete-key-pairs --region us-west-2 --key-name ${EC2_KEY_PAIR_NAME}
+aws ec2 delete-key-pair --region us-west-2 --key-name ${EC2_KEY_PAIR_NAME}
 ```
 
 ### Step 5. Create EC2 instance role for Avalanche node
+
+Make sure `cdk` is installed:
+
+```bash
+cdk --version
+```
 
 *Set the following parameters:*
 
@@ -113,6 +119,7 @@ For example:
 
 ```bash
 cd ${HOME}/avalanche-ops/cdk/avalancheup-aws
+
 CDK_REGION=us-west-2 \
 CDK_ACCOUNT=931867039610 \
 ID=my-cluster-id \
@@ -139,6 +146,7 @@ For example:
 
 ```bash
 cd ${HOME}/avalanche-ops/cdk/avalancheup-aws
+
 CDK_REGION=us-west-2 \
 CDK_ACCOUNT=931867039610 \
 ID=my-cluster-id \
@@ -148,6 +156,17 @@ npx cdk deploy avalancheup-aws-vpc-stack
 ![demo3](./img/demo3.png)
 
 ![demo4](./img/demo4.png)
+
+Example outputs are:
+
+```
+avalancheup-aws-vpc-stack.PublicSubnetId1Az = us-west-2a
+avalancheup-aws-vpc-stack.PublicSubnetId2Az = us-west-2b
+avalancheup-aws-vpc-stack.PublicSubnetId3Az = us-west-2c
+avalancheup-aws-vpc-stack.PublicSubnetIds = subnet-05cabd5919ddc9777,subnet-0e9cd3f506f6dab12,subnet-0c3cc61411281e077
+avalancheup-aws-vpc-stack.SecurityGroupId = sg-04a4ec189b8057781
+avalancheup-aws-vpc-stack.VpcId = vpc-0a4e93c82440759d0
+```
 
 See [`vpc.yaml`](../../bin/avalancheup-aws/cfn-templates/vpc.yaml) for the CloudFormation template.
 
@@ -172,7 +191,8 @@ For example:
 
 ```bash
 cd ${HOME}/avalanche-ops/cdk/avalancheup-aws
-export PUBLIC_SUBNET_IDS='subnet-0fbebd0c4c9b5b279,subnet-0639ef980e9b04daa,subnet-08342c679e80f033f';
+
+PUBLIC_SUBNET_IDS='subnet-05cabd5919ddc9777,subnet-0e9cd3f506f6dab12,subnet-0c3cc61411281e077' \
 CDK_REGION=us-west-2 \
 CDK_ACCOUNT=931867039610 \
 ID=my-cluster-id \
@@ -181,9 +201,9 @@ S3_BUCKET_NAME=avalancheup-aws-test-bucket-with-cdk \
 EC2_KEY_PAIR_NAME=avalancheup-aws-test-ec2-key-with-cdk \
 AAD_TAG=my-add-tag \
 INSTANCE_PROFILE_ARN=arn:aws:iam::931867039610:instance-profile/my-cluster-id-instance-profile \
-SECURITY_GROUP_ID=sg-0563ba3fe3bed012b \
+SECURITY_GROUP_ID=sg-04a4ec189b8057781 \
 NETWORK_ID=5 \
-NLB_VPC_ID=vpc-095b0c9cc6ce9ba55 \
+NLB_VPC_ID=vpc-0a4e93c82440759d0 \
 npx cdk deploy avalancheup-aws-asg-stack
 ```
 
