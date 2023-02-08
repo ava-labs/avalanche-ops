@@ -11,7 +11,7 @@ path = "src/main.rs"
 [dependencies]
 avalanche-config-installer = { path = "../../avalanche-config-installer" }
 avalanche-installer = "0.0.30" # https://crates.io/crates/avalanche-installer
-avalanche-telemetry-cloudwatch-installer = "0.0.53" # https://crates.io/crates/avalanche-telemetry-cloudwatch
+avalanche-telemetry-cloudwatch-installer = "0.0.54" # https://crates.io/crates/avalanche-telemetry-cloudwatch
 avalanche-types = { version = "0.0.243", features = ["avalanchego", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 avalancheup-aws = { path = "../../bin/avalancheup-aws" }
 aws-ip-provisioner-installer = "0.0.35" # https://crates.io/crates/aws-ip-provisioner-installer
