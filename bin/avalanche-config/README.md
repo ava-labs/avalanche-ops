@@ -50,4 +50,6 @@ cat /tmp/test.config.json
 --config-file-path /tmp/test.config.json \
 --subnet-id 2ybKHWNFLh8kpWQwCpuaQLdinTLRTt6s6nkbr14gnrtjk5YMr
 # ... "tracked-subnets":"2ybKHWNFLh8kpWQwCpuaQLdinTLRTt6s6nkbr14gnrtjk5YMr,hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
+
+cat /tmp/test.config.json
 ```
