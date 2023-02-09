@@ -19,6 +19,8 @@ To write some default configuration file:
 --config-file-path=/tmp/test.config.json
 # ...
 # Saved configuration to '/tmp/test.config.json'
+
+cat /tmp/test.config.json
 ```
 
 To add new tracked subnets:
@@ -31,12 +33,16 @@ To add new tracked subnets:
 --subnet-id hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
 # ... "tracked-subnets":"hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
 
+cat /tmp/test.config.json
+
 # duplicate subnet id is ignored
 ./target/release/avalanche-config add-track-subnet \
 --skip-prompt \
 --config-file-path /tmp/test.config.json \
 --subnet-id hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
 # ... "tracked-subnets":"hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
+
+cat /tmp/test.config.json
 
 # new subnet id is successfully added
 ./target/release/avalanche-config add-track-subnet \
