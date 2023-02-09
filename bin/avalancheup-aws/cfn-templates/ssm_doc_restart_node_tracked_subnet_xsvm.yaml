@@ -65,15 +65,13 @@ Resources:
 
                   # to replace the avalanche configuration
                   # sudo cat /data/avalanche-configs/config.json
-                  /usr/local/bin/avalanche-config add-tracked-subnet \
+                  /usr/local/bin/avalanche-config add-track-subnet \
                   --log-level info \
                   --skip-prompt \
-                  --original-config-file-path=/data/avalanche-configs/config.json \
-                  --new-config-file-path=/tmp/avalanche.config.json \
+                  --config-file-path=/data/avalanche-configs/config.json \
                   --subnet-id {{ newTrackedSubnetId }}
 
-                  cat /tmp/avalanche.config.json
-                  sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
+                  cat /data/avalanche-configs/config.json
 
                   # use "avalanched" to write subnet config based on spec and new subnet-id
                   /usr/local/bin/avalanched \

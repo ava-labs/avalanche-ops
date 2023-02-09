@@ -8,7 +8,7 @@
 ./target/release/avalanche-config --help
 
 ./target/release/avalanche-config default --help
-./target/release/avalanche-config add-tracked-subnet --help
+./target/release/avalanche-config add-track-subnet --help
 ```
 
 To write some default configuration file:
@@ -25,26 +25,23 @@ To add new tracked subnets:
 
 ```bash
 # new subnet id is successfully added
-./target/release/avalanche-config add-tracked-subnet \
+./target/release/avalanche-config add-track-subnet \
 --skip-prompt \
---original-config-file-path /tmp/test.config.json \
---new-config-file-path /tmp/test.config.2.json \
+--config-file-path /tmp/test.config.json \
 --subnet-id hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
 # ... "tracked-subnets":"hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
 
 # duplicate subnet id is ignored
-./target/release/avalanche-config add-tracked-subnet \
+./target/release/avalanche-config add-track-subnet \
 --skip-prompt \
---original-config-file-path /tmp/test.config.2.json \
---new-config-file-path /tmp/test.config.3.json \
+--config-file-path /tmp/test.config.json \
 --subnet-id hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf
 # ... "tracked-subnets":"hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
 
 # new subnet id is successfully added
-./target/release/avalanche-config add-tracked-subnet \
+./target/release/avalanche-config add-track-subnet \
 --skip-prompt \
---original-config-file-path /tmp/test.config.3.json \
---new-config-file-path /tmp/test.config.3.json \
+--config-file-path /tmp/test.config.json \
 --subnet-id 2ybKHWNFLh8kpWQwCpuaQLdinTLRTt6s6nkbr14gnrtjk5YMr
 # ... "tracked-subnets":"2ybKHWNFLh8kpWQwCpuaQLdinTLRTt6s6nkbr14gnrtjk5YMr,hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf" ...
 ```

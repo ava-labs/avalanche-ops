@@ -12,11 +12,11 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 
-pub const NAME: &str = "add-tracked-subnet";
+pub const NAME: &str = "add-track-subnet";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Adds a tracked subnet (no overwrite)")
+        .about("Adds a tracked subnet")
         .long_about(
             "
 
@@ -35,16 +35,9 @@ Requires configuration file that's compatible to avalanche_types::avalanchego::c
                 .default_value("info"),
         )
         .arg(
-            Arg::new("ORIGINAL_CONFIG_FILE_PATH")
-                .long("original-config-file-path")
-                .help("Original avalanche configuration file path")
-                .required(true)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("NEW_CONFIG_FILE_PATH")
-                .long("new-config-file-path")
-                .help("New avalanche configuration file path to save")
+            Arg::new("CONFIG_FILE_PATH")
+                .long("config-file-path")
+                .help("Avalanche configuration file path to update")
                 .required(true)
                 .num_args(1),
         )
@@ -67,8 +60,7 @@ Requires configuration file that's compatible to avalanche_types::avalanchego::c
 
 pub fn execute(
     log_level: &str,
-    orig_config_file_path: &str,
-    new_config_file_path: &str,
+    config_file_path: &str,
     subnet_id: &str,
     skip_prompt: bool,
 ) -> io::Result<()> {
@@ -94,7 +86,7 @@ pub fn execute(
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your 'add-tracked-subnet' option")
+            .with_prompt("Select your 'add-track-subnet' option")
             .items(&options[..])
             .default(0)
             .interact()
@@ -109,14 +101,11 @@ pub fn execute(
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print(format!(
-            "\nLoading configuration: '{}'\n",
-            orig_config_file_path
-        )),
+        Print(format!("\nLoading configuration: '{}'\n", config_file_path)),
         ResetColor
     )?;
 
-    let mut config = avalanchego_config::Config::load(orig_config_file_path)?;
+    let mut config = avalanchego_config::Config::load(config_file_path)?;
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -156,14 +145,11 @@ pub fn execute(
         ResetColor
     )?;
 
-    config.sync(Some(new_config_file_path.to_string()))?;
+    config.sync(Some(config_file_path.to_string()))?;
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print(format!(
-            "\nSaved configuration to '{}'\n",
-            new_config_file_path
-        )),
+        Print(format!("\nSaved configuration to '{}'\n", config_file_path)),
         ResetColor
     )?;
 

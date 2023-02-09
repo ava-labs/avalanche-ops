@@ -1,4 +1,4 @@
-mod add_tracked_subnet;
+mod add_track_subnet;
 mod default;
 
 use clap::{crate_version, Command};
@@ -9,28 +9,24 @@ fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
         .about("Avalanche configuration tools")
-        .subcommands(vec![add_tracked_subnet::command(), default::command()])
+        .subcommands(vec![add_track_subnet::command(), default::command()])
         .get_matches();
 
     match matches.subcommand() {
-        Some((add_tracked_subnet::NAME, sub_matches)) => {
-            add_tracked_subnet::execute(
+        Some((add_track_subnet::NAME, sub_matches)) => {
+            add_track_subnet::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .clone(),
                 &sub_matches
-                    .get_one::<String>("ORIGINAL_CONFIG_FILE_PATH")
-                    .unwrap()
-                    .clone(),
-                &sub_matches
-                    .get_one::<String>("NEW_CONFIG_FILE_PATH")
+                    .get_one::<String>("CONFIG_FILE_PATH")
                     .unwrap()
                     .clone(),
                 &sub_matches.get_one::<String>("SUBNET_ID").unwrap().clone(),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
-            .expect("failed to execute 'add-tracked-subnet'");
+            .expect("failed to execute 'add-track-subnet'");
         }
 
         Some((default::NAME, sub_matches)) => {
