@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.67"
 
 [dependencies]
-avalanche-types = { version = "0.0.243", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.244", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
 clap = { version = "4.1.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.26.0"
 dialoguer = "0.10.3"
