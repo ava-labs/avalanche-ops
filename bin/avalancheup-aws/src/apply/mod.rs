@@ -616,7 +616,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             build_param("PublicSubnetCidr1", "10.0.64.0/19"),
             build_param("PublicSubnetCidr2", "10.0.128.0/19"),
             build_param("PublicSubnetCidr3", "10.0.192.0/19"),
-            build_param("IngressIpv4Range", "0.0.0.0/0"),
+            // TODO: restrict IP
+            build_param("HttpPortIngressIpv4Range", "0.0.0.0/0"),
+            build_param("StakingPortIngressIpv4Range", "0.0.0.0/0"),
             build_param(
                 "StakingPort",
                 format!("{}", spec.avalanchego_config.staking_port).as_str(),
