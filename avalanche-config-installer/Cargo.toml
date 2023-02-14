@@ -12,7 +12,7 @@ license = "Apache-2.0"
 [dependencies]
 aws-manager = { version = "0.24.8", features = ["s3"] } # https://crates.io/crates/aws-manager
 compress-manager = "0.0.5"
-http-manager = "0.0.11"
+http-manager = "0.0.12"
 log = "0.4.17"
 random-manager = "0.0.2"
 serde = { version = "1.0.152", features = ["derive"] }
