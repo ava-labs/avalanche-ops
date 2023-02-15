@@ -406,7 +406,7 @@ fn test_spec() {
     assert!(ret.is_ok());
     let blizzard_bin = f.path().to_str().unwrap();
 
-    let id = random_manager::string(10);
+    let id = random_manager::secure_string(10);
     let bucket = format!("test-{}", id_manager::time::timestamp(8));
 
     let contents = format!(
