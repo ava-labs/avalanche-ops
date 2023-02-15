@@ -33,7 +33,7 @@ fn main() {
     let s3_manager = s3::Manager::new(&shared_config);
     let s3_bucket = format!(
         "certs-manager-tests-{}",
-        random_manager::string(10).to_lowercase()
+        random_manager::secure_string(10).to_lowercase()
     );
     ab!(s3_manager.create_bucket(&s3_bucket)).unwrap();
 

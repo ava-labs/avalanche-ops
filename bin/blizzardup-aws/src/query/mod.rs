@@ -8,7 +8,7 @@ use std::{
 use clap::{Arg, Command};
 use lazy_static::lazy_static;
 use regex::RegexSet;
-use tokio::runtime::Runtime;
+use reqwest::ClientBuilder;
 
 pub const NAME: &str = "query";
 
@@ -35,13 +35,11 @@ pub fn command() -> Command {
         )
 }
 
-pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
+pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
-
-    let rt = Runtime::new().unwrap();
 
     let spec = blizzardup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     log::info!("querying {:?} endpoints", spec.blizzard_spec.rpc_endpoints);
@@ -62,16 +60,34 @@ pub fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
         for rpc_ep in spec.blizzard_spec.rpc_endpoints.iter() {
             let http_rpc = rpc_ep.http_rpc.clone();
 
-            let rb = match rt.block_on(http_manager::get_non_tls(&http_rpc, "ext/metrics")) {
-                Ok(v) => v,
-                Err(e) => {
-                    return Err(Error::new(
+            let req_cli_builder = ClientBuilder::new()
+                .user_agent(env!("CARGO_PKG_NAME"))
+                .danger_accept_invalid_certs(true)
+                .timeout(Duration::from_secs(15))
+                .connection_verbose(true)
+                .build()
+                .map_err(|e| {
+                    Error::new(
                         ErrorKind::Other,
-                        format!("failed get_non_tls {}", e),
-                    ));
-                }
-            };
-            let s = match prometheus_manager::Scrape::from_bytes(&rb) {
+                        format!("failed ClientBuilder build {}", e),
+                    )
+                })?;
+            let resp = req_cli_builder
+                .get(format!("{http_rpc}/ext/metrics").as_str())
+                .send()
+                .await
+                .map_err(|e| {
+                    Error::new(ErrorKind::Other, format!("failed ClientBuilder send {}", e))
+                })?;
+            let out = resp.bytes().await.map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed ClientBuilder bytes {}", e),
+                )
+            })?;
+            let out: Vec<u8> = out.into();
+
+            let s = match prometheus_manager::Scrape::from_bytes(&out) {
                 Ok(v) => v,
                 Err(e) => {
                     return Err(Error::new(ErrorKind::Other, format!("failed scrape {}", e)));

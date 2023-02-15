@@ -1,10 +1,11 @@
 use std::{
     env, fmt,
     fs::{self, File},
-    io::{self, Error, ErrorKind},
+    io::{self, copy, Cursor, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
 };
 
+use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 
@@ -131,7 +132,7 @@ pub async fn download(
         tag_name, file_name
     );
     let tmp_file_path = random_manager::tmp_path(10, None)?;
-    http_manager::download_file(&download_url, &tmp_file_path).await?;
+    download_file(&download_url, &tmp_file_path).await?;
 
     {
         let f = File::open(&tmp_file_path)?;
@@ -153,8 +154,29 @@ pub async fn fetch_latest_release(org: &str, repo: &str) -> io::Result<ReleaseRe
     );
     log::info!("fetching {}", ep);
 
-    let rb = http_manager::get_non_tls(&ep, "").await?;
-    let resp: ReleaseResponse = match serde_json::from_slice(&rb) {
+    let cli = ClientBuilder::new()
+        .user_agent(env!("CARGO_PKG_NAME"))
+        .danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(15))
+        .connection_verbose(true)
+        .build()
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed ClientBuilder build {}", e),
+            )
+        })?;
+    let resp =
+        cli.get(&ep).send().await.map_err(|e| {
+            Error::new(ErrorKind::Other, format!("failed ClientBuilder send {}", e))
+        })?;
+    let out = resp
+        .bytes()
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed ClientBuilder send {}", e)))?;
+    let out: Vec<u8> = out.into();
+
+    let resp: ReleaseResponse = match serde_json::from_slice(&out) {
         Ok(p) => p,
         Err(e) => {
             return Err(Error::new(
@@ -265,4 +287,23 @@ impl Os {
             )),
         }
     }
+}
+
+/// Downloads a file to the "file_path".
+pub async fn download_file(ep: &str, file_path: &str) -> io::Result<()> {
+    log::info!("downloading the file via {}", ep);
+    let resp = reqwest::get(ep)
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed reqwest::get {}", e)))?;
+
+    let mut content = Cursor::new(
+        resp.bytes()
+            .await
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed bytes {}", e)))?,
+    );
+
+    let mut f = File::create(file_path)?;
+    copy(&mut content, &mut f)?;
+
+    Ok(())
 }

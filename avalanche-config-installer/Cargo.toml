@@ -1,6 +1,6 @@
 [package]
 name = "avalanche-config-installer"
-version = "0.2.46" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.2.47" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.67"
 publish = true
@@ -10,11 +10,11 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
-aws-manager = { version = "0.24.9", features = ["s3"] } # https://crates.io/crates/aws-manager
+aws-manager = { version = "0.24.12", features = ["s3"] } # https://crates.io/crates/aws-manager
 compress-manager = "0.0.5"
-http-manager = "0.0.12"
 log = "0.4.17"
-random-manager = "0.0.2"
+random-manager = "0.0.5"
+reqwest = "0.11.14"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.93" # https://github.com/serde-rs/json
 tokio = "1.25.0" # https://github.com/tokio-rs/tokio/releases

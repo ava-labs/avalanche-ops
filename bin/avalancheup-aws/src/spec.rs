@@ -534,7 +534,7 @@ impl Spec {
                 let mut subnet_evms = BTreeMap::new();
                 for i in 0..opts.subnet_evms {
                     subnet_evms.insert(
-                        format!("{}{}", i + 1, random_manager::string(5)),
+                        format!("{}{}", i + 1, random_manager::secure_string(5)),
                         subnet_evm.clone(),
                     );
                 }
@@ -565,7 +565,7 @@ impl Spec {
                 let mut xsvms = BTreeMap::new();
                 for i in 0..opts.xsvms {
                     xsvms.insert(
-                        format!("{}{}", i + 1, random_manager::string(5)),
+                        format!("{}{}", i + 1, random_manager::secure_string(5)),
                         xsvm.clone(),
                     );
                 }
@@ -981,7 +981,7 @@ fn test_spec() {
     let avalanchego_bin = f.path().to_str().unwrap();
 
     let tmp_dir = tempfile::tempdir().unwrap();
-    let plugin_path = tmp_dir.path().join(random_manager::string(10));
+    let plugin_path = tmp_dir.path().join(random_manager::secure_string(10));
     let mut f = File::create(&plugin_path).unwrap();
     let ret = f.write_all(&vec![0]);
     assert!(ret.is_ok());
@@ -994,7 +994,7 @@ fn test_spec() {
         log::info!("read_dir: {:?}", path);
     }
 
-    let id = random_manager::string(10);
+    let id = random_manager::secure_string(10);
     let bucket = format!("test-{}", id_manager::time::timestamp(8));
 
     let contents = format!(
@@ -1746,8 +1746,8 @@ impl StorageNamespace {
 fn test_storage_path() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let id = random_manager::string(10);
-    let instance_id = random_manager::string(5);
+    let id = random_manager::secure_string(10);
+    let instance_id = random_manager::secure_string(5);
     let node_id = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg";
     let node_ip = "1.2.3.4";
 
