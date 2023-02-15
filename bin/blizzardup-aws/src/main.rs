@@ -9,7 +9,8 @@ const APP_NAME: &str = "blizzardup-aws";
 
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
-fn main() {
+#[tokio::main]
+async fn main() {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
         .about("Blizzard control plane on AWS (requires blizzard)")
@@ -163,6 +164,7 @@ fn main() {
                     .unwrap()
                     .clone(),
             )
+            .await
             .expect("failed to execute 'delete'");
         }
 
