@@ -6,7 +6,7 @@ rust-version = "1.67"
 
 [dependencies]
 avalanche-types = { version = "0.0.254", features = ["cert"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.24.12", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
+aws-manager = { version = "0.24.13", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
 log = "0.4.17"
 tokio = { version = "1.25.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 

@@ -8,7 +8,7 @@ use std::{
 };
 
 use avalanche_types::key;
-use lazy_static::lazy_static;
+use aws_manager::ec2;
 use serde::{Deserialize, Serialize};
 
 /// Default machine nodes size.
@@ -113,93 +113,6 @@ pub struct DefaultSpecOption {
     pub spec_file_path: String,
 }
 
-pub const ARCH_AMD64: &str = "amd64";
-pub const ARCH_ARM64: &str = "arm64";
-
-lazy_static! {
-    /// https://aws.amazon.com/ec2/instance-types/c6a/
-    /// c6a.large:   2  vCPU + 4  GiB RAM
-    /// c6a.xlarge:  4  vCPU + 8  GiB RAM
-    /// c6a.2xlarge: 8  vCPU + 16 GiB RAM
-    /// c6a.4xlarge: 16 vCPU + 32 GiB RAM
-    /// c6a.8xlarge: 32 vCPU + 64 GiB RAM
-    ///
-    /// https://aws.amazon.com/ec2/instance-types/m6a/
-    /// m6a.large:   2  vCPU + 8  GiB RAM
-    /// m6a.xlarge:  4  vCPU + 16 GiB RAM
-    /// m6a.2xlarge: 8  vCPU + 32 GiB RAM
-    /// m6a.4xlarge: 16 vCPU + 64 GiB RAM
-    /// m6a.8xlarge: 32 vCPU + 128 GiB RAM
-    ///
-    /// https://aws.amazon.com/ec2/instance-types/m5/
-    /// m5.large:   2  vCPU + 8  GiB RAM
-    /// m5.xlarge:  4  vCPU + 16 GiB RAM
-    /// m5.2xlarge: 8  vCPU + 32 GiB RAM
-    /// m5.4xlarge: 16 vCPU + 64 GiB RAM
-    /// m5.8xlarge: 32 vCPU + 128 GiB RAM
-    ///
-    /// https://aws.amazon.com/ec2/instance-types/c5/
-    /// c5.large:   2  vCPU + 4  GiB RAM
-    /// c5.xlarge:  4  vCPU + 8  GiB RAM
-    /// c5.2xlarge: 8  vCPU + 16 GiB RAM
-    /// c5.4xlarge: 16 vCPU + 32 GiB RAM
-    /// c5.9xlarge: 32 vCPU + 72 GiB RAM
-    ///
-    /// https://aws.amazon.com/ec2/instance-types/r5/
-    /// r5.large:   2  vCPU + 16 GiB RAM
-    /// r5.xlarge:  4  vCPU + 32 GiB RAM
-    /// r5.2xlarge: 8  vCPU + 64 GiB RAM
-    /// r5.4xlarge: 16 vCPU + 128 GiB RAM
-    /// r5.8xlarge: 32 vCPU + 256 GiB RAM
-    ///
-    /// https://aws.amazon.com/ec2/instance-types/t3/
-    /// t3.large:    2  vCPU + 8 GiB RAM
-    /// t3.xlarge:   4  vCPU + 16 GiB RAM
-    /// t3.2xlarge:  8  vCPU + 32 GiB RAM
-    pub static ref DEFAULT_EC2_INSTANCE_TYPES_AMD64: Vec<String> = vec![
-        String::from("c6a.xlarge"),
-        String::from("m6a.xlarge"),
-        String::from("m5.xlarge"),
-        String::from("c5.xlarge"),
-    ];
-
-    /// Graviton 3 (in preview)
-    /// https://aws.amazon.com/ec2/instance-types/c7g/
-    /// c7g.large:   2 vCPU + 8  GiB RAM
-    /// c7g.xlarge:  4 vCPU + 16 GiB RAM
-    /// c7g.2xlarge: 8 vCPU + 32 GiB RAM
-    ///
-    /// Graviton 2
-    /// https://aws.amazon.com/ec2/instance-types/c6g/
-    /// c6g.large:   2 vCPU + 4  GiB RAM
-    /// c6g.xlarge:  4 vCPU + 8  GiB RAM
-    /// c6g.2xlarge: 8 vCPU + 16 GiB RAM
-    ///
-    /// Graviton 2
-    /// https://aws.amazon.com/ec2/instance-types/m6g/
-    /// m6g.large:   2 vCPU + 8  GiB RAM
-    /// m6g.xlarge:  4 vCPU + 16 GiB RAM
-    /// m6g.2xlarge: 8 vCPU + 32 GiB RAM
-    ///
-    /// Graviton 2
-    /// https://aws.amazon.com/ec2/instance-types/r6g/
-    /// r6g.large:   2 vCPU + 16 GiB RAM
-    /// r6g.xlarge:  4 vCPU + 32 GiB RAM
-    /// r6g.2xlarge: 8 vCPU + 64 GiB RAM
-    ///
-    /// Graviton 2
-    /// https://aws.amazon.com/ec2/instance-types/t4/
-    /// t4g.large:   2 vCPU + 8 GiB RAM
-    /// t4g.xlarge:  4 vCPU + 16 GiB RAM
-    /// t4g.2xlarge: 8 vCPU + 32 GiB RAM
-    pub static ref DEFAULT_EC2_INSTANCE_TYPES_ARM64: Vec<String> = vec![
-        String::from("c6g.xlarge"),
-        String::from("m6g.xlarge"),
-        String::from("r6g.xlarge"),
-        String::from("t4g.xlarge"),
-    ];
-}
-
 impl Spec {
     /// Creates a default spec.
     pub fn default_aws(opts: DefaultSpecOption) -> Self {
@@ -249,7 +162,7 @@ impl Spec {
             opts.region
         );
         let aws_resources = aws::Resources {
-            region: opts.region,
+            region: opts.region.clone(),
             s3_bucket,
             ..aws::Resources::default()
         };
@@ -264,8 +177,8 @@ impl Spec {
             nodes: opts.nodes,
 
             // TODO: support "arm64"
-            arch: ARCH_AMD64.to_string(),
-            instance_types: DEFAULT_EC2_INSTANCE_TYPES_AMD64.to_vec(),
+            arch: "amd64".to_string(),
+            instance_types: ec2::default_instance_types(&opts.region, "amd64", "large").unwrap(),
 
             instance_mode: opts.instance_mode,
         };
