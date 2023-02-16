@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.2.47" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.2.48" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.67"
 
@@ -21,7 +21,7 @@ aws-sdk-ec2 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-volume-provisioner-installer = "0.0.64" # https://crates.io/crates/aws-volume-provisioner-installer
 certs-manager = { path = "../../certs-manager" }
-clap = { version = "4.1.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.1.6", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.5"
 env_logger = "0.10.0"
