@@ -243,13 +243,27 @@ Resources:
               set -xeu
 
               export DEBIAN_FRONTEND=noninteractive
-              sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
-              && sudo apt-get install -yq \
-                  curl wget unzip zip gzip tar libssl-dev \
-                  python3-pip python-setuptools zsh
 
-              curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.v2.zip
-              unzip awscli.v2.zip
+              while [ 1 ]; do
+                sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
+                && sudo apt-get install -yq \
+                curl wget unzip zip gzip tar libssl-dev \
+                python3-pip python-setuptools zsh
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+
+              # http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-sub.html
+              export LINUX_ARCH_TYPE=$(uname -m)
+              echo LINUX_ARCH_TYPE: ${!LINUX_ARCH_TYPE}
+
+              while [ 1 ]; do
+                sudo rm -f ./awscli-exe-linux-${!LINUX_ARCH_TYPE}.zip || true;
+                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://awscli.amazonaws.com/awscli-exe-linux-${!LINUX_ARCH_TYPE}.zip
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+              unzip ./awscli-exe-linux-${!LINUX_ARCH_TYPE}.zip
               sudo ./aws/install
               /usr/local/bin/aws --version
 
@@ -266,12 +280,20 @@ Resources:
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               if [[ ${BlizzardDownloadSource} == "github" ]]; then
-                # TODO: support ARM64
-                wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/blizzard-aws.x86_64-unknown-linux-gnu
-                mv ./blizzard-aws.x86_64-unknown-linux-gnu /tmp/blizzard
+                sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
+                sudo rm -f /tmp/blizzard
+                sudo rm -f /usr/local/bin/blizzard
+                while [ 1 ]; do
+                  sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu || true;
+                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
+                  if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                  sleep 2s;
+                done;
+                mv ./blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu /tmp/blizzard
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
               else
+                sudo rm -f /tmp/blizzard
                 AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/install/blizzard /tmp/blizzard
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
@@ -302,10 +324,20 @@ Resources:
 
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
               mkdir -p /tmp/install-cloudwatch-logs
-              pushd /tmp/install-cloudwatch-logs
-              wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
-              sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
-              popd
+              while [ 1 ]; do
+                pushd /tmp/install-cloudwatch-logs
+                sudo rm -f ./amazon-cloudwatch-agent.deb || true;
+                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
+                popd
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+              while [ 1 ]; do
+                echo "installing amazon-cloudwatch-agent"
+                pushd /tmp/install-cloudwatch-logs && sudo dpkg -i -E ./amazon-cloudwatch-agent.deb && popd
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
 
               # enough time for "blizzard" to initialize cloudwatch configuration
               sleep 10
