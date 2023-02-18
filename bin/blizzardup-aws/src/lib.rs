@@ -1,5 +1,6 @@
 mod aws;
 pub mod blizzard;
+pub mod status;
 
 use std::{
     fs::{self, File},
@@ -39,7 +40,10 @@ pub struct Spec {
     pub blizzard_spec: blizzard::Spec,
 
     #[serde(default)]
-    pub test_key_infos: Vec<key::secp256k1::Info>,
+    pub prefunded_key_infos: Vec<key::secp256k1::Info>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<status::Status>,
 }
 
 /// Defines how the underlying infrastructure is set up.
@@ -98,16 +102,13 @@ pub struct DefaultSpecOption {
     pub region: String,
     pub instance_mode: String,
 
-    pub network_id: u32,
     pub nodes: usize,
 
     pub install_artifacts_blizzard_bin: String,
     pub blizzard_log_level: String,
-    pub blizzard_http_rpcs: Vec<String>,
-    pub blizzard_subnet_evm_blockchain_id: Option<String>,
+    pub blizzard_chain_rpc_urls: Vec<String>,
     pub blizzard_load_kinds: Vec<String>,
     pub blizzard_keys_to_generate: usize,
-    pub blizzard_metrics_push_interval_seconds: u64,
     pub blizzard_workers: usize,
 
     pub spec_file_path: String,
@@ -116,21 +117,11 @@ pub struct DefaultSpecOption {
 impl Spec {
     /// Creates a default spec.
     pub fn default_aws(opts: DefaultSpecOption) -> Self {
-        let mut rpc_endpoints: Vec<blizzard::Endpoints> = Vec::new();
-        for http_rpc in opts.blizzard_http_rpcs.iter() {
-            rpc_endpoints.push(blizzard::Endpoints::new(
-                http_rpc,
-                opts.blizzard_subnet_evm_blockchain_id.clone(),
-            ))
-        }
-
         let blizzard_spec = blizzard::Spec {
             log_level: opts.blizzard_log_level,
-            network_id: opts.network_id,
-            rpc_endpoints,
+            chain_rpc_urls: opts.blizzard_chain_rpc_urls.clone(),
             load_kinds: opts.blizzard_load_kinds,
             keys_to_generate: opts.blizzard_keys_to_generate,
-            metrics_push_interval_seconds: opts.blizzard_metrics_push_interval_seconds,
             workers: opts.blizzard_workers,
         };
 
@@ -146,12 +137,12 @@ impl Spec {
         // same order as avalanche-types genesis
         // assume they are pre-funded
         assert!(key::secp256k1::TEST_KEYS.len() >= opts.funded_keys);
-        let mut test_key_infos: Vec<key::secp256k1::Info> = Vec::new();
+        let mut prefunded_key_infos: Vec<key::secp256k1::Info> = Vec::new();
         for i in 0..opts.funded_keys {
             let info = key::secp256k1::TEST_KEYS[i]
-                .to_info(opts.network_id)
+                .to_info(1)
                 .expect("unexpected to_info failure");
-            test_key_infos.push(info.clone());
+            prefunded_key_infos.push(info.clone());
         }
 
         // [year][month][date]-[system host-based id]
@@ -192,7 +183,9 @@ impl Spec {
 
             blizzard_spec,
 
-            test_key_infos,
+            prefunded_key_infos,
+
+            status: None,
         }
     }
 
@@ -348,7 +341,7 @@ install_artifacts:
 blizzard_spec:
   log_level: info
   network_id: 99999
-  rpc_endpoints: []
+  chain_rpc_urls: []
   load_kinds: ["x-transfers", "c-transfers"]
   metrics_push_interval_seconds: 60
   workers: 10
@@ -393,15 +386,15 @@ blizzard_spec:
 
         blizzard_spec: blizzard::Spec {
             log_level: String::from("info"),
-            network_id: 99999,
-            rpc_endpoints: Vec::new(),
+            chain_rpc_urls: Vec::new(),
             load_kinds: vec![String::from("x-transfers"), String::from("c-transfers")],
             keys_to_generate: 1000,
-            metrics_push_interval_seconds: 60,
             workers: 10,
         },
 
-        test_key_infos: Vec::new(),
+        prefunded_key_infos: Vec::new(),
+
+        status: None,
     };
 
     assert_eq!(cfg, orig);

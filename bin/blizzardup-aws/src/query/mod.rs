@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use avalanche_types::utils;
 use clap::{Arg, Command};
 use lazy_static::lazy_static;
 use regex::RegexSet;
@@ -42,7 +43,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
     );
 
     let spec = blizzardup_aws::Spec::load(spec_file_path).expect("failed to load spec");
-    log::info!("querying {:?} endpoints", spec.blizzard_spec.rpc_endpoints);
+    log::info!("querying {:?} endpoints", spec.blizzard_spec.chain_rpc_urls);
 
     lazy_static! {
         static ref REGEXES: Vec<String> = vec![
@@ -57,8 +58,18 @@ pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
 
     // TODO: implement better math...
     loop {
-        for rpc_ep in spec.blizzard_spec.rpc_endpoints.iter() {
-            let http_rpc = rpc_ep.http_rpc.clone();
+        for rpc_ep in spec.blizzard_spec.chain_rpc_urls.iter() {
+            let (scheme, host, port, _, _) =
+                utils::urls::extract_scheme_host_port_path_chain_alias(rpc_ep)?;
+            let u = if let Some(scheme) = scheme {
+                if let Some(port) = port {
+                    format!("{scheme}://{host}:{port}/ext/metrics")
+                } else {
+                    format!("{scheme}://{host}/ext/metrics")
+                }
+            } else {
+                format!("http://{host}/ext/metrics")
+            };
 
             let req_cli_builder = ClientBuilder::new()
                 .user_agent(env!("CARGO_PKG_NAME"))
@@ -72,13 +83,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
                         format!("failed ClientBuilder build {}", e),
                     )
                 })?;
-            let resp = req_cli_builder
-                .get(format!("{http_rpc}/ext/metrics").as_str())
-                .send()
-                .await
-                .map_err(|e| {
-                    Error::new(ErrorKind::Other, format!("failed ClientBuilder send {}", e))
-                })?;
+            let resp = req_cli_builder.get(&u).send().await.map_err(|e| {
+                Error::new(ErrorKind::Other, format!("failed ClientBuilder send {}", e))
+            })?;
             let out = resp.bytes().await.map_err(|e| {
                 Error::new(
                     ErrorKind::Other,
@@ -100,7 +107,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
                 cur_data.insert(m.metric.clone(), m.value.to_f64());
             }
 
-            if let Some(prev_data) = prev.get(&http_rpc) {
+            if let Some(prev_data) = prev.get(&u) {
                 // previous data found, compute delta
                 let (mut prev_height_c, mut cur_height_c) = (0_f64, 0_f64);
                 let (mut prev_timestamp_c, mut cur_timestamp_c) = (0_f64, 0_f64);
@@ -206,7 +213,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
             }
 
             // done with comparison so update for next iteration
-            prev.insert(http_rpc, cur_data);
+            prev.insert(u.clone(), cur_data);
 
             thread::sleep(Duration::from_secs(20));
         }

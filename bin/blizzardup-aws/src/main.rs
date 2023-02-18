@@ -34,31 +34,16 @@ async fn main() {
                 .clone();
 
             let nodes = sub_matches.get_one::<usize>("NODES").unwrap_or(&2).clone();
-            let network_id = sub_matches
-                .get_one::<u32>("NETWORK_ID")
-                .unwrap_or(&2000777)
-                .clone();
 
-            let blizzard_http_rpcs_str = sub_matches
-                .get_one::<String>("BLIZZARD_HTTP_RPCS")
+            let s = sub_matches
+                .get_one::<String>("BLIZZARD_CHAIN_RPC_URLS")
                 .unwrap()
                 .clone();
-            let blizzard_http_rpcs_str: Vec<&str> = blizzard_http_rpcs_str.split(',').collect();
-            let mut blizzard_http_rpcs: Vec<String> = Vec::new();
-            for rpc in blizzard_http_rpcs_str.iter() {
-                blizzard_http_rpcs.push(rpc.to_string());
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut blizzard_chain_rpc_urls: Vec<String> = Vec::new();
+            for rpc in ss.iter() {
+                blizzard_chain_rpc_urls.push(rpc.to_string());
             }
-
-            let blizzard_subnet_evm_blockchain_id_str = sub_matches
-                .get_one::<String>("BLIZZARD_SUBNET_EVM_BLOCKCHAIN_ID")
-                .unwrap_or(&String::new())
-                .to_string();
-            let blizzard_subnet_evm_blockchain_id =
-                if blizzard_subnet_evm_blockchain_id_str.is_empty() {
-                    None
-                } else {
-                    Some(blizzard_subnet_evm_blockchain_id_str.clone())
-                };
 
             let blizzard_load_kinds_str = sub_matches
                 .get_one::<String>("BLIZZARD_LOAD_KINDS")
@@ -69,11 +54,6 @@ async fn main() {
             for lk in blizzard_load_kinds_str.iter() {
                 blizzard_load_kinds.push(lk.to_string());
             }
-
-            let blizzard_metrics_push_interval_seconds = sub_matches
-                .get_one::<u64>("BLIZZARD_METRICS_PUSH_INTERVAL_SECONDS")
-                .unwrap_or(&60)
-                .clone();
 
             let blizzard_workers = sub_matches
                 .get_one::<usize>("BLIZZARD_WORKERS")
@@ -95,7 +75,6 @@ async fn main() {
                     .clone(),
 
                 nodes,
-                network_id,
 
                 install_artifacts_blizzard_bin: sub_matches
                     .get_one::<String>("INSTALL_ARTIFACTS_BLIZZARD_BIN")
@@ -105,11 +84,9 @@ async fn main() {
                     .get_one::<String>("BLIZZARD_LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .to_string(),
-                blizzard_http_rpcs,
-                blizzard_subnet_evm_blockchain_id,
+                blizzard_chain_rpc_urls,
                 blizzard_load_kinds,
                 blizzard_keys_to_generate,
-                blizzard_metrics_push_interval_seconds,
                 blizzard_workers,
 
                 spec_file_path: sub_matches
@@ -132,6 +109,7 @@ async fn main() {
                     .clone(),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
+            .await
             .expect("failed to execute 'apply'");
         }
 

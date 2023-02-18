@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::{cloudwatch as cw, evm, flags, x};
+use avalanche_types::utils;
 use aws_manager::{self, ec2, s3};
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
@@ -43,9 +44,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     }
 
     let mut subnet_evm_blockchain_id = String::new();
-    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
-        if let Some(id) = &ep.subnet_evm_blockchain_id {
-            subnet_evm_blockchain_id = id.clone();
+    for ep in spec.blizzard_spec.chain_rpc_urls.iter() {
+        let (_, _, _, _, chain_alias) = utils::urls::extract_scheme_host_port_path_chain_alias(ep)?;
+        if let Some(alias) = &chain_alias {
+            subnet_evm_blockchain_id = alias.to_string();
             break;
         }
     }

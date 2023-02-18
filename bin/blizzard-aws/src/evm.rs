@@ -7,23 +7,19 @@ pub async fn make_transfers(
     spec: blizzardup_aws::Spec,
     chain_id_alias: Arc<String>,
 ) {
-    let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
+    let total_rpc_eps = spec.blizzard_spec.chain_rpc_urls.len();
     log::info!(
         "[WORKER #{worker_idx}] STEP 1: start making EVM transfers to {} endpoints with chain id alias {}",
         total_rpc_eps,
         chain_id_alias,
     );
 
-    let mut chain_rpc_urls = Vec::new();
-    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
-        chain_rpc_urls.push(format!("{}/ext/bc/{chain_id_alias}/rpc", ep.http_rpc));
-    }
-
+    let chain_rpc_urls = spec.blizzard_spec.chain_rpc_urls.clone();
     let chain_id = jsonrpc_client_evm::chain_id(&chain_rpc_urls[0])
         .await
         .unwrap();
 
-    let total_funded_keys = spec.test_key_infos.len();
+    let total_funded_keys = spec.prefunded_key_infos.len();
 
     //
     //
@@ -40,7 +36,10 @@ pub async fn make_transfers(
         let idx = (faucet_idx + i) % total_funded_keys;
 
         let k = key::secp256k1::private_key::Key::from_cb58(
-            spec.test_key_infos[idx].private_key_cb58.clone().unwrap(),
+            spec.prefunded_key_infos[idx]
+                .private_key_cb58
+                .clone()
+                .unwrap(),
         )
         .unwrap();
 
@@ -94,7 +93,7 @@ pub async fn make_transfers(
     //
     log::info!("[WORKER #{worker_idx}] STEP 3: loading faucet key and wallet");
     let faucet_key = key::secp256k1::private_key::Key::from_cb58(
-        spec.test_key_infos[faucet_idx]
+        spec.prefunded_key_infos[faucet_idx]
             .private_key_cb58
             .clone()
             .unwrap(),

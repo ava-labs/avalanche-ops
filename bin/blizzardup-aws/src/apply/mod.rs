@@ -12,6 +12,10 @@ use std::{
     time::Duration,
 };
 
+use avalanche_types::{
+    jsonrpc::client::{evm as client_evm, info as client_info},
+    utils,
+};
 use aws_manager::{self, cloudformation, ec2, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use clap::{Arg, Command};
@@ -21,7 +25,6 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use rust_embed::RustEmbed;
-use tokio::runtime::Runtime;
 
 pub const NAME: &str = "apply";
 
@@ -59,7 +62,7 @@ pub fn command() -> Command {
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
-pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
+pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     #[derive(RustEmbed)]
     #[folder = "cfn-templates/"]
     #[prefix = "cfn-templates/"]
@@ -73,15 +76,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     let mut spec = blizzardup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
-    let rt = Runtime::new().unwrap();
-
     let mut aws_resources = spec.aws_resources.clone().unwrap();
-    let shared_config = rt
-        .block_on(aws_manager::load_config(Some(aws_resources.region.clone())))
+    let shared_config = aws_manager::load_config(Some(aws_resources.region.clone()))
+        .await
         .expect("failed to aws_manager::load_config");
 
     let sts_manager = sts::Manager::new(&shared_config);
-    let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
+    let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
     match aws_resources.clone().identity {
@@ -163,7 +164,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         Print("\n\n\nSTEP: create S3 buckets\n"),
         ResetColor
     )?;
-    rt.block_on(s3_manager.create_bucket(&aws_resources.s3_bucket))
+    s3_manager
+        .create_bucket(&aws_resources.s3_bucket)
+        .await
         .unwrap();
 
     thread::sleep(Duration::from_secs(1));
@@ -177,23 +180,27 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     if let Some(v) = &spec.install_artifacts.blizzard_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
-        rt.block_on(s3_manager.put_object(
-            Arc::new(v.to_string()),
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode()),
-        ))
-        .expect("failed put_object install_artifacts.blizzard_bin");
+        s3_manager
+            .put_object(
+                Arc::new(v.to_string()),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode()),
+            )
+            .await
+            .expect("failed put_object install_artifacts.blizzard_bin");
     } else {
         log::info!("skipping uploading blizzard_bin, will be downloaded on remote machines...");
     }
 
     log::info!("uploading blizzardup spec file...");
-    rt.block_on(s3_manager.put_object(
-        Arc::new(spec_file_path.to_string()),
-        Arc::new(aws_resources.s3_bucket.clone()),
-        Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-    ))
-    .unwrap();
+    s3_manager
+        .put_object(
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(aws_resources.s3_bucket.clone()),
+            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        )
+        .await
+        .unwrap();
 
     if aws_resources.ec2_key_path.is_none() {
         execute!(
@@ -204,29 +211,35 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         )?;
 
         let ec2_key_path = get_ec2_key_path(spec_file_path);
-        rt.block_on(ec2_manager.create_key_pair(
-            aws_resources.ec2_key_name.clone().unwrap().as_str(),
-            ec2_key_path.as_str(),
-        ))
-        .unwrap();
+        ec2_manager
+            .create_key_pair(
+                aws_resources.ec2_key_name.clone().unwrap().as_str(),
+                ec2_key_path.as_str(),
+            )
+            .await
+            .unwrap();
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(ec2_key_path.clone()),
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(blizzardup_aws::StorageNamespace::Ec2AccessKey(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(ec2_key_path.clone()),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(blizzardup_aws::StorageNamespace::Ec2AccessKey(spec.id.clone()).encode()),
+            )
+            .await
+            .unwrap();
 
         aws_resources.ec2_key_path = Some(ec2_key_path);
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            )
+            .await
+            .unwrap();
     }
 
     if aws_resources
@@ -252,26 +265,30 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             build_param("Id", &spec.id),
             build_param("S3BucketName", &aws_resources.s3_bucket),
         ]);
-        rt.block_on(cloudformation_manager.create_stack(
-            ec2_instance_role_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            ec2_instance_role_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("blizzardup").build(),
-            ])),
-            Some(role_params),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .create_stack(
+                ec2_instance_role_stack_name.as_str(),
+                Some(vec![Capability::CapabilityNamedIam]),
+                OnFailure::Delete,
+                ec2_instance_role_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("blizzardup")
+                    .build()])),
+                Some(role_params),
+            )
+            .await
+            .unwrap();
 
         thread::sleep(Duration::from_secs(10));
-        let stack = rt
-            .block_on(cloudformation_manager.poll_stack(
+        let stack = cloudformation_manager
+            .poll_stack(
                 ec2_instance_role_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(500),
                 Duration::from_secs(30),
-            ))
+            )
+            .await
             .unwrap();
 
         for o in stack.outputs.unwrap() {
@@ -285,12 +302,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            )
+            .await
+            .unwrap();
     }
 
     if aws_resources.cloudformation_vpc_id.is_none()
@@ -315,26 +334,30 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             build_param("PublicSubnetCidr3", "10.0.192.0/19"),
             build_param("IngressIpv4Range", "0.0.0.0/0"),
         ]);
-        rt.block_on(cloudformation_manager.create_stack(
-            vpc_stack_name.as_str(),
-            None,
-            OnFailure::Delete,
-            vpc_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("blizzardup").build(),
-            ])),
-            Some(vpc_params),
-        ))
-        .expect("failed create_stack for VPC");
+        cloudformation_manager
+            .create_stack(
+                vpc_stack_name.as_str(),
+                None,
+                OnFailure::Delete,
+                vpc_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("blizzardup")
+                    .build()])),
+                Some(vpc_params),
+            )
+            .await
+            .expect("failed create_stack for VPC");
 
         thread::sleep(Duration::from_secs(10));
-        let stack = rt
-            .block_on(cloudformation_manager.poll_stack(
+        let stack = cloudformation_manager
+            .poll_stack(
                 vpc_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(300),
                 Duration::from_secs(30),
-            ))
+            )
+            .await
             .expect("failed poll_stack for VPC");
 
         for o in stack.outputs.unwrap() {
@@ -362,12 +385,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            )
+            .await
+            .unwrap();
     }
 
     if aws_resources
@@ -377,10 +402,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print(format!(
-                "\n\n\nSTEP: create ASG for blizzards nodes for network Id {}\n",
-                spec.blizzard_spec.network_id
-            )),
+            Print("\n\n\nSTEP: create ASG for blizzards nodes\n"),
             ResetColor
         )?;
 
@@ -468,17 +490,20 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             format!("{}", desired_capacity + 1).as_str(),
         ));
 
-        rt.block_on(cloudformation_manager.create_stack(
-            cloudformation_asg_blizzards_stack_name.as_str(),
-            None,
-            OnFailure::Delete,
-            cloudformation_asg_blizzards_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("blizzardup").build(),
-            ])),
-            Some(asg_parameters),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .create_stack(
+                cloudformation_asg_blizzards_stack_name.as_str(),
+                None,
+                OnFailure::Delete,
+                cloudformation_asg_blizzards_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("blizzardup")
+                    .build()])),
+                Some(asg_parameters),
+            )
+            .await
+            .unwrap();
 
         // add 5-minute for ELB creation + volume provisioner
         let mut wait_secs = 700 + 60 * desired_capacity as u64;
@@ -486,13 +511,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             wait_secs = MAX_WAIT_SECONDS;
         }
         thread::sleep(Duration::from_secs(60));
-        let stack = rt
-            .block_on(cloudformation_manager.poll_stack(
+        let stack = cloudformation_manager
+            .poll_stack(
                 cloudformation_asg_blizzards_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(wait_secs),
                 Duration::from_secs(30),
-            ))
+            )
+            .await
             .unwrap();
 
         for o in stack.outputs.unwrap() {
@@ -530,7 +556,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 "fetching all droplets for non-anchor node SSH access (target nodes {})",
                 target_nodes
             );
-            droplets = rt.block_on(ec2_manager.list_asg(&asg_name)).unwrap();
+            droplets = ec2_manager.list_asg(&asg_name).await.unwrap();
             if droplets.len() >= target_nodes {
                 break;
             }
@@ -593,12 +619,14 @@ aws ssm start-session --region {} --target {}
         spec.aws_resources = Some(aws_resources.clone());
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .expect("failed put_object ConfigFile");
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            )
+            .await
+            .expect("failed put_object ConfigFile");
 
         log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));

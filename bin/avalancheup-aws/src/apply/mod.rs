@@ -35,7 +35,6 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use rust_embed::RustEmbed;
-use tokio::runtime::Runtime;
 
 pub const NAME: &str = "apply";
 
@@ -73,7 +72,7 @@ pub fn command() -> Command {
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
-pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
+pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     #[derive(RustEmbed)]
     #[folder = "cfn-templates/"]
     #[prefix = "cfn-templates/"]
@@ -87,16 +86,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     let mut spec = avalancheup_aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
-    let rt = Runtime::new().unwrap();
-
-    let shared_config = rt
-        .block_on(aws_manager::load_config(Some(
-            spec.aws_resources.region.clone(),
-        )))
+    let shared_config = aws_manager::load_config(Some(spec.aws_resources.region.clone()))
+        .await
         .expect("failed to aws_manager::load_config");
 
     let sts_manager = sts::Manager::new(&shared_config);
-    let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
+    let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
     if let Some(identity) = &spec.aws_resources.identity {
@@ -237,7 +232,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         Print("\n\n\nSTEP: create S3 buckets\n"),
         ResetColor
     )?;
-    rt.block_on(s3_manager.create_bucket(&spec.aws_resources.s3_bucket))
+    s3_manager
+        .create_bucket(&spec.aws_resources.s3_bucket)
+        .await
         .unwrap();
 
     thread::sleep(Duration::from_secs(1));
@@ -251,14 +248,17 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     if let Some(v) = &spec.install_artifacts.avalanched_local_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
-        rt.block_on(s3_manager.put_object(
-            Arc::new(v.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(
-                avalancheup_aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone()).encode(),
-            ),
-        ))
-        .expect("failed put_object install_artifacts.avalanched_bin");
+        s3_manager
+            .put_object(
+                Arc::new(v.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
+                        .encode(),
+                ),
+            )
+            .await
+            .expect("failed put_object install_artifacts.avalanched_bin");
     } else {
         log::info!("skipping uploading avalanched_bin, will be downloaded on remote machines...");
     }
@@ -266,8 +266,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     if let Some(v) = &spec.install_artifacts.aws_volume_provisioner_local_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
-        rt.block_on(
-            s3_manager.put_object(
+
+        s3_manager
+            .put_object(
                 Arc::new(v.to_string()),
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
                 Arc::new(
@@ -276,9 +277,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     )
                     .encode(),
                 ),
-            ),
-        )
-        .expect("failed put_object install_artifacts.aws_volume_provisioner_bin");
+            )
+            .await
+            .expect("failed put_object install_artifacts.aws_volume_provisioner_bin");
     } else {
         log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
     }
@@ -286,17 +287,18 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     if let Some(v) = &spec.install_artifacts.aws_ip_provisioner_local_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
-        rt.block_on(
-            s3_manager.put_object(
+
+        s3_manager
+            .put_object(
                 Arc::new(v.to_string()),
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
                 Arc::new(
                     avalancheup_aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
                         .encode(),
                 ),
-            ),
-        )
-        .expect("failed put_object install_artifacts.aws_ip_provisioner_bin");
+            )
+            .await
+            .expect("failed put_object install_artifacts.aws_ip_provisioner_bin");
     } else {
         log::info!(
             "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
@@ -309,8 +311,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
-        rt.block_on(
-            s3_manager.put_object(
+
+        s3_manager
+            .put_object(
                 Arc::new(v.to_string()),
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
                 Arc::new(
@@ -319,9 +322,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     )
                     .encode(),
                 ),
-            ),
-        )
-        .expect("failed put_object install_artifacts.avalanche_telemetry_cloudwatch_bin");
+            )
+            .await
+            .expect("failed put_object install_artifacts.avalanche_telemetry_cloudwatch_bin");
     } else {
         log::info!(
             "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
@@ -331,17 +334,18 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
     if let Some(v) = &spec.install_artifacts.avalanche_config_local_bin {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
-        rt.block_on(
-            s3_manager.put_object(
+
+        s3_manager
+            .put_object(
                 Arc::new(v.to_string()),
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
                 Arc::new(
                     avalancheup_aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
                         .encode(),
                 ),
-            ),
-        )
-        .expect("failed put_object install_artifacts.avalanche_config_bin");
+            )
+            .await
+            .expect("failed put_object install_artifacts.avalanche_config_bin");
     } else {
         log::info!(
             "skipping uploading avalanche_config_bin, will be downloaded on remote machines..."
@@ -350,14 +354,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
     if let Some(avalanchego_bin) = &spec.install_artifacts.avalanchego_local_bin {
         // upload without compression first
-        rt.block_on(s3_manager.put_object(
-            Arc::new(avalanchego_bin.clone()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(
-                avalancheup_aws::spec::StorageNamespace::AvalancheBin(spec.id.clone()).encode(),
-            ),
-        ))
-        .expect("failed put_object avalanchego_bin");
+        s3_manager
+            .put_object(
+                Arc::new(avalanchego_bin.clone()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::AvalancheBin(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .expect("failed put_object avalanchego_bin");
     } else {
         log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
     }
@@ -377,28 +383,33 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 file_path,
                 plugins_dir,
             );
-            rt.block_on(s3_manager.put_object(
-                Arc::new(file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(format!(
-                    "{}/{}",
-                    &avalancheup_aws::spec::StorageNamespace::PluginDir(spec.id.clone()).encode(),
-                    file_name,
-                )),
-            ))
-            .expect("failed put_object file_path");
+            s3_manager
+                .put_object(
+                    Arc::new(file_path.to_string()),
+                    Arc::new(spec.aws_resources.s3_bucket.clone()),
+                    Arc::new(format!(
+                        "{}/{}",
+                        &avalancheup_aws::spec::StorageNamespace::PluginDir(spec.id.clone())
+                            .encode(),
+                        file_name,
+                    )),
+                )
+                .await
+                .expect("failed put_object file_path");
         }
     } else {
         log::info!("skipping uploading plugin dir...");
     }
 
     log::info!("uploading avalancheup spec file...");
-    rt.block_on(s3_manager.put_object(
-        Arc::new(spec_file_path.to_string()),
-        Arc::new(spec.aws_resources.s3_bucket.clone()),
-        Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-    ))
-    .unwrap();
+    s3_manager
+        .put_object(
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(spec.aws_resources.s3_bucket.clone()),
+            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        )
+        .await
+        .unwrap();
 
     if spec
         .aws_resources
@@ -413,8 +424,9 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ResetColor
         )?;
 
-        let key = rt
-            .block_on(kms_manager.create_symmetric_default_key(format!("{}-cmk", spec.id).as_str()))
+        let key = kms_manager
+            .create_symmetric_default_key(format!("{}-cmk", spec.id).as_str())
+            .await
             .unwrap();
 
         spec.aws_resources.kms_cmk_symmetric_default_encrypt_key =
@@ -424,12 +436,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             });
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
     }
     let envelope_manager = envelope::Manager::new(
         kms_manager,
@@ -450,11 +466,13 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         )?;
 
         let ec2_key_path = get_ec2_key_path(spec_file_path);
-        rt.block_on(ec2_manager.create_key_pair(
-            spec.aws_resources.ec2_key_name.clone().unwrap().as_str(),
-            ec2_key_path.as_str(),
-        ))
-        .unwrap();
+        ec2_manager
+            .create_key_pair(
+                spec.aws_resources.ec2_key_name.clone().unwrap().as_str(),
+                ec2_key_path.as_str(),
+            )
+            .await
+            .unwrap();
 
         let tmp_compressed_path =
             random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
@@ -466,13 +484,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         .unwrap();
 
         let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
-        rt.block_on(envelope_manager.seal_aes_256_file(
-            Arc::new(tmp_compressed_path),
-            Arc::new(tmp_encrypted_path.clone()),
-        ))
-        .unwrap();
-        rt.block_on(
-            s3_manager.put_object(
+        envelope_manager
+            .seal_aes_256_file(
+                Arc::new(tmp_compressed_path),
+                Arc::new(tmp_encrypted_path.clone()),
+            )
+            .await
+            .unwrap();
+
+        s3_manager
+            .put_object(
                 Arc::new(tmp_encrypted_path),
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
                 Arc::new(
@@ -481,19 +502,23 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                     )
                     .encode(),
                 ),
-            ),
-        )
-        .unwrap();
+            )
+            .await
+            .unwrap();
 
         spec.aws_resources.ec2_key_path = Some(ec2_key_path);
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
     }
 
     if let Some(metrics_rules) = &spec.prometheus_metrics_rules {
@@ -506,14 +531,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
 
         let metrics_rules_file_path = random_manager::tmp_path(10, None).unwrap();
         metrics_rules.sync(&metrics_rules_file_path).unwrap();
-        rt.block_on(s3_manager.put_object(
-            Arc::new(metrics_rules_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(
-                avalancheup_aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
-            ),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(metrics_rules_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
     }
 
     if spec
@@ -550,26 +577,30 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             ),
             build_param("S3BucketName", &spec.aws_resources.s3_bucket),
         ]);
-        rt.block_on(cloudformation_manager.create_stack(
-            ec2_instance_role_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            ec2_instance_role_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("avalanche-ops").build(),
-            ])),
-            Some(role_params),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .create_stack(
+                ec2_instance_role_stack_name.as_str(),
+                Some(vec![Capability::CapabilityNamedIam]),
+                OnFailure::Delete,
+                ec2_instance_role_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(role_params),
+            )
+            .await
+            .unwrap();
 
         thread::sleep(Duration::from_secs(10));
-        let stack = rt
-            .block_on(cloudformation_manager.poll_stack(
+        let stack = cloudformation_manager
+            .poll_stack(
                 ec2_instance_role_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(500),
                 Duration::from_secs(30),
-            ))
+            )
+            .await
             .unwrap();
 
         for o in stack.outputs.unwrap() {
@@ -582,12 +613,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
     }
 
     if spec.aws_resources.cloudformation_vpc_id.is_none()
@@ -628,26 +663,30 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 format!("{}", spec.avalanchego_config.http_port).as_str(),
             ),
         ]);
-        rt.block_on(cloudformation_manager.create_stack(
-            vpc_stack_name.as_str(),
-            None,
-            OnFailure::Delete,
-            vpc_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("avalanche-ops").build(),
-            ])),
-            Some(vpc_params),
-        ))
-        .expect("failed create_stack for VPC");
+        cloudformation_manager
+            .create_stack(
+                vpc_stack_name.as_str(),
+                None,
+                OnFailure::Delete,
+                vpc_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(vpc_params),
+            )
+            .await
+            .expect("failed create_stack for VPC");
 
         thread::sleep(Duration::from_secs(10));
-        let stack = rt
-            .block_on(cloudformation_manager.poll_stack(
+        let stack = cloudformation_manager
+            .poll_stack(
                 vpc_stack_name.as_str(),
                 StackStatus::CreateComplete,
                 Duration::from_secs(300),
                 Duration::from_secs(30),
-            ))
+            )
+            .await
             .expect("failed poll_stack for VPC");
 
         for o in stack.outputs.unwrap() {
@@ -674,12 +713,16 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
         }
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
     }
 
     let mut common_asg_params = Vec::from([
@@ -857,17 +900,20 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 asg_params.push(build_param("NlbTargetGroupArn", arn));
             }
 
-            rt.block_on(cloudformation_manager.create_stack(
-                &stack_names[i],
-                None,
-                OnFailure::Delete,
-                cloudformation_asg_anchor_nodes_tmpl,
-                Some(Vec::from([
-                    Tag::builder().key("KIND").value("avalanche-ops").build(),
-                ])),
-                Some(asg_params),
-            ))
-            .unwrap();
+            cloudformation_manager
+                .create_stack(
+                    &stack_names[i],
+                    None,
+                    OnFailure::Delete,
+                    cloudformation_asg_anchor_nodes_tmpl,
+                    Some(Vec::from([Tag::builder()
+                        .key("KIND")
+                        .value("avalanche-ops")
+                        .build()])),
+                    Some(asg_params),
+                )
+                .await
+                .unwrap();
 
             // add 5-minute for ELB creation + volume provisioner
             let mut wait_secs = 800;
@@ -875,13 +921,14 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 wait_secs = MAX_WAIT_SECONDS;
             }
             thread::sleep(Duration::from_secs(60));
-            let stack = rt
-                .block_on(cloudformation_manager.poll_stack(
+            let stack = cloudformation_manager
+                .poll_stack(
                     &stack_names[i],
                     StackStatus::CreateComplete,
                     Duration::from_secs(wait_secs),
                     Duration::from_secs(30),
-                ))
+                )
+                .await
                 .unwrap();
 
             for o in stack.outputs.unwrap() {
@@ -961,7 +1008,7 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
             for _ in 0..20 {
                 // TODO: better retries
                 log::info!("fetching all droplets for anchor-node SSH access");
-                droplets = rt.block_on(ec2_manager.list_asg(asg_name)).unwrap();
+                droplets = ec2_manager.list_asg(asg_name).await.unwrap();
                 if droplets.len() >= 1 {
                     break;
                 }
@@ -976,11 +1023,12 @@ pub fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::
                 log::info!("using elastic IPs... wait more");
                 let mut outs: Vec<Address>;
                 loop {
-                    outs = rt
-                        .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([
+                    outs = ec2_manager
+                        .describe_eips_by_tags(HashMap::from([
                             (String::from("Id"), spec.id.clone()),
                             (String::from("autoscaling:groupName"), asg_name.clone()),
-                        ])))
+                        ]))
+                        .await
                         .unwrap();
 
                     log::info!("got {} EIP addresses", outs.len());
@@ -1070,18 +1118,17 @@ aws ssm start-session --region {} --target {}
         loop {
             thread::sleep(Duration::from_secs(30));
 
-            objects = rt
-                .block_on(
-                    s3_manager.list_objects(
-                        Arc::new(spec.aws_resources.s3_bucket.clone()),
-                        Some(Arc::new(s3::append_slash(
-                            &avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
-                                spec.id.clone(),
-                            )
-                            .encode(),
-                        ))),
-                    ),
+            objects = s3_manager
+                .list_objects(
+                    Arc::new(spec.aws_resources.s3_bucket.clone()),
+                    Some(Arc::new(s3::append_slash(
+                        &avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
+                            spec.id.clone(),
+                        )
+                        .encode(),
+                    ))),
                 )
+                .await
                 .unwrap();
             log::info!(
                 "{} anchor nodes are bootstrapped and ready (expecting {} nodes)",
@@ -1119,12 +1166,16 @@ aws ssm start-session --region {} --target {}
 
         spec.sync(spec_file_path)?;
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .unwrap();
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
 
         log::info!("waiting for anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(15));
@@ -1188,17 +1239,20 @@ aws ssm start-session --region {} --target {}
                 asg_params.push(build_param("NlbTargetGroupArn", arn));
             }
 
-            rt.block_on(cloudformation_manager.create_stack(
-                &stack_names[i],
-                None,
-                OnFailure::Delete,
-                cloudformation_asg_non_anchor_nodes_tmpl,
-                Some(Vec::from([
-                    Tag::builder().key("KIND").value("avalanche-ops").build(),
-                ])),
-                Some(asg_params),
-            ))
-            .unwrap();
+            cloudformation_manager
+                .create_stack(
+                    &stack_names[i],
+                    None,
+                    OnFailure::Delete,
+                    cloudformation_asg_non_anchor_nodes_tmpl,
+                    Some(Vec::from([Tag::builder()
+                        .key("KIND")
+                        .value("avalanche-ops")
+                        .build()])),
+                    Some(asg_params),
+                )
+                .await
+                .unwrap();
 
             // add 5-minute for ELB creation + volume provisioner
             let mut wait_secs = 800;
@@ -1206,13 +1260,14 @@ aws ssm start-session --region {} --target {}
                 wait_secs = MAX_WAIT_SECONDS;
             }
             thread::sleep(Duration::from_secs(60));
-            let stack = rt
-                .block_on(cloudformation_manager.poll_stack(
+            let stack = cloudformation_manager
+                .poll_stack(
                     &stack_names[i],
                     StackStatus::CreateComplete,
                     Duration::from_secs(wait_secs),
                     Duration::from_secs(30),
-                ))
+                )
+                .await
                 .unwrap();
 
             for o in stack.outputs.unwrap() {
@@ -1292,7 +1347,7 @@ aws ssm start-session --region {} --target {}
             for _ in 0..20 {
                 // TODO: better retries
                 log::info!("fetching all droplets for non-anchor-node SSH access");
-                droplets = rt.block_on(ec2_manager.list_asg(asg_name)).unwrap();
+                droplets = ec2_manager.list_asg(asg_name).await.unwrap();
                 if droplets.len() >= 1 {
                     break;
                 }
@@ -1307,11 +1362,12 @@ aws ssm start-session --region {} --target {}
                 log::info!("using elastic IPs... wait more");
                 let mut outs: Vec<Address>;
                 loop {
-                    outs = rt
-                        .block_on(ec2_manager.describe_eips_by_tags(HashMap::from([
+                    outs = ec2_manager
+                        .describe_eips_by_tags(HashMap::from([
                             (String::from("Id"), spec.id.clone()),
                             (String::from("autoscaling:groupName"), asg_name.clone()),
-                        ])))
+                        ]))
+                        .await
                         .unwrap();
 
                     log::info!("got {} EIP addresses", outs.len());
@@ -1401,18 +1457,17 @@ aws ssm start-session --region {} --target {}
         loop {
             thread::sleep(Duration::from_secs(30));
 
-            objects = rt
-                .block_on(
-                    s3_manager.list_objects(
-                        Arc::new(spec.aws_resources.s3_bucket.clone()),
-                        Some(Arc::new(s3::append_slash(
-                            &avalancheup_aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
-                                spec.id.clone(),
-                            )
-                            .encode(),
-                        ))),
-                    ),
+            objects = s3_manager
+                .list_objects(
+                    Arc::new(spec.aws_resources.s3_bucket.clone()),
+                    Some(Arc::new(s3::append_slash(
+                        &avalancheup_aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
+                            spec.id.clone(),
+                        )
+                        .encode(),
+                    ))),
                 )
+                .await
                 .unwrap();
             log::info!(
                 "{} non-anchor nodes are bootstrapped and ready (expecting {} nodes)",
@@ -1448,12 +1503,16 @@ aws ssm start-session --region {} --target {}
             created_nodes.push(non_anchor_node.clone());
         }
 
-        rt.block_on(s3_manager.put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-        ))
-        .expect("failed put_object ConfigFile");
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .expect("failed put_object ConfigFile");
 
         log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
         thread::sleep(Duration::from_secs(20));
@@ -1511,6 +1570,7 @@ aws ssm start-session --region {} --target {}
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
     let mut http_rpcs = Vec::new();
+    let mut chain_rpc_urls = Vec::new();
     for host in rpc_hosts.iter() {
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
         http_rpcs.push(http_rpc.clone());
@@ -1534,20 +1594,24 @@ aws ssm start-session --region {} --target {}
                 .encode_yaml()
                 .unwrap()
         );
+
+        chain_rpc_urls.push(format!("{http_rpc}/ext/bc/C/rpc"));
     }
 
     spec.sync(spec_file_path)?;
-    rt.block_on(s3_manager.put_object(
-        Arc::new(spec_file_path.to_string()),
-        Arc::new(spec.aws_resources.s3_bucket.clone()),
-        Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
-    ))
-    .expect("failed put_object ConfigFile");
+    s3_manager
+        .put_object(
+            Arc::new(spec_file_path.to_string()),
+            Arc::new(spec.aws_resources.s3_bucket.clone()),
+            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+        )
+        .await
+        .expect("failed put_object ConfigFile");
 
     for http_rpc in http_rpcs.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(client_health::check(Arc::new(http_rpc.clone()), true));
+            let ret = client_health::check(Arc::new(http_rpc.clone()), true).await;
             match ret {
                 Ok(res) => {
                     if res.healthy {
@@ -1576,10 +1640,7 @@ aws ssm start-session --region {} --target {}
     for node in created_nodes.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = rt.block_on(client_health::check(
-                Arc::new(node.http_endpoint.clone()),
-                true,
-            ));
+            let ret = client_health::check(Arc::new(node.http_endpoint.clone()), true).await;
             match ret {
                 Ok(res) => {
                     if res.healthy {
@@ -1713,10 +1774,9 @@ default-spec \\
 --region={region} \\
 --install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
---network-id={network_id} \\
 --nodes=10 \\
 --blizzard-log-level=info \\
---blizzard-http-rpcs={blizzard_http_rpcs} \\
+--blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
 --blizzard-keys-to-generate=100 \\
 --blizzard-workers=100 \\
 --blizzard-load-kinds=x-transfers,c-transfers
@@ -1729,8 +1789,7 @@ default-spec \\
                 1
             },
             region = spec.aws_resources.region,
-            network_id = spec.avalanchego_config.network_id,
-            blizzard_http_rpcs = http_rpcs.clone().join(","),
+            blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
         )),
         ResetColor
     )?;
@@ -1791,12 +1850,10 @@ default-spec \\
         test_key_info.private_key_cb58.clone().unwrap(),
     )?;
 
-    let wallet_to_spend = rt
-        .block_on(
-            wallet::Builder::new(&test_key_pk)
-                .base_http_urls(http_rpcs.clone())
-                .build(),
-        )
+    let wallet_to_spend = wallet::Builder::new(&test_key_pk)
+        .base_http_urls(http_rpcs.clone())
+        .build()
+        .await
         .unwrap();
 
     // add nodes as validators for the primary network
@@ -1808,15 +1865,13 @@ default-spec \\
     )?;
     log::info!("adding all nodes as primary network validator");
     for node_id in all_node_ids.iter() {
-        let (tx_id, added) = rt
-            .block_on(
-                wallet_to_spend
-                    .p()
-                    .add_validator()
-                    .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-                    .check_acceptance(true)
-                    .issue(),
-            )
+        let (tx_id, added) = wallet_to_spend
+            .p()
+            .add_validator()
+            .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+            .check_acceptance(true)
+            .issue()
+            .await
             .unwrap();
         log::info!("validator tx id {}, added {}", tx_id, added);
     }
@@ -1852,25 +1907,30 @@ default-spec \\
             "DocumentName",
             &ssm_document_name_restart_tracked_subnet,
         )]);
-        rt.block_on(cloudformation_manager.create_stack(
-            ssm_doc_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            ssm_doc_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("avalanche-ops").build(),
-            ])),
-            Some(cfn_params),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .create_stack(
+                ssm_doc_stack_name.as_str(),
+                Some(vec![Capability::CapabilityNamedIam]),
+                OnFailure::Delete,
+                ssm_doc_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(cfn_params),
+            )
+            .await
+            .unwrap();
         thread::sleep(Duration::from_secs(10));
-        rt.block_on(cloudformation_manager.poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
         log::info!("created ssm document for restarting node with tracked subnet");
 
         execute!(
@@ -1896,25 +1956,30 @@ default-spec \\
             "DocumentName",
             &ssm_document_name_restart_node_chain_config,
         )]);
-        rt.block_on(cloudformation_manager.create_stack(
-            ssm_doc_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            ssm_doc_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("avalanche-ops").build(),
-            ])),
-            Some(cfn_params),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .create_stack(
+                ssm_doc_stack_name.as_str(),
+                Some(vec![Capability::CapabilityNamedIam]),
+                OnFailure::Delete,
+                ssm_doc_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(cfn_params),
+            )
+            .await
+            .unwrap();
         thread::sleep(Duration::from_secs(10));
-        rt.block_on(cloudformation_manager.poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
         log::info!("created ssm document for restarting node to load chain config");
 
         for (subnet_evm_name, subnet_evm) in subnet_evms.iter() {
@@ -1926,19 +1991,21 @@ default-spec \\
                 )),
                 ResetColor
             )?;
-            let subnet_id = rt
-                .block_on(wallet_to_spend.p().create_subnet().dry_mode(true).issue())
+            let subnet_id = wallet_to_spend
+                .p()
+                .create_subnet()
+                .dry_mode(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("[dry mode] subnet Id '{}'", subnet_id);
 
-            let created_subnet_id = rt
-                .block_on(
-                    wallet_to_spend
-                        .p()
-                        .create_subnet()
-                        .check_acceptance(true)
-                        .issue(),
-                )
+            let created_subnet_id = wallet_to_spend
+                .p()
+                .create_subnet()
+                .check_acceptance(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
@@ -1950,26 +2017,24 @@ default-spec \\
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = rt
-                .block_on(
-                    ssm_cli
-                        .send_command()
-                        .document_name(ssm_document_name_restart_tracked_subnet.clone())
-                        .set_instance_ids(Some(all_instance_ids.clone()))
-                        .parameters(
-                            "vmId",
-                            vec![String::from(
-                                "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
-                            )],
-                        )
-                        .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                        .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
-                        .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
-                        .output_s3_region(spec.aws_resources.region.clone())
-                        .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
-                        .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                        .send(),
+            let ssm_output = ssm_cli
+                .send_command()
+                .document_name(ssm_document_name_restart_tracked_subnet.clone())
+                .set_instance_ids(Some(all_instance_ids.clone()))
+                .parameters(
+                    "vmId",
+                    vec![String::from(
+                        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                    )],
                 )
+                .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
+                .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
+                .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
+                .output_s3_region(spec.aws_resources.region.clone())
+                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
+                .send()
+                .await
                 .unwrap();
             let ssm_output = ssm_output.command().unwrap();
             let ssm_command_id = ssm_output.command_id().unwrap();
@@ -1983,14 +2048,15 @@ default-spec \\
                 ResetColor
             )?;
             for instance_id in all_instance_ids.iter() {
-                let status = rt
-                    .block_on(ssm_manager.poll_command(
+                let status = ssm_manager
+                    .poll_command(
                         ssm_command_id,
                         instance_id,
                         CommandInvocationStatus::Success,
                         Duration::from_secs(300),
                         Duration::from_secs(5),
-                    ))
+                    )
+                    .await
                     .unwrap();
                 log::info!("status {:?} for instance id {}", status, instance_id);
             }
@@ -2005,16 +2071,15 @@ default-spec \\
                 ResetColor
             )?;
             for node_id in all_node_ids.iter() {
-                rt.block_on(
-                    wallet_to_spend
-                        .p()
-                        .add_subnet_validator()
-                        .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-                        .subnet_id(created_subnet_id)
-                        .check_acceptance(true)
-                        .issue(),
-                )
-                .unwrap();
+                wallet_to_spend
+                    .p()
+                    .add_subnet_validator()
+                    .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+                    .subnet_id(created_subnet_id)
+                    .check_acceptance(true)
+                    .issue()
+                    .await
+                    .unwrap();
             }
             log::info!("added subnet validators for {}", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
@@ -2028,39 +2093,33 @@ default-spec \\
                 )),
                 ResetColor
             )?;
-            let blockchain_id = rt
-                .block_on(
-                    wallet_to_spend
-                        .p()
-                        .create_chain()
-                        .subnet_id(created_subnet_id)
-                        .genesis_data(subnet_evm_genesis_bytes.clone())
-                        .vm_id(
-                            ids::Id::from_str("srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy")
-                                .unwrap(),
-                        )
-                        .chain_name(String::from("subnetevm"))
-                        .dry_mode(true)
-                        .issue(),
+            let blockchain_id = wallet_to_spend
+                .p()
+                .create_chain()
+                .subnet_id(created_subnet_id)
+                .genesis_data(subnet_evm_genesis_bytes.clone())
+                .vm_id(
+                    ids::Id::from_str("srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy").unwrap(),
                 )
+                .chain_name(String::from("subnetevm"))
+                .dry_mode(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("[dry mode] blockchain Id {}", blockchain_id);
 
-            let blockchain_id = rt
-                .block_on(
-                    wallet_to_spend
-                        .p()
-                        .create_chain()
-                        .subnet_id(created_subnet_id)
-                        .genesis_data(subnet_evm_genesis_bytes)
-                        .vm_id(
-                            ids::Id::from_str("srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy")
-                                .unwrap(),
-                        )
-                        .chain_name(String::from("subnetevm"))
-                        .check_acceptance(true)
-                        .issue(),
+            let blockchain_id = wallet_to_spend
+                .p()
+                .create_chain()
+                .subnet_id(created_subnet_id)
+                .genesis_data(subnet_evm_genesis_bytes)
+                .vm_id(
+                    ids::Id::from_str("srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy").unwrap(),
                 )
+                .chain_name(String::from("subnetevm"))
+                .check_acceptance(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
 
@@ -2073,20 +2132,18 @@ default-spec \\
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = rt
-                .block_on(
-                    ssm_cli
-                        .send_command()
-                        .document_name(ssm_document_name_restart_node_chain_config.clone())
-                        .set_instance_ids(Some(all_instance_ids.clone()))
-                        .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                        .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
-                        .parameters("newBlockchainId", vec![blockchain_id.to_string()])
-                        .output_s3_region(spec.aws_resources.region.clone())
-                        .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
-                        .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                        .send(),
-                )
+            let ssm_output = ssm_cli
+                .send_command()
+                .document_name(ssm_document_name_restart_node_chain_config.clone())
+                .set_instance_ids(Some(all_instance_ids.clone()))
+                .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
+                .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
+                .parameters("newBlockchainId", vec![blockchain_id.to_string()])
+                .output_s3_region(spec.aws_resources.region.clone())
+                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
+                .send()
+                .await
                 .unwrap();
             let ssm_output = ssm_output.command().unwrap();
             let ssm_command_id = ssm_output.command_id().unwrap();
@@ -2100,14 +2157,15 @@ default-spec \\
                 ResetColor
             )?;
             for instance_id in all_instance_ids.iter() {
-                let status = rt
-                    .block_on(ssm_manager.poll_command(
+                let status = ssm_manager
+                    .poll_command(
                         ssm_command_id,
                         instance_id,
                         CommandInvocationStatus::Success,
                         Duration::from_secs(300),
                         Duration::from_secs(5),
-                    ))
+                    )
+                    .await
                     .unwrap();
                 log::info!("status {:?} for instance id {}", status, instance_id);
             }
@@ -2118,6 +2176,13 @@ default-spec \\
                 "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
                 node_ids
             );
+            let mut chain_rpc_urls = Vec::new();
+            for http_rpc in http_rpcs.iter() {
+                chain_rpc_urls.push(format!(
+                    "{http_rpc}/ext/bc/{}/rpc",
+                    subnet_evm_blockchain_id
+                ));
+            }
             execute!(
                 stdout(),
                 SetForegroundColor(Color::DarkGreen),
@@ -2130,11 +2195,9 @@ default-spec \\
 --region={region} \\
 --install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
---network-id={network_id} \\
 --nodes=10 \\
 --blizzard-log-level=info \\
---blizzard-http-rpcs={blizzard_http_rpcs} \\
---blizzard-subnet-evm-blockchain-id={subnet_evm_blockchain_id} \\
+--blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
 --blizzard-keys-to-generate=100 \\
 --blizzard-workers=100 \\
 --blizzard-load-kinds=subnet-evm-transfers
@@ -2146,9 +2209,7 @@ default-spec \\
                         1
                     },
                     region = spec.aws_resources.region,
-                    network_id = spec.avalanchego_config.network_id,
-                    blizzard_http_rpcs = http_rpcs.clone().join(","),
-                    subnet_evm_blockchain_id = subnet_evm_blockchain_id,
+                    blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
                 )),
                 ResetColor
             )?;
@@ -2185,25 +2246,30 @@ default-spec \\
             "DocumentName",
             &ssm_document_name_restart_tracked_subnet,
         )]);
-        rt.block_on(cloudformation_manager.create_stack(
-            ssm_doc_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            ssm_doc_tmpl,
-            Some(Vec::from([
-                Tag::builder().key("KIND").value("avalanche-ops").build(),
-            ])),
-            Some(cfn_params),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .create_stack(
+                ssm_doc_stack_name.as_str(),
+                Some(vec![Capability::CapabilityNamedIam]),
+                OnFailure::Delete,
+                ssm_doc_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(cfn_params),
+            )
+            .await
+            .unwrap();
         thread::sleep(Duration::from_secs(10));
-        rt.block_on(cloudformation_manager.poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
         log::info!("created ssm document for restarting node with tracked subnet");
 
         // in case we need split subnet validator set
@@ -2246,19 +2312,21 @@ default-spec \\
                 )),
                 ResetColor
             )?;
-            let subnet_id = rt
-                .block_on(wallet_to_spend.p().create_subnet().dry_mode(true).issue())
+            let subnet_id = wallet_to_spend
+                .p()
+                .create_subnet()
+                .dry_mode(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("[dry mode] subnet Id '{}'", subnet_id);
 
-            let created_subnet_id = rt
-                .block_on(
-                    wallet_to_spend
-                        .p()
-                        .create_subnet()
-                        .check_acceptance(true)
-                        .issue(),
-                )
+            let created_subnet_id = wallet_to_spend
+                .p()
+                .create_subnet()
+                .check_acceptance(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
@@ -2270,26 +2338,24 @@ default-spec \\
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = rt
-                .block_on(
-                    ssm_cli
-                        .send_command()
-                        .document_name(ssm_document_name_restart_tracked_subnet.clone())
-                        .set_instance_ids(Some(all_instance_ids.clone()))
-                        .parameters(
-                            "vmId",
-                            vec![String::from(
-                                "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
-                            )],
-                        )
-                        .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                        .parameters("xsvmName", vec![xsvm_name.clone()])
-                        .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
-                        .output_s3_region(spec.aws_resources.region.clone())
-                        .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
-                        .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                        .send(),
+            let ssm_output = ssm_cli
+                .send_command()
+                .document_name(ssm_document_name_restart_tracked_subnet.clone())
+                .set_instance_ids(Some(all_instance_ids.clone()))
+                .parameters(
+                    "vmId",
+                    vec![String::from(
+                        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                    )],
                 )
+                .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
+                .parameters("xsvmName", vec![xsvm_name.clone()])
+                .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
+                .output_s3_region(spec.aws_resources.region.clone())
+                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
+                .send()
+                .await
                 .unwrap();
             let ssm_output = ssm_output.command().unwrap();
             let ssm_command_id = ssm_output.command_id().unwrap();
@@ -2303,14 +2369,15 @@ default-spec \\
                 ResetColor
             )?;
             for instance_id in all_instance_ids.iter() {
-                let status = rt
-                    .block_on(ssm_manager.poll_command(
+                let status = ssm_manager
+                    .poll_command(
                         ssm_command_id,
                         instance_id,
                         CommandInvocationStatus::Success,
                         Duration::from_secs(300),
                         Duration::from_secs(5),
-                    ))
+                    )
+                    .await
                     .unwrap();
                 log::info!("status {:?} for instance id {}", status, instance_id);
             }
@@ -2325,16 +2392,15 @@ default-spec \\
                 ResetColor
             )?;
             for node_id in selected_node_ids.iter() {
-                rt.block_on(
-                    wallet_to_spend
-                        .p()
-                        .add_subnet_validator()
-                        .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-                        .subnet_id(created_subnet_id)
-                        .check_acceptance(true)
-                        .issue(),
-                )
-                .unwrap();
+                wallet_to_spend
+                    .p()
+                    .add_subnet_validator()
+                    .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+                    .subnet_id(created_subnet_id)
+                    .check_acceptance(true)
+                    .issue()
+                    .await
+                    .unwrap();
             }
             log::info!("added subnet validators for {}", created_subnet_id);
             thread::sleep(Duration::from_secs(5));
@@ -2349,39 +2415,33 @@ default-spec \\
                 )),
                 ResetColor
             )?;
-            let blockchain_id = rt
-                .block_on(
-                    wallet_to_spend
-                        .p()
-                        .create_chain()
-                        .subnet_id(created_subnet_id)
-                        .genesis_data(xsvm_genesis_bytes.clone())
-                        .vm_id(
-                            ids::Id::from_str("v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH")
-                                .unwrap(),
-                        )
-                        .chain_name(String::from("xsvm"))
-                        .dry_mode(true)
-                        .issue(),
+            let blockchain_id = wallet_to_spend
+                .p()
+                .create_chain()
+                .subnet_id(created_subnet_id)
+                .genesis_data(xsvm_genesis_bytes.clone())
+                .vm_id(
+                    ids::Id::from_str("v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH").unwrap(),
                 )
+                .chain_name(String::from("xsvm"))
+                .dry_mode(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("[dry mode] blockchain Id {}", blockchain_id);
 
-            let blockchain_id = rt
-                .block_on(
-                    wallet_to_spend
-                        .p()
-                        .create_chain()
-                        .subnet_id(created_subnet_id)
-                        .genesis_data(xsvm_genesis_bytes)
-                        .vm_id(
-                            ids::Id::from_str("v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH")
-                                .unwrap(),
-                        )
-                        .chain_name(String::from("xsvm"))
-                        .check_acceptance(true)
-                        .issue(),
+            let blockchain_id = wallet_to_spend
+                .p()
+                .create_chain()
+                .subnet_id(created_subnet_id)
+                .genesis_data(xsvm_genesis_bytes)
+                .vm_id(
+                    ids::Id::from_str("v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH").unwrap(),
                 )
+                .chain_name(String::from("xsvm"))
+                .check_acceptance(true)
+                .issue()
+                .await
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
 

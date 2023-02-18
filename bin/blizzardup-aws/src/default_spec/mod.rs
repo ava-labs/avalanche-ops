@@ -83,19 +83,12 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("BLIZZARD_HTTP_RPCS")
-                .long("blizzard-http-rpcs")
-                .help("Comma-separated 'blizzard' HTTP RPC endpoints (e.g., http://[HOST]:[PORT])")
+            Arg::new("BLIZZARD_CHAIN_RPC_URLS")
+                .long("blizzard-chain-rpc-urls")
+                .help("Comma-separated chain RPC URLs")
                 .required(false)
                 .num_args(1)
-                .default_value("http://localhost:9650"),
-        )
-        .arg(
-            Arg::new("BLIZZARD_SUBNET_EVM_BLOCKCHAIN_ID")
-                .long("blizzard-subnet-evm-blockchain-id")
-                .help("Blockchain Id for subnet-evm")
-                .required(false)
-                .num_args(1),
+                .default_value("http://localhost:9650/ext/C/rpc"),
         )
         .arg(
             Arg::new("BLIZZARD_LOAD_KINDS")
@@ -113,15 +106,6 @@ pub fn command() -> Command {
                 .num_args(1)
                 .value_parser(value_parser!(usize))
                 .default_value("100"),
-        )
-        .arg(
-            Arg::new("BLIZZARD_METRICS_PUSH_INTERVAL_SECONDS")
-                .long("blizzard-metrics-push-interval-seconds")
-                .help("Sets 'blizzard' metrics push interval in seconds")
-                .required(false)
-                .num_args(1)
-                .value_parser(value_parser!(u64))
-                .default_value("60"),
         )
         .arg(
             Arg::new("BLIZZARD_WORKERS")

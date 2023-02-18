@@ -2,13 +2,16 @@ mod apply;
 mod default_spec;
 mod delete;
 
+use std::io;
+
 use clap::{crate_version, Command};
 
 const APP_NAME: &str = "avalancheup-aws";
 
 /// Should be able to run with idempotency
 /// (e.g., multiple restarts should not recreate the same CloudFormation stacks)
-fn main() {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let matches = Command::new(APP_NAME)
         .version(crate_version!())
         .about("AvalancheUp control plane on AWS (requires avalanched)")
@@ -210,6 +213,7 @@ fn main() {
                     .clone(),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
+            .await
             .expect("failed to execute 'apply'");
         }
 
@@ -235,4 +239,6 @@ fn main() {
 
         _ => unreachable!("unknown subcommand"),
     }
+
+    Ok(())
 }

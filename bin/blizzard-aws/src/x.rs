@@ -1,20 +1,23 @@
 use std::{thread, time::Duration};
 
-use avalanche_types::{key, wallet};
+use avalanche_types::{
+    jsonrpc::client::info as client_info,
+    {key, wallet},
+};
 
 pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
-    let total_rpc_eps = spec.blizzard_spec.rpc_endpoints.len();
+    let total_rpc_eps = spec.blizzard_spec.chain_rpc_urls.len();
     log::info!(
         "[WORKER #{worker_idx}] STEP 1: start making X-chain transfers to {} endpoints",
         total_rpc_eps
     );
 
-    let mut base_http_urls = Vec::new();
-    for ep in spec.blizzard_spec.rpc_endpoints.iter() {
-        base_http_urls.push(ep.http_rpc.clone());
-    }
+    let total_funded_keys = spec.prefunded_key_infos.len();
 
-    let total_funded_keys = spec.test_key_infos.len();
+    let resp = client_info::get_network_id(&spec.blizzard_spec.chain_rpc_urls[0])
+        .await
+        .unwrap();
+    let network_id = resp.result.unwrap().network_id;
 
     //
     //
@@ -31,12 +34,15 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         let idx = (faucet_idx + i) % total_funded_keys;
 
         let k = key::secp256k1::private_key::Key::from_cb58(
-            spec.test_key_infos[idx].private_key_cb58.clone().unwrap(),
+            spec.prefunded_key_infos[idx]
+                .private_key_cb58
+                .clone()
+                .unwrap(),
         )
         .unwrap();
 
         let faucet_wallet = wallet::Builder::new(&k)
-            .base_http_urls(base_http_urls.clone())
+            .base_http_urls(spec.blizzard_spec.chain_rpc_urls.clone())
             .build()
             .await
             .unwrap();
@@ -75,7 +81,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     //
     log::info!("[WORKER #{worker_idx}] STEP 3: loading faucet key and wallet");
     let faucet_key = key::secp256k1::private_key::Key::from_cb58(
-        spec.test_key_infos[faucet_idx]
+        spec.prefunded_key_infos[faucet_idx]
             .private_key_cb58
             .clone()
             .unwrap(),
@@ -83,7 +89,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     .unwrap();
 
     let faucet_wallet = wallet::Builder::new(&faucet_key)
-        .base_http_urls(base_http_urls.clone())
+        .base_http_urls(spec.blizzard_spec.chain_rpc_urls.clone())
         .build()
         .await
         .unwrap();
@@ -92,7 +98,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] faucet '{}' can now distribute funds to new keys",
         faucet_key
             .to_public_key()
-            .to_hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(network_id, "X")
             .unwrap()
     );
 
@@ -128,7 +134,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] STEP 5: requesting a bulk of funds from faucet to the first generated new key {}",
         ephemeral_test_keys[0]
             .to_public_key()
-            .to_hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(network_id, "X")
             .unwrap()
     );
 
@@ -190,7 +196,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     //
     log::info!("[WORKER #{worker_idx}] STEP 6: loading first generated new key and wallet");
     let first_ephemeral_wallet = wallet::Builder::new(&ephemeral_test_keys[0])
-        .base_http_urls(base_http_urls.clone())
+        .base_http_urls(spec.blizzard_spec.chain_rpc_urls.clone())
         .build()
         .await
         .unwrap();
@@ -198,7 +204,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] first generated new key '{}' can now distribute funds to new keys",
         ephemeral_test_keys[0]
             .to_public_key()
-            .to_hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(network_id, "X")
             .unwrap()
     );
 
@@ -211,7 +217,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
         "[WORKER #{worker_idx}] STEP 7: distributing funds from first generated new key {} to all other keys",
         ephemeral_test_keys[0]
             .to_public_key()
-            .to_hrp_address(spec.blizzard_spec.network_id, "X")
+            .to_hrp_address(network_id, "X")
             .unwrap()
     );
     // save some for gas
@@ -226,11 +232,11 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             deposit_amount,
             ephemeral_test_keys[0]
                 .to_public_key()
-                .to_hrp_address(spec.blizzard_spec.network_id, "X")
+                .to_hrp_address(network_id, "X")
                 .unwrap(),
             ephemeral_test_keys[i]
                 .to_public_key()
-                .to_hrp_address(spec.blizzard_spec.network_id, "X")
+                .to_hrp_address(network_id, "X")
                 .unwrap()
         );
 
@@ -274,7 +280,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     let mut ephmeral_wallets = Vec::new();
     for i in 0..spec.blizzard_spec.keys_to_generate {
         let wallet = wallet::Builder::new(&ephemeral_test_keys[i])
-            .base_http_urls(base_http_urls.clone())
+            .base_http_urls(spec.blizzard_spec.chain_rpc_urls.clone())
             .build()
             .await
             .unwrap();
@@ -299,11 +305,11 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                 transfer_amount,
                 ephemeral_test_keys[i]
                     .to_public_key()
-                    .to_hrp_address(spec.blizzard_spec.network_id, "X")
+                    .to_hrp_address(network_id, "X")
                     .unwrap(),
                 ephemeral_test_keys[(i + 1) % spec.blizzard_spec.keys_to_generate]
                     .to_public_key()
-                    .to_hrp_address(spec.blizzard_spec.network_id, "X")
+                    .to_hrp_address(network_id, "X")
                     .unwrap()
             );
 
