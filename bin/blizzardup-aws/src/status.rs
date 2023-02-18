@@ -1,4 +1,4 @@
-use primitive_types::{H160, U256};
+use primitive_types::U256;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
