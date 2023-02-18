@@ -878,7 +878,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let mut asg_params = common_asg_params_anchor.clone();
             asg_params.push(build_param(
                 "PublicSubnetIds",
-                &public_subnet_ids[(i as usize) % public_subnet_ids.len()].clone(),
+                &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
             ));
 
             // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
@@ -1217,7 +1217,7 @@ aws ssm start-session --region {} --target {}
             let mut asg_params = common_asg_params_non_anchor.clone();
             asg_params.push(build_param(
                 "PublicSubnetIds",
-                &public_subnet_ids[(i as usize) % public_subnet_ids.len()].clone(),
+                &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
             ));
 
             // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
