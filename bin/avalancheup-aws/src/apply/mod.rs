@@ -878,6 +878,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let mut asg_params = common_asg_params_anchor.clone();
             asg_params.push(build_param(
                 "PublicSubnetIds",
+                // since we only launch one node per ASG
                 &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
             ));
 
@@ -886,6 +887,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
+                // reuse ASG template
                 asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
             }
             if !asg_launch_template_version.is_empty() {
@@ -1217,6 +1219,7 @@ aws ssm start-session --region {} --target {}
             let mut asg_params = common_asg_params_non_anchor.clone();
             asg_params.push(build_param(
                 "PublicSubnetIds",
+                // since we only launch one node per ASG
                 &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
             ));
 
@@ -1225,6 +1228,7 @@ aws ssm start-session --region {} --target {}
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
+                // reuse ASG template
                 asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
             }
             if !asg_launch_template_version.is_empty() {
