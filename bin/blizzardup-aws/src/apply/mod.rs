@@ -12,10 +12,7 @@ use std::{
     time::Duration,
 };
 
-use avalanche_types::{
-    jsonrpc::client::{evm as client_evm, info as client_info},
-    utils,
-};
+use avalanche_types::jsonrpc::client::{evm as client_evm, info as client_info};
 use aws_manager::{self, cloudformation, ec2, s3, sts};
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use clap::{Arg, Command};
@@ -121,6 +118,19 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
     spec.aws_resources = Some(aws_resources.clone());
     spec.sync(spec_file_path)?;
+
+    // fetch network_id, chain infos and save to spec
+    for chain_rpc_url in spec.blizzard_spec.chain_rpc_urls.iter() {
+        log::info!("checking chain RPC {chain_rpc_url}");
+        let resp = client_info::get_network_id(chain_rpc_url).await?;
+        let network_id = resp.result.unwrap().network_id;
+        let chain_id = client_evm::chain_id(chain_rpc_url).await?;
+        spec.status = Some(blizzardup_aws::status::Status {
+            network_id,
+            chain_id,
+        });
+        spec.sync(spec_file_path)?;
+    }
 
     execute!(
         stdout(),

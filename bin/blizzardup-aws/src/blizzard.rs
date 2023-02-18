@@ -1,5 +1,3 @@
-use std::io::{self, Error, ErrorKind};
-
 use serde::{Deserialize, Serialize};
 
 /// Defines flag options.
