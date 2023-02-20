@@ -1179,7 +1179,7 @@ aws ssm start-session --region {} --target {}
             .unwrap();
 
         log::info!("waiting for anchor nodes bootstrap and ready (to be safe)");
-        sleep(Duration::from_secs(15));
+        sleep(Duration::from_secs(15)).await;
     }
 
     if spec
