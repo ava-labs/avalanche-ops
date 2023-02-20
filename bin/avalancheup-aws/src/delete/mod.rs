@@ -5,7 +5,6 @@ use std::{
     path::Path,
     sync::Arc,
     thread,
-    time::Duration,
 };
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
@@ -17,7 +16,7 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use tokio::runtime::Runtime;
+use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "delete";
 
@@ -87,7 +86,7 @@ pub fn command() -> Command {
         )
 }
 
-pub fn execute(
+pub async fn execute(
     log_level: &str,
     spec_file_path: &str,
     delete_cloudwatch_log_group: bool,
@@ -104,15 +103,12 @@ pub fn execute(
 
     let spec = avalancheup_aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
 
-    let rt = Runtime::new().unwrap();
-    let shared_config = rt
-        .block_on(aws_manager::load_config(Some(
-            spec.aws_resources.region.clone(),
-        )))
+    let shared_config = aws_manager::load_config(Some(spec.aws_resources.region.clone()))
+        .await
         .unwrap();
 
     let sts_manager = sts::Manager::new(&shared_config);
-    let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
+    let current_identity = sts_manager.get_identity().await.unwrap();
 
     if let Some(identity) = &spec.aws_resources.identity {
         // AWS calls must be made from the same caller
@@ -164,7 +160,7 @@ pub fn execute(
     // delete this first since EC2 key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
     if spec.aws_resources.ec2_key_name.is_some() && spec.aws_resources.ec2_key_path.is_some() {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -189,7 +185,9 @@ pub fn execute(
         if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
             fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
         }
-        rt.block_on(ec2_manager.delete_key_pair(spec.aws_resources.ec2_key_name.unwrap().as_str()))
+        ec2_manager
+            .delete_key_pair(spec.aws_resources.ec2_key_name.unwrap().as_str())
+            .await
             .unwrap();
     }
 
@@ -200,7 +198,7 @@ pub fn execute(
         .kms_cmk_symmetric_default_encrypt_key
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -213,12 +211,14 @@ pub fn execute(
             .aws_resources
             .kms_cmk_symmetric_default_encrypt_key
             .unwrap();
-        rt.block_on(kms_manager.schedule_to_delete(k.id.as_str(), 7))
+        kms_manager
+            .schedule_to_delete(k.id.as_str(), 7)
+            .await
             .unwrap();
     }
 
     if let Some(cmks) = &spec.aws_resources.kms_cmk_secp256k1_cmks {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -228,7 +228,9 @@ pub fn execute(
         )?;
 
         for cmk in cmks.iter() {
-            rt.block_on(kms_manager.schedule_to_delete(cmk.id.as_str(), 7))
+            kms_manager
+                .schedule_to_delete(cmk.id.as_str(), 7)
+                .await
                 .unwrap();
         }
     }
@@ -239,7 +241,7 @@ pub fn execute(
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -253,12 +255,14 @@ pub fn execute(
             .cloudformation_ec2_instance_role
             .clone()
             .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
+        cloudformation_manager
+            .delete_stack(ec2_instance_role_stack_name.as_str())
+            .await
             .unwrap();
     }
 
     if spec.subnet_evms.is_some() && spec.avalanchego_config.is_custom_network() {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -271,7 +275,9 @@ pub fn execute(
             .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
             .clone()
             .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(ssm_doc_stack_name.as_str()))
+        cloudformation_manager
+            .delete_stack(ssm_doc_stack_name.as_str())
+            .await
             .unwrap();
 
         execute!(
@@ -285,12 +291,14 @@ pub fn execute(
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
             .clone()
             .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(ssm_doc_stack_name.as_str()))
+        cloudformation_manager
+            .delete_stack(ssm_doc_stack_name.as_str())
+            .await
             .unwrap();
     }
 
     if spec.xsvms.is_some() && spec.avalanchego_config.is_custom_network() {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -303,12 +311,14 @@ pub fn execute(
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .clone()
             .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(ssm_doc_stack_name.as_str()))
+        cloudformation_manager
+            .delete_stack(ssm_doc_stack_name.as_str())
+            .await
             .unwrap();
     }
 
     // delete no matter what, in case node provision failed
-    thread::sleep(Duration::from_secs(1));
+    sleep(Duration::from_secs(1)).await;
 
     execute!(
         stdout(),
@@ -318,7 +328,9 @@ pub fn execute(
     )?;
     if let Some(stack_names) = &spec.aws_resources.cloudformation_asg_non_anchor_nodes {
         for stack_name in stack_names.iter() {
-            rt.block_on(cloudformation_manager.delete_stack(stack_name))
+            cloudformation_manager
+                .delete_stack(stack_name)
+                .await
                 .unwrap();
         }
     }
@@ -331,13 +343,15 @@ pub fn execute(
     )?;
     if let Some(stack_names) = &spec.aws_resources.cloudformation_asg_anchor_nodes {
         for stack_name in stack_names.iter() {
-            rt.block_on(cloudformation_manager.delete_stack(stack_name))
+            cloudformation_manager
+                .delete_stack(stack_name)
+                .await
                 .unwrap();
         }
     }
 
     // delete no matter what, in case node provision failed
-    thread::sleep(Duration::from_secs(1));
+    sleep(Duration::from_secs(1)).await;
 
     execute!(
         stdout(),
@@ -347,13 +361,15 @@ pub fn execute(
     )?;
     if let Some(stack_names) = &spec.aws_resources.cloudformation_asg_non_anchor_nodes {
         for stack_name in stack_names.iter() {
-            rt.block_on(cloudformation_manager.poll_stack(
-                stack_name,
-                StackStatus::DeleteComplete,
-                Duration::from_secs(600),
-                Duration::from_secs(30),
-            ))
-            .unwrap();
+            cloudformation_manager
+                .poll_stack(
+                    stack_name,
+                    StackStatus::DeleteComplete,
+                    Duration::from_secs(600),
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
         }
     }
 
@@ -365,13 +381,15 @@ pub fn execute(
     )?;
     if let Some(stack_names) = spec.aws_resources.cloudformation_asg_anchor_nodes {
         for stack_name in stack_names.iter() {
-            rt.block_on(cloudformation_manager.poll_stack(
-                stack_name,
-                StackStatus::DeleteComplete,
-                Duration::from_secs(600),
-                Duration::from_secs(30),
-            ))
-            .unwrap();
+            cloudformation_manager
+                .poll_stack(
+                    stack_name,
+                    StackStatus::DeleteComplete,
+                    Duration::from_secs(600),
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
         }
     }
 
@@ -386,7 +404,7 @@ pub fn execute(
             .cloudformation_vpc_public_subnet_ids
             .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -396,16 +414,20 @@ pub fn execute(
         )?;
 
         let vpc_stack_name = spec.aws_resources.cloudformation_vpc.unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(vpc_stack_name.as_str()))
+        cloudformation_manager
+            .delete_stack(vpc_stack_name.as_str())
+            .await
             .unwrap();
-        thread::sleep(Duration::from_secs(10));
-        rt.block_on(cloudformation_manager.poll_stack(
-            vpc_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        sleep(Duration::from_secs(10)).await;
+        cloudformation_manager
+            .poll_stack(
+                vpc_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
     }
 
     if spec
@@ -413,7 +435,7 @@ pub fn execute(
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -424,13 +446,15 @@ pub fn execute(
 
         let ec2_instance_role_stack_name =
             spec.aws_resources.cloudformation_ec2_instance_role.unwrap();
-        rt.block_on(cloudformation_manager.poll_stack(
-            ec2_instance_role_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ec2_instance_role_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
     }
 
     if spec
@@ -438,7 +462,7 @@ pub fn execute(
         .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -451,13 +475,15 @@ pub fn execute(
             .aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
             .unwrap();
-        rt.block_on(cloudformation_manager.poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
     }
 
     if spec
@@ -465,7 +491,7 @@ pub fn execute(
         .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -480,13 +506,15 @@ pub fn execute(
             .aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .unwrap();
-        rt.block_on(cloudformation_manager.poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
     }
 
     if spec
@@ -494,7 +522,7 @@ pub fn execute(
         .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -509,18 +537,20 @@ pub fn execute(
             .aws_resources
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
             .unwrap();
-        rt.block_on(cloudformation_manager.poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
     }
 
     if delete_cloudwatch_log_group {
         // deletes the one auto-created by nodes
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -528,11 +558,11 @@ pub fn execute(
             Print("\n\n\nSTEP: cloudwatch log groups\n"),
             ResetColor
         )?;
-        rt.block_on(cw_manager.delete_log_group(&spec.id)).unwrap();
+        cw_manager.delete_log_group(&spec.id).await.unwrap();
     }
 
     if delete_s3_objects {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -541,15 +571,17 @@ pub fn execute(
             ResetColor
         )?;
         thread::sleep(Duration::from_secs(5));
-        rt.block_on(s3_manager.delete_objects(
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Some(Arc::new(spec.id.clone())),
-        ))
-        .unwrap();
+        s3_manager
+            .delete_objects(
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Some(Arc::new(spec.id.clone())),
+            )
+            .await
+            .unwrap();
     }
 
     if delete_s3_bucket {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -558,12 +590,14 @@ pub fn execute(
             ResetColor
         )?;
         thread::sleep(Duration::from_secs(5));
-        rt.block_on(s3_manager.delete_bucket(&spec.aws_resources.s3_bucket))
+        s3_manager
+            .delete_bucket(&spec.aws_resources.s3_bucket)
+            .await
             .unwrap();
     }
 
     if delete_ebs_volumes {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -582,9 +616,7 @@ pub fn execute(
                 .set_values(Some(vec![spec.id.clone()]))
                 .build(),
         ];
-        let volumes = rt
-            .block_on(ec2_manager.describe_volumes(Some(filters)))
-            .unwrap();
+        let volumes = ec2_manager.describe_volumes(Some(filters)).await.unwrap();
         log::info!("found {} volumes", volumes.len());
         if !volumes.is_empty() {
             log::info!("deleting {} volumes", volumes.len());
@@ -592,26 +624,28 @@ pub fn execute(
             for v in volumes {
                 let volume_id = v.volume_id().unwrap().to_string();
                 log::info!("deleting EBS volume '{}'", volume_id);
-                rt.block_on(ec2_cli.delete_volume().volume_id(volume_id).send())
+                ec2_cli
+                    .delete_volume()
+                    .volume_id(volume_id)
+                    .send()
+                    .await
                     .unwrap();
-                thread::sleep(Duration::from_secs(1));
+                sleep(Duration::from_secs(1)).await;
             }
         }
     }
 
     if delete_elastic_ips {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: releasing orphaned elastic IPs\n"),
             ResetColor
         )?;
-        let eips = rt
-            .block_on(
-                ec2_manager
-                    .describe_eips_by_tags(HashMap::from([(String::from("Id"), spec.id.clone())])),
-            )
+        let eips = ec2_manager
+            .describe_eips_by_tags(HashMap::from([(String::from("Id"), spec.id.clone())]))
+            .await
             .unwrap();
         log::info!("found {} elastic IP addresses", eips.len());
         for eip_addr in eips.iter() {
@@ -619,13 +653,13 @@ pub fn execute(
             let ec2_cli = ec2_manager.client();
 
             log::info!("releasing elastic IP via allocation Id {}", allocation_id);
-            rt.block_on(
-                ec2_cli
-                    .release_address()
-                    .allocation_id(allocation_id)
-                    .send(),
-            )
-            .unwrap();
+
+            ec2_cli
+                .release_address()
+                .allocation_id(allocation_id)
+                .send()
+                .await
+                .unwrap();
             thread::sleep(Duration::from_secs(2));
         }
     }

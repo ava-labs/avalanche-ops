@@ -10,8 +10,6 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    thread,
-    time::Duration,
 };
 
 use avalanche_types::{
@@ -35,6 +33,7 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use rust_embed::RustEmbed;
+use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "apply";
 
@@ -237,7 +236,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .await
         .unwrap();
 
-    thread::sleep(Duration::from_secs(1));
+    sleep(Duration::from_secs(1)).await;
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -416,7 +415,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .kms_cmk_symmetric_default_encrypt_key
         .is_none()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -592,7 +591,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .await
             .unwrap();
 
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
         let stack = cloudformation_manager
             .poll_stack(
                 ec2_instance_role_stack_name.as_str(),
@@ -678,7 +677,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .await
             .expect("failed create_stack for VPC");
 
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
         let stack = cloudformation_manager
             .poll_stack(
                 vpc_stack_name.as_str(),
@@ -922,7 +921,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             if wait_secs > MAX_WAIT_SECONDS {
                 wait_secs = MAX_WAIT_SECONDS;
             }
-            thread::sleep(Duration::from_secs(60));
+            sleep(Duration::from_secs(60)).await;
             let stack = cloudformation_manager
                 .poll_stack(
                     &stack_names[i],
@@ -1018,7 +1017,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     "retrying fetching all droplets (only got {})",
                     droplets.len()
                 );
-                thread::sleep(Duration::from_secs(30));
+                sleep(Duration::from_secs(30)).await;
             }
 
             if spec.machine.ip_mode == String::from("elastic") {
@@ -1043,7 +1042,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         break;
                     }
 
-                    thread::sleep(Duration::from_secs(30));
+                    sleep(Duration::from_secs(30)).await;
                 }
                 eips.extend(outs.clone());
 
@@ -1118,7 +1117,7 @@ aws ssm start-session --region {} --target {}
         let mut objects: Vec<Object>;
         let target_nodes = spec.machine.anchor_nodes.unwrap_or(0);
         loop {
-            thread::sleep(Duration::from_secs(30));
+            sleep(Duration::from_secs(30)).await;
 
             objects = s3_manager
                 .list_objects(
@@ -1180,7 +1179,7 @@ aws ssm start-session --region {} --target {}
             .unwrap();
 
         log::info!("waiting for anchor nodes bootstrap and ready (to be safe)");
-        thread::sleep(Duration::from_secs(15));
+        sleep(Duration::from_secs(15));
     }
 
     if spec
@@ -1263,7 +1262,7 @@ aws ssm start-session --region {} --target {}
             if wait_secs > MAX_WAIT_SECONDS {
                 wait_secs = MAX_WAIT_SECONDS;
             }
-            thread::sleep(Duration::from_secs(60));
+            sleep(Duration::from_secs(60)).await;
             let stack = cloudformation_manager
                 .poll_stack(
                     &stack_names[i],
@@ -1359,7 +1358,7 @@ aws ssm start-session --region {} --target {}
                     "retrying fetching all droplets (only got {})",
                     droplets.len()
                 );
-                thread::sleep(Duration::from_secs(30));
+                sleep(Duration::from_secs(30)).await;
             }
 
             if spec.machine.ip_mode == String::from("elastic") {
@@ -1384,7 +1383,7 @@ aws ssm start-session --region {} --target {}
                         break;
                     }
 
-                    thread::sleep(Duration::from_secs(30));
+                    sleep(Duration::from_secs(30)).await;
                 }
                 eips.extend(outs.clone());
 
@@ -1459,7 +1458,7 @@ aws ssm start-session --region {} --target {}
         let mut objects: Vec<Object>;
         let target_nodes = spec.machine.non_anchor_nodes;
         loop {
-            thread::sleep(Duration::from_secs(30));
+            sleep(Duration::from_secs(30)).await;
 
             objects = s3_manager
                 .list_objects(
@@ -1519,7 +1518,7 @@ aws ssm start-session --region {} --target {}
             .expect("failed put_object ConfigFile");
 
         log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
-        thread::sleep(Duration::from_secs(20));
+        sleep(Duration::from_secs(20)).await;
     }
 
     spec.created_nodes = Some(created_nodes.clone());
@@ -1628,7 +1627,7 @@ aws ssm start-session --region {} --target {}
                     log::warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
                 }
             };
-            thread::sleep(Duration::from_secs(10));
+            sleep(Duration::from_secs(10)).await;
         }
         if !success {
             log::warn!(
@@ -1662,7 +1661,7 @@ aws ssm start-session --region {} --target {}
                 }
             };
 
-            thread::sleep(Duration::from_secs(10));
+            sleep(Duration::from_secs(10)).await;
         }
         if !success {
             log::warn!(
@@ -1925,7 +1924,7 @@ default-spec \\
             )
             .await
             .unwrap();
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
         cloudformation_manager
             .poll_stack(
                 ssm_doc_stack_name.as_str(),
@@ -1974,7 +1973,7 @@ default-spec \\
             )
             .await
             .unwrap();
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
         cloudformation_manager
             .poll_stack(
                 ssm_doc_stack_name.as_str(),
@@ -2012,7 +2011,7 @@ default-spec \\
                 .await
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
-            thread::sleep(Duration::from_secs(5));
+            sleep(Duration::from_secs(5)).await;
 
             execute!(
                 stdout(),
@@ -2043,7 +2042,7 @@ default-spec \\
             let ssm_output = ssm_output.command().unwrap();
             let ssm_command_id = ssm_output.command_id().unwrap();
             log::info!("sent SSM command {}", ssm_command_id);
-            thread::sleep(Duration::from_secs(30));
+            sleep(Duration::from_secs(30)).await;
 
             execute!(
                 stdout(),
@@ -2064,7 +2063,7 @@ default-spec \\
                     .unwrap();
                 log::info!("status {:?} for instance id {}", status, instance_id);
             }
-            thread::sleep(Duration::from_secs(5));
+            sleep(Duration::from_secs(5)).await;
 
             execute!(
                 stdout(),
@@ -2086,7 +2085,7 @@ default-spec \\
                     .unwrap();
             }
             log::info!("added subnet validators for {}", created_subnet_id);
-            thread::sleep(Duration::from_secs(5));
+            sleep(Duration::from_secs(5)).await;
 
             let subnet_evm_genesis_bytes = subnet_evm.genesis.to_bytes().unwrap();
             execute!(
@@ -2152,7 +2151,7 @@ default-spec \\
             let ssm_output = ssm_output.command().unwrap();
             let ssm_command_id = ssm_output.command_id().unwrap();
             log::info!("sent SSM command {}", ssm_command_id);
-            thread::sleep(Duration::from_secs(30));
+            sleep(Duration::from_secs(30)).await;
 
             execute!(
                 stdout(),
@@ -2264,7 +2263,7 @@ default-spec \\
             )
             .await
             .unwrap();
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
         cloudformation_manager
             .poll_stack(
                 ssm_doc_stack_name.as_str(),
@@ -2333,7 +2332,7 @@ default-spec \\
                 .await
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
-            thread::sleep(Duration::from_secs(5));
+            sleep(Duration::from_secs(5)).await;
 
             execute!(
                 stdout(),
@@ -2364,7 +2363,7 @@ default-spec \\
             let ssm_output = ssm_output.command().unwrap();
             let ssm_command_id = ssm_output.command_id().unwrap();
             log::info!("sent SSM command {}", ssm_command_id);
-            thread::sleep(Duration::from_secs(30));
+            sleep(Duration::from_secs(30)).await;
 
             execute!(
                 stdout(),
@@ -2385,7 +2384,7 @@ default-spec \\
                     .unwrap();
                 log::info!("status {:?} for instance id {}", status, instance_id);
             }
-            thread::sleep(Duration::from_secs(5));
+            sleep(Duration::from_secs(5)).await;
 
             execute!(
                 stdout(),
@@ -2407,7 +2406,7 @@ default-spec \\
                     .unwrap();
             }
             log::info!("added subnet validators for {}", created_subnet_id);
-            thread::sleep(Duration::from_secs(5));
+            sleep(Duration::from_secs(5)).await;
 
             // do not use JSON bytes
             let xsvm_genesis_bytes = xsvm.genesis.to_packer_bytes().unwrap();
