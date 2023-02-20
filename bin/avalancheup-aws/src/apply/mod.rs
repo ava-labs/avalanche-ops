@@ -125,9 +125,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             Some(avalancheup_aws::spec::StackName::Vpc(spec.id.clone()).encode());
     }
 
-    if spec.avalanchego_config.is_custom_network()
-        && spec.aws_resources.cloudformation_asg_anchor_nodes.is_none()
-    {
+    // DON'T "spec.aws_resources.cloudformation_asg_anchor_nodes.is_none()"
+    // in case we edit anchor node size after default spec generation
+    if spec.avalanchego_config.is_custom_network() {
         let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
         let mut asg_names = Vec::new();
         for i in 0..anchor_nodes {
@@ -137,19 +137,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.aws_resources.cloudformation_asg_anchor_nodes = Some(asg_names);
     }
 
-    if spec
-        .aws_resources
-        .cloudformation_asg_non_anchor_nodes
-        .is_none()
-    {
-        let non_anchor_nodes = spec.machine.non_anchor_nodes;
-        let mut asg_names = Vec::new();
-        for i in 0..non_anchor_nodes {
-            let asg_name = format!("{}-non-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
-            asg_names.push(asg_name);
-        }
-        spec.aws_resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
+    // DON'T "spec.aws_resources.cloudformation_asg_non_anchor_nodes.is_none()"
+    // in case we edit non-anchor node size after default spec generation
+    let non_anchor_nodes = spec.machine.non_anchor_nodes;
+    let mut asg_names = Vec::new();
+    for i in 0..non_anchor_nodes {
+        let asg_name = format!("{}-non-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
+        asg_names.push(asg_name);
     }
+    spec.aws_resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
 
     if spec
         .aws_resources
