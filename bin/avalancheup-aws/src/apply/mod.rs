@@ -2009,6 +2009,27 @@ default-spec \\
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
             tracked_subnets.push(created_subnet_id.to_string());
+
+            // must upload before restarting with SSM doc
+            log::info!(
+                "uploading avalancheup spec file with subnet-evm tracked subnets {:?}",
+                tracked_subnets
+            );
+            let ss = tracked_subnets.join(",");
+            log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
+            spec.avalanchego_config.track_subnets = Some(ss);
+            spec.sync(spec_file_path)?;
+            s3_manager
+                .put_object(
+                    Arc::new(spec_file_path.to_string()),
+                    Arc::new(spec.aws_resources.s3_bucket.clone()),
+                    Arc::new(
+                        avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                            .encode(),
+                    ),
+                )
+                .await
+                .unwrap();
             sleep(Duration::from_secs(5)).await;
 
             execute!(
@@ -2172,25 +2193,6 @@ default-spec \\
             }
         }
 
-        log::info!(
-            "uploading avalancheup spec file with subnet-evm tracked subnets {:?}",
-            tracked_subnets
-        );
-        let ss = tracked_subnets.join(",");
-        log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
-        spec.avalanchego_config.track_subnets = Some(ss);
-        spec.sync(spec_file_path)?;
-        s3_manager
-            .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
-            )
-            .await
-            .unwrap();
-
         for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
             log::info!(
                 "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
@@ -2320,6 +2322,33 @@ default-spec \\
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
             tracked_subnets.push(created_subnet_id.to_string());
+
+            // must upload before restarting with SSM doc
+            log::info!(
+                "uploading avalancheup spec file with subnet-evm tracked subnets {:?}",
+                tracked_subnets
+            );
+            if let Some(s) = &spec.avalanchego_config.track_subnets {
+                let ss = format!("{s},{}", tracked_subnets.join(","));
+                log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
+                spec.avalanchego_config.track_subnets = Some(ss);
+            } else {
+                let ss = tracked_subnets.join(",");
+                log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
+                spec.avalanchego_config.track_subnets = Some(ss);
+            }
+            spec.sync(spec_file_path)?;
+            s3_manager
+                .put_object(
+                    Arc::new(spec_file_path.to_string()),
+                    Arc::new(spec.aws_resources.s3_bucket.clone()),
+                    Arc::new(
+                        avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                            .encode(),
+                    ),
+                )
+                .await
+                .unwrap();
             sleep(Duration::from_secs(5)).await;
 
             execute!(
@@ -2438,31 +2467,6 @@ default-spec \\
 
             xsvm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
         }
-
-        log::info!(
-            "uploading avalancheup spec file with xsvm tracked subnets {:?}",
-            tracked_subnets
-        );
-        if let Some(s) = &spec.avalanchego_config.track_subnets {
-            let ss = format!("{s},{}", tracked_subnets.join(","));
-            log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
-            spec.avalanchego_config.track_subnets = Some(ss);
-        } else {
-            let ss = tracked_subnets.join(",");
-            log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
-            spec.avalanchego_config.track_subnets = Some(ss);
-        }
-        spec.sync(spec_file_path)?;
-        s3_manager
-            .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
-            )
-            .await
-            .unwrap();
     }
 
     execute!(
