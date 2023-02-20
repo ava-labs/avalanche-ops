@@ -1981,6 +1981,7 @@ default-spec \\
             .unwrap();
         log::info!("created ssm document for restarting node to load chain config");
 
+        let mut tracked_subnets = Vec::new();
         for (subnet_evm_name, subnet_evm) in subnet_evms.iter() {
             execute!(
                 stdout(),
@@ -2007,6 +2008,7 @@ default-spec \\
                 .await
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
+            tracked_subnets.push(created_subnet_id.to_string());
             sleep(Duration::from_secs(5)).await;
 
             execute!(
@@ -2170,6 +2172,25 @@ default-spec \\
             }
         }
 
+        log::info!(
+            "uploading avalancheup spec file with subnet-evm tracked subnets {:?}",
+            tracked_subnets
+        );
+        let ss = tracked_subnets.join(",");
+        log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
+        spec.avalanchego_config.track_subnets = Some(ss);
+        spec.sync(spec_file_path)?;
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
+
         for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
             log::info!(
                 "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
@@ -2271,38 +2292,8 @@ default-spec \\
             .unwrap();
         log::info!("created ssm document for restarting node with tracked subnet");
 
-        // in case we need split subnet validator set
-        // we want batch set to be 2, for 4 nodes + 2 subnets
-        // we want batch set to be 2, for 3 nodes + 2 subnets
-        // we don't want batch set 1, for 3 nodes + 2 subnets
-        let mut batch_size = all_node_ids.len() / xsvms.len();
-        if all_node_ids.len() % 2 == 1 {
-            batch_size += 1;
-        }
-
-        let mut batch_cur = 0_usize;
+        let mut tracked_subnets = Vec::new();
         for (xsvm_name, xsvm) in xsvms.iter() {
-            let selected_node_ids = if spec.xsvms_split_validators {
-                let mut nodes = Vec::new();
-                for (idx, chunks) in all_node_ids.chunks(batch_size).enumerate() {
-                    if idx != batch_cur {
-                        continue;
-                    }
-                    nodes = chunks.to_vec();
-                    break;
-                }
-                nodes
-            } else {
-                all_node_ids.clone()
-            };
-            batch_cur += 1;
-            log::info!(
-                "selected XSVM nodes {:?} out of {:?} (split validators {})",
-                selected_node_ids,
-                all_node_ids,
-                spec.xsvms_split_validators
-            );
-
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
@@ -2328,6 +2319,7 @@ default-spec \\
                 .await
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
+            tracked_subnets.push(created_subnet_id.to_string());
             sleep(Duration::from_secs(5)).await;
 
             execute!(
@@ -2344,7 +2336,7 @@ default-spec \\
                 .parameters(
                     "vmId",
                     vec![String::from(
-                        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
+                        "v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH",
                     )],
                 )
                 .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
@@ -2390,7 +2382,7 @@ default-spec \\
                 )),
                 ResetColor
             )?;
-            for node_id in selected_node_ids.iter() {
+            for node_id in all_node_ids.iter() {
                 wallet_to_spend
                     .p()
                     .add_subnet_validator()
@@ -2444,8 +2436,33 @@ default-spec \\
                 .unwrap();
             log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
 
-            xsvm_blockchain_ids.insert(blockchain_id.to_string(), selected_node_ids.clone());
+            xsvm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
         }
+
+        log::info!(
+            "uploading avalancheup spec file with xsvm tracked subnets {:?}",
+            tracked_subnets
+        );
+        if let Some(s) = &spec.avalanchego_config.track_subnets {
+            let ss = format!("{s},{}", tracked_subnets.join(","));
+            log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
+            spec.avalanchego_config.track_subnets = Some(ss);
+        } else {
+            let ss = tracked_subnets.join(",");
+            log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
+            spec.avalanchego_config.track_subnets = Some(ss);
+        }
+        spec.sync(spec_file_path)?;
+        s3_manager
+            .put_object(
+                Arc::new(spec_file_path.to_string()),
+                Arc::new(spec.aws_resources.s3_bucket.clone()),
+                Arc::new(
+                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                ),
+            )
+            .await
+            .unwrap();
     }
 
     execute!(

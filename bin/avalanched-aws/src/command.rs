@@ -616,12 +616,15 @@ async fn download_and_update_local_spec(
 
     let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
 
-    // do not overwrite since the config file could have been updated with tracked subnet ids
+    // always overwrite since S3 is the single source of truths!
+    // local updates will be gone! make sure update the S3 file!
     if let Some(config_file) = &spec.avalanchego_config.config_file {
         // if exists, load the existing one in case manually updated
         if Path::new(&config_file).exists() {
-            log::info!("config-file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", config_file);
-            spec.avalanchego_config = avalanchego::config::Config::load(&config_file)?;
+            log::warn!(
+                "config-file '{}' already exists -- overwriting!",
+                config_file
+            );
         }
     }
 
