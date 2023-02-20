@@ -2294,7 +2294,6 @@ default-spec \\
             .unwrap();
         log::info!("created ssm document for restarting node with tracked subnet");
 
-        let mut tracked_subnets = Vec::new();
         for (xsvm_name, xsvm) in xsvms.iter() {
             execute!(
                 stdout(),
@@ -2321,19 +2320,18 @@ default-spec \\
                 .await
                 .unwrap();
             log::info!("created subnet '{}' (still need track)", created_subnet_id);
-            tracked_subnets.push(created_subnet_id.to_string());
 
             // must upload before restarting with SSM doc
             log::info!(
                 "uploading avalancheup spec file with subnet-evm tracked subnets {:?}",
-                tracked_subnets
+                spec.avalanchego_config.track_subnets
             );
             if let Some(s) = &spec.avalanchego_config.track_subnets {
-                let ss = format!("{s},{}", tracked_subnets.join(","));
+                let ss = format!("{s},{}", created_subnet_id.to_string());
                 log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
                 spec.avalanchego_config.track_subnets = Some(ss);
             } else {
-                let ss = tracked_subnets.join(",");
+                let ss = created_subnet_id.to_string();
                 log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
                 spec.avalanchego_config.track_subnets = Some(ss);
             }
