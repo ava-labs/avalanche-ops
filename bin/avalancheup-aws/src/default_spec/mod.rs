@@ -6,7 +6,6 @@ use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
-use tokio::runtime::Runtime;
 
 pub const NAME: &str = "default-spec";
 
@@ -358,7 +357,7 @@ pub fn command() -> Command {
         )
 }
 
-pub fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()> {
+pub async fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default()
@@ -392,10 +391,7 @@ pub fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()>
         ));
     }
 
-    let rt = Runtime::new().unwrap();
-    let spec = rt.block_on(avalancheup_aws::spec::Spec::default_aws(
-        cloned_opts.clone(),
-    ));
+    let spec = avalancheup_aws::spec::Spec::default_aws(cloned_opts.clone()).await;
     spec.validate()?;
 
     let spec_file_path = {

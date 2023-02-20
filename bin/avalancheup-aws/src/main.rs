@@ -198,7 +198,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
             };
-            default_spec::execute(opt).expect("failed to execute 'default-spec'");
+            default_spec::execute(opt).await.expect("failed to execute 'default-spec'");
         }
 
         Some((apply::NAME, sub_matches)) => {
