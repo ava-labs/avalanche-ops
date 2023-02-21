@@ -984,7 +984,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
                 .addresses
                 .get(&spec.avalanchego_config.network_id)
                 .unwrap()
-                .x_address
+                .x
                 .clone(),
         );
 
