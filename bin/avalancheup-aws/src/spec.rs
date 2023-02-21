@@ -134,6 +134,9 @@ pub struct DefaultSpecOption {
     pub log_level: String,
     pub network_name: String,
 
+    pub anchor_nodes: u32,
+    pub non_anchor_nodes: u32,
+
     pub key_files_dir: String,
     pub keys_to_generate: usize,
     pub keys_to_generate_type: String,
@@ -274,10 +277,20 @@ impl Spec {
                 Some(_) => (None, 1),
 
                 // custom network
-                None => (
-                    Some(DEFAULT_MACHINE_ANCHOR_NODES),
-                    DEFAULT_MACHINE_NON_ANCHOR_NODES,
-                ),
+                None => {
+                    let anchor_nodes = if opts.anchor_nodes > 0 {
+                        opts.anchor_nodes
+                    } else {
+                        DEFAULT_MACHINE_ANCHOR_NODES
+                    };
+                    let non_anchor_nodes = if opts.non_anchor_nodes > 0 {
+                        opts.non_anchor_nodes
+                    } else {
+                        DEFAULT_MACHINE_NON_ANCHOR_NODES
+                    };
+
+                    (Some(anchor_nodes), non_anchor_nodes)
+                }
             };
 
         if !opts.key_files_dir.is_empty() {
