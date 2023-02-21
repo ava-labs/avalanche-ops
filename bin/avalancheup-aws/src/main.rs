@@ -24,6 +24,15 @@ async fn main() -> io::Result<()> {
 
     match matches.subcommand() {
         Some((default_spec::NAME, sub_matches)) => {
+            let anchor_nodes = sub_matches
+                .get_one::<u32>("ANCHOR_NODES")
+                .unwrap_or(&0)
+                .clone();
+            let non_anchor_nodes = sub_matches
+                .get_one::<u32>("NON_ANCHOR_NODES")
+                .unwrap_or(&0)
+                .clone();
+
             let network_name = sub_matches
                 .get_one::<String>("NETWORK_NAME")
                 .unwrap_or(&String::new())
@@ -66,6 +75,9 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::from("info"))
                     .clone(),
                 network_name,
+
+                anchor_nodes,
+                non_anchor_nodes,
 
                 key_files_dir: sub_matches
                     .get_one::<String>("KEY_FILES_DIR")

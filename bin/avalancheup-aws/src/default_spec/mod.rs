@@ -23,6 +23,24 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
+            Arg::new("ANCHOR_NODES")
+                .long("anchor-nodes")
+                .help("Sets the number of anchor nodes (only used when non-zero value)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u32))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("NON_ANCHOR_NODES")
+                .long("non-anchor-nodes")
+                .help("Sets the number of non-anchor nodes (only used when non-zero value)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u32))
+                .default_value("0"),
+        )
+        .arg(
             Arg::new("KEY_FILES_DIR")
                 .long("key-files-dir")
                 .help("Directory to write key files to")
