@@ -155,6 +155,7 @@ pub async fn execute(
     )?;
     let mut cmks = Vec::new();
     for i in 0..keys {
+        println!("");
         log::info!("[{i}] creating CMk");
         let mut tags = HashMap::new();
         tags.insert(String::from("Name"), format!("{key_name_prefix}-{i}"));
