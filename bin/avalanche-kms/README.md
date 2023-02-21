@@ -24,9 +24,8 @@ id: arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439
 key_type: aws-kms
 addresses:
   1:
-    x_address: X-avax1e2hc8l88ew0y8muscv3e9u5ufumqnmzj8vnvfd
-    p_address: P-avax1e2hc8l88ew0y8muscv3e9u5ufumqnmzj8vnvfd
-    c_address: C-avax1e2hc8l88ew0y8muscv3e9u5ufumqnmzj8vnvfd
+    x: X-avax1e2hc8l88ew0y8muscv3e9u5ufumqnmzj8vnvfd
+    p: P-avax1e2hc8l88ew0y8muscv3e9u5ufumqnmzj8vnvfd
 short_address: KUhknai5F6Hsr7SR7N1RjGidfCVSi6Umg
 eth_address: 0x75E3DC1926Ca033Ee06B0C378B0079241921e2AA
 h160_address: 0x75e3dc1926ca033ee06b0c378b0079241921e2aa
@@ -61,9 +60,8 @@ id: arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439
 key_type: aws-kms
 addresses:
   1000:
-    x_address: X-custom1e2hc8l88ew0y8muscv3e9u5ufumqnmzj5kpkwc
-    p_address: P-custom1e2hc8l88ew0y8muscv3e9u5ufumqnmzj5kpkwc
-    c_address: C-custom1e2hc8l88ew0y8muscv3e9u5ufumqnmzj5kpkwc
+    x: X-custom1e2hc8l88ew0y8muscv3e9u5ufumqnmzj5kpkwc
+    p: P-custom1e2hc8l88ew0y8muscv3e9u5ufumqnmzj5kpkwc
 short_address: KUhknai5F6Hsr7SR7N1RjGidfCVSi6Umg
 eth_address: 0x75E3DC1926Ca033Ee06B0C378B0079241921e2AA
 h160_address: 0x75e3dc1926ca033ee06b0c378b0079241921e2aa
