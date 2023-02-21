@@ -4,7 +4,7 @@ use avalanche_types::{jsonrpc::client::evm as avalanche_sdk_evm, units};
 use clap::{Arg, Command};
 use primitive_types::H160;
 
-pub const NAME: &str = "balance";
+pub const NAME: &str = "evm-balance";
 
 pub fn command() -> Command {
     Command::new(NAME)

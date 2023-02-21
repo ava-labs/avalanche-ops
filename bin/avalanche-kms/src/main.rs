@@ -1,6 +1,6 @@
-mod balance;
 mod create;
 mod delete;
+mod evm_balance;
 mod evm_transfer_from_hot;
 mod info;
 
@@ -21,7 +21,7 @@ async fn main() -> io::Result<()> {
         .version(crate_version!())
         .about("Avalanche KMS AWS tools")
         .subcommands(vec![
-            balance::command(),
+            evm_balance::command(),
             create::command(),
             delete::command(),
             info::command(),
@@ -30,14 +30,14 @@ async fn main() -> io::Result<()> {
         .get_matches();
 
     match matches.subcommand() {
-        Some((balance::NAME, sub_matches)) => {
+        Some((evm_balance::NAME, sub_matches)) => {
             let addr = sub_matches
                 .get_one::<String>("ADDRESS")
                 .unwrap_or(&String::new())
                 .clone();
             let addr = H160::from_str(addr.trim_start_matches("0x")).unwrap();
 
-            balance::execute(
+            evm_balance::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
