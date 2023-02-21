@@ -1,11 +1,15 @@
 mod balance;
 mod create;
 mod delete;
+mod evm_transfer_from_hot;
 mod info;
-mod transfer_from_hot;
 
-use std::{io, str::FromStr};
+use std::{
+    io::{self, Error, ErrorKind},
+    str::FromStr,
+};
 
+use avalanche_types::units;
 use clap::{crate_version, Command};
 use primitive_types::{H160, U256};
 
@@ -21,7 +25,7 @@ async fn main() -> io::Result<()> {
             create::command(),
             delete::command(),
             info::command(),
-            transfer_from_hot::command(),
+            evm_transfer_from_hot::command(),
         ])
         .get_matches();
 
@@ -105,17 +109,36 @@ async fn main() -> io::Result<()> {
             .unwrap();
         }
 
-        Some((transfer_from_hot::NAME, sub_matches)) => {
+        Some((evm_transfer_from_hot::NAME, sub_matches)) => {
             let transferer_key = sub_matches
                 .get_one::<String>("TRANSFERER_KEY")
                 .unwrap_or(&String::new())
                 .clone();
 
-            let transfer_amount = sub_matches
-                .get_one::<String>("TRANSFER_AMOUNT")
+            let transfer_amount_in_navax = sub_matches
+                .get_one::<String>("TRANSFER_AMOUNT_IN_NANO_AVAX")
                 .unwrap_or(&String::new())
                 .clone();
-            let transfer_amount = U256::from_dec_str(&transfer_amount).unwrap();
+            let transfer_amount_in_navax = U256::from_dec_str(&transfer_amount_in_navax).unwrap();
+
+            let transfer_amount_in_avax = sub_matches
+                .get_one::<String>("TRANSFER_AMOUNT_IN_AVAX")
+                .unwrap_or(&String::new())
+                .clone();
+            let transfer_amount_in_avax = U256::from_dec_str(&transfer_amount_in_avax).unwrap();
+
+            if transfer_amount_in_navax.is_zero() && transfer_amount_in_avax.is_zero() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "both TRANSFER_AMOUNT_IN_NANO_AVAX and TRANSFER_AMOUNT_IN_AVAX cannot be zero",
+                ));
+            }
+
+            let transfer_amount_navax = if transfer_amount_in_navax.is_zero() {
+                units::cast_avax_to_navax(transfer_amount_in_avax)
+            } else {
+                transfer_amount_in_navax
+            };
 
             let transferee_addr = sub_matches
                 .get_one::<String>("TRANSFEREE_ADDRESS")
@@ -123,7 +146,7 @@ async fn main() -> io::Result<()> {
                 .clone();
             let transferee_addr = H160::from_str(transferee_addr.trim_start_matches("0x")).unwrap();
 
-            transfer_from_hot::execute(
+            evm_transfer_from_hot::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
@@ -133,7 +156,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
                 &transferer_key,
-                transfer_amount,
+                transfer_amount_navax,
                 transferee_addr,
                 sub_matches.get_flag("SKIP_PROMPT"),
             )

@@ -12,11 +12,11 @@ use crossterm::{
 use dialoguer::{theme::ColorfulTheme, Select};
 use primitive_types::{H160, U256};
 
-pub const NAME: &str = "transfer-from-hot";
+pub const NAME: &str = "evm-transfer-from-hot";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Transfers the native tokens 'from' hot key to the 'to' address")
+        .about("Transfers the EVM native tokens 'from' hot key to the 'to' address")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -42,10 +42,17 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("TRANSFER_AMOUNT")
-                .long("transfer-amount")
-                .help("Sets the transfer amount")
-                .required(true)
+            Arg::new("TRANSFER_AMOUNT_IN_NANO_AVAX")
+                .long("transfer-amount-in-nano-avax")
+                .help("Sets the transfer amount in nAVAX (cannot be overlapped with --transfer-amount-in-avax)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("TRANSFER_AMOUNT_IN_AVAX")
+                .long("transfer-amount-in-avax")
+                .help("Sets the transfer amount in AVAX (cannot be overlapped with --transfer-amount-in-nano-avax)")
+                .required(false)
                 .num_args(1),
         )
         .arg(
@@ -69,7 +76,7 @@ pub async fn execute(
     log_level: &str,
     chain_rpc_url: &str,
     transferer_key: &str,
-    transfer_amount: U256,
+    transfer_amount_navax: U256,
     transferee_addr: H160,
     skip_prompt: bool,
 ) -> io::Result<()> {
@@ -105,12 +112,12 @@ pub async fn execute(
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to transfer {transfer_amount} ({} ETH/AVX) from {} to {transferee_addr}.",
-                units::cast_navax_to_avax_i64(transfer_amount), transferer_key_info.eth_address
+                "No, I am not ready to transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {transferee_addr}.",
+                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
             ),
             format!(
-                "Yes, let's transfer {transfer_amount} ({} ETH/AVX) from {} to {transferee_addr}.",
-                units::cast_navax_to_avax_i64(transfer_amount), transferer_key_info.eth_address
+                "Yes, let's transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {transferee_addr}.",
+                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -130,8 +137,8 @@ pub async fn execute(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\ntransfering {transfer_amount} ({} ETH/AVAX) from {} to {transferee_addr} via {chain_rpc_url}\n",
-            units::cast_navax_to_avax_i64(transfer_amount), transferer_key_info.eth_address
+            "\ntransfering {transfer_amount_navax} ({} ETH/AVAX) from {} to {transferee_addr} via {chain_rpc_url}\n",
+            units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
     )),
         ResetColor
     )?;
@@ -163,7 +170,7 @@ pub async fn execute(
     let tx_id = transferer_evm_wallet
         .eip1559()
         .recipient(transferee_addr)
-        .value(transfer_amount)
+        .value(transfer_amount_navax)
         .urgent()
         .check_acceptance(true)
         .submit()
