@@ -126,12 +126,10 @@ pub async fn execute(
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to create a new KMS CMK '{}' '{}'.",
-                region, key_name_prefix
+                "No, I am not ready to create new {keys} KMS CMK(s) with '{key_name_prefix}' in '{region}'."
             ),
             format!(
-                "Yes, let's create a new KMS CMK '{}' '{}'.",
-                region, key_name_prefix
+                "Yes, let's create new {keys} KMS CMK(s) with '{key_name_prefix}' in '{region}'."
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
