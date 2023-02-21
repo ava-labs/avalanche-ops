@@ -2,7 +2,7 @@ use std::io::{self, stdout};
 
 use avalanche_types::{
     jsonrpc::client::{evm as json_client_evm, info as json_client_info},
-    key, units, utils, wallet,
+    key, units, wallet,
 };
 use clap::{Arg, Command};
 use crossterm::{
@@ -12,11 +12,11 @@ use crossterm::{
 use dialoguer::{theme::ColorfulTheme, Select};
 use primitive_types::{H160, U256};
 
-pub const NAME: &str = "evm-transfer-from-hot";
+pub const NAME: &str = "evm-transfer-from-hotkey";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Transfers the EVM native tokens 'from' hot key to the 'to' address")
+        .about("Transfers the EVM native tokens 'from' hotkey to the 'to' address")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -30,7 +30,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("CHAIN_RPC_URL")
                 .long("chain-rpc-url")
-                .help("Sets to fetch other information from the RPC endpoints (e.g., balances)")
+                .help("Sets the EVM chain RPC endpoint")
                 .required(true)
                 .num_args(1),
         )
@@ -85,21 +85,9 @@ pub async fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let (scheme, host, port, _, _) =
-        utils::urls::extract_scheme_host_port_path_chain_alias(chain_rpc_url).unwrap();
-    let scheme = if let Some(s) = scheme {
-        format!("{s}://")
-    } else {
-        String::new()
-    };
-    let rpc_ep = format!("{scheme}{host}");
-    let rpc_url = if let Some(port) = port {
-        format!("{rpc_ep}:{port}")
-    } else {
-        rpc_ep.clone() // e.g., DNS
-    };
-
-    let resp = json_client_info::get_network_id(&rpc_url).await.unwrap();
+    let resp = json_client_info::get_network_id(chain_rpc_url)
+        .await
+        .unwrap();
     let network_id = resp.result.unwrap().network_id;
 
     let chain_id = json_client_evm::chain_id(chain_rpc_url).await.unwrap();
@@ -107,7 +95,7 @@ pub async fn execute(
 
     let transferer_key = key::secp256k1::private_key::Key::from_hex(transferer_key).unwrap();
     let transferer_key_info = transferer_key.to_info(network_id).unwrap();
-    log::info!("loaded hot key:\n\n{}\n", transferer_key_info);
+    log::info!("loaded hot key: {}", transferer_key_info.eth_address);
 
     if !skip_prompt {
         let options = &[

@@ -3,14 +3,18 @@ use std::{
     io::{self, stdout},
 };
 
-use avalanche_types::key;
+use avalanche_types::{
+    jsonrpc::client::{evm as json_client_evm, info as json_client_info},
+    key, units, wallet,
+};
 use aws_manager::{self, kms, sts};
-use clap::{Arg, Command};
+use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
+use primitive_types::U256;
 
 pub const NAME: &str = "create";
 
@@ -37,10 +41,46 @@ pub fn command() -> Command {
                 .default_value("us-west-2"),
         )
         .arg(
-            Arg::new("KEY_NAME")
-                .long("key-name")
-                .short('n')
-                .help("KMS CMK name")
+            Arg::new("KEY_NAME_PREFIX")
+                .long("key-name-prefix")
+                .help("KMS CMK name prefix")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("KEYS")
+                .long("keys")
+                .help("Sets the number of keys to create")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("1"),
+        )
+        .arg(
+            Arg::new("EVM_CHAIN_RPC_URL")
+                .long("evm-chain-rpc-url")
+                .help("Sets EVM chain RPC endpoint")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("EVM_FUNDING_HOTKEY")
+                .long("evm-funding-hotkey")
+                .help("Sets the private key in hex format to fund the created key (leave empty to skip funding)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("EVM_FUNDING_AMOUNT_IN_NANO_AVAX")
+                .long("evm-funding-amount-in-nano-avax")
+                .help("Sets the funding amount in nAVAX (cannot be overlapped with --funding-amount-in-avax)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("EVM_FUNDING_AMOUNT_IN_AVAX")
+                .long("evm-funding-amount-in-avax")
+                .help("Sets the funding amount in AVAX (cannot be overlapped with --funding-amount-in-nano-avax)")
                 .required(false)
                 .num_args(1),
         )
@@ -57,7 +97,11 @@ pub fn command() -> Command {
 pub async fn execute(
     log_level: &str,
     region: &str,
-    key_name: &str,
+    key_name_prefix: &str,
+    keys: usize,
+    evm_chain_rpc_url: &str,
+    evm_funding_hotkey: &str,
+    evm_funding_amount_navax: U256,
     skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -65,7 +109,9 @@ pub async fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    log::info!("requesting to create a new KMS CMK {key_name} ({region})");
+    log::info!(
+        "requesting to create new {keys} KMS CMK(s) with prefix '{key_name_prefix}' (in the {region})"
+    );
 
     let shared_config = aws_manager::load_config(Some(region.to_string()))
         .await
@@ -81,11 +127,11 @@ pub async fn execute(
         let options = &[
             format!(
                 "No, I am not ready to create a new KMS CMK '{}' '{}'.",
-                region, key_name
+                region, key_name_prefix
             ),
             format!(
                 "Yes, let's create a new KMS CMK '{}' '{}'.",
-                region, key_name
+                region, key_name_prefix
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -105,26 +151,99 @@ pub async fn execute(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nCreating a new KMS CMK {} in region {}\n",
-            key_name, region
+            "\nCreating new KMS CMKs with '{key_name_prefix}' in region {region}\n",
         )),
         ResetColor
     )?;
-    let mut tags = HashMap::new();
-    tags.insert(String::from("Name"), key_name.to_string());
-    let cmk = key::secp256k1::kms::aws::Cmk::create(
-        kms_manager.clone(),
-        tags,
-        tokio::time::Duration::from_secs(300),
-        tokio::time::Duration::from_secs(10),
-    )
-    .await
-    .unwrap();
-    let cmk_info = cmk.to_info(1).unwrap();
+    let mut cmks = Vec::new();
+    for i in 0..keys {
+        let mut tags = HashMap::new();
+        tags.insert(String::from("Name"), format!("{key_name_prefix}-{i}"));
+        let cmk = key::secp256k1::kms::aws::Cmk::create(
+            kms_manager.clone(),
+            tags,
+            tokio::time::Duration::from_secs(300),
+            tokio::time::Duration::from_secs(10),
+        )
+        .await
+        .unwrap();
 
-    println!();
-    println!("loaded CMK\n\n{}\n(mainnet)\n", cmk_info);
-    println!();
+        let cmk_info = cmk.to_info(1).unwrap();
+        cmks.push(cmk_info.clone());
+
+        println!();
+        println!("loaded CMK\n\n{}\n", cmk_info);
+        println!();
+
+        if evm_funding_hotkey.is_empty() {
+            log::info!("no evm-funding-hotkey given, skipping...");
+            continue;
+        }
+
+        let resp = json_client_info::get_network_id(evm_chain_rpc_url)
+            .await
+            .unwrap();
+        let network_id = resp.result.unwrap().network_id;
+
+        let chain_id = json_client_evm::chain_id(evm_chain_rpc_url).await.unwrap();
+        log::info!(
+            "running against {evm_chain_rpc_url}, network Id {network_id}, chain Id {chain_id}"
+        );
+
+        let funding_key = key::secp256k1::private_key::Key::from_hex(evm_funding_hotkey).unwrap();
+        let funding_key_info = funding_key.to_info(network_id).unwrap();
+        log::info!("loaded funding key: {}", funding_key_info.eth_address);
+
+        let transferee_addr = cmk_info.h160_address;
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\ntransfering {evm_funding_amount_navax} ({} ETH/AVAX) from {} to {transferee_addr} via {evm_chain_rpc_url}\n",
+                units::cast_navax_to_avax_i64(evm_funding_amount_navax), funding_key_info.eth_address
+        )),
+            ResetColor
+        )?;
+        let funding_key_signer: ethers_signers::LocalWallet =
+            funding_key.to_ethers_core_signing_key().into();
+
+        let w = wallet::Builder::new(&funding_key)
+            .base_http_url(evm_chain_rpc_url.to_string())
+            .build()
+            .await?;
+        let funding_evm_wallet =
+            w.evm(&funding_key_signer, evm_chain_rpc_url, U256::from(chain_id))?;
+
+        let transferer_balance = funding_evm_wallet.balance().await?;
+        println!(
+            "transferrer {} current balance: {} ({} ETH/AVAX)",
+            funding_key_info.eth_address,
+            transferer_balance,
+            units::cast_navax_to_avax_i64(transferer_balance)
+        );
+        let transferee_balance =
+            json_client_evm::get_balance(evm_chain_rpc_url, transferee_addr).await?;
+        println!(
+            "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
+            transferee_addr,
+            transferee_balance,
+            units::cast_navax_to_avax_i64(transferee_balance)
+        );
+
+        let tx_id = funding_evm_wallet
+            .eip1559()
+            .recipient(transferee_addr)
+            .value(evm_funding_amount_navax)
+            .urgent()
+            .check_acceptance(true)
+            .submit()
+            .await?;
+        log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
+    }
+
+    for cmk in cmks {
+        println!("{},{}", cmk.id.clone().unwrap(), cmk.eth_address)
+    }
 
     Ok(())
 }

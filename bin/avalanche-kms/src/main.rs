@@ -1,7 +1,7 @@
 mod create;
 mod delete;
 mod evm_balance;
-mod evm_transfer_from_hot;
+mod evm_transfer_from_hotkey;
 mod info;
 
 use std::{
@@ -25,7 +25,7 @@ async fn main() -> io::Result<()> {
             create::command(),
             delete::command(),
             info::command(),
-            evm_transfer_from_hot::command(),
+            evm_transfer_from_hotkey::command(),
         ])
         .get_matches();
 
@@ -53,10 +53,49 @@ async fn main() -> io::Result<()> {
         }
 
         Some((create::NAME, sub_matches)) => {
-            let key_name = if let Some(p) = sub_matches.get_one::<String>("KEY_NAME") {
+            let key_name_prefix = if let Some(p) = sub_matches.get_one::<String>("KEY_NAME_PREFIX")
+            {
                 p.clone()
             } else {
                 id_manager::time::with_prefix("avalanche-kms")
+            };
+            let keys = sub_matches.get_one::<usize>("KEYS").unwrap_or(&0).clone();
+
+            let evm_chain_rpc_url = sub_matches
+                .get_one::<String>("EVM_CHAIN_RPC_URL")
+                .unwrap_or(&String::new())
+                .clone();
+
+            let evm_funding_hotkey = sub_matches
+                .get_one::<String>("EVM_FUNDING_HOTKEY")
+                .unwrap_or(&String::new())
+                .clone();
+
+            let evm_funding_amount_in_navax = sub_matches
+                .get_one::<String>("EVM_FUNDING_AMOUNT_IN_NANO_AVAX")
+                .unwrap_or(&String::new())
+                .clone();
+            let evm_funding_amount_in_navax =
+                U256::from_dec_str(&evm_funding_amount_in_navax).unwrap();
+
+            let evm_funding_amount_in_avax = sub_matches
+                .get_one::<String>("EVM_FUNDING_AMOUNT_IN_AVAX")
+                .unwrap_or(&String::new())
+                .clone();
+            let evm_funding_amount_in_avax =
+                U256::from_dec_str(&evm_funding_amount_in_avax).unwrap();
+
+            if !evm_funding_amount_in_navax.is_zero() && !evm_funding_amount_in_avax.is_zero() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "both EVM_FUNDING_AMOUNT_IN_NANO_AVAX and EVM_FUNDING_AMOUNT_IN_AVAX cannot be non-zero",
+                ));
+            }
+
+            let evm_funding_amount_navax = if evm_funding_amount_in_navax.is_zero() {
+                units::cast_avax_to_navax(evm_funding_amount_in_avax)
+            } else {
+                evm_funding_amount_in_navax
             };
 
             create::execute(
@@ -65,7 +104,11 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::from("info"))
                     .clone(),
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
-                &key_name,
+                &key_name_prefix,
+                keys,
+                &evm_chain_rpc_url,
+                &evm_funding_hotkey,
+                evm_funding_amount_navax,
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
             .await
@@ -109,7 +152,7 @@ async fn main() -> io::Result<()> {
             .unwrap();
         }
 
-        Some((evm_transfer_from_hot::NAME, sub_matches)) => {
+        Some((evm_transfer_from_hotkey::NAME, sub_matches)) => {
             let transferer_key = sub_matches
                 .get_one::<String>("TRANSFERER_KEY")
                 .unwrap_or(&String::new())
@@ -133,6 +176,12 @@ async fn main() -> io::Result<()> {
                     "both TRANSFER_AMOUNT_IN_NANO_AVAX and TRANSFER_AMOUNT_IN_AVAX cannot be zero",
                 ));
             }
+            if !transfer_amount_in_navax.is_zero() && !transfer_amount_in_avax.is_zero() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "both TRANSFER_AMOUNT_IN_NANO_AVAX and TRANSFER_AMOUNT_IN_AVAX cannot be non-zero",
+                ));
+            }
 
             let transfer_amount_navax = if transfer_amount_in_navax.is_zero() {
                 units::cast_avax_to_navax(transfer_amount_in_avax)
@@ -146,7 +195,7 @@ async fn main() -> io::Result<()> {
                 .clone();
             let transferee_addr = H160::from_str(transferee_addr.trim_start_matches("0x")).unwrap();
 
-            evm_transfer_from_hot::execute(
+            evm_transfer_from_hotkey::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
