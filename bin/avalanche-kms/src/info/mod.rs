@@ -122,14 +122,9 @@ pub async fn execute(
     match converted_key_type {
         KeyType::AwsKms => {
             let kms_manager = kms::Manager::new(&shared_config);
-            let cmk = secp256k1::kms::aws::Cmk::from_arn(
-                kms_manager.clone(),
-                key,
-                tokio::time::Duration::from_secs(300),
-                tokio::time::Duration::from_secs(10),
-            )
-            .await
-            .unwrap();
+            let cmk = secp256k1::kms::aws::Cmk::from_arn(kms_manager.clone(), key)
+                .await
+                .unwrap();
             let cmk_info = cmk.to_info(network_id).unwrap();
 
             println!();

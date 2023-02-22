@@ -337,14 +337,9 @@ impl Spec {
 
                         let mut tags = HashMap::new();
                         tags.insert(String::from("Name"), format!("{id}-cmk-{i}"));
-                        let cmk = key::secp256k1::kms::aws::Cmk::create(
-                            kms_manager.clone(),
-                            tags,
-                            tokio::time::Duration::from_secs(300),
-                            tokio::time::Duration::from_secs(10),
-                        )
-                        .await
-                        .unwrap();
+                        let cmk = key::secp256k1::kms::aws::Cmk::create(kms_manager.clone(), tags)
+                            .await
+                            .unwrap();
 
                         let cmk_info = cmk.to_info(network_id).unwrap();
                         println!("cmk_info: {}", cmk_info);

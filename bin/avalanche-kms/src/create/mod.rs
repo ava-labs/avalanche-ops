@@ -159,14 +159,9 @@ pub async fn execute(
         log::info!("[{i}] creating CMk");
         let mut tags = HashMap::new();
         tags.insert(String::from("Name"), format!("{key_name_prefix}-{i}"));
-        let cmk = key::secp256k1::kms::aws::Cmk::create(
-            kms_manager.clone(),
-            tags,
-            tokio::time::Duration::from_secs(300),
-            tokio::time::Duration::from_secs(10),
-        )
-        .await
-        .unwrap();
+        let cmk = key::secp256k1::kms::aws::Cmk::create(kms_manager.clone(), tags)
+            .await
+            .unwrap();
 
         let cmk_info = cmk.to_info(1).unwrap();
         cmks.push(cmk_info.clone());

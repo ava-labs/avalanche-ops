@@ -87,8 +87,6 @@ pub async fn execute(
     let cmk = key::secp256k1::kms::aws::Cmk::from_arn(
         kms_manager.clone(),
         key_arn,
-        tokio::time::Duration::from_secs(300),
-        tokio::time::Duration::from_secs(10),
     )
     .await
     .unwrap();
