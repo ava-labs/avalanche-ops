@@ -131,7 +131,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
         let mut asg_names = Vec::new();
         for i in 0..anchor_nodes {
-            let asg_name = format!("{}-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
+            let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
             asg_names.push(asg_name);
         }
         spec.aws_resources.cloudformation_asg_anchor_nodes = Some(asg_names);
@@ -142,7 +142,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let non_anchor_nodes = spec.machine.non_anchor_nodes;
     let mut asg_names = Vec::new();
     for i in 0..non_anchor_nodes {
-        let asg_name = format!("{}-non-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
+        let asg_name = format!("{}-non-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
         asg_names.push(asg_name);
     }
     spec.aws_resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
@@ -878,7 +878,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ));
 
             // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
-            let asg_name = format!("{}-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
+            let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
@@ -1219,7 +1219,7 @@ aws ssm start-session --region {} --target {}
             ));
 
             // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
-            let asg_name = format!("{}-non-anchor-{}-{}", spec.id, spec.machine.arch, i + 1);
+            let asg_name = format!("{}-non-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
