@@ -50,6 +50,13 @@ pub fn command() -> Command {
                 .value_parser(value_parser!(i32))
                 .default_value("7"),
         )
+        .arg(
+            Arg::new("UNSAFE_SKIP_PROMPT")
+                .long("unsafe-skip-prompt")
+                .help("Skips prompt mode (unsafe)")
+                .required(false)
+                .num_args(0),
+        )
 }
 
 pub async fn execute(
@@ -57,6 +64,7 @@ pub async fn execute(
     region: &str,
     key_arn: &str,
     pending_windows_in_days: i32,
+    unsafe_skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -84,36 +92,35 @@ pub async fn execute(
         )),
         ResetColor
     )?;
-    let cmk = key::secp256k1::kms::aws::Cmk::from_arn(
-        kms_manager.clone(),
-        key_arn,
-    )
-    .await
-    .unwrap();
+    let cmk = key::secp256k1::kms::aws::Cmk::from_arn(kms_manager.clone(), key_arn)
+        .await
+        .unwrap();
     let cmk_info = cmk.to_info(1).unwrap();
 
     println!();
     println!("loaded CMK\n\n{}\n(mainnet)\n", cmk_info);
     println!();
 
-    let options = &[
-        format!(
-            "No, I am not ready to delete a new KMS CMK '{}' '{}' in {} days",
-            region, key_arn, pending_windows_in_days
-        ),
-        format!(
-            "Yes, let's delete a new KMS CMK '{}' '{}' in {} days",
-            region, key_arn, pending_windows_in_days
-        ),
-    ];
-    let selected = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Select your 'delete' option")
-        .items(&options[..])
-        .default(0)
-        .interact()
-        .unwrap();
-    if selected == 0 {
-        return Ok(());
+    if !unsafe_skip_prompt {
+        let options = &[
+            format!(
+                "No, I am not ready to delete a new KMS CMK '{}' '{}' in {} days",
+                region, key_arn, pending_windows_in_days
+            ),
+            format!(
+                "Yes, let's delete a new KMS CMK '{}' '{}' in {} days",
+                region, key_arn, pending_windows_in_days
+            ),
+        ];
+        let selected = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Select your 'delete' option")
+            .items(&options[..])
+            .default(0)
+            .interact()
+            .unwrap();
+        if selected == 0 {
+            return Ok(());
+        }
     }
 
     cmk.delete(pending_windows_in_days).await.unwrap();

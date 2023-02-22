@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    env,
     io::{self, stdout},
 };
 
@@ -236,8 +237,14 @@ pub async fn execute(
         log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
     }
 
-    for cmk in cmks {
+    for cmk in cmks.iter() {
         println!("{},{}", cmk.id.clone().unwrap(), cmk.eth_address)
+    }
+
+    let exec_path = env::current_exe().expect("unexpected None current_exe");
+    println!("\n# [UNSAFE] to delete the keys");
+    for cmk in cmks.iter() {
+        println!("{} delete --region={region} --pending-windows-in-days 7 --unsafe-skip-prompt --key-arn {}", exec_path.display(), cmk.id.clone().unwrap());
     }
 
     Ok(())
