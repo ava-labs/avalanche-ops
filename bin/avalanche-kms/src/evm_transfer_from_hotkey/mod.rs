@@ -56,9 +56,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("TRANSFEREE_ADDRESS")
-                .long("transferee-address")
-                .help("Sets the transferee address")
+            Arg::new("TRANSFEREE_ADDRESSES")
+                .long("transferee-addresses")
+                .help("Sets the comma-separated transferee EVM addresses")
                 .required(true)
                 .num_args(1),
         )
@@ -77,7 +77,7 @@ pub async fn execute(
     chain_rpc_url: &str,
     transferer_key: &str,
     transfer_amount_navax: U256,
-    transferee_addr: H160,
+    transferee_addrs: Vec<H160>,
     skip_prompt: bool,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -100,12 +100,12 @@ pub async fn execute(
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {transferee_addr}.",
-                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
+                "No, I am not ready to transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {:?}.",
+                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address,transferee_addrs
             ),
             format!(
-                "Yes, let's transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {transferee_addr}.",
-                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
+                "Yes, let's transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {:?}.",
+                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address,transferee_addrs
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -121,49 +121,52 @@ pub async fn execute(
         log::info!("skipping prompt...")
     }
 
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "\ntransfering {transfer_amount_navax} ({} ETH/AVAX) from {} to {transferee_addr} via {chain_rpc_url}\n",
-            units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
-    )),
-        ResetColor
-    )?;
-    let transferer_key_signer: ethers_signers::LocalWallet =
-        transferer_key.to_ethers_core_signing_key().into();
+    for transferee_addr in transferee_addrs.iter() {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\ntransfering {transfer_amount_navax} ({} ETH/AVAX) from {} to {transferee_addr} via {chain_rpc_url}\n",
+                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
+            )),
+            ResetColor
+        )?;
+        let transferer_key_signer: ethers_signers::LocalWallet =
+            transferer_key.to_ethers_core_signing_key().into();
 
-    let w = wallet::Builder::new(&transferer_key)
-        .base_http_url(chain_rpc_url.to_string())
-        .build()
-        .await?;
-    let transferer_evm_wallet =
-        w.evm(&transferer_key_signer, chain_rpc_url, U256::from(chain_id))?;
+        let w = wallet::Builder::new(&transferer_key)
+            .base_http_url(chain_rpc_url.to_string())
+            .build()
+            .await?;
+        let transferer_evm_wallet =
+            w.evm(&transferer_key_signer, chain_rpc_url, U256::from(chain_id))?;
 
-    let transferer_balance = transferer_evm_wallet.balance().await?;
-    println!(
-        "transferrer {} current balance: {} ({} ETH/AVAX)",
-        transferer_key_info.eth_address,
-        transferer_balance,
-        units::cast_navax_to_avax_i64(transferer_balance)
-    );
-    let transferee_balance = json_client_evm::get_balance(chain_rpc_url, transferee_addr).await?;
-    println!(
-        "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
-        transferee_addr,
-        transferee_balance,
-        units::cast_navax_to_avax_i64(transferee_balance)
-    );
+        let transferer_balance = transferer_evm_wallet.balance().await?;
+        println!(
+            "transferrer {} current balance: {} ({} ETH/AVAX)",
+            transferer_key_info.eth_address,
+            transferer_balance,
+            units::cast_navax_to_avax_i64(transferer_balance)
+        );
+        let transferee_balance =
+            json_client_evm::get_balance(chain_rpc_url, *transferee_addr).await?;
+        println!(
+            "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
+            transferee_addr,
+            transferee_balance,
+            units::cast_navax_to_avax_i64(transferee_balance)
+        );
 
-    let tx_id = transferer_evm_wallet
-        .eip1559()
-        .recipient(transferee_addr)
-        .value(transfer_amount_navax)
-        .urgent()
-        .check_acceptance(true)
-        .submit()
-        .await?;
-    log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
+        let tx_id = transferer_evm_wallet
+            .eip1559()
+            .recipient(*transferee_addr)
+            .value(transfer_amount_navax)
+            .urgent()
+            .check_acceptance(true)
+            .submit()
+            .await?;
+        log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
+    }
 
     Ok(())
 }

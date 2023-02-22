@@ -189,11 +189,16 @@ async fn main() -> io::Result<()> {
                 transfer_amount_in_navax
             };
 
-            let transferee_addr = sub_matches
-                .get_one::<String>("TRANSFEREE_ADDRESS")
+            let s = sub_matches
+                .get_one::<String>("TRANSFEREE_ADDRESSES")
                 .unwrap_or(&String::new())
                 .clone();
-            let transferee_addr = H160::from_str(transferee_addr.trim_start_matches("0x")).unwrap();
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut transferee_addrs: Vec<H160> = Vec::new();
+            for addr in ss.iter() {
+                let transferee_addr = H160::from_str(addr.trim_start_matches("0x")).unwrap();
+                transferee_addrs.push(transferee_addr);
+            }
 
             evm_transfer_from_hotkey::execute(
                 &sub_matches
@@ -206,7 +211,7 @@ async fn main() -> io::Result<()> {
                     .clone(),
                 &transferer_key,
                 transfer_amount_navax,
-                transferee_addr,
+                transferee_addrs,
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
             .await
