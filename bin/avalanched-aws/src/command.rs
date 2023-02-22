@@ -141,7 +141,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     )?;
 
     let attached_volume = find_attached_volume(
-        Arc::clone(&ec2_manager_arc),
+        // Arc::clone(&ec2_manager_arc),
+        &meta.region,
         &tags.avalanche_data_volume_ebs_device_name,
         &meta.ec2_instance_id,
         &meta.az,
@@ -207,6 +208,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 );
             }
 
+            // create a new client as a workaround
+            // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
+            let shared_config = aws_manager::load_config(Some(meta.region.clone())).await?;
+            let ec2_manager = ec2::Manager::new(&shared_config);
+            let ec2_cli = ec2_manager.client();
+
             // assume all data from EBS are never lost
             // and since we persist and retain ever generated certs
             // in the mounted dir, we can safely assume "create tags"
@@ -216,7 +223,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 "creating NODE_ID tag to the EBS volume '{}'",
                 attached_volume_id
             );
-            let ec2_cli = aws_creds.ec2_manager.clone().client();
             ec2_cli
                 .create_tags()
                 .resources(attached_volume_id)
@@ -782,7 +788,8 @@ fn create_cloudwatch_config(
 }
 
 async fn find_attached_volume(
-    ec2_manager: Arc<ec2::Manager>,
+    // ec2_manager: Arc<ec2::Manager>,
+    reg: &str,
     avalanche_data_volume_ebs_device_name: &str,
     ec2_instance_id: &str,
     az: &str,
@@ -821,7 +828,12 @@ async fn find_attached_volume(
             .build(),
     ];
 
-    let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
+    // let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
+    // create a new client as a workaround
+    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
+    let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
+    let ec2_manager = ec2::Manager::new(&shared_config);
+
     let volumes = ec2_manager
         .describe_volumes(Some(filters))
         .await
