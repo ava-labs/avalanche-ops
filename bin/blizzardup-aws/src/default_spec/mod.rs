@@ -167,7 +167,7 @@ pub fn execute(opts: blizzardup_aws::DefaultSpecOption) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{} apply \\\n--spec-file-path {}\n\n",
+            "{} apply \\\n--spec-file-path {}\n",
             exec_path.display(),
             spec_file_path
         )),
