@@ -1002,19 +1002,19 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let mut eips = Vec::new();
         let mut instance_id_to_public_ip = HashMap::new();
         for asg_name in asg_local_ids.iter() {
+            let mut dss = Vec::new();
             for _ in 0..20 {
                 // TODO: better retries
                 log::info!("fetching all droplets for anchor-node SSH access");
-                droplets = ec2_manager.list_asg(asg_name).await.unwrap();
-                if droplets.len() >= 1 {
+                let ds = ec2_manager.list_asg(asg_name).await.unwrap();
+                if ds.len() >= 1 {
+                    dss = ds;
                     break;
                 }
-                log::info!(
-                    "retrying fetching all droplets (only got {})",
-                    droplets.len()
-                );
+                log::info!("retrying fetching all droplets (only got {})", ds.len());
                 sleep(Duration::from_secs(30)).await;
             }
+            droplets.extend(dss);
 
             if spec.machine.ip_mode == String::from("elastic") {
                 log::info!("using elastic IPs... wait more");
@@ -1343,19 +1343,19 @@ aws ssm start-session --region {} --target {}
         let mut eips = Vec::new();
         let mut instance_id_to_public_ip = HashMap::new();
         for asg_name in asg_local_ids.iter() {
+            let mut dss = Vec::new();
             for _ in 0..20 {
                 // TODO: better retries
                 log::info!("fetching all droplets for non-anchor-node SSH access");
-                droplets = ec2_manager.list_asg(asg_name).await.unwrap();
-                if droplets.len() >= 1 {
+                let ds = ec2_manager.list_asg(asg_name).await.unwrap();
+                if ds.len() >= 1 {
+                    dss = ds;
                     break;
                 }
-                log::info!(
-                    "retrying fetching all droplets (only got {})",
-                    droplets.len()
-                );
+                log::info!("retrying fetching all droplets (only got {})", ds.len());
                 sleep(Duration::from_secs(30)).await;
             }
+            droplets.extend(dss);
 
             if spec.machine.ip_mode == String::from("elastic") {
                 log::info!("using elastic IPs... wait more");
