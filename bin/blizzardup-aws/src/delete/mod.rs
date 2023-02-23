@@ -3,8 +3,6 @@ use std::{
     io::{self, stdout, Error, ErrorKind},
     path::Path,
     sync::Arc,
-    thread,
-    time::Duration,
 };
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, s3, sts};
@@ -15,7 +13,7 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use tokio::runtime::Runtime;
+use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "delete";
 
@@ -74,7 +72,7 @@ pub fn command() -> Command {
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
-pub fn execute(
+pub async fn execute(
     log_level: &str,
     spec_file_path: &str,
     delete_cloudwatch_log_group: bool,
@@ -90,13 +88,12 @@ pub fn execute(
     let spec = blizzardup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     let aws_resources = spec.aws_resources.clone().unwrap();
 
-    let rt = Runtime::new().unwrap();
-    let shared_config = rt
-        .block_on(aws_manager::load_config(Some(aws_resources.region.clone())))
+    let shared_config = aws_manager::load_config(Some(aws_resources.region.clone()))
+        .await
         .unwrap();
 
     let sts_manager = sts::Manager::new(&shared_config);
-    let current_identity = rt.block_on(sts_manager.get_identity()).unwrap();
+    let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
     match aws_resources.identity {
@@ -151,7 +148,7 @@ pub fn execute(
     // delete this first since EC2 key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
     if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -164,7 +161,9 @@ pub fn execute(
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
-        rt.block_on(ec2_manager.delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str()))
+        ec2_manager
+            .delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str())
+            .await
             .unwrap();
     }
 
@@ -173,7 +172,7 @@ pub fn execute(
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -186,12 +185,14 @@ pub fn execute(
             .cloudformation_ec2_instance_role
             .clone()
             .unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(ec2_instance_role_stack_name.as_str()))
+        cloudformation_manager
+            .delete_stack(ec2_instance_role_stack_name.as_str())
+            .await
             .unwrap();
     }
 
     // delete no matter what, in case node provision failed
-    thread::sleep(Duration::from_secs(1));
+    sleep(Duration::from_secs(1)).await;
 
     execute!(
         stdout(),
@@ -200,10 +201,12 @@ pub fn execute(
         ResetColor
     )?;
     let asg_blizzards_stack_name = aws_resources.cloudformation_asg_blizzards.clone().unwrap();
-    rt.block_on(cloudformation_manager.delete_stack(asg_blizzards_stack_name.as_str()))
+    cloudformation_manager
+        .delete_stack(asg_blizzards_stack_name.as_str())
+        .await
         .unwrap();
 
-    thread::sleep(Duration::from_secs(1));
+    sleep(Duration::from_secs(1)).await;
 
     execute!(
         stdout(),
@@ -216,20 +219,22 @@ pub fn execute(
     if wait_secs > MAX_WAIT_SECONDS {
         wait_secs = MAX_WAIT_SECONDS;
     }
-    rt.block_on(cloudformation_manager.poll_stack(
-        asg_blizzards_stack_name.as_str(),
-        StackStatus::DeleteComplete,
-        Duration::from_secs(wait_secs),
-        Duration::from_secs(30),
-    ))
-    .unwrap();
+    cloudformation_manager
+        .poll_stack(
+            asg_blizzards_stack_name.as_str(),
+            StackStatus::DeleteComplete,
+            Duration::from_secs(wait_secs),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
 
     // VPC delete must run after associated EC2 instances are terminated due to dependencies
     if aws_resources.cloudformation_vpc_id.is_some()
         && aws_resources.cloudformation_vpc_security_group_id.is_some()
         && aws_resources.cloudformation_vpc_public_subnet_ids.is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -238,23 +243,27 @@ pub fn execute(
             ResetColor
         )?;
         let vpc_stack_name = aws_resources.cloudformation_vpc.unwrap();
-        rt.block_on(cloudformation_manager.delete_stack(vpc_stack_name.as_str()))
+        cloudformation_manager
+            .delete_stack(vpc_stack_name.as_str())
+            .await
             .unwrap();
-        thread::sleep(Duration::from_secs(10));
-        rt.block_on(cloudformation_manager.poll_stack(
-            vpc_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        sleep(Duration::from_secs(10)).await;
+        cloudformation_manager
+            .poll_stack(
+                vpc_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
     }
 
     if aws_resources
         .cloudformation_ec2_instance_profile_arn
         .is_some()
     {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -263,18 +272,20 @@ pub fn execute(
             ResetColor
         )?;
         let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
-        rt.block_on(cloudformation_manager.poll_stack(
-            ec2_instance_role_stack_name.as_str(),
-            StackStatus::DeleteComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        ))
-        .unwrap();
+        cloudformation_manager
+            .poll_stack(
+                ec2_instance_role_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
     }
 
     if delete_cloudwatch_log_group {
         // deletes the one auto-created by nodes
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -282,11 +293,11 @@ pub fn execute(
             Print("\n\n\nSTEP: cloudwatch log groups\n"),
             ResetColor
         )?;
-        rt.block_on(cw_manager.delete_log_group(&spec.id)).unwrap();
+        cw_manager.delete_log_group(&spec.id).await.unwrap();
     }
 
     if delete_s3_objects {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -294,16 +305,18 @@ pub fn execute(
             Print("\n\n\nSTEP: delete S3 objects\n"),
             ResetColor
         )?;
-        thread::sleep(Duration::from_secs(5));
-        rt.block_on(s3_manager.delete_objects(
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Some(Arc::new(spec.id.clone())),
-        ))
-        .unwrap();
+        sleep(Duration::from_secs(5)).await;
+        s3_manager
+            .delete_objects(
+                Arc::new(aws_resources.s3_bucket.clone()),
+                Some(Arc::new(spec.id.clone())),
+            )
+            .await
+            .unwrap();
     }
 
     if delete_s3_bucket {
-        thread::sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(1)).await;
 
         execute!(
             stdout(),
@@ -311,8 +324,10 @@ pub fn execute(
             Print("\n\n\nSTEP: delete S3 bucket\n"),
             ResetColor
         )?;
-        thread::sleep(Duration::from_secs(5));
-        rt.block_on(s3_manager.delete_bucket(&aws_resources.s3_bucket))
+        sleep(Duration::from_secs(5)).await;
+        s3_manager
+            .delete_bucket(&aws_resources.s3_bucket)
+            .await
             .unwrap();
     }
 

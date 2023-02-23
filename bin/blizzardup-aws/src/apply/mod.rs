@@ -8,8 +8,6 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    thread,
-    time::Duration,
 };
 
 use avalanche_types::jsonrpc::client::{evm as client_evm, info as client_info};
@@ -22,6 +20,7 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use rust_embed::RustEmbed;
+use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "apply";
 
@@ -179,7 +178,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .await
         .unwrap();
 
-    thread::sleep(Duration::from_secs(1));
+    sleep(Duration::from_secs(1)).await;
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -290,7 +289,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .await
             .unwrap();
 
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
         let stack = cloudformation_manager
             .poll_stack(
                 ec2_instance_role_stack_name.as_str(),
@@ -359,7 +358,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .await
             .expect("failed create_stack for VPC");
 
-        thread::sleep(Duration::from_secs(10));
+        sleep(Duration::from_secs(10)).await;
         let stack = cloudformation_manager
             .poll_stack(
                 vpc_stack_name.as_str(),
@@ -466,7 +465,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ));
 
         let cloudformation_asg_blizzards_yaml =
-            Asset::get("cfn-templates/asg_amd64_ubuntu.yaml").unwrap();
+            Asset::get("cfn-templates/asg_ubuntu.yaml").unwrap();
         let cloudformation_asg_blizzards_tmpl =
             std::str::from_utf8(cloudformation_asg_blizzards_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_blizzards_stack_name =
@@ -520,7 +519,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         if wait_secs > MAX_WAIT_SECONDS {
             wait_secs = MAX_WAIT_SECONDS;
         }
-        thread::sleep(Duration::from_secs(60));
+        sleep(Duration::from_secs(60)).await;
         let stack = cloudformation_manager
             .poll_stack(
                 cloudformation_asg_blizzards_stack_name.as_str(),
@@ -574,7 +573,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 "retrying fetching all droplets (only got {})",
                 droplets.len()
             );
-            thread::sleep(Duration::from_secs(30));
+            sleep(Duration::from_secs(30)).await;
         }
 
         let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
@@ -639,7 +638,7 @@ aws ssm start-session --region {} --target {}
             .expect("failed put_object ConfigFile");
 
         log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
-        thread::sleep(Duration::from_secs(20));
+        sleep(Duration::from_secs(20)).await;
 
         // TODO: check some results by querying metrics
 

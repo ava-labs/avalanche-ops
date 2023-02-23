@@ -128,6 +128,7 @@ async fn main() {
                 sub_matches.get_flag("DELETE_S3_BUCKET"),
                 sub_matches.get_flag("SKIP_PROMPT"),
             )
+            .await
             .expect("failed to execute 'delete'");
         }
 

@@ -1,8 +1,6 @@
 use std::{
     collections::HashMap,
     io::{self, Error, ErrorKind},
-    thread,
-    time::Duration,
 };
 
 use avalanche_types::utils;
@@ -10,6 +8,7 @@ use clap::{Arg, Command};
 use lazy_static::lazy_static;
 use regex::RegexSet;
 use reqwest::ClientBuilder;
+use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "query";
 
@@ -215,7 +214,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
             // done with comparison so update for next iteration
             prev.insert(u.clone(), cur_data);
 
-            thread::sleep(Duration::from_secs(20));
+            sleep(Duration::from_secs(20)).await;
         }
 
         break;

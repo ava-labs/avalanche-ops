@@ -1,6 +1,7 @@
-use std::{collections::HashMap, sync::Arc, thread, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
 use avalanche_types::{jsonrpc::client::evm as jsonrpc_client_evm, key, wallet};
+use tokio::time::{sleep, Duration};
 
 pub async fn make_transfers(
     worker_idx: usize,
@@ -67,7 +68,7 @@ pub async fn make_transfers(
                     "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}' -- checking next faucet wallet",
                     e
                 );
-                thread::sleep(Duration::from_secs(5));
+                sleep(Duration::from_secs(5)).await;
                 continue;
             }
         };
@@ -161,7 +162,7 @@ pub async fn make_transfers(
                 );
 
                 // TODO: retries...
-                // thread::sleep(Duration::from_secs(5));
+                // sleep(Duration::from_secs(5)).await;
                 // continue;
 
                 primitive_types::U256::from_dec_str("10000000000000000000000").unwrap()
@@ -192,7 +193,7 @@ pub async fn make_transfers(
             }
             Err(e) => {
                 log::warn!("[WORKER #{worker_idx}] failed transfer {}", e);
-                thread::sleep(Duration::from_secs(5));
+                sleep(Duration::from_secs(5)).await;
             }
         }
     }
@@ -303,7 +304,7 @@ pub async fn make_transfers(
                         h160_to_nonce.insert(sender_h160, new_nonce);
                     }
 
-                    thread::sleep(Duration::from_secs(5));
+                    sleep(Duration::from_secs(5)).await;
                 }
             }
         }
@@ -404,7 +405,7 @@ pub async fn make_transfers(
                             h160_to_nonce.insert(sender_h160, new_nonce);
                         }
 
-                        thread::sleep(Duration::from_secs(5));
+                        sleep(Duration::from_secs(5)).await;
                     }
                 }
             }
