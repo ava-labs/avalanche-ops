@@ -34,27 +34,136 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let meta = fetch_metadata().await?;
 
     let aws_creds = load_aws_credential(&meta.region).await?;
-    let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
-    let asg_manager_arc = Arc::new(aws_creds.asg_manager.clone());
-    let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
 
-    let tags = fetch_tags(
-        // Arc::clone(&ec2_manager_arc),
-        &meta.region,
-        Arc::new(meta.ec2_instance_id.clone()),
-    )
-    .await?;
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    log::info!("STEP: fetching tags...");
+    let tags = aws_creds
+        .ec2_manager
+        .fetch_tags(Arc::new(meta.ec2_instance_id.clone()))
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_tags {}", e)))?;
+
+    let mut fetched_tags = Tags {
+        id: String::new(),
+        network_id: 0,
+        arch_type: String::new(),
+        instance_mode: String::new(),
+        node_kind: node::Kind::Unknown(String::new()),
+        kms_cmk_arn: String::new(),
+        aad_tag: String::new(),
+        s3_bucket: String::new(),
+        cloudwatch_config_file_path: String::new(),
+        avalanche_telemetry_cloudwatch_rules_file_path: String::new(),
+        avalancheup_spec_path: String::new(),
+        avalanche_data_volume_path: String::new(),
+        avalanche_data_volume_ebs_device_name: String::new(),
+        eip_file_path: String::new(),
+    };
+    for c in tags {
+        let k = c.key().unwrap();
+        let v = c.value().unwrap();
+
+        log::info!("EC2 tag key='{}', value='{}'", k, v);
+        match k {
+            "ID" => {
+                fetched_tags.id = v.to_string();
+            }
+            "NETWORK_ID" => {
+                fetched_tags.network_id = v.to_string().parse::<u32>().unwrap();
+            }
+            "ARCH_TYPE" => {
+                fetched_tags.arch_type = v.to_string();
+            }
+            "INSTANCE_MODE" => {
+                fetched_tags.instance_mode = v.to_string();
+            }
+            "NODE_KIND" => {
+                fetched_tags.node_kind = if v.to_string().eq("anchor") {
+                    node::Kind::Anchor
+                } else {
+                    node::Kind::NonAnchor
+                };
+            }
+            "KMS_CMK_ARN" => {
+                fetched_tags.kms_cmk_arn = v.to_string();
+            }
+            "AAD_TAG" => {
+                fetched_tags.aad_tag = v.to_string();
+            }
+            "S3_BUCKET_NAME" => {
+                fetched_tags.s3_bucket = v.to_string();
+            }
+            "CLOUDWATCH_CONFIG_FILE_PATH" => {
+                fetched_tags.cloudwatch_config_file_path = v.to_string();
+            }
+            "AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH" => {
+                fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path = v.to_string();
+            }
+            "AVALANCHEUP_SPEC_PATH" => {
+                fetched_tags.avalancheup_spec_path = v.to_string();
+            }
+            "AVALANCHE_DATA_VOLUME_PATH" => {
+                fetched_tags.avalanche_data_volume_path = v.to_string();
+            }
+            "AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME" => {
+                fetched_tags.avalanche_data_volume_ebs_device_name = v.to_string();
+            }
+            "EIP_FILE_PATH" => {
+                fetched_tags.eip_file_path = v.to_string();
+            }
+            _ => {}
+        }
+    }
+
+    assert!(!fetched_tags.id.is_empty());
+    assert!(!fetched_tags.network_id > 0);
+    assert!(
+        fetched_tags.node_kind == node::Kind::Anchor
+            || fetched_tags.node_kind == node::Kind::NonAnchor
+    );
+    assert!(!fetched_tags.arch_type.is_empty());
+    assert!(!fetched_tags.kms_cmk_arn.is_empty());
+    assert!(!fetched_tags.aad_tag.is_empty());
+    assert!(!fetched_tags.s3_bucket.is_empty());
+    assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
+    assert!(!fetched_tags
+        .avalanche_telemetry_cloudwatch_rules_file_path
+        .is_empty());
+    assert!(!fetched_tags.avalancheup_spec_path.is_empty());
+    assert!(!fetched_tags.avalanche_data_volume_path.is_empty());
+    assert!(!fetched_tags
+        .avalanche_data_volume_ebs_device_name
+        .is_empty());
 
     // if EIP is not set, just use the ephemeral IP
-    let public_ipv4 = if Path::new(&tags.eip_file_path).exists() {
-        log::info!("non-empty eip file path {} -- loading", tags.eip_file_path);
-        let eip = ec2::Eip::load(&tags.eip_file_path)?;
+    let public_ipv4 = if Path::new(&fetched_tags.eip_file_path).exists() {
+        log::info!(
+            "non-empty eip file path {} -- loading",
+            fetched_tags.eip_file_path
+        );
+        let eip = ec2::Eip::load(&fetched_tags.eip_file_path)?;
         eip.public_ip
     } else {
         meta.public_ipv4.clone()
     };
     log::info!("public IPv4 for this node {}", public_ipv4);
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
+    let asg_manager_arc = Arc::new(aws_creds.asg_manager.clone());
+    let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
     let (
         mut avalanchego_config,
         coreth_chain_config,
@@ -64,7 +173,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         metrics_fetch_interval_seconds,
         subnet_evm_install,
     ) = if opts.use_default_config {
-        let avalanchego_config = write_default_avalanche_config(tags.network_id, &public_ipv4)?;
+        let avalanchego_config =
+            write_default_avalanche_config(fetched_tags.network_id, &public_ipv4)?;
         let coreth_chain_config =
             write_default_coreth_chain_config(&avalanchego_config.chain_config_dir)?;
 
@@ -80,10 +190,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     } else {
         let spec = download_and_update_local_spec(
             Arc::clone(&s3_manager_arc),
-            &tags.s3_bucket,
-            &tags.id,
+            &fetched_tags.s3_bucket,
+            &fetched_tags.id,
             &public_ipv4,
-            &tags.avalancheup_spec_path,
+            &fetched_tags.avalancheup_spec_path,
         )
         .await?;
         if spec.version != avalancheup_aws::spec::VERSION {
@@ -123,31 +233,31 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         )
     };
 
-    if Path::new(&tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
+    if Path::new(&fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
         log::warn!("overwriting avalanche-telemetry-cloudwatch rules file (already exists)")
     }
-    metrics_rules.sync(&tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
+    metrics_rules.sync(&fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
 
     create_config_dirs(&avalanchego_config, &coreth_chain_config)?;
 
     // always overwrite in case we update tags
     create_cloudwatch_config(
-        &tags.id,
-        tags.node_kind.clone(),
+        &fetched_tags.id,
+        fetched_tags.node_kind.clone(),
         logs_auto_removal,
         &avalanchego_config.log_dir,
-        &tags.avalanche_data_volume_path,
-        &tags.cloudwatch_config_file_path,
+        &fetched_tags.avalanche_data_volume_path,
+        &fetched_tags.cloudwatch_config_file_path,
         metrics_fetch_interval_seconds as u32,
     )?;
 
     let attached_volume = find_attached_volume(
         // Arc::clone(&ec2_manager_arc),
         &meta.region,
-        &tags.avalanche_data_volume_ebs_device_name,
+        &fetched_tags.avalanche_data_volume_ebs_device_name,
         &meta.ec2_instance_id,
         &meta.az,
-        &tags.id,
+        &fetched_tags.id,
     )
     .await?;
     let attached_volume_id = attached_volume.volume_id().unwrap();
@@ -155,13 +265,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
         aws_creds.kms_manager.clone(),
-        tags.kms_cmk_arn.to_string(),
-        tags.aad_tag.to_string(),
+        fetched_tags.kms_cmk_arn.to_string(),
+        fetched_tags.aad_tag.to_string(),
     );
     let certs_manager = certs_manager::Manager {
         envelope_manager,
         s3_manager: aws_creds.s3_manager.clone(),
-        s3_bucket: tags.s3_bucket.to_string(),
+        s3_bucket: fetched_tags.s3_bucket.to_string(),
     };
     let tls_key_path = avalanchego_config.staking_tls_key_file.clone().unwrap();
     let tls_cert_path = avalanchego_config.staking_tls_cert_file.clone().unwrap();
@@ -175,8 +285,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     if newly_generated {
         log::info!("STEP: backing up newly generated certificates...");
 
-        let s3_key_tls_key = format!("{}/pki/{}.key.zstd.encrypted", tags.id, node_id);
-        let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", tags.id, node_id);
+        let s3_key_tls_key = format!("{}/pki/{}.key.zstd.encrypted", fetched_tags.id, node_id);
+        let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", fetched_tags.id, node_id);
 
         certs_manager
             .upload(
@@ -256,21 +366,21 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     {
         log::info!("STEP: running discover/genesis updates for custom network...");
 
-        if matches!(tags.node_kind, node::Kind::Anchor) {
+        if matches!(fetched_tags.node_kind, node::Kind::Anchor) {
             let bootstrappiong_anchor_node_s3_keys =
                 discover_other_bootstrapping_anchor_nodes_from_s3(
                     &meta.ec2_instance_id,
                     &node_id.to_string(),
                     &public_ipv4,
                     Arc::clone(&s3_manager_arc),
-                    &tags.s3_bucket,
-                    &tags.avalancheup_spec_path,
+                    &fetched_tags.s3_bucket,
+                    &fetched_tags.avalancheup_spec_path,
                 )
                 .await?;
 
             merge_bootstrapping_anchor_nodes_to_write_genesis(
                 bootstrappiong_anchor_node_s3_keys,
-                &tags.avalancheup_spec_path,
+                &fetched_tags.avalancheup_spec_path,
             )?;
 
             // for now, just overwrite from every seed anchor node
@@ -280,18 +390,19 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             s3::spawn_put_object(
                 aws_creds.s3_manager.clone(),
                 &avalanchego_config.clone().genesis.unwrap(),
-                &tags.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::GenesisFile(tags.id.clone()).encode(),
+                &fetched_tags.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::GenesisFile(fetched_tags.id.clone())
+                    .encode(),
             )
             .await
             .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e)))?;
         }
 
-        if matches!(tags.node_kind, node::Kind::NonAnchor) {
+        if matches!(fetched_tags.node_kind, node::Kind::NonAnchor) {
             download_genesis_from_ready_anchor_nodes(
                 Arc::clone(&s3_manager_arc),
-                &tags.s3_bucket,
-                &tags.avalancheup_spec_path,
+                &fetched_tags.s3_bucket,
+                &fetched_tags.avalancheup_spec_path,
             )
             .await?;
 
@@ -303,8 +414,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 Arc::clone(&ec2_manager_arc),
                 anchor_asg_names,
                 Arc::clone(&s3_manager_arc),
-                &tags.s3_bucket,
-                &tags.avalancheup_spec_path,
+                &fetched_tags.s3_bucket,
+                &fetched_tags.avalancheup_spec_path,
             )
             .await?;
 
@@ -323,10 +434,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             avalanchego_config.bootstrap_ids = Some(bootstrap_ids.join(","));
             avalanchego_config.bootstrap_ips = Some(bootstrap_ips.join(","));
 
-            let mut spec = avalancheup_aws::spec::Spec::load(&tags.avalancheup_spec_path)?;
+            let mut spec = avalancheup_aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
             spec.avalanchego_config = avalanchego_config.clone();
 
-            spec.sync(&tags.avalancheup_spec_path)?;
+            spec.sync(&fetched_tags.avalancheup_spec_path)?;
             spec.avalanchego_config.sync(None)?;
         }
     }
@@ -341,8 +452,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     if metrics_fetch_interval_seconds > 0 {
         stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
             "/usr/local/bin/avalanche-telemetry-cloudwatch",
-            &tags.avalanche_telemetry_cloudwatch_rules_file_path,
-            &tags.id,
+            &fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path,
+            &fetched_tags.id,
             avalanchego_config.http_port,
             metrics_fetch_interval_seconds,
         )?;
@@ -375,12 +486,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     if !opts.use_default_config {
         handles.push(tokio::spawn(publish_node_info_ready_loop(
             Arc::new(meta.ec2_instance_id.clone()),
-            tags.node_kind.clone(),
+            fetched_tags.node_kind.clone(),
             Arc::new(node_id.to_string()),
             Arc::new(public_ipv4.clone()),
             Arc::clone(&s3_manager_arc),
-            Arc::new(tags.s3_bucket.clone()),
-            Arc::new(tags.avalancheup_spec_path.clone()),
+            Arc::new(fetched_tags.s3_bucket.clone()),
+            Arc::new(fetched_tags.avalancheup_spec_path.clone()),
             opts.publish_periodic_node_info,
         )));
     }
@@ -388,7 +499,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     // assume the tag value is static
     // assume we don't change on-demand to spot, or vice versa
     // if someone changes, tag needs to be updated manually and restart avalanched
-    if tags.instance_mode == String::from("spot") {
+    if fetched_tags.instance_mode == String::from("spot") {
         handles.push(tokio::spawn(monitor_spot_instance_action(
             Arc::clone(&ec2_manager_arc),
             Arc::clone(&asg_manager_arc),
@@ -498,123 +609,6 @@ struct Tags {
     avalanche_data_volume_path: String,
     avalanche_data_volume_ebs_device_name: String,
     eip_file_path: String,
-}
-
-async fn fetch_tags(
-    // ec2_manager: Arc<ec2::Manager>,
-    reg: &str,
-    ec2_instance_id: Arc<String>,
-) -> io::Result<Tags> {
-    log::info!("STEP: fetching tags...");
-
-    // let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
-    // create a new client as a workaround
-    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
-    let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
-    let ec2_manager = ec2::Manager::new(&shared_config);
-
-    // TODO: debug when this blocks.....
-    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
-    sleep(Duration::from_secs(1)).await;
-
-    let tags = ec2_manager
-        .fetch_tags(ec2_instance_id)
-        .await
-        .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_tags {}", e)))?;
-
-    let mut fetched_tags = Tags {
-        id: String::new(),
-        network_id: 0,
-        arch_type: String::new(),
-        instance_mode: String::new(),
-        node_kind: node::Kind::Unknown(String::new()),
-        kms_cmk_arn: String::new(),
-        aad_tag: String::new(),
-        s3_bucket: String::new(),
-        cloudwatch_config_file_path: String::new(),
-        avalanche_telemetry_cloudwatch_rules_file_path: String::new(),
-        avalancheup_spec_path: String::new(),
-        avalanche_data_volume_path: String::new(),
-        avalanche_data_volume_ebs_device_name: String::new(),
-        eip_file_path: String::new(),
-    };
-    for c in tags {
-        let k = c.key().unwrap();
-        let v = c.value().unwrap();
-
-        log::info!("EC2 tag key='{}', value='{}'", k, v);
-        match k {
-            "ID" => {
-                fetched_tags.id = v.to_string();
-            }
-            "NETWORK_ID" => {
-                fetched_tags.network_id = v.to_string().parse::<u32>().unwrap();
-            }
-            "ARCH_TYPE" => {
-                fetched_tags.arch_type = v.to_string();
-            }
-            "INSTANCE_MODE" => {
-                fetched_tags.instance_mode = v.to_string();
-            }
-            "NODE_KIND" => {
-                fetched_tags.node_kind = if v.to_string().eq("anchor") {
-                    node::Kind::Anchor
-                } else {
-                    node::Kind::NonAnchor
-                };
-            }
-            "KMS_CMK_ARN" => {
-                fetched_tags.kms_cmk_arn = v.to_string();
-            }
-            "AAD_TAG" => {
-                fetched_tags.aad_tag = v.to_string();
-            }
-            "S3_BUCKET_NAME" => {
-                fetched_tags.s3_bucket = v.to_string();
-            }
-            "CLOUDWATCH_CONFIG_FILE_PATH" => {
-                fetched_tags.cloudwatch_config_file_path = v.to_string();
-            }
-            "AVALANCHE_TELEMETRY_CLOUDWATCH_RULES_FILE_PATH" => {
-                fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path = v.to_string();
-            }
-            "AVALANCHEUP_SPEC_PATH" => {
-                fetched_tags.avalancheup_spec_path = v.to_string();
-            }
-            "AVALANCHE_DATA_VOLUME_PATH" => {
-                fetched_tags.avalanche_data_volume_path = v.to_string();
-            }
-            "AVALANCHE_DATA_VOLUME_EBS_DEVICE_NAME" => {
-                fetched_tags.avalanche_data_volume_ebs_device_name = v.to_string();
-            }
-            "EIP_FILE_PATH" => {
-                fetched_tags.eip_file_path = v.to_string();
-            }
-            _ => {}
-        }
-    }
-
-    assert!(!fetched_tags.id.is_empty());
-    assert!(!fetched_tags.network_id > 0);
-    assert!(
-        fetched_tags.node_kind == node::Kind::Anchor
-            || fetched_tags.node_kind == node::Kind::NonAnchor
-    );
-    assert!(!fetched_tags.arch_type.is_empty());
-    assert!(!fetched_tags.kms_cmk_arn.is_empty());
-    assert!(!fetched_tags.aad_tag.is_empty());
-    assert!(!fetched_tags.s3_bucket.is_empty());
-    assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
-    assert!(!fetched_tags
-        .avalanche_telemetry_cloudwatch_rules_file_path
-        .is_empty());
-    assert!(!fetched_tags.avalancheup_spec_path.is_empty());
-    assert!(!fetched_tags.avalanche_data_volume_path.is_empty());
-    assert!(!fetched_tags
-        .avalanche_data_volume_ebs_device_name
-        .is_empty());
-
-    Ok(fetched_tags)
 }
 
 async fn download_and_update_local_spec(
