@@ -213,6 +213,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 let ec2_manager = ec2::Manager::new(&shared_config);
 
                 // TODO: debug when this blocks.....
+                // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
                 sleep(Duration::from_secs(1)).await;
 
                 // assume all data from EBS are never lost
@@ -838,6 +839,10 @@ async fn find_attached_volume(
     // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
     let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
     let ec2_manager = ec2::Manager::new(&shared_config);
+
+    // TODO: debug when this blocks.....
+    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
+    sleep(Duration::from_secs(1)).await;
 
     let volumes = ec2_manager
         .describe_volumes(Some(filters))
