@@ -73,7 +73,7 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
 
     // ref. https://docs.aws.amazon.com/cdk/api/v1/docs/cloudformation-include-readme.html#non-resource-template-elements
     const tmplAsg = new cfn_include.CfnInclude(this, `included-template-asg-${process.env.CLUSTER_ID || ''}`, {
-      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'asg_amd64_ubuntu.yaml'),
+      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'asg_ubuntu.yaml'),
     });
 
     // mutate default parameters

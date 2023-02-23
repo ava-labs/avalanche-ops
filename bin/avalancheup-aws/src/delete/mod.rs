@@ -4,7 +4,6 @@ use std::{
     io::{self, stdout, Error, ErrorKind},
     path::Path,
     sync::Arc,
-    thread,
 };
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
@@ -570,7 +569,7 @@ pub async fn execute(
             Print("\n\n\nSTEP: delete S3 objects\n"),
             ResetColor
         )?;
-        thread::sleep(Duration::from_secs(5));
+        sleep(Duration::from_secs(5)).await;
         s3_manager
             .delete_objects(
                 Arc::new(spec.aws_resources.s3_bucket.clone()),
@@ -589,7 +588,7 @@ pub async fn execute(
             Print("\n\n\nSTEP: delete S3 bucket\n"),
             ResetColor
         )?;
-        thread::sleep(Duration::from_secs(5));
+        sleep(Duration::from_secs(5)).await;
         s3_manager
             .delete_bucket(&spec.aws_resources.s3_bucket)
             .await
@@ -660,7 +659,7 @@ pub async fn execute(
                 .send()
                 .await
                 .unwrap();
-            thread::sleep(Duration::from_secs(2));
+            sleep(Duration::from_secs(2)).await;
         }
     }
 

@@ -851,9 +851,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        // TODO: support other platforms
         let cloudformation_asg_anchor_nodes_yaml =
-            Asset::get("cfn-templates/asg_amd64_ubuntu.yaml").unwrap();
+            Asset::get("cfn-templates/asg_ubuntu.yaml").unwrap();
         let cloudformation_asg_anchor_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_anchor_nodes_yaml.data.as_ref()).unwrap();
         let stack_names = spec
@@ -1194,7 +1193,7 @@ aws ssm start-session --region {} --target {}
         )?;
 
         let cloudformation_asg_non_anchor_nodes_yaml =
-            Asset::get("cfn-templates/asg_amd64_ubuntu.yaml").unwrap();
+            Asset::get("cfn-templates/asg_ubuntu.yaml").unwrap();
         let cloudformation_asg_non_anchor_nodes_tmpl =
             std::str::from_utf8(cloudformation_asg_non_anchor_nodes_yaml.data.as_ref()).unwrap();
         let stack_names = spec

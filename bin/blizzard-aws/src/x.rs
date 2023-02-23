@@ -1,9 +1,8 @@
-use std::{thread, time::Duration};
-
 use avalanche_types::{
     jsonrpc::client::info as client_info,
     {key, wallet},
 };
+use tokio::time::{sleep, Duration};
 
 pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     let total_rpc_eps = spec.blizzard_spec.chain_rpc_urls.len();
@@ -54,7 +53,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                     "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}' -- checking next faucet wallet",
                     e
                 );
-                thread::sleep(Duration::from_secs(5));
+                sleep(Duration::from_secs(5)).await;
                 continue;
             }
         };
@@ -151,7 +150,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                     "[WORKER #{worker_idx}] failed to get faucet wallet balance '{}'",
                     e
                 );
-                thread::sleep(Duration::from_secs(5));
+                sleep(Duration::from_secs(5)).await;
                 continue;
             }
         };
@@ -180,7 +179,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             }
             Err(e) => {
                 log::warn!("[WORKER #{worker_idx}] failed transfer {}", e);
-                thread::sleep(Duration::from_secs(5));
+                sleep(Duration::from_secs(5)).await;
             }
         }
     }
@@ -265,7 +264,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                 }
                 Err(e) => {
                     log::warn!("[WORKER #{worker_idx}-{}] failed transfer {}", i, e);
-                    thread::sleep(Duration::from_secs(5));
+                    sleep(Duration::from_secs(5)).await;
                 }
             }
         }
@@ -339,7 +338,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                     }
                     Err(e) => {
                         log::warn!("[WORKER #{worker_idx}-{}] failed transfer {}", i, e);
-                        thread::sleep(Duration::from_secs(5));
+                        sleep(Duration::from_secs(5)).await;
                     }
                 }
             }

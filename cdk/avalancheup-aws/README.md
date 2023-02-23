@@ -209,7 +209,7 @@ npx cdk deploy avalancheup-aws-asg-stack
 
 ![demo5](./img/demo5.png)
 
-See [`asg_amd64_ubuntu.yaml`](../../bin/avalancheup-aws/cfn-templates/asg_amd64_ubuntu.yaml) for the CloudFormation template.
+See [`asg_ubuntu.yaml`](../../bin/avalancheup-aws/cfn-templates/asg_ubuntu.yaml) for the CloudFormation template.
 
 ### Step 8. Check the created resources
 
