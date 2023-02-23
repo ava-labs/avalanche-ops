@@ -212,7 +212,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
             let shared_config = aws_manager::load_config(Some(meta.region.clone())).await?;
             let ec2_manager = ec2::Manager::new(&shared_config);
-            let ec2_cli = ec2_manager.client();
+
+            // TODO: debug when this blocks.....
+            sleep(Duration::from_secs(1)).await;
 
             // assume all data from EBS are never lost
             // and since we persist and retain ever generated certs
@@ -220,9 +222,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             // will only be called once per volume
             // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
             log::info!(
-                "creating NODE_ID tag to the EBS volume '{}'",
+                "addiing NODE_ID tag to the EBS volume '{}'",
                 attached_volume_id
             );
+            let ec2_cli = ec2_manager.client();
             ec2_cli
                 .create_tags()
                 .resources(attached_volume_id)
