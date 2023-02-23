@@ -39,7 +39,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
 
     let tags = fetch_tags(
-        Arc::clone(&ec2_manager_arc),
+        // Arc::clone(&ec2_manager_arc),
+        &meta.region,
         Arc::new(meta.ec2_instance_id.clone()),
     )
     .await?;
@@ -500,10 +501,21 @@ struct Tags {
 }
 
 async fn fetch_tags(
-    ec2_manager: Arc<ec2::Manager>,
+    // ec2_manager: Arc<ec2::Manager>,
+    reg: &str,
     ec2_instance_id: Arc<String>,
 ) -> io::Result<Tags> {
     log::info!("STEP: fetching tags...");
+
+    // let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
+    // create a new client as a workaround
+    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
+    let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
+    let ec2_manager = ec2::Manager::new(&shared_config);
+
+    // TODO: debug when this blocks.....
+    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
+    sleep(Duration::from_secs(1)).await;
 
     let tags = ec2_manager
         .fetch_tags(ec2_instance_id)
