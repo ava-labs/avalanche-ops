@@ -191,57 +191,59 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::info!("STEP: creating tags for EBS volume with node Id...");
 
         if let Some(v) = attached_volume.tags() {
-            let mut tag_exists = false;
+            let mut need_to_create_tag = true;
             for tg in v.iter() {
                 let k = tg.key().unwrap();
                 let v = tg.value().unwrap();
-                log::info!("'{}' volume tag found {}={}", attached_volume_id, k, v);
-                if k.eq("NODE_ID") {
-                    tag_exists = true;
+                log::info!("volume '{}' has the tag {}={}", attached_volume_id, k, v);
+                if k.eq("NODE_ID") && v.eq(&node_id.to_string()) {
+                    need_to_create_tag = false;
                     break;
                 }
             }
-            if tag_exists {
+            if !need_to_create_tag {
                 log::warn!(
-                    "volume '{}' already has NODE_ID tag -- overwriting tags",
+                    "volume '{}' already has the same NODE_ID tag",
+                    attached_volume_id
+                );
+            } else {
+                // create a new client as a workaround
+                // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
+                let shared_config = aws_manager::load_config(Some(meta.region.clone())).await?;
+                let ec2_manager = ec2::Manager::new(&shared_config);
+
+                // TODO: debug when this blocks.....
+                sleep(Duration::from_secs(1)).await;
+
+                // assume all data from EBS are never lost
+                // and since we persist and retain ever generated certs
+                // in the mounted dir, we can safely assume "create tags"
+                // will only be called once per volume
+                // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
+                log::info!(
+                    "addiing NODE_ID tag to the EBS volume '{}'",
+                    attached_volume_id
+                );
+                let ec2_cli = ec2_manager.client();
+                ec2_cli
+                    .create_tags()
+                    .resources(attached_volume_id)
+                    .tags(
+                        Tag::builder()
+                            .key(String::from("NODE_ID"))
+                            .value(node_id.to_string())
+                            .build(),
+                    )
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        Error::new(ErrorKind::Other, format!("failed create_tags {}", e))
+                    })?;
+                log::info!(
+                    "successfully added node Id tag to the EBS volume '{}'",
                     attached_volume_id
                 );
             }
-
-            // create a new client as a workaround
-            // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
-            let shared_config = aws_manager::load_config(Some(meta.region.clone())).await?;
-            let ec2_manager = ec2::Manager::new(&shared_config);
-
-            // TODO: debug when this blocks.....
-            sleep(Duration::from_secs(1)).await;
-
-            // assume all data from EBS are never lost
-            // and since we persist and retain ever generated certs
-            // in the mounted dir, we can safely assume "create tags"
-            // will only be called once per volume
-            // ref. https://docs.aws.amazon.com/cli/latest/reference/ec2/create-tags.html
-            log::info!(
-                "addiing NODE_ID tag to the EBS volume '{}'",
-                attached_volume_id
-            );
-            let ec2_cli = ec2_manager.client();
-            ec2_cli
-                .create_tags()
-                .resources(attached_volume_id)
-                .tags(
-                    Tag::builder()
-                        .key(String::from("NODE_ID"))
-                        .value(node_id.to_string())
-                        .build(),
-                )
-                .send()
-                .await
-                .map_err(|e| Error::new(ErrorKind::Other, format!("failed create_tags {}", e)))?;
-            log::info!(
-                "added node Id tag to the EBS volume '{}'",
-                attached_volume_id
-            );
         }
     }
 
