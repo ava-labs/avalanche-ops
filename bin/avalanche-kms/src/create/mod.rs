@@ -161,7 +161,7 @@ pub async fn execute(
         let mut tags = HashMap::new();
         tags.insert(
             String::from("Name"),
-            format!("{key_name_prefix}-{:02}", i + 1),
+            format!("{key_name_prefix}-{:03}", i + 1),
         );
         let cmk = key::secp256k1::kms::aws::Cmk::create(kms_manager.clone(), tags)
             .await
