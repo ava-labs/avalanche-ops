@@ -437,7 +437,7 @@ impl Spec {
                 }
                 genesis_chain_config.fee_manager_config =
                     Some(subnet_evm_genesis::FeeManagerConfig {
-                        allow_list_admins: Some(admin_addresses),
+                        allow_list_admins: Some(admin_addresses.clone()),
                         ..subnet_evm_genesis::FeeManagerConfig::default()
                     });
 
@@ -452,9 +452,12 @@ impl Spec {
                         * 1000;
                 }
 
+                let mut subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
+                subnet_evm_chain_config.priority_regossip_addresses = Some(admin_addresses.clone());
+
                 let subnet_evm = SubnetEvm {
                     genesis,
-                    chain_config: subnet_evm_chain_config::Config::default(),
+                    chain_config: subnet_evm_chain_config,
                     subnet_config,
                 };
                 let mut subnet_evms = BTreeMap::new();
