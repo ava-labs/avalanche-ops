@@ -31,8 +31,22 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     let meta = fetch_metadata().await?;
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     let aws_creds = load_aws_credential(&meta.region).await?;
 
     //
@@ -161,8 +175,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     //
     //
-    let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
-    let asg_manager_arc = Arc::new(aws_creds.asg_manager.clone());
     let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
     let (
         mut avalanchego_config,
@@ -232,14 +244,27 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             spec.subnet_evms.is_some(),
         )
     };
+    create_config_dirs(&avalanchego_config, &coreth_chain_config)?;
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     if Path::new(&fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path).exists() {
         log::warn!("overwriting avalanche-telemetry-cloudwatch rules file (already exists)")
     }
     metrics_rules.sync(&fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path)?;
 
-    create_config_dirs(&avalanchego_config, &coreth_chain_config)?;
-
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     // always overwrite in case we update tags
     create_cloudwatch_config(
         &fetched_tags.id,
@@ -305,6 +330,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let attached_volume = volumes[0].clone();
     let attached_volume_id = attached_volume.volume_id().unwrap();
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
         aws_creds.kms_manager.clone(),
@@ -325,6 +357,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         newly_generated
     );
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     if newly_generated {
         log::info!("STEP: backing up newly generated certificates...");
 
@@ -341,6 +380,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             .await?;
     }
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     if newly_generated {
         log::info!("STEP: creating tags for EBS volume with node Id...");
 
@@ -402,6 +448,15 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     }
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
+    let asg_manager_arc = Arc::new(aws_creds.asg_manager.clone());
     // check if the file "exists" for idempotency
     if avalanchego_config.is_custom_network()
         && avalanchego_config.genesis.is_some()
@@ -409,6 +464,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     {
         log::info!("STEP: running discover/genesis updates for custom network...");
 
+        //
+        //
+        //
+        //
+        //
+        //
+        //
         if matches!(fetched_tags.node_kind, node::Kind::Anchor) {
             let bootstrappiong_anchor_node_s3_keys =
                 discover_other_bootstrapping_anchor_nodes_from_s3(
@@ -441,6 +503,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e)))?;
         }
 
+        //
+        //
+        //
+        //
+        //
+        //
+        //
         if matches!(fetched_tags.node_kind, node::Kind::NonAnchor) {
             download_genesis_from_ready_anchor_nodes(
                 Arc::clone(&s3_manager_arc),
@@ -485,6 +554,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         }
     }
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     stop_and_restart_avalanche_systemd_service(
         "/usr/local/bin/avalanchego",
         &avalanchego_config,
@@ -492,6 +568,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     )
     .await?;
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     if metrics_fetch_interval_seconds > 0 {
         stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
             "/usr/local/bin/avalanche-telemetry-cloudwatch",
@@ -504,6 +587,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::info!("skipping avalanche-telemetry-cloudwatch setup since interval is 0");
     }
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     let http_scheme = {
         if avalanchego_config.http_tls_enabled.is_some()
             && avalanchego_config
@@ -539,6 +629,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         )));
     }
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     // assume the tag value is static
     // assume we don't change on-demand to spot, or vice versa
     // if someone changes, tag needs to be updated manually and restart avalanched
@@ -553,6 +650,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::info!("skipped monitoring the spot instance-action...");
     }
 
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     log::info!("STEP: blocking on handles via JoinHandle");
     for handle in handles {
         handle.await.map_err(|e| {
