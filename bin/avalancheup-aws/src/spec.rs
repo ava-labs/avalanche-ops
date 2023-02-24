@@ -182,11 +182,16 @@ pub struct DefaultSpecOption {
     pub subnet_evms: usize,
 
     pub subnet_evm_gas_limit: u64,
-    pub subnet_evm_min_max_gas_cost: u64,
+    pub subnet_evm_target_block_rate: u64,
+    pub subnet_evm_min_base_fee: u64,
+    pub subnet_evm_target_gas: u64,
+    pub subnet_evm_base_fee_change_denominator: u64,
+    pub subnet_evm_min_block_gas_cost: u64,
+    pub subnet_evm_max_block_gas_cost: u64,
+    pub subnet_evm_block_gas_cost_step: u64,
 
     pub subnet_evm_auto_contract_deployer_allow_list_config: bool,
     pub subnet_evm_auto_contract_native_minter_config: bool,
-    pub subnet_evm_auto_fee_manager_config: bool,
     pub subnet_evm_config_proposer_min_block_delay_seconds: u64,
 
     pub xsvms: usize,
@@ -381,52 +386,63 @@ impl Spec {
                 let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys_read_only)
                     .expect("failed to generate genesis");
 
+                let mut genesis_chain_config = subnet_evm_genesis::ChainConfig::default();
+
+                let mut fee_config = subnet_evm_genesis::FeeConfig::default();
+                if opts.subnet_evm_gas_limit > 0 {
+                    fee_config.gas_limit = Some(opts.subnet_evm_gas_limit);
+                    genesis.gas_limit = primitive_types::U256::from(opts.subnet_evm_gas_limit);
+                }
+                if opts.subnet_evm_target_block_rate > 0 {
+                    fee_config.target_block_rate = Some(opts.subnet_evm_target_block_rate);
+                }
+                if opts.subnet_evm_min_base_fee > 0 {
+                    fee_config.min_base_fee = Some(opts.subnet_evm_min_base_fee);
+                }
+                if opts.subnet_evm_target_gas > 0 {
+                    fee_config.target_gas = Some(opts.subnet_evm_target_gas);
+                }
+                if opts.subnet_evm_base_fee_change_denominator > 0 {
+                    fee_config.base_fee_change_denominator =
+                        Some(opts.subnet_evm_base_fee_change_denominator);
+                }
+                if opts.subnet_evm_min_block_gas_cost > 0 {
+                    fee_config.min_block_gas_cost = Some(opts.subnet_evm_min_block_gas_cost);
+                }
+                if opts.subnet_evm_max_block_gas_cost > 0 {
+                    fee_config.max_block_gas_cost = Some(opts.subnet_evm_max_block_gas_cost);
+                }
+                if opts.subnet_evm_block_gas_cost_step > 0 {
+                    fee_config.block_gas_cost_step = Some(opts.subnet_evm_block_gas_cost_step);
+                }
+                genesis_chain_config.fee_config = Some(fee_config);
+
                 let mut admin_addresses: Vec<String> = Vec::new();
                 for key_info in test_keys_infos.iter() {
                     admin_addresses.push(key_info.eth_address.clone());
                 }
-
-                let mut chain_config = subnet_evm_genesis::ChainConfig::default();
-                if opts.subnet_evm_gas_limit > 0 {
-                    let mut fee_config = subnet_evm_genesis::FeeConfig::default();
-                    fee_config.gas_limit = Some(opts.subnet_evm_gas_limit);
-                    chain_config.fee_config = Some(fee_config);
-
-                    genesis.gas_limit = primitive_types::U256::from(opts.subnet_evm_gas_limit);
-                }
-                if opts.subnet_evm_min_max_gas_cost > 0 {
-                    if let Some(chain_config_fee_config) = &chain_config.fee_config {
-                        let mut chain_config_fee_config = chain_config_fee_config.clone();
-                        chain_config_fee_config.min_block_gas_cost =
-                            Some(opts.subnet_evm_min_max_gas_cost);
-                        chain_config_fee_config.max_block_gas_cost =
-                            Some(opts.subnet_evm_min_max_gas_cost);
-                        chain_config.fee_config = Some(chain_config_fee_config);
-                    }
-                }
                 if opts.subnet_evm_auto_contract_deployer_allow_list_config {
-                    chain_config.contract_deployer_allow_list_config =
+                    genesis_chain_config.contract_deployer_allow_list_config =
                         Some(subnet_evm_genesis::ContractDeployerAllowListConfig {
                             allow_list_admins: Some(admin_addresses.clone()),
                             ..subnet_evm_genesis::ContractDeployerAllowListConfig::default()
                         });
                 }
                 if opts.subnet_evm_auto_contract_native_minter_config {
-                    chain_config.contract_native_minter_config =
+                    genesis_chain_config.contract_native_minter_config =
                         Some(subnet_evm_genesis::ContractNativeMinterConfig {
                             allow_list_admins: Some(admin_addresses.clone()),
                             ..subnet_evm_genesis::ContractNativeMinterConfig::default()
                         });
                 }
-                if opts.subnet_evm_auto_fee_manager_config {
-                    chain_config.fee_manager_config = Some(subnet_evm_genesis::FeeManagerConfig {
+                genesis_chain_config.fee_manager_config =
+                    Some(subnet_evm_genesis::FeeManagerConfig {
                         allow_list_admins: Some(admin_addresses),
                         ..subnet_evm_genesis::FeeManagerConfig::default()
                     });
-                }
-                genesis.config = Some(chain_config);
 
-                let chain_config = subnet_evm_chain_config::Config::default();
+                genesis.config = Some(genesis_chain_config);
+
                 let mut subnet_config = subnet::config::Config::default();
                 if opts.subnet_evm_config_proposer_min_block_delay_seconds > 0 {
                     subnet_config.proposer_min_block_delay = opts
@@ -438,7 +454,7 @@ impl Spec {
 
                 let subnet_evm = SubnetEvm {
                     genesis,
-                    chain_config,
+                    chain_config: subnet_evm_chain_config::Config::default(),
                     subnet_config,
                 };
                 let mut subnet_evms = BTreeMap::new();

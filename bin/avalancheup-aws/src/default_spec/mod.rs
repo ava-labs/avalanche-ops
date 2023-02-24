@@ -311,9 +311,63 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
-            Arg::new("SUBNET_EVM_MIN_MAX_GAS_COST")
-                .long("subnet-evm-min-max-gas-cost")
-                .help("Sets non-zero to set the same value for subnet-evm min and max gas cost (in genesis), useful for load testing")
+            Arg::new("SUBNET_EVM_TARGET_BLOCK_RATE")
+                .long("subnet-evm-target-block-rate")
+                .help("Sets non-zero to set subnet-evm target block rate (in genesis)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_MIN_BASE_FEE")
+                .long("subnet-evm-min-base-fee")
+                .help("Sets non-zero to set subnet-evm min base fee (in genesis)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_TARGET_GAS")
+                .long("subnet-evm-target-gas")
+                .help("Sets non-zero to set subnet-evm target gas (in genesis)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_BASE_FEE_CHANGE_DENOMINATOR")
+                .long("subnet-evm-base-fee-change-denominator")
+                .help("Sets non-zero to set subnet-evm base fee change denominator (in genesis)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_MIN_BLOCK_GAS_COST")
+                .long("subnet-evm-min-block-gas-cost")
+                .help("Sets non-zero to set subnet-evm min block gas cost (in genesis)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_MAX_BLOCK_GAS_COST")
+                .long("subnet-evm-max-block-gas-cost")
+                .help("Sets non-zero to set subnet-evm max block gas cost (in genesis)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_BLOCK_GAS_COST_STEP")
+                .long("subnet-evm-block-gas-cost-step")
+                .help("Sets non-zero to set subnet-evm block gas cost step (in genesis)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
@@ -330,13 +384,6 @@ pub fn command() -> Command {
             Arg::new("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG")
                 .long("subnet-evm-auto-contract-native-minter-config")
                 .help("Sets to auto-populate subnet-evm native minter config")
-                .required(false)
-                .num_args(0),
-        )
-        .arg(
-            Arg::new("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG")
-                .long("subnet-evm-auto-fee-manager-config")
-                .help("Sets to auto-populate subnet-evm fee manager config")
                 .required(false)
                 .num_args(0),
         )
