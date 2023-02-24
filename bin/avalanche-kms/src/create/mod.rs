@@ -250,5 +250,12 @@ pub async fn execute(
         println!("{} delete --region={region} --pending-windows-in-days 7 --unsafe-skip-prompt --key-arn {}", exec_path.display(), cmk.id.clone().unwrap());
     }
 
+    println!("\n# [UNSAFE] to fund the keys");
+    let mut addresses = Vec::new();
+    for cmk in cmks.iter() {
+        addresses.push(cmk.eth_address.clone());
+    }
+    println!("{} evm-transfer-from-hotkey --chain-rpc-url={evm_chain_rpc_url} --transferer-key=[FUNDING_HOTKEY] --transfer-amount-in-avax \"3000000\" --transferee-addresses {}", exec_path.display(), addresses.join(","));
+
     Ok(())
 }
