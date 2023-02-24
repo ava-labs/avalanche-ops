@@ -255,7 +255,7 @@ pub async fn execute(
     for cmk in cmks.iter() {
         addresses.push(cmk.eth_address.clone());
     }
-    println!("{} evm-transfer-from-hotkey --chain-rpc-url={evm_chain_rpc_url} --transferer-key=[FUNDING_HOTKEY] --transfer-amount-in-avax \"3000000\" --transferee-addresses {}", exec_path.display(), addresses.join(","));
+    println!("{} evm-transfer-from-hotkey --chain-rpc-url={evm_chain_rpc_url} --transferer-key=[FUNDING_HOTKEY] --transfer-amount-in-avax \"30000000\" --transferee-addresses {}", exec_path.display(), addresses.join(","));
 
     Ok(())
 }
