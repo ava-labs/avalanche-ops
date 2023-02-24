@@ -175,7 +175,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     //
     //
-    let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
     let (
         mut avalanchego_config,
         coreth_chain_config,
@@ -200,14 +199,40 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             false,
         )
     } else {
-        let spec = download_and_update_local_spec(
-            Arc::clone(&s3_manager_arc),
+        log::info!("STEP: downloading avalancheup spec file from S3...");
+        let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
+        s3::spawn_get_object(
+            aws_creds.s3_manager.clone(),
             &fetched_tags.s3_bucket,
-            &fetched_tags.id,
-            &public_ipv4,
-            &fetched_tags.avalancheup_spec_path,
+            &avalancheup_aws::spec::StorageNamespace::ConfigFile(fetched_tags.id.clone()).encode(),
+            &tmp_spec_file_path,
         )
-        .await?;
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+
+        let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
+
+        // always overwrite since S3 is the single source of truths!
+        // local updates will be gone! make sure update the S3 file!
+        if let Some(config_file) = &spec.avalanchego_config.config_file {
+            // if exists, load the existing one in case manually updated
+            if Path::new(&config_file).exists() {
+                log::warn!(
+                    "config-file '{}' already exists -- overwriting!",
+                    config_file
+                );
+            }
+        }
+
+        // always "only" overwrite public-ip flag in case of EC2 instance replacement
+        spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
+        spec.avalanchego_config.sync(None)?;
+
+        // always overwrites in case we update and upload to s3
+        // "avalanched" never updates "spec" file, runs in read-only mode
+        fs::copy(&tmp_spec_file_path, &fetched_tags.avalancheup_spec_path)?;
+        fs::remove_file(&tmp_spec_file_path)?;
+
         if spec.version != avalancheup_aws::spec::VERSION {
             return Err(Error::new(
                 ErrorKind::Other,
@@ -457,6 +482,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
     let asg_manager_arc = Arc::new(aws_creds.asg_manager.clone());
+    let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
     // check if the file "exists" for idempotency
     if avalanchego_config.is_custom_network()
         && avalanchego_config.genesis.is_some()
@@ -756,53 +782,6 @@ struct Tags {
     avalanche_data_volume_path: String,
     avalanche_data_volume_ebs_device_name: String,
     eip_file_path: String,
-}
-
-async fn download_and_update_local_spec(
-    s3_manager: Arc<s3::Manager>,
-    s3_bucket: &str,
-    id: &str,
-    public_ipv4: &str,
-    avalancheup_spec_path: &str,
-) -> io::Result<avalancheup_aws::spec::Spec> {
-    log::info!("STEP: downloading avalancheup spec file from S3...");
-
-    let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
-
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
-    s3::spawn_get_object(
-        s3_manager.to_owned(),
-        s3_bucket,
-        &avalancheup_aws::spec::StorageNamespace::ConfigFile(id.to_string()).encode(),
-        &tmp_spec_file_path,
-    )
-    .await
-    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
-
-    let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
-
-    // always overwrite since S3 is the single source of truths!
-    // local updates will be gone! make sure update the S3 file!
-    if let Some(config_file) = &spec.avalanchego_config.config_file {
-        // if exists, load the existing one in case manually updated
-        if Path::new(&config_file).exists() {
-            log::warn!(
-                "config-file '{}' already exists -- overwriting!",
-                config_file
-            );
-        }
-    }
-
-    // always "only" overwrite public-ip flag in case of EC2 instance replacement
-    spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
-    spec.avalanchego_config.sync(None)?;
-
-    // always overwrites in case we update and upload to s3
-    // "avalanched" never updates "spec" file, runs in read-only mode
-    fs::copy(&tmp_spec_file_path, &avalancheup_spec_path)?;
-    fs::remove_file(&tmp_spec_file_path)?;
-
-    Ok(spec)
 }
 
 fn write_default_avalanche_config(
