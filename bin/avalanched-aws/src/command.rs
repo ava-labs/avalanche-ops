@@ -368,11 +368,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         fetched_tags.kms_cmk_arn.to_string(),
         fetched_tags.aad_tag.to_string(),
     );
-    let certs_manager = certs_manager::Manager {
-        envelope_manager,
-        s3_manager: aws_creds.s3_manager.clone(),
-        s3_bucket: fetched_tags.s3_bucket.to_string(),
-    };
     let tls_key_path = avalanchego_config.staking_tls_key_file.clone().unwrap();
     let tls_cert_path = avalanchego_config.staking_tls_cert_file.clone().unwrap();
     let (node_id, newly_generated) = x509::load_or_generate_pem(&tls_key_path, &tls_cert_path)?;
@@ -395,14 +390,37 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         let s3_key_tls_key = format!("{}/pki/{}.key.zstd.encrypted", fetched_tags.id, node_id);
         let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", fetched_tags.id, node_id);
 
-        certs_manager
-            .upload(
-                &tls_key_path,
-                &tls_cert_path,
-                &s3_key_tls_key,
-                &s3_key_tls_cert,
+        log::info!("uploading key file {}", s3_key_tls_key);
+        s3::spawn_compress_seal_put_object(
+            aws_creds.s3_manager.clone(),
+            envelope_manager.clone(),
+            &s3_key_tls_key,
+            &fetched_tags.s3_bucket,
+            &s3_key_tls_cert,
+        )
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed spawn_compress_seal_put_object tls_key_path: {}", e),
             )
-            .await?;
+        })?;
+
+        log::info!("uploading cert file {}", tls_cert_path);
+        s3::spawn_compress_seal_put_object(
+            aws_creds.s3_manager.clone(),
+            envelope_manager.clone(),
+            &s3_key_tls_key,
+            &fetched_tags.s3_bucket,
+            &s3_key_tls_cert,
+        )
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
+            )
+        })?;
     }
 
     //
