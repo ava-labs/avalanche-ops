@@ -251,15 +251,58 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         metrics_fetch_interval_seconds as u32,
     )?;
 
-    let attached_volume = find_attached_volume(
-        // Arc::clone(&ec2_manager_arc),
-        &meta.region,
-        &fetched_tags.avalanche_data_volume_ebs_device_name,
-        &meta.ec2_instance_id,
-        &meta.az,
-        &fetched_tags.id,
-    )
-    .await?;
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // ref. <https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html>
+    let filters: Vec<Filter> = vec![
+        Filter::builder()
+            .set_name(Some(String::from("attachment.device")))
+            .set_values(Some(vec![fetched_tags
+                .avalanche_data_volume_ebs_device_name
+                .clone()]))
+            .build(),
+        // ensures the call only returns the volume that is attached to this local instance
+        Filter::builder()
+            .set_name(Some(String::from("attachment.instance-id")))
+            .set_values(Some(vec![meta.ec2_instance_id.clone()]))
+            .build(),
+        // ensures the call only returns the volume that is currently attached
+        Filter::builder()
+            .set_name(Some(String::from("attachment.status")))
+            .set_values(Some(vec![String::from("attached")]))
+            .build(),
+        // ensures the call only returns the volume that is currently in use
+        Filter::builder()
+            .set_name(Some(String::from("status")))
+            .set_values(Some(vec![String::from("in-use")]))
+            .build(),
+        Filter::builder()
+            .set_name(Some(String::from("availability-zone")))
+            .set_values(Some(vec![meta.az.clone()]))
+            .build(),
+        Filter::builder()
+            .set_name(Some(String::from("tag:Id")))
+            .set_values(Some(vec![fetched_tags.id.clone()]))
+            .build(),
+    ];
+    let volumes = aws_creds
+        .ec2_manager
+        .describe_volumes(Some(filters))
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed describe_volumes {}", e)))?;
+    log::info!("found {} attached volume", volumes.len());
+    if volumes.len() != 1 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!("unexpected {} volumes found", volumes.len()),
+        ));
+    }
+    let attached_volume = volumes[0].clone();
     let attached_volume_id = attached_volume.volume_id().unwrap();
 
     log::info!("STEP: setting up certificates...");
@@ -797,72 +840,6 @@ fn create_cloudwatch_config(
         ]),
         metrics_fetch_interval_seconds,
     )
-}
-
-async fn find_attached_volume(
-    // ec2_manager: Arc<ec2::Manager>,
-    reg: &str,
-    avalanche_data_volume_ebs_device_name: &str,
-    ec2_instance_id: &str,
-    az: &str,
-    id: &str,
-) -> io::Result<Volume> {
-    // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
-    let filters: Vec<Filter> = vec![
-        Filter::builder()
-            .set_name(Some(String::from("attachment.device")))
-            .set_values(Some(
-                vec![avalanche_data_volume_ebs_device_name.to_string()],
-            ))
-            .build(),
-        // ensures the call only returns the volume that is attached to this local instance
-        Filter::builder()
-            .set_name(Some(String::from("attachment.instance-id")))
-            .set_values(Some(vec![ec2_instance_id.to_string()]))
-            .build(),
-        // ensures the call only returns the volume that is currently attached
-        Filter::builder()
-            .set_name(Some(String::from("attachment.status")))
-            .set_values(Some(vec![String::from("attached")]))
-            .build(),
-        // ensures the call only returns the volume that is currently in use
-        Filter::builder()
-            .set_name(Some(String::from("status")))
-            .set_values(Some(vec![String::from("in-use")]))
-            .build(),
-        Filter::builder()
-            .set_name(Some(String::from("availability-zone")))
-            .set_values(Some(vec![az.to_string()]))
-            .build(),
-        Filter::builder()
-            .set_name(Some(String::from("tag:Id")))
-            .set_values(Some(vec![id.to_string()]))
-            .build(),
-    ];
-
-    // let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
-    // create a new client as a workaround
-    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
-    let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
-    let ec2_manager = ec2::Manager::new(&shared_config);
-
-    // TODO: debug when this blocks.....
-    // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
-    sleep(Duration::from_secs(1)).await;
-
-    let volumes = ec2_manager
-        .describe_volumes(Some(filters))
-        .await
-        .map_err(|e| Error::new(ErrorKind::Other, format!("failed describe_volumes {}", e)))?;
-    log::info!("found {} attached volume", volumes.len());
-    if volumes.len() != 1 {
-        return Err(Error::new(
-            ErrorKind::Other,
-            format!("unexpected {} volumes found", volumes.len()),
-        ));
-    }
-
-    Ok(volumes[0].clone())
 }
 
 /// To be called by each bootstrapping anchor node: Each anchor node publishes
