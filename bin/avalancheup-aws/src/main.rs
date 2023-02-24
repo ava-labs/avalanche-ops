@@ -57,16 +57,6 @@ async fn main() -> io::Result<()> {
                 .unwrap_or(&0)
                 .clone();
 
-            let subnet_evm_gas_limit = sub_matches
-                .get_one::<u64>("SUBNET_EVM_GAS_LIMIT")
-                .unwrap_or(&0)
-                .clone();
-
-            let subnet_evm_min_max_gas_cost = sub_matches
-                .get_one::<u64>("SUBNET_EVM_MIN_MAX_GAS_COST")
-                .unwrap_or(&0)
-                .clone();
-
             let xsvms = sub_matches.get_one::<usize>("XSVMS").unwrap_or(&0).clone();
 
             let opt = avalancheup_aws::spec::DefaultSpecOption {
@@ -188,15 +178,43 @@ async fn main() -> io::Result<()> {
 
                 subnet_evms,
 
-                subnet_evm_gas_limit,
-                subnet_evm_min_max_gas_cost,
+                subnet_evm_gas_limit: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_GAS_LIMIT")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_target_block_rate: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_TARGET_BLOCK_RATE")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_min_base_fee: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_MIN_BASE_FEE")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_target_gas: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_TARGET_GAS")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_base_fee_change_denominator: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_BASE_FEE_CHANGE_DENOMINATOR")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_min_block_gas_cost: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_MIN_BLOCK_GAS_COST")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_max_block_gas_cost: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_MAX_BLOCK_GAS_COST")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_block_gas_cost_step: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_BLOCK_GAS_COST_STEP")
+                    .unwrap_or(&0)
+                    .clone(),
 
                 subnet_evm_auto_contract_deployer_allow_list_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
                 subnet_evm_auto_contract_native_minter_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
-                subnet_evm_auto_fee_manager_config: sub_matches
-                    .get_flag("SUBNET_EVM_AUTO_FEE_MANAGER_CONFIG"),
                 subnet_evm_config_proposer_min_block_delay_seconds: sub_matches
                     .get_one::<u64>("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY_SECONDS")
                     .unwrap_or(&1)
