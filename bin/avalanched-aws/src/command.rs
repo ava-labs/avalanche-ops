@@ -20,7 +20,7 @@ use aws_manager::{
     kms::{self, envelope},
     s3,
 };
-use aws_sdk_ec2::model::{Filter, Tag, Volume};
+use aws_sdk_ec2::model::{Filter, Tag};
 use tokio::time::{sleep, Duration};
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
