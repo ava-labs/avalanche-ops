@@ -516,16 +516,113 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         //
         //
         if matches!(fetched_tags.node_kind, node::Kind::Anchor) {
-            let bootstrappiong_anchor_node_s3_keys =
-                discover_other_bootstrapping_anchor_nodes_from_s3(
-                    &meta.ec2_instance_id,
-                    &node_id.to_string(),
-                    &public_ipv4,
-                    Arc::clone(&s3_manager_arc),
-                    &fetched_tags.s3_bucket,
-                    &fetched_tags.avalancheup_spec_path,
+            // To be called by each bootstrapping anchor node: Each anchor node publishes
+            // the anchor node information to the S3, and waits. And each anchor node
+            // lists all keys from the bootstrapping s3 directory for its peer discovery.
+            // The function returns all s3 keys that contains the anchor node information.
+            log::info!(
+                "STEP: publishing bootstrapping local anchor node information for discovery..."
+            );
+            let spec = avalancheup_aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
+            let http_scheme = {
+                if spec.avalanchego_config.http_tls_enabled.is_some()
+                    && spec
+                        .avalanchego_config
+                        .http_tls_enabled
+                        .expect("unexpected None avalanchego_config.http_tls_enabled")
+                {
+                    "https"
+                } else {
+                    "http"
+                }
+            };
+            let local_node = avalancheup_aws::spec::Node::new(
+                node::Kind::Anchor,
+                &meta.ec2_instance_id,
+                &node_id.to_string(),
+                &public_ipv4,
+                http_scheme,
+                spec.avalanchego_config.http_port,
+            );
+
+            log::info!(
+                "publishing the loaded local anchor node information for discovery:\n{}",
+                local_node
+                    .encode_yaml()
+                    .expect("failed to encode node Info")
+            );
+
+            let node_info = avalancheup_aws::spec::NodeInfo::new(
+                local_node.clone(),
+                spec.avalanchego_config.clone(),
+                spec.coreth_chain_config.clone(),
+            );
+            let node_info_path = random_manager::tmp_path(10, Some(".yaml"))?;
+            node_info.sync(node_info_path.clone()).unwrap();
+
+            s3::spawn_put_object(
+                aws_creds.s3_manager.clone(),
+                node_info_path.as_str(),
+                &fetched_tags.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNode(
+                    spec.id.clone(),
+                    local_node.clone(),
                 )
-                .await?;
+                .encode(),
+            )
+            .await
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e)))?;
+
+            fs::remove_file(node_info_path)?;
+
+            log::info!("waiting some time for other bootstrapping anchor nodes to start...");
+            sleep(Duration::from_secs(30)).await; // enough time for all anchor nodes up to be
+
+            let target_nodes = spec.machine.anchor_nodes.unwrap();
+            log::info!("waiting for all other seed/bootstrapping anchor nodes to publish their own (expected total {target_nodes} nodes)");
+
+            let s3_key_prefix = s3::append_slash(
+                &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(
+                    spec.id,
+                )
+                .encode(),
+            );
+
+            log::info!("listing s3 for other anchor nodes with the prefix {s3_key_prefix}");
+            let mut objects: Vec<aws_sdk_s3::model::Object>;
+            loop {
+                sleep(Duration::from_secs(20)).await;
+
+                objects = s3::spawn_list_objects(
+                    aws_creds.s3_manager.clone(),
+                    &fetched_tags.s3_bucket,
+                    Some(s3_key_prefix.clone()),
+                )
+                .await
+                .map_err(|e| {
+                    Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
+                })?;
+
+                log::info!(
+                    "{} seed/bootstrapping anchor nodes are ready (expecting {} nodes)",
+                    objects.len(),
+                    target_nodes
+                );
+
+                if objects.len() as u32 >= target_nodes {
+                    break;
+                }
+            }
+
+            let mut bootstrappiong_anchor_node_s3_keys: Vec<String> = Vec::new();
+            for obj in objects.iter() {
+                let s3_key = obj.key().expect("unexpected None s3 object");
+                bootstrappiong_anchor_node_s3_keys.push(s3_key.to_string());
+            }
+            // s3 API should return the sorted list
+            // in the descending order of "last_modified" timestamps
+            // but to make sure, sort in lexicographical order
+            bootstrappiong_anchor_node_s3_keys.sort();
 
             merge_bootstrapping_anchor_nodes_to_write_genesis(
                 bootstrappiong_anchor_node_s3_keys,
@@ -555,25 +652,150 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         //
         //
         if matches!(fetched_tags.node_kind, node::Kind::NonAnchor) {
-            download_genesis_from_ready_anchor_nodes(
-                Arc::clone(&s3_manager_arc),
-                &fetched_tags.s3_bucket,
-                &fetched_tags.avalancheup_spec_path,
-            )
-            .await?;
+            log::info!("STEP: downloading genesis file from S3 (updated from other anchor nodes)");
 
+            let spec = avalancheup_aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
+            let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
+
+            s3::spawn_get_object(
+                aws_creds.s3_manager.clone(),
+                &fetched_tags.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
+                &tmp_genesis_path,
+            )
+            .await
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+
+            fs::copy(
+                &tmp_genesis_path,
+                spec.avalanchego_config.clone().genesis.unwrap(),
+            )?;
+            fs::remove_file(&tmp_genesis_path)?;
+
+            // Discover ready anchor nodes from S3 and returns the
+            // combined list of bootstrap Ids and Ips.
+            // mainnet/other pre-defined test nets have hard-coded anchor nodes
+            // thus no need for anchor nodes.
+            // Assume new anchor nodes statically remap existing node Ids
+            // and publish itself with the new S3 key that has a new IP.
             log::info!(
                 "non anchor nodes discover anchor nodes from {:?}",
                 anchor_asg_names
             );
-            let (bootstrap_ids, bootstrap_ips) = discover_ready_anchor_nodes_from_s3(
-                Arc::clone(&ec2_manager_arc),
-                anchor_asg_names,
-                Arc::clone(&s3_manager_arc),
-                &fetched_tags.s3_bucket,
-                &fetched_tags.avalancheup_spec_path,
-            )
-            .await?;
+
+            log::info!("STEP: listing S3 directory to discover ready anchor nodes...");
+
+            let spec = avalancheup_aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
+
+            // "avalanche-ops" should always set up anchor nodes first
+            // so here we assume anchor nodes are already set up
+            // and their information is already available via shared,
+            // remote storage for service discovery
+            // so that we block non-anchor nodes until anchor nodes are ready
+            //
+            // always send a new "list_objects" on remote storage
+            // rather than relying on potentially stale (not via "spec")
+            // in case the member lists for "anchor" nodes becomes stale
+            // (e.g., machine replacement in "anchor" nodes ASG)
+            //
+            // TODO: handle stale anchor nodes by heartbeats timestamps
+            let target_nodes = spec
+                .machine
+                .anchor_nodes
+                .expect("unexpected None machine.anchor_nodes for custom network");
+
+            let s3_key_prefix = s3::append_slash(
+                &avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
+                    spec.id.clone(),
+                )
+                .encode(),
+            );
+            let mut objects: Vec<aws_sdk_s3::model::Object>;
+            loop {
+                sleep(Duration::from_secs(20)).await;
+
+                objects = s3::spawn_list_objects(
+                    aws_creds.s3_manager.clone(),
+                    &fetched_tags.s3_bucket,
+                    Some(s3_key_prefix.clone()),
+                )
+                .await
+                .map_err(|e| {
+                    Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
+                })?;
+
+                log::info!(
+                    "{} anchor nodes are ready (expecting {} nodes)",
+                    objects.len(),
+                    target_nodes
+                );
+
+                if objects.len() as u32 >= target_nodes {
+                    break;
+                }
+            }
+
+            let mut s3_keys: Vec<String> = Vec::new();
+            for obj in objects.iter() {
+                let s3_key = obj.key().expect("unexpected None s3 object");
+                s3_keys.push(s3_key.to_string());
+            }
+            // s3 API should return the sorted list
+            // in the descending order of "last_modified" timestamps
+            // but to make sure, sort in lexicographical order
+            s3_keys.sort();
+
+            // now delete old/terminated instances that were anchor nodes
+            let mut running_machine_ids = HashSet::new();
+            for anchor_asg_name in anchor_asg_names.iter() {
+                log::info!("listing anchor node ASG {anchor_asg_name}");
+                let droplets = aws_creds
+                    .ec2_manager
+                    .list_asg(anchor_asg_name)
+                    .await
+                    .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
+                log::info!(
+                    "listed anchor node ASG {anchor_asg_name} with {} droplets",
+                    droplets.len()
+                );
+                for d in droplets.iter() {
+                    log::info!("found droplet {} in anchor node ASG", d.instance_id);
+                    running_machine_ids.insert(d.instance_id.clone());
+                }
+            }
+
+            let mut bootstrap_ids: Vec<String> = vec![];
+            let mut bootstrap_ips: Vec<String> = vec![];
+            for s3_key in s3_keys.iter() {
+                // just parse the s3 key name
+                // to reduce "s3_manager.get_object" call volume
+                let ready_anchor_node =
+                    avalancheup_aws::spec::StorageNamespace::parse_node_from_path(s3_key)?;
+
+                let machine_id = ready_anchor_node.machine_id;
+                if !running_machine_ids.contains(&machine_id) {
+                    log::warn!(
+                        "ready anchor node '{}' but machine id {} not found in ASG (likely terminated)",
+                        ready_anchor_node.node_id,
+                        machine_id
+                    );
+                    continue;
+                }
+
+                log::info!(
+                    "ready anchor node '{}' and machine id {} found in ASG",
+                    ready_anchor_node.node_id,
+                    machine_id
+                );
+
+                bootstrap_ids.push(ready_anchor_node.node_id);
+
+                // assume all nodes in the network use the same ports
+                // ref. "avalanchego/config.StakingPortKey" default value is "9651"
+                let staking_port = spec.avalanchego_config.staking_port;
+                bootstrap_ips.push(format!("{}:{}", ready_anchor_node.public_ip, staking_port));
+            }
+            log::info!("found {} seed nodes that are ready", bootstrap_ids.len());
 
             if bootstrap_ids.is_empty() {
                 log::warn!("custom network but non anchor node cannot discover any anchor nodes for bootstrap Ids");
@@ -943,121 +1165,6 @@ fn create_cloudwatch_config(
     )
 }
 
-/// To be called by each bootstrapping anchor node: Each anchor node publishes
-/// the anchor node information to the S3, and waits. And each anchor node
-/// lists all keys from the bootstrapping s3 directory for its peer discovery.
-/// The function returns all s3 keys that contains the anchor node information.
-async fn discover_other_bootstrapping_anchor_nodes_from_s3(
-    local_ec2_instance_id: &str,
-    local_node_id: &str,
-    local_public_ipv4: &str,
-    s3_manager: Arc<s3::Manager>,
-    s3_bucket: &str,
-    avalancheup_spec_path: &str,
-) -> io::Result<Vec<String>> {
-    log::info!("STEP: publishing bootstrapping local anchor node information for discovery...");
-
-    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path)?;
-
-    let http_scheme = {
-        if spec.avalanchego_config.http_tls_enabled.is_some()
-            && spec
-                .avalanchego_config
-                .http_tls_enabled
-                .expect("unexpected None avalanchego_config.http_tls_enabled")
-        {
-            "https"
-        } else {
-            "http"
-        }
-    };
-    let local_node = avalancheup_aws::spec::Node::new(
-        node::Kind::Anchor,
-        local_ec2_instance_id,
-        local_node_id,
-        local_public_ipv4,
-        http_scheme,
-        spec.avalanchego_config.http_port,
-    );
-
-    log::info!(
-        "publishing the loaded local anchor node information for discovery:\n{}",
-        local_node
-            .encode_yaml()
-            .expect("failed to encode node Info")
-    );
-
-    let node_info = avalancheup_aws::spec::NodeInfo::new(
-        local_node.clone(),
-        spec.avalanchego_config.clone(),
-        spec.coreth_chain_config.clone(),
-    );
-    let node_info_path = random_manager::tmp_path(10, Some(".yaml"))?;
-    node_info.sync(node_info_path.clone()).unwrap();
-
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
-    s3::spawn_put_object(
-        s3_manager.clone(),
-        node_info_path.as_str(),
-        s3_bucket,
-        &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNode(
-            spec.id.clone(),
-            local_node.clone(),
-        )
-        .encode(),
-    )
-    .await
-    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e)))?;
-
-    fs::remove_file(node_info_path)?;
-
-    log::info!("waiting some time for other bootstrapping anchor nodes to start...");
-    sleep(Duration::from_secs(30)).await; // enough time for all anchor nodes up to be
-
-    let target_nodes = spec.machine.anchor_nodes.unwrap();
-    log::info!("waiting for all other seed/bootstrapping anchor nodes to publish their own (expected total {target_nodes} nodes)");
-
-    let s3_key_prefix = s3::append_slash(
-        &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNodesDir(spec.id)
-            .encode(),
-    );
-
-    log::info!("listing s3 for other anchor nodes with the prefix {s3_key_prefix}");
-    let mut objects: Vec<aws_sdk_s3::model::Object>;
-    loop {
-        sleep(Duration::from_secs(20)).await;
-
-        objects =
-            s3::spawn_list_objects(s3_manager.clone(), s3_bucket, Some(s3_key_prefix.clone()))
-                .await
-                .map_err(|e| {
-                    Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
-                })?;
-
-        log::info!(
-            "{} seed/bootstrapping anchor nodes are ready (expecting {} nodes)",
-            objects.len(),
-            target_nodes
-        );
-
-        if objects.len() as u32 >= target_nodes {
-            break;
-        }
-    }
-
-    let mut s3_keys: Vec<String> = Vec::new();
-    for obj in objects.iter() {
-        let s3_key = obj.key().expect("unexpected None s3 object");
-        s3_keys.push(s3_key.to_string());
-    }
-    // s3 API should return the sorted list
-    // in the descending order of "last_modified" timestamps
-    // but to make sure, sort in lexicographical order
-    s3_keys.sort();
-
-    Ok(s3_keys)
-}
-
 /// Combines all anchor node Ids and write them into a genesis for initial stakers.
 /// The genesis file path is defined in avalanchego "--genesis" flag.
 fn merge_bootstrapping_anchor_nodes_to_write_genesis(
@@ -1110,161 +1217,6 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
     avalanchego_genesis_template.sync(&avalanchego_genesis_path)?;
 
     Ok(())
-}
-
-async fn download_genesis_from_ready_anchor_nodes(
-    s3_manager: Arc<s3::Manager>,
-    s3_bucket: &str,
-    avalancheup_spec_path: &str,
-) -> io::Result<()> {
-    log::info!("STEP: downloading genesis file from S3 (updated from other anchor nodes)");
-
-    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path)?;
-    let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
-
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
-    s3::spawn_get_object(
-        s3_manager.clone(),
-        s3_bucket,
-        &avalancheup_aws::spec::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
-        &tmp_genesis_path,
-    )
-    .await
-    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
-
-    fs::copy(
-        &tmp_genesis_path,
-        spec.avalanchego_config.clone().genesis.unwrap(),
-    )?;
-    fs::remove_file(&tmp_genesis_path)?;
-
-    Ok(())
-}
-
-/// Discover ready anchor nodes from S3 and returns the
-/// combined list of bootstrap Ids and Ips.
-/// mainnet/other pre-defined test nets have hard-coded anchor nodes
-/// thus no need for anchor nodes.
-/// Assume new anchor nodes statically remap existing node Ids
-/// and publish itself with the new S3 key that has a new IP.
-async fn discover_ready_anchor_nodes_from_s3(
-    ec2_manager: Arc<ec2::Manager>,
-    anchor_asg_names: Vec<String>,
-    s3_manager: Arc<s3::Manager>,
-    s3_bucket: &str,
-    avalancheup_spec_path: &str,
-) -> io::Result<(Vec<String>, Vec<String>)> {
-    log::info!("STEP: listing S3 directory to discover ready anchor nodes...");
-
-    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path)?;
-
-    // "avalanche-ops" should always set up anchor nodes first
-    // so here we assume anchor nodes are already set up
-    // and their information is already available via shared,
-    // remote storage for service discovery
-    // so that we block non-anchor nodes until anchor nodes are ready
-    //
-    // always send a new "list_objects" on remote storage
-    // rather than relying on potentially stale (not via "spec")
-    // in case the member lists for "anchor" nodes becomes stale
-    // (e.g., machine replacement in "anchor" nodes ASG)
-    //
-    // TODO: handle stale anchor nodes by heartbeats timestamps
-    let target_nodes = spec
-        .machine
-        .anchor_nodes
-        .expect("unexpected None machine.anchor_nodes for custom network");
-
-    let s3_key_prefix = s3::append_slash(
-        &avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(spec.id.clone())
-            .encode(),
-    );
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
-    let mut objects: Vec<aws_sdk_s3::model::Object>;
-    loop {
-        sleep(Duration::from_secs(20)).await;
-
-        objects =
-            s3::spawn_list_objects(s3_manager.clone(), s3_bucket, Some(s3_key_prefix.clone()))
-                .await
-                .map_err(|e| {
-                    Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
-                })?;
-
-        log::info!(
-            "{} anchor nodes are ready (expecting {} nodes)",
-            objects.len(),
-            target_nodes
-        );
-
-        if objects.len() as u32 >= target_nodes {
-            break;
-        }
-    }
-
-    let mut s3_keys: Vec<String> = Vec::new();
-    for obj in objects.iter() {
-        let s3_key = obj.key().expect("unexpected None s3 object");
-        s3_keys.push(s3_key.to_string());
-    }
-    // s3 API should return the sorted list
-    // in the descending order of "last_modified" timestamps
-    // but to make sure, sort in lexicographical order
-    s3_keys.sort();
-
-    // now delete old/terminated instances that were anchor nodes
-    let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
-    let mut running_machine_ids = HashSet::new();
-    for anchor_asg_name in anchor_asg_names.iter() {
-        log::info!("listing anchor node ASG {anchor_asg_name}");
-        let droplets = ec2_manager
-            .list_asg(anchor_asg_name)
-            .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
-        log::info!(
-            "listed anchor node ASG {anchor_asg_name} with {} droplets",
-            droplets.len()
-        );
-        for d in droplets.iter() {
-            log::info!("found droplet {} in anchor node ASG", d.instance_id);
-            running_machine_ids.insert(d.instance_id.clone());
-        }
-    }
-
-    let mut bootstrap_ids: Vec<String> = vec![];
-    let mut bootstrap_ips: Vec<String> = vec![];
-    for s3_key in s3_keys.iter() {
-        // just parse the s3 key name
-        // to reduce "s3_manager.get_object" call volume
-        let ready_anchor_node =
-            avalancheup_aws::spec::StorageNamespace::parse_node_from_path(s3_key)?;
-
-        let machine_id = ready_anchor_node.machine_id;
-        if !running_machine_ids.contains(&machine_id) {
-            log::warn!(
-                "ready anchor node '{}' but machine id {} not found in ASG (likely terminated)",
-                ready_anchor_node.node_id,
-                machine_id
-            );
-            continue;
-        }
-
-        log::info!(
-            "ready anchor node '{}' and machine id {} found in ASG",
-            ready_anchor_node.node_id,
-            machine_id
-        );
-
-        bootstrap_ids.push(ready_anchor_node.node_id);
-
-        // assume all nodes in the network use the same ports
-        // ref. "avalanchego/config.StakingPortKey" default value is "9651"
-        let staking_port = spec.avalanchego_config.staking_port;
-        bootstrap_ips.push(format!("{}:{}", ready_anchor_node.public_ip, staking_port));
-    }
-    log::info!("found {} seed nodes that are ready", bootstrap_ids.len());
-
-    Ok((bootstrap_ids, bootstrap_ips))
 }
 
 async fn stop_and_restart_avalanche_systemd_service(
