@@ -388,13 +388,13 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY_SECONDS")
-                .long("subnet-evm-config-proposer-min-block-delay-seconds")
-                .help("Sets to subnet-evm config proposer-min-block-delay in seconds")
+            Arg::new("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY")
+                .long("subnet-evm-config-proposer-min-block-delay")
+                .help("Sets to subnet-evm config proposer-min-block-delay in nano seconds")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("1"),
+                .default_value("1000000000"), // 1-second
         )
         .arg(
             Arg::new("XSVMS")
