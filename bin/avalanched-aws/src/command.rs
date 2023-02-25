@@ -498,9 +498,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     //
     //
-    let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
-    let asg_manager_arc = Arc::new(aws_creds.asg_manager.clone());
-    let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
     // check if the file "exists" for idempotency
     if avalanchego_config.is_custom_network()
         && avalanchego_config.genesis.is_some()
@@ -884,11 +881,11 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     // TODO: implement this better if CDK polls node status
     if !opts.use_default_config {
         handles.push(tokio::spawn(publish_node_info_ready_loop(
+            Arc::new(meta.region.clone()),
             Arc::new(meta.ec2_instance_id.clone()),
             fetched_tags.node_kind.clone(),
             Arc::new(node_id.to_string()),
             Arc::new(public_ipv4.clone()),
-            Arc::clone(&s3_manager_arc),
             Arc::new(fetched_tags.s3_bucket.clone()),
             Arc::new(fetched_tags.avalancheup_spec_path.clone()),
             opts.publish_periodic_node_info,
@@ -907,8 +904,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     // if someone changes, tag needs to be updated manually and restart avalanched
     if fetched_tags.instance_mode == String::from("spot") {
         handles.push(tokio::spawn(monitor_spot_instance_action(
-            Arc::clone(&ec2_manager_arc),
-            Arc::clone(&asg_manager_arc),
+            Arc::new(meta.region.clone()),
             Arc::new(meta.ec2_instance_id.clone()),
             Arc::new(attached_volume_id.to_string()),
         )));
@@ -983,7 +979,6 @@ async fn fetch_metadata() -> io::Result<Metadata> {
 #[derive(Debug, Clone)]
 struct AwsCreds {
     ec2_manager: ec2::Manager,
-    asg_manager: autoscaling::Manager,
     kms_manager: kms::Manager,
     s3_manager: s3::Manager,
 }
@@ -994,13 +989,11 @@ async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
     let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
 
     let ec2_manager = ec2::Manager::new(&shared_config);
-    let asg_manager = autoscaling::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
 
     Ok(AwsCreds {
         ec2_manager,
-        asg_manager,
         kms_manager,
         s3_manager,
     })
@@ -1425,11 +1418,11 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
 /// if run in anchor nodes, the uploaded file will be downloaded
 /// in bootstrapping non-anchor nodes for custom networks
 async fn publish_node_info_ready_loop(
+    reg: Arc<String>,
     ec2_instance_id: Arc<String>,
     node_kind: node::Kind,
     node_id: Arc<String>,
     public_ipv4: Arc<String>,
-    s3_manager: Arc<s3::Manager>,
     s3_bucket: Arc<String>,
     avalancheup_spec_path: Arc<String>,
     publish_periodic_node_info: bool,
@@ -1484,8 +1477,12 @@ async fn publish_node_info_ready_loop(
         }
     };
 
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
     loop {
+        let shared_config = aws_manager::load_config(Some(reg.to_string()))
+            .await
+            .unwrap();
+        let s3_manager = s3::Manager::new(&shared_config);
+
         match s3::spawn_put_object(
             s3_manager.clone(),
             &node_info_path,
@@ -1517,22 +1514,23 @@ async fn publish_node_info_ready_loop(
 }
 
 async fn monitor_spot_instance_action(
-    ec2_manager: Arc<ec2::Manager>,
-    asg_manager: Arc<autoscaling::Manager>,
+    reg: Arc<String>,
     ec2_instance_id: Arc<String>,
     attached_volume_id: Arc<String>,
 ) {
-    let ec2_manager: &ec2::Manager = ec2_manager.as_ref();
-    let ec2_cli = ec2_manager.client();
-
-    let asg_manager: &autoscaling::Manager = asg_manager.as_ref();
-
     loop {
         log::info!(
             "checking spot instance action for {} with attached volume Id {}",
             ec2_instance_id,
             attached_volume_id
         );
+
+        let shared_config = aws_manager::load_config(Some(reg.to_string()))
+            .await
+            .unwrap();
+        let ec2_manager = ec2::Manager::new(&shared_config);
+        let ec2_cli = ec2_manager.client();
+        let asg_manager = autoscaling::Manager::new(&shared_config);
 
         // if the action is "stop" or "terminate", just stop and recylce EC2 instance faster!
         // ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html#instance-action-metadata
