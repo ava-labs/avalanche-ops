@@ -75,6 +75,9 @@ async fn main() {
                     .get_one::<String>("AVALANCHEGO_PLUGIN_TARGET_DIR")
                     .unwrap_or(&String::new()),
                 &sub_matches
+                    .get_one::<String>("RUST_OS_TYPE")
+                    .unwrap_or(&String::from("ubuntu20.04")),
+                &sub_matches
                     .get_one::<String>("AVALANCHE_CONFIG_S3_KEY")
                     .unwrap_or(&String::new()),
                 &sub_matches

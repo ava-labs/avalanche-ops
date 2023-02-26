@@ -66,6 +66,14 @@ async fn main() -> io::Result<()> {
                     .clone(),
                 network_name,
 
+                arch_type: sub_matches
+                    .get_one::<String>("ARCH_TYPE")
+                    .unwrap()
+                    .to_string(),
+                rust_os_type: sub_matches
+                    .get_one::<String>("RUST_OS_TYPE")
+                    .unwrap()
+                    .to_string(),
                 anchor_nodes,
                 non_anchor_nodes,
 

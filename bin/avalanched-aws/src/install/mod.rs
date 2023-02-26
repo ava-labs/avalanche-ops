@@ -70,6 +70,15 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("RUST_OS_TYPE")
+                .long("rust-os-type")
+                .help("Sets Rust OS type")
+                .required(false)
+                .num_args(1)
+                .value_parser(["ubuntu20.04"])
+                .default_value("ubuntu20.04"),
+        )
+        .arg(
             Arg::new("AVALANCHE_CONFIG_S3_KEY")
                 .long("avalanche-config-s3-key")
                 .help("Non-empty to download from S3")
@@ -140,6 +149,7 @@ pub async fn execute(
     avalanchego_plugin_target_dir: &str,
     avalanche_config_s3_key: &str,
     avalanche_config_target_file_path: &str,
+    rust_os_type: &str,
     aws_volume_provisioner_s3_key: &str,
     aws_volume_provisioner_target_file_path: &str,
     aws_ip_provisioner_s3_key: &str,
@@ -281,9 +291,14 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading avalanche-config from github");
+        let ot = if rust_os_type.is_empty() {
+            None
+        } else {
+            Some(avalanche_config_installer::github::Os::new(rust_os_type).unwrap())
+        };
         avalanche_config_installer::github::download(
             None,
-            None,
+            ot,
             None,
             avalanche_config_target_file_path,
         )
@@ -350,9 +365,14 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading aws-volume-provisioner from github");
+        let ot = if rust_os_type.is_empty() {
+            None
+        } else {
+            Some(aws_volume_provisioner_installer::github::Os::new(rust_os_type).unwrap())
+        };
         aws_volume_provisioner_installer::github::download(
             None,
-            None,
+            ot,
             None,
             aws_volume_provisioner_target_file_path,
         )
@@ -419,9 +439,14 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading aws-ip-provisioner from github");
+        let ot = if rust_os_type.is_empty() {
+            None
+        } else {
+            Some(aws_ip_provisioner_installer::github::Os::new(rust_os_type).unwrap())
+        };
         aws_ip_provisioner_installer::github::download(
             None,
-            None,
+            ot,
             None,
             aws_ip_provisioner_target_file_path,
         )
@@ -490,9 +515,14 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading avalanche-telemetry-cloudwatch from github");
+        let ot = if rust_os_type.is_empty() {
+            None
+        } else {
+            Some(avalanche_telemetry_cloudwatch_installer::github::Os::new(rust_os_type).unwrap())
+        };
         avalanche_telemetry_cloudwatch_installer::github::download(
             None,
-            None,
+            ot,
             None,
             avalanche_telemetry_cloudwatch_target_file_path,
         )

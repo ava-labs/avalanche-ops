@@ -131,7 +131,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
         let mut asg_names = Vec::new();
         for i in 0..anchor_nodes {
-            let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
+            let asg_name = format!(
+                "{}-anchor-{}-{}-{:02}",
+                spec.id,
+                spec.machine.arch_type,
+                spec.machine.rust_os_type,
+                i + 1
+            );
             asg_names.push(asg_name);
         }
         spec.aws_resources.cloudformation_asg_anchor_nodes = Some(asg_names);
@@ -142,7 +148,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let non_anchor_nodes = spec.machine.non_anchor_nodes;
     let mut asg_names = Vec::new();
     for i in 0..non_anchor_nodes {
-        let asg_name = format!("{}-non-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
+        let asg_name = format!(
+            "{}-non-anchor-{}-{}-{:02}",
+            spec.id,
+            spec.machine.arch_type,
+            spec.machine.rust_os_type,
+            i + 1
+        );
         asg_names.push(asg_name);
     }
     spec.aws_resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
@@ -647,6 +659,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("PublicSubnetCidr2", "10.0.128.0/19"),
             build_param("PublicSubnetCidr3", "10.0.192.0/19"),
             // TODO: restrict IP
+            build_param("SshPortIngressIpv4Range", "0.0.0.0/0"),
             build_param("HttpPortIngressIpv4Range", "0.0.0.0/0"),
             build_param("StakingPortIngressIpv4Range", "0.0.0.0/0"),
             build_param(
@@ -774,7 +787,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             "VolumeSize",
             format!("{}", spec.machine.volume_size_in_gb).as_str(),
         ),
-        build_param("Arch", &spec.machine.arch),
+        build_param("ArchType", &spec.machine.arch_type),
+        build_param(
+            "ImageIdSsmParameter",
+            &format!(
+                "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
+                spec.machine.arch_type
+            ),
+        ),
+        build_param("RustOsType", &spec.machine.rust_os_type),
         build_param("AvalanchedFlag", &spec.avalanched_config.to_flags()),
         build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
     ]);
@@ -876,8 +897,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
             ));
 
-            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
-            let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
+            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
+            let asg_name = format!(
+                "{}-anchor-{}-{}-{:02}",
+                spec.id,
+                spec.machine.arch_type,
+                spec.machine.rust_os_type,
+                i + 1
+            );
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
@@ -1217,8 +1244,14 @@ aws ssm start-session --region {} --target {}
                 &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
             ));
 
-            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
-            let asg_name = format!("{}-non-anchor-{}-{:02}", spec.id, spec.machine.arch, i + 1);
+            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
+            let asg_name = format!(
+                "{}-non-anchor-{}-{}-{:02}",
+                spec.id,
+                spec.machine.arch_type,
+                spec.machine.rust_os_type,
+                i + 1
+            );
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {

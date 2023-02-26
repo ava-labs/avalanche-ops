@@ -134,6 +134,8 @@ pub struct DefaultSpecOption {
     pub log_level: String,
     pub network_name: String,
 
+    pub arch_type: String,
+    pub rust_os_type: String,
     pub anchor_nodes: u32,
     pub non_anchor_nodes: u32,
 
@@ -628,8 +630,8 @@ impl Spec {
             anchor_nodes,
             non_anchor_nodes,
 
-            // TODO: support "arm64"
-            arch: "amd64".to_string(),
+            arch_type: opts.arch_type,
+            rust_os_type: opts.rust_os_type,
             instance_types,
 
             instance_mode: opts.instance_mode,
@@ -930,7 +932,8 @@ aws_resources:
 
 machine:
   non_anchor_nodes: 1
-  arch: amd64
+  arch_type: amd64
+  rust_os_type: ubuntu20.04
   instance_types:
   - m5.large
   - c5.large
@@ -1033,7 +1036,8 @@ metrics_fetch_interval_seconds: 5000
         machine: Machine {
             anchor_nodes: None,
             non_anchor_nodes: 1,
-            arch: "amd64".to_string(),
+            arch_type: "amd64".to_string(),
+            rust_os_type: "ubuntu20.04".to_string(),
             instance_types: vec![
                 String::from("m5.large"),
                 String::from("c5.large"),
@@ -1394,7 +1398,9 @@ pub struct Machine {
     #[serde(default)]
     pub non_anchor_nodes: u32,
     #[serde(default)]
-    pub arch: String,
+    pub arch_type: String,
+    #[serde(default)]
+    pub rust_os_type: String,
     #[serde(default)]
     pub instance_types: Vec<String>,
     /// Either "spot" or "on-demand".
