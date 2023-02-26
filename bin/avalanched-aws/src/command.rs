@@ -69,6 +69,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         id: String::new(),
         network_id: 0,
         arch_type: String::new(),
+        rust_os_type: String::new(),
         instance_mode: String::new(),
         node_kind: node::Kind::Unknown(String::new()),
         kms_cmk_arn: String::new(),
@@ -95,6 +96,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             }
             "ARCH_TYPE" => {
                 fetched_tags.arch_type = v.to_string();
+            }
+            "RUST_OS_TYPE" => {
+                fetched_tags.rust_os_type = v.to_string();
             }
             "INSTANCE_MODE" => {
                 fetched_tags.instance_mode = v.to_string();
@@ -144,6 +148,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             || fetched_tags.node_kind == node::Kind::NonAnchor
     );
     assert!(!fetched_tags.arch_type.is_empty());
+    assert!(!fetched_tags.rust_os_type.is_empty());
     assert!(!fetched_tags.kms_cmk_arn.is_empty());
     assert!(!fetched_tags.aad_tag.is_empty());
     assert!(!fetched_tags.s3_bucket.is_empty());
@@ -984,6 +989,7 @@ struct Tags {
     id: String,
     network_id: u32,
     arch_type: String,
+    rust_os_type: String,
     instance_mode: String,
     node_kind: node::Kind,
     kms_cmk_arn: String,
