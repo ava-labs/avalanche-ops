@@ -788,6 +788,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             format!("{}", spec.machine.volume_size_in_gb).as_str(),
         ),
         build_param("ArchType", &spec.machine.arch_type),
+        build_param(
+            "ImageIdSsmParameter",
+            &format!(
+                "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
+                spec.machine.arch_type
+            ),
+        ),
         build_param("RustOsType", &spec.machine.rust_os_type),
         build_param("AvalanchedFlag", &spec.avalanched_config.to_flags()),
         build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),

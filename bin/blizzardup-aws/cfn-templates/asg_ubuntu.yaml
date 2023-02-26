@@ -39,7 +39,6 @@ Parameters:
     Description: (Optional) Custom image ID. This value overrides any AWS Systems Manager Parameter Store value specified above.
 
   # https://ubuntu.com/server/docs/cloud-images/amazon-ec2
-  # TODO: support arm64
   ImageIdSsmParameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
