@@ -102,20 +102,24 @@ pub async fn download(
 
     // TODO: handle Apple arm64 when the official binary is available
     // ref. https://github.com/ava-labs/avalanche-ops/releases
-    let file_name = {
+    let (file_name, fallback_file) = {
         if os.is_none() {
             if cfg!(target_os = "macos") {
-                format!("avalanche-config.{arch}-apple-darwin")
+                (format!("avalanche-config.{arch}-apple-darwin"), None)
             } else if cfg!(unix) {
-                format!("avalanche-config.{arch}-unknown-linux-gnu")
+                (format!("avalanche-config.{arch}-unknown-linux-gnu"), None)
             } else {
-                String::new()
+                (String::new(), None)
             }
         } else {
             let os = os.unwrap();
             match os {
-                Os::MacOs => format!("avalanche-config.{arch}-apple-darwin"),
-                Os::Linux => format!("avalanche-config.{arch}-unknown-linux-gnu"),
+                Os::MacOs => (format!("avalanche-config.{arch}-apple-darwin"), None),
+                Os::Linux => (format!("avalanche-config.{arch}-unknown-linux-gnu"), None),
+                Os::Ubuntu2004 => (
+                    format!("avalanche-config.{arch}-ubuntu20.04-linux-gnu"),
+                    Some(format!("avalanche-config.{arch}-unknown-linux-gnu")),
+                ),
             }
         }
     };
@@ -128,11 +132,24 @@ pub async fn download(
 
     log::info!("downloading latest '{}'", file_name);
     let download_url = format!(
-        "https://github.com/ava-labs/avalanche-ops/releases/download/{}/{}",
-        tag_name, file_name
+        "https://github.com/ava-labs/avalanche-ops/releases/download/{tag_name}/{file_name}",
     );
     let tmp_file_path = random_manager::tmp_path(10, None)?;
-    download_file(&download_url, &tmp_file_path).await?;
+    match download_file(&download_url, &tmp_file_path).await {
+        Ok(_) => {}
+        Err(e) => {
+            log::warn!("failed to download {:?}", e);
+            if let Some(fallback) = fallback_file {
+                let download_url = format!(
+                    "https://github.com/ava-labs/avalanche-ops/releases/download/{tag_name}/{fallback}",
+                );
+                log::warn!("falling back to {download_url}");
+                download_file(&download_url, &tmp_file_path).await?;
+            } else {
+                return Err(e);
+            }
+        }
+    }
 
     {
         let f = File::open(&tmp_file_path)?;
@@ -262,6 +279,7 @@ impl Arch {
 pub enum Os {
     MacOs,
     Linux,
+    Ubuntu2004,
 }
 
 /// ref. https://doc.rust-lang.org/std/string/trait.ToString.html
@@ -272,6 +290,7 @@ impl fmt::Display for Os {
         match self {
             Os::MacOs => write!(f, "macos"),
             Os::Linux => write!(f, "linux"),
+            Os::Ubuntu2004 => write!(f, "ubuntu20.04"),
         }
     }
 }
@@ -281,6 +300,7 @@ impl Os {
         match os {
             "macos" => Ok(Os::MacOs),
             "linux" => Ok(Os::Linux),
+            "ubuntu20.04" => Ok(Os::Ubuntu2004),
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!("unknown os {}", os),
