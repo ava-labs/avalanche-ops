@@ -867,7 +867,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let mut common_asg_params_anchor = common_asg_params.clone();
         common_asg_params_anchor.push(build_param("NodeKind", "anchor"));
 
-        let mut asg_local_ids = Vec::new();
+        let mut asg_logical_ids = Vec::new();
         for i in 0..anchor_nodes as usize {
             let mut asg_params = common_asg_params_anchor.clone();
             asg_params.push(build_param(
@@ -932,7 +932,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 let v = o.output_value.unwrap();
                 log::info!("stack output key=[{}], value=[{}]", k, v,);
                 if k.eq("AsgLogicalId") {
-                    asg_local_ids.push(v);
+                    asg_logical_ids.push(v);
                     continue;
                 }
                 if k.eq("NlbArn") {
@@ -959,7 +959,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         }
 
         spec.aws_resources
-            .cloudformation_asg_anchor_nodes_logical_ids = Some(asg_local_ids.clone());
+            .cloudformation_asg_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
         spec.sync(spec_file_path)?;
 
         if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
@@ -1000,7 +1000,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let mut droplets: Vec<ec2::Droplet> = Vec::new();
         let mut eips = Vec::new();
         let mut instance_id_to_public_ip = HashMap::new();
-        for asg_name in asg_local_ids.iter() {
+        for asg_name in asg_logical_ids.iter() {
             let mut dss = Vec::new();
             for _ in 0..20 {
                 // TODO: better retries
@@ -1208,7 +1208,7 @@ aws ssm start-session --region {} --target {}
         let mut common_asg_params_non_anchor = common_asg_params.clone();
         common_asg_params_non_anchor.push(build_param("NodeKind", "non-anchor"));
 
-        let mut asg_local_ids = Vec::new();
+        let mut asg_logical_ids = Vec::new();
         for i in 0..non_anchor_nodes as usize {
             let mut asg_params = common_asg_params_non_anchor.clone();
             asg_params.push(build_param(
@@ -1273,7 +1273,7 @@ aws ssm start-session --region {} --target {}
                 let v = o.output_value.unwrap();
                 log::info!("stack output key=[{}], value=[{}]", k, v,);
                 if k.eq("AsgLogicalId") {
-                    asg_local_ids.push(v);
+                    asg_logical_ids.push(v);
                     continue;
                 }
                 if k.eq("NlbArn") {
@@ -1300,7 +1300,7 @@ aws ssm start-session --region {} --target {}
         }
 
         spec.aws_resources
-            .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_local_ids.clone());
+            .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
         spec.sync(spec_file_path)?;
 
         if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
@@ -1341,7 +1341,7 @@ aws ssm start-session --region {} --target {}
         let mut droplets: Vec<ec2::Droplet> = Vec::new();
         let mut eips = Vec::new();
         let mut instance_id_to_public_ip = HashMap::new();
-        for asg_name in asg_local_ids.iter() {
+        for asg_name in asg_logical_ids.iter() {
             let mut dss = Vec::new();
             for _ in 0..20 {
                 // TODO: better retries
