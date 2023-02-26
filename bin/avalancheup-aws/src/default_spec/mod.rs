@@ -84,6 +84,15 @@ pub fn command() -> Command {
                 .default_value("spot"),
         )
         .arg(
+            Arg::new("INSTANCE_SIZE")
+                .long("instance-size")
+                .help("Sets instance size")
+                .required(false)
+                .num_args(1)
+                .value_parser(["large", "2xlarge", "4xlarge", "8xlarge"])
+                .default_value("large"),
+        )
+        .arg(
             Arg::new("IP_MODE")
                 .long("ip-mode")
                 .help("Sets IP mode to provision EC2 elastic IPs for all nodes")

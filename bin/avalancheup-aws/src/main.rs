@@ -85,6 +85,10 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("INSTANCE_MODE")
                     .unwrap()
                     .clone(),
+                instance_size: sub_matches
+                    .get_one::<String>("INSTANCE_SIZE")
+                    .unwrap_or(&String::from("large"))
+                    .clone(),
 
                 volume_size_in_gb,
 

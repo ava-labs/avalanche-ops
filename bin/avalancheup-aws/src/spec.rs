@@ -143,6 +143,7 @@ pub struct DefaultSpecOption {
 
     pub region: String,
     pub instance_mode: String,
+    pub instance_size: String,
     pub volume_size_in_gb: u32,
 
     pub ip_mode: String,
@@ -621,7 +622,8 @@ impl Spec {
             }
         };
 
-        let instance_types = ec2::default_instance_types(&opts.region, "amd64", "large").unwrap();
+        let instance_types =
+            ec2::default_instance_types(&opts.region, "amd64", &opts.instance_size).unwrap();
         let machine = Machine {
             anchor_nodes,
             non_anchor_nodes,
