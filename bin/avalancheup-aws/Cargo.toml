@@ -35,4 +35,4 @@ signal-hook = "0.3.14"
 tokio = { version = "1.25.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
-tempfile = "3.3.0"
+tempfile = "3.4.0"
