@@ -47,7 +47,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     //
     //
-    let aws_creds = load_aws_credential(&meta.region).await?;
+    let shared_config = aws_manager::load_config(Some(meta.region.clone())).await?;
+    let ec2_manager = ec2::Manager::new(&shared_config);
+    let kms_manager = kms::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
 
     //
     //
@@ -57,8 +60,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     //
     log::info!("STEP: fetching tags...");
-    let tags = aws_creds
-        .ec2_manager
+    let tags = ec2_manager
         .fetch_tags(Arc::new(meta.ec2_instance_id.clone()))
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_tags {}", e)))?;
@@ -202,7 +204,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::info!("STEP: downloading avalancheup spec file from S3...");
         let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
         s3::spawn_get_object(
-            aws_creds.s3_manager.clone(),
+            s3_manager.clone(),
             &fetched_tags.s3_bucket,
             &avalancheup_aws::spec::StorageNamespace::ConfigFile(fetched_tags.id.clone()).encode(),
             &tmp_spec_file_path,
@@ -340,8 +342,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             .set_values(Some(vec![fetched_tags.id.clone()]))
             .build(),
     ];
-    let volumes = aws_creds
-        .ec2_manager
+    log::info!("describing existing volume to find the attached volume Id");
+    let shared_config = aws_manager::load_config(Some(meta.region.clone())).await?;
+    let ec2_manager = ec2::Manager::new(&shared_config);
+    let volumes = ec2_manager
         .describe_volumes(Some(filters))
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed describe_volumes {}", e)))?;
@@ -364,7 +368,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
-        aws_creds.kms_manager.clone(),
+        kms_manager.clone(),
         fetched_tags.kms_cmk_arn.to_string(),
         fetched_tags.aad_tag.to_string(),
     );
@@ -392,7 +396,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
         log::info!("uploading key file {}", s3_key_tls_key);
         s3::spawn_compress_seal_put_object(
-            aws_creds.s3_manager.clone(),
+            s3_manager.clone(),
             envelope_manager.clone(),
             &s3_key_tls_key,
             &fetched_tags.s3_bucket,
@@ -408,7 +412,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
         log::info!("uploading cert file {}", tls_cert_path);
         s3::spawn_compress_seal_put_object(
-            aws_creds.s3_manager.clone(),
+            s3_manager.clone(),
             envelope_manager.clone(),
             &s3_key_tls_key,
             &fetched_tags.s3_bucket,
@@ -558,7 +562,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             node_info.sync(node_info_path.clone()).unwrap();
 
             s3::spawn_put_object(
-                aws_creds.s3_manager.clone(),
+                s3_manager.clone(),
                 node_info_path.as_str(),
                 &fetched_tags.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNode(
@@ -591,7 +595,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 sleep(Duration::from_secs(20)).await;
 
                 objects = s3::spawn_list_objects(
-                    aws_creds.s3_manager.clone(),
+                    s3_manager.clone(),
                     &fetched_tags.s3_bucket,
                     Some(s3_key_prefix.clone()),
                 )
@@ -631,7 +635,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
             log::info!("STEP: uploading the new genesis file from each anchor node, which is to be shared with non-anchor nodes");
             s3::spawn_put_object(
-                aws_creds.s3_manager.clone(),
+                s3_manager.clone(),
                 &avalanchego_config.clone().genesis.unwrap(),
                 &fetched_tags.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::GenesisFile(fetched_tags.id.clone())
@@ -655,7 +659,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
 
             s3::spawn_get_object(
-                aws_creds.s3_manager.clone(),
+                s3_manager.clone(),
                 &fetched_tags.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
                 &tmp_genesis_path,
@@ -712,7 +716,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 sleep(Duration::from_secs(20)).await;
 
                 objects = s3::spawn_list_objects(
-                    aws_creds.s3_manager.clone(),
+                    s3_manager.clone(),
                     &fetched_tags.s3_bucket,
                     Some(s3_key_prefix.clone()),
                 )
@@ -746,8 +750,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             let mut running_machine_ids = HashSet::new();
             for anchor_asg_name in anchor_asg_names.iter() {
                 log::info!("listing anchor node ASG {anchor_asg_name}");
-                let droplets = aws_creds
-                    .ec2_manager
+                let droplets = ec2_manager
                     .list_asg(anchor_asg_name)
                     .await
                     .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
@@ -973,29 +976,6 @@ async fn fetch_metadata() -> io::Result<Metadata> {
         region: reg,
         ec2_instance_id,
         public_ipv4,
-    })
-}
-
-#[derive(Debug, Clone)]
-struct AwsCreds {
-    ec2_manager: ec2::Manager,
-    kms_manager: kms::Manager,
-    s3_manager: s3::Manager,
-}
-
-async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
-    log::info!("STEP: loading up AWS credential for region '{}'...", reg);
-
-    let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
-
-    let ec2_manager = ec2::Manager::new(&shared_config);
-    let kms_manager = kms::Manager::new(&shared_config);
-    let s3_manager = s3::Manager::new(&shared_config);
-
-    Ok(AwsCreds {
-        ec2_manager,
-        kms_manager,
-        s3_manager,
     })
 }
 
