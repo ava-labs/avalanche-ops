@@ -53,7 +53,9 @@ pub struct Machine {
     #[serde(default)]
     pub nodes: usize,
     #[serde(default)]
-    pub arch: String,
+    pub arch_type: String,
+    #[serde(default)]
+    pub rust_os_type: String,
     #[serde(default)]
     pub instance_types: Vec<String>,
     #[serde(default)]
@@ -168,7 +170,8 @@ impl Spec {
             nodes: opts.nodes,
 
             // TODO: support "arm64"
-            arch: "amd64".to_string(),
+            arch_type: "amd64".to_string(),
+            rust_os_type: "ubuntu20.04".to_string(),
             instance_types: ec2::default_instance_types(&opts.region, "amd64", "large").unwrap(),
 
             instance_mode: opts.instance_mode,
@@ -327,7 +330,8 @@ aws_resources:
 
 machine:
   nodes: 1
-  arch: amd64
+  arch_type: amd64
+  rust_os_type: ubuntu20.04
   instance_types:
   - m5.large
   - c5.large
@@ -370,7 +374,8 @@ blizzard_spec:
 
         machine: Machine {
             nodes: 1,
-            arch: "amd64".to_string(),
+            arch_type: "amd64".to_string(),
+            rust_os_type: "ubuntu20.04".to_string(),
             instance_types: vec![
                 String::from("m5.large"),
                 String::from("c5.large"),

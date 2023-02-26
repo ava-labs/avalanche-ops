@@ -57,17 +57,25 @@ Parameters:
   # otherwise, it can fail with:
   # error while loading shared libraries: libssl.so.3: cannot open shared object file: No such file or directory
   # https://ubuntu.com/server/docs/cloud-images/amazon-ec2
+  # https://aws.amazon.com/blogs/compute/query-for-the-latest-amazon-linux-ami-ids-using-aws-systems-manager-parameter-store/
   ImageIdSsmParameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
     # Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/arm64/hvm/ebs-gp2/ami-id
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
 
-  Arch:
+  ArchType:
     Type: String
+    AllowedValues: ["amd64", "arm64"]
     Default: "amd64"
     # Default: "arm64"
     Description: The name of the CPU architecture. Used for cloudwatch agent download links.
+
+  RustOsType:
+    Type: String
+    AllowedValues: ["unknown", "ubuntu20.04"]
+    Default: "unknown"
+    Description: The name of the OS distribution and kind. Used for Rust binary download links.
 
   # use https://github.com/gyuho/aws-manager/blob/main/src/ec2/mod.rs for better defaults
   InstanceTypes:
@@ -361,7 +369,7 @@ Resources:
     Condition: CreateAsgLaunchTemplate
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref Arch]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref ArchType]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -398,7 +406,7 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-${Arch}" }
+              - { Key: Name, Value: !Sub "${Id}-${ArchType}" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -450,20 +458,37 @@ Resources:
               sudo mv /tmp/amazon-ssm-agent-10-restart-always.conf /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
+              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
+              mkdir -p /tmp/install-cloudwatch-logs
+              while [ 1 ]; do
+                pushd /tmp/install-cloudwatch-logs
+                sudo rm -f ./amazon-cloudwatch-agent.deb || true;
+                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${ArchType}/latest/amazon-cloudwatch-agent.deb
+                popd
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+              while [ 1 ]; do
+                echo "installing amazon-cloudwatch-agent"
+                pushd /tmp/install-cloudwatch-logs && sudo dpkg -i -E ./amazon-cloudwatch-agent.deb && popd
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+
               # TODO: support arm64 ubuntu, "aarch64-ubuntu20.04" (graviton)
               # "aarch64-unknown-linux-gnu" may not work without cross-linker for linux
               # https://users.rust-lang.org/t/cant-cross-compile-project-with-openssl/70922
               if [[ ${AvalanchedDownloadSource} == "github" ]]; then
-                sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
+                sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
                 sudo rm -f /tmp/avalanched
                 sudo rm -f /usr/local/bin/avalanched
                 while [ 1 ]; do
-                  sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu || true;
-                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
+                  sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu || true;
+                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
                   if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                   sleep 2s;
                 done;
-                mv ./avalanched-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu /tmp/avalanched
+                mv ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu /tmp/avalanched
                 chmod +x /tmp/avalanched
                 sudo mv /tmp/avalanched /usr/local/bin/avalanched
               else
@@ -481,6 +506,7 @@ Resources:
               --avalanchego-target-file-path /usr/local/bin/avalanchego \
               --avalanchego-plugin-s3-prefix ${Id}/bootstrap/install/plugin \
               --avalanchego-plugin-target-dir /usr/local/bin/plugin \
+              --rust-os-type ${RustOsType} \
               --avalanche-config-s3-key ${Id}/bootstrap/install/avalanche-config \
               --avalanche-config-target-file-path /usr/local/bin/avalanche-config \
               --aws-volume-provisioner-s3-key ${Id}/bootstrap/install/aws-volume-provisioner \
@@ -559,23 +585,6 @@ Resources:
               sudo systemctl enable avalanched.service
               sudo systemctl start --no-block avalanched.service
 
-              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
-              mkdir -p /tmp/install-cloudwatch-logs
-              while [ 1 ]; do
-                pushd /tmp/install-cloudwatch-logs
-                sudo rm -f ./amazon-cloudwatch-agent.deb || true;
-                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
-                popd
-                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
-                sleep 2s;
-              done;
-              while [ 1 ]; do
-                echo "installing amazon-cloudwatch-agent"
-                pushd /tmp/install-cloudwatch-logs && sudo dpkg -i -E ./amazon-cloudwatch-agent.deb && popd
-                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
-                sleep 2s;
-              done;
-
               # enough time for "avalanched" to initialize cloudwatch configuration
               sleep 10
               echo "wait until /opt/aws/amazon-cloudwatch-agent/bin/config.json is written by avalanched"
@@ -618,7 +627,7 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      # AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      # AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
       AutoScalingGroupName: !Ref AsgName
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
@@ -655,7 +664,10 @@ Resources:
           Value: !Ref NetworkId
           PropagateAtLaunch: true
         - Key: ARCH_TYPE
-          Value: amd64
+          Value: !Ref ArchType
+          PropagateAtLaunch: true
+        - Key: RUST_OS_TYPE
+          Value: !Ref RustOsType
           PropagateAtLaunch: true
         - Key: INSTANCE_MODE
           Value: !Ref InstanceMode

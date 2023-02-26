@@ -442,7 +442,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     .unwrap(),
             ),
             build_param("PublicSubnetIds", &public_subnet_ids.join(",")),
-            build_param("Arch", &spec.machine.arch),
+            build_param("ArchType", &spec.machine.arch_type),
+            build_param("RustOsType", &spec.machine.rust_os_type),
         ]);
 
         if !spec.machine.instance_types.is_empty() {
@@ -481,10 +482,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             format!("{}", on_demand_pct).as_str(),
         ));
 
-        // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+        // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
         asg_parameters.push(build_param(
             "AsgName",
-            format!("{}-worker-{}", spec.id, spec.machine.arch).as_str(),
+            format!("{}-worker-{}", spec.id, spec.machine.arch_type).as_str(),
         ));
         asg_parameters.push(build_param(
             "AsgDesiredCapacity",

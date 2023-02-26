@@ -23,6 +23,24 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
+            Arg::new("ARCH_TYPE")
+                .long("arch-type")
+                .help("Sets the machine architecture")
+                .required(true)
+                .num_args(1)
+                .value_parser(["amd64", "arm64"])
+                .default_value("amd64"),
+        )
+        .arg(
+            Arg::new("RUST_OS_TYPE")
+                .long("rust-os-type")
+                .help("Sets Rust OS type")
+                .required(true)
+                .num_args(1)
+                .value_parser(["ubuntu20.04"])
+                .default_value("ubuntu20.04"),
+        )
+        .arg(
             Arg::new("ANCHOR_NODES")
                 .long("anchor-nodes")
                 .help("Sets the number of anchor nodes (only used when non-zero value)")

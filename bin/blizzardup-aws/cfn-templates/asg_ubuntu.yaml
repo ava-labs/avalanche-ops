@@ -45,54 +45,18 @@ Parameters:
     Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
 
-  Arch:
+  ArchType:
     Type: String
+    AllowedValues: ["amd64", "arm64"]
     Default: "amd64"
     Description: The name of the architecture.
 
-  # Avalanche consensus paper used "c5.large" for testing 125 ~ 2,000 nodes
-  # Avalanche test net ("fuji") runs "c5.2xlarge"
-  #
-  # https://aws.amazon.com/ec2/instance-types/c6a/
-  # c6a.large:   2  vCPU + 4  GiB RAM
-  # c6a.xlarge:  4  vCPU + 8  GiB RAM
-  # c6a.2xlarge: 8  vCPU + 16 GiB RAM
-  # c6a.4xlarge: 16 vCPU + 32 GiB RAM
-  # c6a.8xlarge: 32 vCPU + 64 GiB RAM
-  #
-  # https://aws.amazon.com/ec2/instance-types/m6a/
-  # m6a.large:   2  vCPU + 8  GiB RAM
-  # m6a.xlarge:  4  vCPU + 16 GiB RAM
-  # m6a.2xlarge: 8  vCPU + 32 GiB RAM
-  # m6a.4xlarge: 16 vCPU + 64 GiB RAM
-  # m6a.8xlarge: 32 vCPU + 128 GiB RAM
-  #
-  # https://aws.amazon.com/ec2/instance-types/m5/
-  # m5.large:   2  vCPU + 8  GiB RAM
-  # m5.xlarge:  4  vCPU + 16 GiB RAM
-  # m5.2xlarge: 8  vCPU + 32 GiB RAM
-  # m5.4xlarge: 16 vCPU + 64 GiB RAM
-  # m5.8xlarge: 32 vCPU + 128 GiB RAM
-  #
-  # https://aws.amazon.com/ec2/instance-types/c5/
-  # c5.large:   2  vCPU + 4  GiB RAM
-  # c5.xlarge:  4  vCPU + 8  GiB RAM
-  # c5.2xlarge: 8  vCPU + 16 GiB RAM
-  # c5.4xlarge: 16 vCPU + 32 GiB RAM
-  # c5.9xlarge: 32 vCPU + 72 GiB RAM
-  #
-  # https://aws.amazon.com/ec2/instance-types/r5/
-  # r5.large:   2  vCPU + 16 GiB RAM
-  # r5.xlarge:  4  vCPU + 32 GiB RAM
-  # r5.2xlarge: 8  vCPU + 64 GiB RAM
-  # r5.4xlarge: 16 vCPU + 128 GiB RAM
-  # r5.8xlarge: 32 vCPU + 256 GiB RAM
-  #
-  # https://aws.amazon.com/ec2/instance-types/t3/
-  # t3.large:    2  vCPU + 8 GiB RAM
-  # t3.xlarge:   4  vCPU + 16 GiB RAM
-  # t3.2xlarge:  8  vCPU + 32 GiB RAM
-  #
+  RustOsType:
+    Type: String
+    AllowedValues: ["unknown", "ubuntu20.04"]
+    Default: "unknown"
+    Description: The name of the OS distribution and kind. Used for Rust binary download links.
+
   InstanceTypes:
     Type: CommaDelimitedList
     Default: c6a.xlarge,m6a.xlarge,m5.xlarge,c5.xlarge
@@ -193,7 +157,7 @@ Resources:
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      LaunchTemplateName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
       LaunchTemplateData:
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata-iaminstanceprofile.html
         IamInstanceProfile:
@@ -230,7 +194,7 @@ Resources:
         TagSpecifications:
           - ResourceType: instance
             Tags:
-              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${Arch}" }
+              - { Key: Name, Value: !Sub "${Id}-${NodeKind}-${ArchType}" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -279,17 +243,34 @@ Resources:
               EOF
               sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
+              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
+              mkdir -p /tmp/install-cloudwatch-logs
+              while [ 1 ]; do
+                pushd /tmp/install-cloudwatch-logs
+                sudo rm -f ./amazon-cloudwatch-agent.deb || true;
+                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${ArchType}/latest/amazon-cloudwatch-agent.deb
+                popd
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+              while [ 1 ]; do
+                echo "installing amazon-cloudwatch-agent"
+                pushd /tmp/install-cloudwatch-logs && sudo dpkg -i -E ./amazon-cloudwatch-agent.deb && popd
+                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
+                sleep 2s;
+              done;
+
               if [[ ${BlizzardDownloadSource} == "github" ]]; then
-                sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
+                sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
                 sudo rm -f /tmp/blizzard
                 sudo rm -f /usr/local/bin/blizzard
                 while [ 1 ]; do
-                  sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu || true;
-                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu
+                  sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu || true;
+                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
                   if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                   sleep 2s;
                 done;
-                mv ./blizzard-aws.${!LINUX_ARCH_TYPE}-unknown-linux-gnu /tmp/blizzard
+                mv ./blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu /tmp/blizzard
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
               else
@@ -321,23 +302,6 @@ Resources:
               sudo systemctl daemon-reload
               sudo systemctl enable blizzard.service
               sudo systemctl start --no-block blizzard.service
-
-              # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
-              mkdir -p /tmp/install-cloudwatch-logs
-              while [ 1 ]; do
-                pushd /tmp/install-cloudwatch-logs
-                sudo rm -f ./amazon-cloudwatch-agent.deb || true;
-                wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${Arch}/latest/amazon-cloudwatch-agent.deb
-                popd
-                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
-                sleep 2s;
-              done;
-              while [ 1 ]; do
-                echo "installing amazon-cloudwatch-agent"
-                pushd /tmp/install-cloudwatch-logs && sudo dpkg -i -E ./amazon-cloudwatch-agent.deb && popd
-                if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
-                sleep 2s;
-              done;
 
               # enough time for "blizzard" to initialize cloudwatch configuration
               sleep 10
@@ -373,7 +337,7 @@ Resources:
           - AlarmNotification
           - ScheduledActions
     Properties:
-      # AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+      # AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
       AutoScalingGroupName: !Ref AsgName
       MinSize: !Ref AsgMinSize
       MaxSize: !Ref AsgMaxSize
@@ -389,16 +353,16 @@ Resources:
         # use tags for relatively static configurations
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref Arch]]
+          Value: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
         - Key: ID
           PropagateAtLaunch: true
           Value: !Ref Id
         - Key: ARCH_TYPE
+          Value: !Ref ArchType
           PropagateAtLaunch: true
-          Value: amd64
-        - Key: OS_TYPE
+        - Key: RUST_OS_TYPE
+          Value: !Ref RustOsType
           PropagateAtLaunch: true
-          Value: linux
         - Key: INSTANCE_MODE
           PropagateAtLaunch: true
           Value: !Ref InstanceMode
