@@ -215,7 +215,7 @@ Resources:
           - DeviceName: "/dev/sda1"
             Ebs:
               VolumeType: gp3
-              VolumeSize: 200
+              VolumeSize: 8
 
         Monitoring:
           Enabled: true
