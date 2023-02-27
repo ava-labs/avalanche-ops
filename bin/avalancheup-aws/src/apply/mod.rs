@@ -131,13 +131,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
         let mut asg_names = Vec::new();
         for i in 0..anchor_nodes {
-            let asg_name = format!(
-                "{}-anchor-{}-{}-{:02}",
-                spec.id,
-                spec.machine.arch_type,
-                spec.machine.rust_os_type,
-                i + 1
-            );
+            let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch_type, i + 1);
             asg_names.push(asg_name);
         }
         spec.aws_resources.cloudformation_asg_anchor_nodes = Some(asg_names);
@@ -149,10 +143,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let mut asg_names = Vec::new();
     for i in 0..non_anchor_nodes {
         let asg_name = format!(
-            "{}-non-anchor-{}-{}-{:02}",
+            "{}-non-anchor-{}-{:02}",
             spec.id,
             spec.machine.arch_type,
-            spec.machine.rust_os_type,
             i + 1
         );
         asg_names.push(asg_name);
@@ -898,13 +891,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ));
 
             // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
-            let asg_name = format!(
-                "{}-anchor-{}-{}-{:02}",
-                spec.id,
-                spec.machine.arch_type,
-                spec.machine.rust_os_type,
-                i + 1
-            );
+            let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch_type, i + 1);
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
@@ -1246,10 +1233,9 @@ aws ssm start-session --region {} --target {}
 
             // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
             let asg_name = format!(
-                "{}-non-anchor-{}-{}-{:02}",
+                "{}-non-anchor-{}-{:02}",
                 spec.id,
                 spec.machine.arch_type,
-                spec.machine.rust_os_type,
                 i + 1
             );
             asg_params.push(build_param("AsgName", &asg_name));
