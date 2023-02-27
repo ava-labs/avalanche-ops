@@ -222,6 +222,23 @@ async fn main() -> io::Result<()> {
                     .get_one::<u64>("SUBNET_EVM_BLOCK_GAS_COST_STEP")
                     .unwrap_or(&0)
                     .clone(),
+                subnet_evm_tx_pool_account_slots: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_TX_POOL_ACCOUNT_SLOTS")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_tx_pool_global_slots: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_TX_POOL_GLOBAL_SLOTS")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_tx_pool_account_queue: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_TX_POOL_ACCOUNT_QUEUE")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_tx_pool_global_queue: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_TX_POOL_GLOBAL_QUEUE")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_local_txs_enabled: sub_matches.get_flag("SUBNET_EVM_LOCAL_TXS_ENABLED"),
 
                 subnet_evm_auto_contract_deployer_allow_list_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),

@@ -401,6 +401,49 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
+            Arg::new("SUBNET_EVM_TX_POOL_ACCOUNT_SLOTS")
+                .long("subnet-evm-tx-pool-account-slots")
+                .help("Sets non-zero to set tx-pool-account-slots (in chain config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_TX_POOL_GLOBAL_SLOTS")
+                .long("subnet-evm-tx-pool-global-slots")
+                .help("Sets non-zero to set tx-pool-global-slots (in chain config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_TX_POOL_ACCOUNT_QUEUE")
+                .long("subnet-evm-tx-pool-account-queue")
+                .help("Sets non-zero to set tx-pool-account-queue (in chain config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_TX_POOL_GLOBAL_QUEUE")
+                .long("subnet-evm-tx-pool-global-queue")
+                .help("Sets non-zero to set tx-pool-global-queue (in chain config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_LOCAL_TXS_ENABLED")
+                .long("subnet-evm-local-txs-enabled")
+                .help("Sets to enable local txs for subnet-evm")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
             Arg::new("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG")
                 .long("subnet-evm-auto-contract-deployer-allow-list-config")
                 .help("Sets to auto-populate subnet-evm allow list config")

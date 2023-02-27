@@ -192,6 +192,11 @@ pub struct DefaultSpecOption {
     pub subnet_evm_min_block_gas_cost: u64,
     pub subnet_evm_max_block_gas_cost: u64,
     pub subnet_evm_block_gas_cost_step: u64,
+    pub subnet_evm_tx_pool_account_slots: u64,
+    pub subnet_evm_tx_pool_global_slots: u64,
+    pub subnet_evm_tx_pool_account_queue: u64,
+    pub subnet_evm_tx_pool_global_queue: u64,
+    pub subnet_evm_local_txs_enabled: bool,
 
     pub subnet_evm_auto_contract_deployer_allow_list_config: bool,
     pub subnet_evm_auto_contract_native_minter_config: bool,
@@ -454,6 +459,26 @@ impl Spec {
 
                 let mut subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
                 subnet_evm_chain_config.priority_regossip_addresses = Some(admin_addresses.clone());
+
+                if opts.subnet_evm_tx_pool_account_slots > 0 {
+                    subnet_evm_chain_config.tx_pool_account_slots =
+                        Some(opts.subnet_evm_tx_pool_account_slots);
+                }
+                if opts.subnet_evm_tx_pool_global_slots > 0 {
+                    subnet_evm_chain_config.tx_pool_global_slots =
+                        Some(opts.subnet_evm_tx_pool_global_slots);
+                }
+                if opts.subnet_evm_tx_pool_account_queue > 0 {
+                    subnet_evm_chain_config.tx_pool_account_queue =
+                        Some(opts.subnet_evm_tx_pool_account_queue);
+                }
+                if opts.subnet_evm_tx_pool_global_queue > 0 {
+                    subnet_evm_chain_config.tx_pool_global_queue =
+                        Some(opts.subnet_evm_tx_pool_global_queue);
+                }
+                if opts.subnet_evm_local_txs_enabled {
+                    subnet_evm_chain_config.local_txs_enabled = Some(true);
+                }
 
                 let subnet_evm = SubnetEvm {
                     genesis,
