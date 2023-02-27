@@ -8,7 +8,7 @@ rust-version = "1.67"
 avalanche-types = { version = "0.0.269", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws", "utils"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.24.16", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.1.6", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
-crossterm = "0.26.0"
+crossterm = "0.26.1"
 dialoguer = "0.10.3"
 env_logger = "0.10.0"
 ethers-signers = "1.0.2"

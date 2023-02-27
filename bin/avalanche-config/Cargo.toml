@@ -7,7 +7,7 @@ rust-version = "1.67"
 [dependencies]
 avalanche-types = { version = "0.0.269", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
 clap = { version = "4.1.6", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
-crossterm = "0.26.0"
+crossterm = "0.26.1"
 dialoguer = "0.10.3"
 env_logger = "0.10.0"
 log = "0.4.17"
