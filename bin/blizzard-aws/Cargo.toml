@@ -9,7 +9,7 @@ name = "blizzard-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.269", features = ["jsonrpc_client", "wallet", "wallet_evm", "utils"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.270", features = ["jsonrpc_client", "wallet", "wallet_evm", "utils"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.24.16", features = ["cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
