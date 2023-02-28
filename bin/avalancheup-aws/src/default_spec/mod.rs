@@ -107,7 +107,7 @@ pub fn command() -> Command {
                 .help("Sets instance size")
                 .required(false)
                 .num_args(1)
-                .value_parser(["large", "2xlarge", "4xlarge", "8xlarge"])
+                .value_parser(["large", "xlarge", "2xlarge", "4xlarge", "8xlarge"])
                 .default_value("large"),
         )
         .arg(
