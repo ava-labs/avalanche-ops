@@ -467,6 +467,7 @@ pub fn command() -> Command {
                 .help("Sets non-zero to set priority-regossip-txs-per-address (in chain config)")
                 .required(false)
                 .num_args(1)
+                .value_parser(value_parser!(i32))
                 .default_value("0"),
         )
         .arg(

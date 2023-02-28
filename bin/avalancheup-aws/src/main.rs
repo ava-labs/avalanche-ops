@@ -25,7 +25,7 @@ async fn main() -> io::Result<()> {
     match matches.subcommand() {
         Some((default_spec::NAME, sub_matches)) => {
             let s = sub_matches
-                .get_one::<String>("SUBNET_EVM_PRIORITY_REGOSSIP_TXS_PER_ADDRESS")
+                .get_one::<String>("SUBNET_EVM_PRIORITY_REGOSSIP_ADDRESSES")
                 .unwrap_or(&String::new())
                 .clone();
             let ss: Vec<&str> = s.split(',').collect();
