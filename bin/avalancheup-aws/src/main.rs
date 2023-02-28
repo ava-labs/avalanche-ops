@@ -254,8 +254,8 @@ async fn main() -> io::Result<()> {
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
                 subnet_evm_auto_contract_native_minter_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
-                subnet_evm_config_proposer_min_block_delay: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY")
+                subnet_evm_proposer_min_block_delay: sub_matches
+                    .get_one::<u64>("SUBNET_EVM_PROPOSER_MIN_BLOCK_DELAY")
                     .unwrap_or(&1000000000)
                     .clone(),
 

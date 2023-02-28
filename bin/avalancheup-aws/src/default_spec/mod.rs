@@ -376,7 +376,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_EVM_MIN_BLOCK_GAS_COST")
                 .long("subnet-evm-min-block-gas-cost")
-                .help("Sets subnet-evm min block gas cost (in genesis, can be zero)")
+                .help("Sets subnet-evm min block gas cost (can be zero, in genesis)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
@@ -385,7 +385,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_EVM_MAX_BLOCK_GAS_COST")
                 .long("subnet-evm-max-block-gas-cost")
-                .help("Sets subnet-evm max block gas cost (in genesis, can be zero)")
+                .help("Sets subnet-evm max block gas cost (can be zero, in genesis)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
@@ -473,9 +473,18 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_EVM_PRIORITY_REGOSSIP_ADDRESSES")
                 .long("subnet-evm-priority-regossip-addresses")
-                .help("Sets the comma-separated priority regossip addresses (in addition to pre-funded test keys)")
+                .help("Sets the comma-separated priority regossip addresses (in addition to pre-funded test keys, in chain config)")
                 .required(false)
                 .num_args(1),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_PROPOSER_MIN_BLOCK_DELAY")
+                .long("subnet-evm-proposer-min-block-delay")
+                .help("Sets to subnet-evm proposer-min-block-delay in nano seconds (in subnet config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("1000000000"), // 1-second
         )
         .arg(
             Arg::new("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG")
@@ -490,15 +499,6 @@ pub fn command() -> Command {
                 .help("Sets to auto-populate subnet-evm native minter config")
                 .required(false)
                 .num_args(0),
-        )
-        .arg(
-            Arg::new("SUBNET_EVM_CONFIG_PROPOSER_MIN_BLOCK_DELAY")
-                .long("subnet-evm-config-proposer-min-block-delay")
-                .help("Sets to subnet-evm config proposer-min-block-delay in nano seconds")
-                .required(false)
-                .num_args(1)
-                .value_parser(value_parser!(u64))
-                .default_value("1000000000"), // 1-second
         )
         .arg(
             Arg::new("XSVMS")

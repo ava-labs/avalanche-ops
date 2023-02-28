@@ -201,10 +201,10 @@ pub struct DefaultSpecOption {
     pub subnet_evm_priority_regossip_max_txs: i32,
     pub subnet_evm_priority_regossip_txs_per_address: i32,
     pub subnet_evm_priority_regossip_addresses: Vec<String>,
+    pub subnet_evm_proposer_min_block_delay: u64,
 
     pub subnet_evm_auto_contract_deployer_allow_list_config: bool,
     pub subnet_evm_auto_contract_native_minter_config: bool,
-    pub subnet_evm_config_proposer_min_block_delay: u64,
 
     pub xsvms: usize,
 
@@ -454,9 +454,9 @@ impl Spec {
                 genesis.config = Some(genesis_chain_config);
 
                 let mut subnet_config = subnet::config::Config::default();
-                if opts.subnet_evm_config_proposer_min_block_delay > 0 {
+                if opts.subnet_evm_proposer_min_block_delay > 0 {
                     subnet_config.proposer_min_block_delay =
-                        opts.subnet_evm_config_proposer_min_block_delay;
+                        opts.subnet_evm_proposer_min_block_delay;
                 }
 
                 let mut subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
@@ -529,9 +529,9 @@ impl Spec {
                     .expect("failed to generate genesis");
 
                 let mut subnet_config = subnet::config::Config::default();
-                if opts.subnet_evm_config_proposer_min_block_delay > 0 {
+                if opts.subnet_evm_proposer_min_block_delay > 0 {
                     subnet_config.proposer_min_block_delay =
-                        opts.subnet_evm_config_proposer_min_block_delay * 1000 * 1000 * 1000;
+                        opts.subnet_evm_proposer_min_block_delay * 1000 * 1000 * 1000;
                 }
 
                 let xsvm = Xsvm {
