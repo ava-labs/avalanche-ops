@@ -24,47 +24,25 @@ async fn main() -> io::Result<()> {
 
     match matches.subcommand() {
         Some((default_spec::NAME, sub_matches)) => {
-            let anchor_nodes = sub_matches
-                .get_one::<u32>("ANCHOR_NODES")
-                .unwrap_or(&0)
-                .clone();
-            let non_anchor_nodes = sub_matches
-                .get_one::<u32>("NON_ANCHOR_NODES")
-                .unwrap_or(&0)
-                .clone();
-
-            let network_name = sub_matches
-                .get_one::<String>("NETWORK_NAME")
+            let s = sub_matches
+                .get_one::<String>("SUBNET_EVM_PRIORITY_REGOSSIP_TXS_PER_ADDRESS")
                 .unwrap_or(&String::new())
                 .clone();
-            let keys_to_generate = sub_matches
-                .get_one::<usize>("KEYS_TO_GENERATE")
-                .unwrap_or(&5)
-                .clone();
-
-            let volume_size_in_gb = sub_matches
-                .get_one::<u32>("VOLUME_SIZE_IN_GB")
-                .unwrap_or(&300)
-                .clone();
-
-            let metrics_fetch_interval_seconds = sub_matches
-                .get_one::<u64>("METRICS_FETCH_INTERVAL_SECONDS")
-                .unwrap_or(&0)
-                .clone();
-
-            let subnet_evms = sub_matches
-                .get_one::<usize>("SUBNET_EVMS")
-                .unwrap_or(&0)
-                .clone();
-
-            let xsvms = sub_matches.get_one::<usize>("XSVMS").unwrap_or(&0).clone();
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut subnet_evm_priority_regossip_addresses = Vec::new();
+            for addr in ss.iter() {
+                subnet_evm_priority_regossip_addresses.push(addr.trim().to_string());
+            }
 
             let opt = avalancheup_aws::spec::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .clone(),
-                network_name,
+                network_name: sub_matches
+                    .get_one::<String>("NETWORK_NAME")
+                    .unwrap_or(&String::new())
+                    .clone(),
 
                 arch_type: sub_matches
                     .get_one::<String>("ARCH_TYPE")
@@ -74,14 +52,24 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("RUST_OS_TYPE")
                     .unwrap()
                     .to_string(),
-                anchor_nodes,
-                non_anchor_nodes,
+
+                anchor_nodes: sub_matches
+                    .get_one::<u32>("ANCHOR_NODES")
+                    .unwrap_or(&0)
+                    .clone(),
+                non_anchor_nodes: sub_matches
+                    .get_one::<u32>("NON_ANCHOR_NODES")
+                    .unwrap_or(&0)
+                    .clone(),
 
                 key_files_dir: sub_matches
                     .get_one::<String>("KEY_FILES_DIR")
                     .unwrap_or(&String::new())
                     .to_string(),
-                keys_to_generate,
+                keys_to_generate: sub_matches
+                    .get_one::<usize>("KEYS_TO_GENERATE")
+                    .unwrap_or(&5)
+                    .clone(),
                 keys_to_generate_type: sub_matches
                     .get_one::<String>("KEYS_TO_GENERATE_TYPE")
                     .unwrap_or(&String::from("hot"))
@@ -98,7 +86,10 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::from("large"))
                     .clone(),
 
-                volume_size_in_gb,
+                volume_size_in_gb: sub_matches
+                    .get_one::<u32>("VOLUME_SIZE_IN_GB")
+                    .unwrap_or(&300)
+                    .clone(),
 
                 ip_mode: sub_matches
                     .get_one::<String>("IP_MODE")
@@ -107,7 +98,10 @@ async fn main() -> io::Result<()> {
 
                 enable_nlb: sub_matches.get_flag("ENABLE_NLB"),
                 disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
-                metrics_fetch_interval_seconds,
+                metrics_fetch_interval_seconds: sub_matches
+                    .get_one::<u64>("METRICS_FETCH_INTERVAL_SECONDS")
+                    .unwrap_or(&0)
+                    .clone(),
 
                 aad_tag: sub_matches
                     .get_one::<String>("AAD_TAG")
@@ -188,7 +182,10 @@ async fn main() -> io::Result<()> {
                     .get_flag("CORETH_OFFLINE_PRUNING_ENABLED"),
                 coreth_state_sync_enabled: sub_matches.get_flag("CORETH_STATE_SYNC_ENABLED"),
 
-                subnet_evms,
+                subnet_evms: sub_matches
+                    .get_one::<usize>("SUBNET_EVMS")
+                    .unwrap_or(&0)
+                    .clone(),
 
                 subnet_evm_gas_limit: sub_matches
                     .get_one::<u64>("SUBNET_EVM_GAS_LIMIT")
@@ -216,7 +213,7 @@ async fn main() -> io::Result<()> {
                     .clone(),
                 subnet_evm_max_block_gas_cost: sub_matches
                     .get_one::<u64>("SUBNET_EVM_MAX_BLOCK_GAS_COST")
-                    .unwrap_or(&0)
+                    .unwrap_or(&10_000_000)
                     .clone(),
                 subnet_evm_block_gas_cost_step: sub_matches
                     .get_one::<u64>("SUBNET_EVM_BLOCK_GAS_COST_STEP")
@@ -239,6 +236,19 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&0)
                     .clone(),
                 subnet_evm_local_txs_enabled: sub_matches.get_flag("SUBNET_EVM_LOCAL_TXS_ENABLED"),
+                subnet_evm_priority_regossip_frequency: sub_matches
+                    .get_one::<i64>("SUBNET_EVM_PRIORITY_REGOSSIP_FREQUENCY")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_priority_regossip_max_txs: sub_matches
+                    .get_one::<i32>("SUBNET_EVM_PRIORITY_REGOSSIP_MAX_TXS")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_priority_regossip_txs_per_address: sub_matches
+                    .get_one::<i32>("SUBNET_EVM_PRIORITY_REGOSSIP_TXS_PER_ADDRESS")
+                    .unwrap_or(&0)
+                    .clone(),
+                subnet_evm_priority_regossip_addresses,
 
                 subnet_evm_auto_contract_deployer_allow_list_config: sub_matches
                     .get_flag("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
@@ -249,7 +259,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&1000000000)
                     .clone(),
 
-                xsvms,
+                xsvms: sub_matches.get_one::<usize>("XSVMS").unwrap_or(&0).clone(),
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")

@@ -376,7 +376,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_EVM_MIN_BLOCK_GAS_COST")
                 .long("subnet-evm-min-block-gas-cost")
-                .help("Sets non-zero to set subnet-evm min block gas cost (in genesis)")
+                .help("Sets subnet-evm min block gas cost (in genesis, can be zero)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
@@ -385,11 +385,11 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_EVM_MAX_BLOCK_GAS_COST")
                 .long("subnet-evm-max-block-gas-cost")
-                .help("Sets non-zero to set subnet-evm max block gas cost (in genesis)")
+                .help("Sets subnet-evm max block gas cost (in genesis, can be zero)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("0"),
+                .default_value("10000000"),
         )
         .arg(
             Arg::new("SUBNET_EVM_BLOCK_GAS_COST_STEP")
@@ -442,6 +442,40 @@ pub fn command() -> Command {
                 .help("Sets to enable local txs for subnet-evm")
                 .required(false)
                 .num_args(0),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_PRIORITY_REGOSSIP_FREQUENCY")
+                .long("subnet-evm-priority-regossip-frequency")
+                .help("Sets non-zero to set priority-regossip-frequency (in nano-seconds, in chain config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(i64))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_PRIORITY_REGOSSIP_MAX_TXS")
+                .long("subnet-evm-priority-regossip-max-txs")
+                .help("Sets non-zero to set priority-regossip-max-txs (in chain config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(i32))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_PRIORITY_REGOSSIP_TXS_PER_ADDRESS")
+                .long("subnet-evm-priority-regossip-txs-per-address")
+                .help("Sets non-zero to set priority-regossip-txs-per-address (in chain config)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(i32))
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("SUBNET_EVM_PRIORITY_REGOSSIP_ADDRESSES")
+                .long("subnet-evm-priority-regossip-addresses")
+                .help("Sets the comma-separated priority regossip addresses (in addition to pre-funded test keys)")
+                .required(false)
+                .num_args(1),
         )
         .arg(
             Arg::new("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG")

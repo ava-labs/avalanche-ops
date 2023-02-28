@@ -197,6 +197,10 @@ pub struct DefaultSpecOption {
     pub subnet_evm_tx_pool_account_queue: u64,
     pub subnet_evm_tx_pool_global_queue: u64,
     pub subnet_evm_local_txs_enabled: bool,
+    pub subnet_evm_priority_regossip_frequency: i64,
+    pub subnet_evm_priority_regossip_max_txs: i32,
+    pub subnet_evm_priority_regossip_txs_per_address: i32,
+    pub subnet_evm_priority_regossip_addresses: Vec<String>,
 
     pub subnet_evm_auto_contract_deployer_allow_list_config: bool,
     pub subnet_evm_auto_contract_native_minter_config: bool,
@@ -414,12 +418,10 @@ impl Spec {
                     fee_config.base_fee_change_denominator =
                         Some(opts.subnet_evm_base_fee_change_denominator);
                 }
-                if opts.subnet_evm_min_block_gas_cost > 0 {
-                    fee_config.min_block_gas_cost = Some(opts.subnet_evm_min_block_gas_cost);
-                }
-                if opts.subnet_evm_max_block_gas_cost > 0 {
-                    fee_config.max_block_gas_cost = Some(opts.subnet_evm_max_block_gas_cost);
-                }
+
+                fee_config.min_block_gas_cost = Some(opts.subnet_evm_min_block_gas_cost);
+                fee_config.max_block_gas_cost = Some(opts.subnet_evm_max_block_gas_cost);
+
                 if opts.subnet_evm_block_gas_cost_step > 0 {
                     fee_config.block_gas_cost_step = Some(opts.subnet_evm_block_gas_cost_step);
                 }
@@ -478,6 +480,29 @@ impl Spec {
                 }
                 if opts.subnet_evm_local_txs_enabled {
                     subnet_evm_chain_config.local_txs_enabled = Some(true);
+                }
+                if opts.subnet_evm_priority_regossip_frequency > 0 {
+                    subnet_evm_chain_config.priority_regossip_frequency =
+                        Some(opts.subnet_evm_priority_regossip_frequency);
+                }
+                if opts.subnet_evm_priority_regossip_max_txs > 0 {
+                    subnet_evm_chain_config.priority_regossip_max_txs =
+                        Some(opts.subnet_evm_priority_regossip_max_txs);
+                }
+                if opts.subnet_evm_priority_regossip_txs_per_address > 0 {
+                    subnet_evm_chain_config.priority_regossip_txs_per_address =
+                        Some(opts.subnet_evm_priority_regossip_txs_per_address);
+                }
+                if !opts.subnet_evm_priority_regossip_addresses.is_empty() {
+                    let addresses =
+                        if let Some(ss) = &subnet_evm_chain_config.priority_regossip_addresses {
+                            let mut copied = ss.clone();
+                            copied.extend(opts.subnet_evm_priority_regossip_addresses);
+                            copied
+                        } else {
+                            opts.subnet_evm_priority_regossip_addresses.clone()
+                        };
+                    subnet_evm_chain_config.priority_regossip_addresses = Some(addresses);
                 }
 
                 let subnet_evm = SubnetEvm {
