@@ -650,7 +650,8 @@ impl Spec {
         };
 
         let instance_types =
-            ec2::default_instance_types(&opts.region, "amd64", &opts.instance_size).unwrap();
+            ec2::default_instance_types(&opts.region, &opts.arch_type, &opts.instance_size)
+                .unwrap();
         let machine = Machine {
             anchor_nodes,
             non_anchor_nodes,
