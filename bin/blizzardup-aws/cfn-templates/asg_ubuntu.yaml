@@ -65,7 +65,7 @@ Parameters:
     Type: Number
     Default: 4
     MinValue: 1
-    MaxValue: 5
+    MaxValue: 10
     Description: The number of instance types
 
   InstanceMode:
@@ -139,6 +139,21 @@ Conditions:
       - Fn::Equals:
           - Ref: InstanceTypesCount
           - 5
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 6
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 7
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 8
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
 
   Has3InstanceTypes:
     Fn::Or:
@@ -151,6 +166,21 @@ Conditions:
       - Fn::Equals:
           - Ref: InstanceTypesCount
           - 5
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 6
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 7
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 8
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
 
   Has4InstanceTypes:
     Fn::Or:
@@ -160,11 +190,101 @@ Conditions:
       - Fn::Equals:
           - Ref: InstanceTypesCount
           - 5
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 6
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 7
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 8
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
 
   Has5InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 5
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 6
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 7
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 8
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
+
+  Has6InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 6
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 7
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 8
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
+
+  Has7InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 7
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 8
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
+
+  Has8InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 8
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
+
+  Has9InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 9
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 10
+
+  Has10InstanceTypes:
     Fn::Equals:
       - Ref: InstanceTypesCount
-      - 5
+      - 10
 
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
@@ -430,6 +550,30 @@ Resources:
             - Fn::If:
                 - Has4InstanceTypes
                 - InstanceType: !Select [3, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has5InstanceTypes
+                - InstanceType: !Select [4, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has6InstanceTypes
+                - InstanceType: !Select [5, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has7InstanceTypes
+                - InstanceType: !Select [6, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has8InstanceTypes
+                - InstanceType: !Select [7, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has9InstanceTypes
+                - InstanceType: !Select [8, !Ref InstanceTypes]
+                - !Ref AWS::NoValue
+            - Fn::If:
+                - Has10InstanceTypes
+                - InstanceType: !Select [9, !Ref InstanceTypes]
                 - !Ref AWS::NoValue
 
 Outputs:
