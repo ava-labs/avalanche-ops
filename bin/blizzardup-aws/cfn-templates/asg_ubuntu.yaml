@@ -65,7 +65,7 @@ Parameters:
     Type: Number
     Default: 4
     MinValue: 1
-    MaxValue: 4
+    MaxValue: 5
     Description: The number of instance types
 
   InstanceMode:
@@ -136,6 +136,9 @@ Conditions:
       - Fn::Equals:
           - Ref: InstanceTypesCount
           - 4
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 5
 
   Has3InstanceTypes:
     Fn::Or:
@@ -145,11 +148,23 @@ Conditions:
       - Fn::Equals:
           - Ref: InstanceTypesCount
           - 4
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 5
 
   Has4InstanceTypes:
+    Fn::Or:
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 4
+      - Fn::Equals:
+          - Ref: InstanceTypesCount
+          - 5
+
+  Has5InstanceTypes:
     Fn::Equals:
       - Ref: InstanceTypesCount
-      - 4
+      - 5
 
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
