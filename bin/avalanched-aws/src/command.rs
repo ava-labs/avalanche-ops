@@ -377,9 +377,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         fetched_tags.kms_cmk_arn.to_string(),
         fetched_tags.aad_tag.to_string(),
     );
-    let tls_key_path = avalanchego_config.staking_tls_key_file.clone().unwrap();
-    let tls_cert_path = avalanchego_config.staking_tls_cert_file.clone().unwrap();
-    let (node_id, newly_generated) = x509::load_or_generate_pem(&tls_key_path, &tls_cert_path)?;
+    let local_tls_key_path = avalanchego_config.staking_tls_key_file.clone().unwrap();
+    let local_tls_cert_path = avalanchego_config.staking_tls_cert_file.clone().unwrap();
+    let (node_id, newly_generated) =
+        x509::load_or_generate_pem(&local_tls_key_path, &local_tls_cert_path)?;
     log::info!(
         "loaded node ID {} (was generated {})",
         node_id,
@@ -397,15 +398,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         log::info!("STEP: backing up newly generated certificates...");
 
         let s3_key_tls_key = format!("{}/pki/{}.key.zstd.encrypted", fetched_tags.id, node_id);
-        let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", fetched_tags.id, node_id);
-
         log::info!("uploading key file {}", s3_key_tls_key);
         s3::spawn_compress_seal_put_object(
             s3_manager.clone(),
             envelope_manager.clone(),
-            &s3_key_tls_key,
+            &local_tls_key_path,
             &fetched_tags.s3_bucket,
-            &s3_key_tls_cert,
+            &s3_key_tls_key,
         )
         .await
         .map_err(|e| {
@@ -415,11 +414,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             )
         })?;
 
-        log::info!("uploading cert file {}", tls_cert_path);
+        let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", fetched_tags.id, node_id);
+        log::info!("uploading cert file {}", local_tls_cert_path);
         s3::spawn_compress_seal_put_object(
             s3_manager.clone(),
             envelope_manager.clone(),
-            &s3_key_tls_key,
+            &local_tls_cert_path,
             &fetched_tags.s3_bucket,
             &s3_key_tls_cert,
         )
