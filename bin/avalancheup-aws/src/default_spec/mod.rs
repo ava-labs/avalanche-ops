@@ -108,7 +108,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(["large", "xlarge", "2xlarge", "4xlarge", "8xlarge"])
-                .default_value("large"),
+                .default_value("xlarge"),
         )
         .arg(
             Arg::new("IP_MODE")
