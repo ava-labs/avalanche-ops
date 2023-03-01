@@ -100,12 +100,12 @@ pub async fn execute(
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {:?}.",
-                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address,transferee_addrs
+                "No, I am not ready to transfer {transfer_amount_navax} ({} ETH/AVX) from {} to total {} addresses: {:?}",
+                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address, transferee_addrs.len(), transferee_addrs
             ),
             format!(
-                "Yes, let's transfer {transfer_amount_navax} ({} ETH/AVX) from {} to {:?}.",
-                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address,transferee_addrs
+                "Yes, let's transfer {transfer_amount_navax} ({} ETH/AVX) from {} to total {} addresses: {:?}",
+                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address, transferee_addrs.len(), transferee_addrs
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
