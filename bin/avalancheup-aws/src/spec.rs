@@ -654,7 +654,7 @@ impl Spec {
         } else {
             if avalanchego_config.is_mainnet() {
                 if state_sync_enabled {
-                    500
+                    300
                 } else {
                     1024
                 }
