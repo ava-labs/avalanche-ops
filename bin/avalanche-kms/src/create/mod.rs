@@ -16,6 +16,7 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use primitive_types::U256;
+use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "create";
 
@@ -156,6 +157,11 @@ pub async fn execute(
     )?;
     let mut cmks = Vec::new();
     for i in 0..keys {
+        // to prevent rate limit errors
+        // e.g.,
+        // { source: CreateKeyError { kind: Unhandled(Unhandled { source: Error { code: Some(\\\"ThrottlingException\\\"), message: Some(\\\"You have exceeded the rate at which you may call KMS. Reduce the frequency of your calls.\\\"
+        sleep(Duration::from_secs(2)).await;
+
         println!("");
         log::info!("[{i}] creating CMk");
         let mut tags = HashMap::new();
