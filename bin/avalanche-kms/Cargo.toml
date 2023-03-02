@@ -5,14 +5,14 @@ edition = "2021"
 rust-version = "1.67"
 
 [dependencies]
-avalanche-types = { version = "0.0.274", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws", "utils"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.24.18", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.275", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws", "utils"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.24.19", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.1.8", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.26.1"
 dialoguer = "0.10.3"
 env_logger = "0.10.0"
-ethers-signers = "1.0.2"
+ethers-signers = "1.5.0"
 id-manager = "0.0.3"
 log = "0.4.17"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
-tokio = { version = "1.25.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.26.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
