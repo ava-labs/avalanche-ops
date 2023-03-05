@@ -3,7 +3,6 @@ use std::{
     fs,
     io::{self, stdout, Error, ErrorKind},
     path::Path,
-    sync::Arc,
 };
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
