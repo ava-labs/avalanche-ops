@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, sync::Arc, thread, time};
+use std::{fs::File, io::Read, thread, time};
 
 use aws_manager::{
     self,
