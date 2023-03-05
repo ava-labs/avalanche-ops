@@ -20,17 +20,11 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let meta = fetch_metadata().await?;
 
     let aws_creds = load_aws_credential(&meta.region).await?;
-    let ec2_manager_arc = Arc::new(aws_creds.ec2_manager.clone());
-    let s3_manager_arc = Arc::new(aws_creds.s3_manager.clone());
 
-    let tags = fetch_tags(
-        Arc::clone(&ec2_manager_arc),
-        Arc::new(meta.ec2_instance_id.clone()),
-    )
-    .await?;
+    let tags = fetch_tags(&aws_creds.ec2_manager, &meta.ec2_instance_id).await?;
 
     let spec = download_spec(
-        Arc::clone(&s3_manager_arc),
+        &aws_creds.s3_manager,
         &tags.s3_bucket,
         &tags.id,
         &tags.blizzardup_spec_path,
@@ -182,10 +176,7 @@ struct Tags {
     blizzardup_spec_path: String,
 }
 
-async fn fetch_tags(
-    ec2_manager: Arc<ec2::Manager>,
-    ec2_instance_id: Arc<String>,
-) -> io::Result<Tags> {
+async fn fetch_tags(ec2_manager: &ec2::Manager, ec2_instance_id: &str) -> io::Result<Tags> {
     log::info!("STEP: fetching tags...");
 
     let tags = ec2_manager
@@ -239,7 +230,7 @@ async fn fetch_tags(
 }
 
 async fn download_spec(
-    s3_manager: Arc<s3::Manager>,
+    s3_manager: &s3::Manager,
     s3_bucket: &str,
     id: &str,
     blizzardup_spec_path: &str,
@@ -248,15 +239,14 @@ async fn download_spec(
 
     let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
 
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
-    s3::spawn_get_object(
-        s3_manager.to_owned(),
-        s3_bucket,
-        &blizzardup_aws::StorageNamespace::ConfigFile(id.to_string()).encode(),
-        &tmp_spec_file_path,
-    )
-    .await
-    .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+    s3_manager
+        .get_object(
+            s3_bucket,
+            &blizzardup_aws::StorageNamespace::ConfigFile(id.to_string()).encode(),
+            &tmp_spec_file_path,
+        )
+        .await
+        .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
 
     let spec = blizzardup_aws::Spec::load(&tmp_spec_file_path)?;
     log::info!("loaded blizzardup_aws::Spec");

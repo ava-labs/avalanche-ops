@@ -220,7 +220,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
     let ssm_manager = ssm::Manager::new(&shared_config);
-    let ssm_cli = ssm_manager.client();
 
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))
@@ -250,12 +249,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         // while instance bootstrapping
         s3_manager
             .put_object(
-                Arc::new(v.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
-                        .encode(),
-                ),
+                v,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone()).encode(),
             )
             .await
             .expect("failed put_object install_artifacts.avalanched_bin");
@@ -269,14 +265,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(v.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
-                        spec.id.clone(),
-                    )
+                v,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AwsVolumeProvisionerBin(spec.id.clone())
                     .encode(),
-                ),
             )
             .await
             .expect("failed put_object install_artifacts.aws_volume_provisioner_bin");
@@ -290,12 +282,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(v.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
-                        .encode(),
-                ),
+                v,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
+                    .encode(),
             )
             .await
             .expect("failed put_object install_artifacts.aws_ip_provisioner_bin");
@@ -314,14 +304,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(v.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
-                        spec.id.clone(),
-                    )
-                    .encode(),
-                ),
+                v,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
+                    spec.id.clone(),
+                )
+                .encode(),
             )
             .await
             .expect("failed put_object install_artifacts.avalanche_telemetry_cloudwatch_bin");
@@ -337,12 +325,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(v.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
-                        .encode(),
-                ),
+                v,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
+                    .encode(),
             )
             .await
             .expect("failed put_object install_artifacts.avalanche_config_bin");
@@ -356,11 +342,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         // upload without compression first
         s3_manager
             .put_object(
-                Arc::new(avalanchego_bin.clone()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::AvalancheBin(spec.id.clone()).encode(),
-                ),
+                avalanchego_bin,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AvalancheBin(spec.id.clone()).encode(),
             )
             .await
             .expect("failed put_object avalanchego_bin");
@@ -385,14 +369,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             );
             s3_manager
                 .put_object(
-                    Arc::new(file_path.to_string()),
-                    Arc::new(spec.aws_resources.s3_bucket.clone()),
-                    Arc::new(format!(
+                    &file_path,
+                    &spec.aws_resources.s3_bucket,
+                    &format!(
                         "{}/{}",
                         &avalancheup_aws::spec::StorageNamespace::PluginDir(spec.id.clone())
                             .encode(),
                         file_name,
-                    )),
+                    ),
                 )
                 .await
                 .expect("failed put_object file_path");
@@ -404,9 +388,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     log::info!("uploading avalancheup spec file...");
     s3_manager
         .put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            &spec_file_path,
+            &spec.aws_resources.s3_bucket,
+            &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
         .await
         .unwrap();
@@ -438,17 +422,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
     }
     let envelope_manager = envelope::Manager::new(
-        kms_manager,
+        &kms_manager,
         spec.aws_resources
             .kms_cmk_symmetric_default_encrypt_key
             .clone()
@@ -485,23 +467,18 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
         envelope_manager
-            .seal_aes_256_file(
-                Arc::new(tmp_compressed_path),
-                Arc::new(tmp_encrypted_path.clone()),
-            )
+            .seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path)
             .await
             .unwrap();
 
         s3_manager
             .put_object(
-                Arc::new(tmp_encrypted_path),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
-                        spec.id.clone(),
-                    )
-                    .encode(),
-                ),
+                &tmp_encrypted_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
+                    spec.id.clone(),
+                )
+                .encode(),
             )
             .await
             .unwrap();
@@ -511,11 +488,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -533,11 +508,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         metrics_rules.sync(&metrics_rules_file_path).unwrap();
         s3_manager
             .put_object(
-                Arc::new(metrics_rules_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
-                ),
+                &metrics_rules_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -615,11 +588,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -716,11 +687,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -1130,13 +1099,13 @@ aws ssm start-session --region {} --target {}
 
             objects = s3_manager
                 .list_objects(
-                    Arc::new(spec.aws_resources.s3_bucket.clone()),
-                    Some(Arc::new(s3::append_slash(
+                    &spec.aws_resources.s3_bucket,
+                    Some(&s3::append_slash(
                         &avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
                             spec.id.clone(),
                         )
                         .encode(),
-                    ))),
+                    )),
                 )
                 .await
                 .unwrap();
@@ -1178,11 +1147,9 @@ aws ssm start-session --region {} --target {}
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -1476,13 +1443,13 @@ aws ssm start-session --region {} --target {}
 
             objects = s3_manager
                 .list_objects(
-                    Arc::new(spec.aws_resources.s3_bucket.clone()),
-                    Some(Arc::new(s3::append_slash(
+                    &spec.aws_resources.s3_bucket,
+                    Some(&s3::append_slash(
                         &avalancheup_aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
                             spec.id.clone(),
                         )
                         .encode(),
-                    ))),
+                    )),
                 )
                 .await
                 .unwrap();
@@ -1522,11 +1489,9 @@ aws ssm start-session --region {} --target {}
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Arc::new(
-                    avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-                ),
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -1618,9 +1583,9 @@ aws ssm start-session --region {} --target {}
     spec.sync(spec_file_path)?;
     s3_manager
         .put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(spec.aws_resources.s3_bucket.clone()),
-            Arc::new(avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            &spec_file_path,
+            &spec.aws_resources.s3_bucket,
+            &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
         .await
         .expect("failed put_object ConfigFile");
@@ -2039,12 +2004,9 @@ default-spec \\
             spec.sync(spec_file_path)?;
             s3_manager
                 .put_object(
-                    Arc::new(spec_file_path.to_string()),
-                    Arc::new(spec.aws_resources.s3_bucket.clone()),
-                    Arc::new(
-                        avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
-                            .encode(),
-                    ),
+                    &spec_file_path,
+                    &spec.aws_resources.s3_bucket,
+                    &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
                 )
                 .await
                 .unwrap();
@@ -2057,7 +2019,8 @@ default-spec \\
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = ssm_cli
+            let ssm_output = ssm_manager
+                .cli
                 .send_command()
                 .document_name(ssm_document_name_restart_tracked_subnet.clone())
                 .set_instance_ids(Some(all_instance_ids.clone()))
@@ -2172,7 +2135,8 @@ default-spec \\
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = ssm_cli
+            let ssm_output = ssm_manager
+                .cli
                 .send_command()
                 .document_name(ssm_document_name_restart_node_chain_config.clone())
                 .set_instance_ids(Some(all_instance_ids.clone()))
@@ -2356,12 +2320,9 @@ default-spec \\
             spec.sync(spec_file_path)?;
             s3_manager
                 .put_object(
-                    Arc::new(spec_file_path.to_string()),
-                    Arc::new(spec.aws_resources.s3_bucket.clone()),
-                    Arc::new(
-                        avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
-                            .encode(),
-                    ),
+                    &spec_file_path,
+                    &spec.aws_resources.s3_bucket,
+                    &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
                 )
                 .await
                 .unwrap();
@@ -2374,7 +2335,8 @@ default-spec \\
                 ResetColor
             )?;
             // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = ssm_cli
+            let ssm_output = ssm_manager
+                .cli
                 .send_command()
                 .document_name(ssm_document_name_restart_tracked_subnet.clone())
                 .set_instance_ids(Some(all_instance_ids.clone()))

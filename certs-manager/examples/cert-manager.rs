@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, sync::Arc, thread, time};
+use std::{fs::File, io::Read, thread, time};
 
 use aws_manager::{
     self,
@@ -24,11 +24,8 @@ fn main() {
 
     let kms_manager = kms::Manager::new(&shared_config);
     let cmk = ab!(kms_manager.create_symmetric_default_key("test key description")).unwrap();
-    let envelope_manager = envelope::Manager::new(
-        kms_manager.clone(),
-        cmk.id.clone(),
-        "test-aad-tag".to_string(),
-    );
+    let envelope_manager =
+        envelope::Manager::new(&kms_manager, cmk.id.clone(), "test-aad-tag".to_string());
 
     let s3_manager = s3::Manager::new(&shared_config);
     let s3_bucket = format!(
@@ -82,7 +79,7 @@ fn main() {
 
     thread::sleep(time::Duration::from_secs(3));
 
-    ab!(s3_manager.delete_objects(Arc::new(s3_bucket.clone()), None)).unwrap();
+    ab!(s3_manager.delete_objects(&s3_bucket, None)).unwrap();
     thread::sleep(time::Duration::from_secs(3));
     ab!(s3_manager.delete_bucket(&s3_bucket)).unwrap();
     ab!(kms_manager.schedule_to_delete(&cmk.id, 7)).unwrap();

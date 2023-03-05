@@ -17,7 +17,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     let aws_creds = load_aws_credential(&opts.region).await?;
     let envelope_manager = envelope::Manager::new(
-        aws_creds.kms_manager.clone(),
+        &aws_creds.kms_manager,
         opts.kms_cmk_id.clone(),
         // must've be equal for envelope encryption
         // e.g., "cfn-templates" tag "AAD_TAG"

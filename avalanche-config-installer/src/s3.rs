@@ -11,14 +11,12 @@ use tokio::time::{sleep, Duration};
 
 pub async fn download(
     overwrite: bool,
-    s3_manager: Arc<s3::Manager>,
+    s3_manager: &s3::Manager,
     s3_bucket: &str,
     source_bin_s3_path: &str,
     target_bin_path: &str,
 ) -> io::Result<()> {
     log::info!("downloading binary in bucket {s3_bucket} (overwrite {overwrite})");
-    let s3_manager: &s3::Manager = s3_manager.as_ref();
-
     let mut need_download = !Path::new(target_bin_path).exists();
     if overwrite {
         need_download = true;
@@ -31,11 +29,7 @@ pub async fn download(
             log::info!("[ROUND {round}] get_object for {source_bin_s3_path}");
 
             let res = s3_manager
-                .get_object(
-                    Arc::new(s3_bucket.to_owned()),
-                    Arc::new(source_bin_s3_path.to_owned()),
-                    Arc::new(tmp_path.clone()),
-                )
+                .get_object(s3_bucket, source_bin_s3_path, &tmp_path)
                 .await;
 
             if res.is_ok() {

@@ -61,7 +61,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     log::info!("STEP: fetching tags...");
     let tags = ec2_manager
-        .fetch_tags(Arc::new(meta.ec2_instance_id.clone()))
+        .fetch_tags(&meta.ec2_instance_id)
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed fetch_tags {}", e)))?;
 
@@ -208,14 +208,15 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     } else {
         log::info!("STEP: downloading avalancheup spec file from S3...");
         let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
-        s3::spawn_get_object(
-            s3_manager.clone(),
-            &fetched_tags.s3_bucket,
-            &avalancheup_aws::spec::StorageNamespace::ConfigFile(fetched_tags.id.clone()).encode(),
-            &tmp_spec_file_path,
-        )
-        .await
-        .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+        s3_manager
+            .get_object(
+                &fetched_tags.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::ConfigFile(fetched_tags.id.clone())
+                    .encode(),
+                &tmp_spec_file_path,
+            )
+            .await
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
 
         let mut spec = avalancheup_aws::spec::Spec::load(&tmp_spec_file_path)?;
 
@@ -362,7 +363,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         ));
     }
     let attached_volume = volumes[0].clone();
-    let attached_volume_id = attached_volume.volume_id().unwrap();
+    let attached_volume_id = attached_volume.volume_id().unwrap().to_string();
 
     //
     //
@@ -373,7 +374,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     //
     log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
-        kms_manager.clone(),
+        &kms_manager,
         fetched_tags.kms_cmk_arn.to_string(),
         fetched_tags.aad_tag.to_string(),
     );
@@ -399,37 +400,37 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
         let s3_key_tls_key = format!("{}/pki/{}.key.zstd.encrypted", fetched_tags.id, node_id);
         log::info!("uploading key file {}", s3_key_tls_key);
-        s3::spawn_compress_seal_put_object(
-            s3_manager.clone(),
-            envelope_manager.clone(),
-            &local_tls_key_path,
-            &fetched_tags.s3_bucket,
-            &s3_key_tls_key,
-        )
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed spawn_compress_seal_put_object tls_key_path: {}", e),
+        envelope_manager
+            .compress_seal_put_object(
+                &s3_manager,
+                &local_tls_key_path,
+                &fetched_tags.s3_bucket,
+                &s3_key_tls_key,
             )
-        })?;
+            .await
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed spawn_compress_seal_put_object tls_key_path: {}", e),
+                )
+            })?;
 
         let s3_key_tls_cert = format!("{}/pki/{}.crt.zstd.encrypted", fetched_tags.id, node_id);
         log::info!("uploading cert file {}", local_tls_cert_path);
-        s3::spawn_compress_seal_put_object(
-            s3_manager.clone(),
-            envelope_manager.clone(),
-            &local_tls_cert_path,
-            &fetched_tags.s3_bucket,
-            &s3_key_tls_cert,
-        )
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
+        envelope_manager
+            .compress_seal_put_object(
+                &s3_manager,
+                &local_tls_cert_path,
+                &fetched_tags.s3_bucket,
+                &s3_key_tls_cert,
             )
-        })?;
+            .await
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
+                )
+            })?;
     }
 
     //
@@ -477,10 +478,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                     "addiing NODE_ID tag to the EBS volume '{}'",
                     attached_volume_id
                 );
-                let ec2_cli = ec2_manager.client();
-                ec2_cli
+                ec2_manager
+                    .cli
                     .create_tags()
-                    .resources(attached_volume_id)
+                    .resources(attached_volume_id.clone())
                     .tags(
                         Tag::builder()
                             .key(String::from("NODE_ID"))
@@ -566,18 +567,20 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             let node_info_path = random_manager::tmp_path(10, Some(".yaml"))?;
             node_info.sync(node_info_path.clone()).unwrap();
 
-            s3::spawn_put_object(
-                s3_manager.clone(),
-                node_info_path.as_str(),
-                &fetched_tags.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNode(
-                    spec.id.clone(),
-                    local_node.clone(),
+            s3_manager
+                .put_object(
+                    node_info_path.as_str(),
+                    &fetched_tags.s3_bucket,
+                    &avalancheup_aws::spec::StorageNamespace::DiscoverBootstrappingAnchorNode(
+                        spec.id.clone(),
+                        local_node.clone(),
+                    )
+                    .encode(),
                 )
-                .encode(),
-            )
-            .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e)))?;
+                .await
+                .map_err(|e| {
+                    Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e))
+                })?;
 
             fs::remove_file(node_info_path)?;
 
@@ -599,15 +602,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             loop {
                 sleep(Duration::from_secs(20)).await;
 
-                objects = s3::spawn_list_objects(
-                    s3_manager.clone(),
-                    &fetched_tags.s3_bucket,
-                    Some(s3_key_prefix.clone()),
-                )
-                .await
-                .map_err(|e| {
-                    Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
-                })?;
+                objects = s3_manager
+                    .list_objects(&fetched_tags.s3_bucket, Some(&s3_key_prefix))
+                    .await
+                    .map_err(|e| {
+                        Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
+                    })?;
 
                 log::info!(
                     "{} seed/bootstrapping anchor nodes are ready (expecting {} nodes)",
@@ -639,15 +639,17 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             sleep(Duration::from_secs(1)).await;
 
             log::info!("STEP: uploading the new genesis file from each anchor node, which is to be shared with non-anchor nodes");
-            s3::spawn_put_object(
-                s3_manager.clone(),
-                &avalanchego_config.clone().genesis.unwrap(),
-                &fetched_tags.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::GenesisFile(fetched_tags.id.clone())
-                    .encode(),
-            )
-            .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e)))?;
+            s3_manager
+                .put_object(
+                    &avalanchego_config.clone().genesis.unwrap(),
+                    &fetched_tags.s3_bucket,
+                    &avalancheup_aws::spec::StorageNamespace::GenesisFile(fetched_tags.id.clone())
+                        .encode(),
+                )
+                .await
+                .map_err(|e| {
+                    Error::new(ErrorKind::Other, format!("failed spawn_put_object {}", e))
+                })?;
         }
 
         //
@@ -663,14 +665,16 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             let spec = avalancheup_aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
             let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
 
-            s3::spawn_get_object(
-                s3_manager.clone(),
-                &fetched_tags.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
-                &tmp_genesis_path,
-            )
-            .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+            s3_manager
+                .get_object(
+                    &fetched_tags.s3_bucket,
+                    &avalancheup_aws::spec::StorageNamespace::GenesisFile(spec.id.clone()).encode(),
+                    &tmp_genesis_path,
+                )
+                .await
+                .map_err(|e| {
+                    Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e))
+                })?;
 
             fs::copy(
                 &tmp_genesis_path,
@@ -720,15 +724,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             loop {
                 sleep(Duration::from_secs(20)).await;
 
-                objects = s3::spawn_list_objects(
-                    s3_manager.clone(),
-                    &fetched_tags.s3_bucket,
-                    Some(s3_key_prefix.clone()),
-                )
-                .await
-                .map_err(|e| {
-                    Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
-                })?;
+                objects = s3_manager
+                    .list_objects(&fetched_tags.s3_bucket, Some(&s3_key_prefix))
+                    .await
+                    .map_err(|e| {
+                        Error::new(ErrorKind::Other, format!("failed spawn_list_objects {}", e))
+                    })?;
 
                 log::info!(
                     "{} anchor nodes are ready (expecting {} nodes)",
@@ -914,7 +915,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         handles.push(tokio::spawn(monitor_spot_instance_action(
             Arc::new(meta.region.clone()),
             Arc::new(meta.ec2_instance_id.clone()),
-            Arc::new(attached_volume_id.to_string()),
+            Arc::new(attached_volume_id.clone()),
         )));
     } else {
         log::info!("skipped monitoring the spot instance-action...");
@@ -1415,8 +1416,8 @@ async fn publish_node_info_ready_loop(
 ) {
     log::info!("STEP: publishing node info for its readiness...");
 
-    let spec = avalancheup_aws::spec::Spec::load(avalancheup_spec_path.as_str())
-        .expect("failed to load spec");
+    let spec =
+        avalancheup_aws::spec::Spec::load(&avalancheup_spec_path).expect("failed to load spec");
 
     let http_scheme = {
         if spec.avalanchego_config.http_tls_enabled.is_some()
@@ -1432,9 +1433,9 @@ async fn publish_node_info_ready_loop(
     };
     let local_node = avalancheup_aws::spec::Node::new(
         node_kind.clone(),
-        ec2_instance_id.as_str(),
-        node_id.as_str(),
-        public_ipv4.as_str(),
+        &ec2_instance_id,
+        &node_id,
+        &public_ipv4,
         http_scheme,
         spec.avalanchego_config.http_port,
     );
@@ -1469,13 +1470,9 @@ async fn publish_node_info_ready_loop(
             .unwrap();
         let s3_manager = s3::Manager::new(&shared_config);
 
-        match s3::spawn_put_object(
-            s3_manager.clone(),
-            &node_info_path,
-            &s3_bucket,
-            &node_info_ready_s3_key,
-        )
-        .await
+        match s3_manager
+            .put_object(&node_info_path, &s3_bucket, &node_info_ready_s3_key)
+            .await
         {
             Ok(_) => log::info!(
                 "successfully published node info for node kind {}",
@@ -1515,7 +1512,6 @@ async fn monitor_spot_instance_action(
             .await
             .unwrap();
         let ec2_manager = ec2::Manager::new(&shared_config);
-        let ec2_cli = ec2_manager.client();
         let asg_manager = autoscaling::Manager::new(&shared_config);
 
         // if the action is "stop" or "terminate", just stop and recylce EC2 instance faster!
@@ -1548,12 +1544,9 @@ async fn monitor_spot_instance_action(
                 if need_terminate {
                     // manually set instance health to speed up ASG Unhealthy replacement
                     // e.g., "taken out of service in response to a user health-check"
-                    log::warn!(
-                        "setting the instance {} to 'Unhealthy'",
-                        ec2_instance_id.as_str()
-                    );
+                    log::warn!("setting the instance {} to 'Unhealthy'", ec2_instance_id);
                     match asg_manager
-                        .set_instance_health(ec2_instance_id.as_str(), "Unhealthy")
+                        .set_instance_health(&ec2_instance_id, "Unhealthy")
                         .await
                     {
                         Ok(_) => {
@@ -1591,10 +1584,11 @@ async fn monitor_spot_instance_action(
 
                     // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DetachVolume.html
                     log::warn!("detaching EBS volume before instance termination...");
-                    match ec2_cli
+                    match ec2_manager
+                        .cli
                         .detach_volume()
-                        .instance_id(ec2_instance_id.as_str())
-                        .volume_id(attached_volume_id.as_str())
+                        .instance_id(ec2_instance_id.clone().as_ref())
+                        .volume_id(attached_volume_id.clone().as_ref())
                         .force(false) // "true" can lead to data loss or a corrupted file system
                         .send()
                         .await
@@ -1607,9 +1601,10 @@ async fn monitor_spot_instance_action(
                     }
 
                     log::warn!("terminating the instance...");
-                    match ec2_cli
+                    match ec2_manager
+                        .cli
                         .terminate_instances()
-                        .instance_ids(ec2_instance_id.as_str())
+                        .instance_ids(ec2_instance_id.clone().as_ref())
                         .send()
                         .await
                     {

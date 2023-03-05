@@ -1,7 +1,6 @@
 use std::{
     fs,
     io::{self, Error, ErrorKind},
-    sync::Arc,
 };
 
 use avalanche_installer;
@@ -164,7 +163,6 @@ pub async fn execute(
 
     let shared_config = aws_manager::load_config(Some(region.to_string())).await?;
     let s3_manager = s3::Manager::new(&shared_config);
-    let s3_manager_arc = Arc::new(s3_manager.clone());
 
     let need_github_download = if !avalanchego_s3_key.is_empty() {
         log::info!("downloading avalanche from s3");
@@ -173,12 +171,7 @@ pub async fn execute(
         for round in 0..20 {
             log::info!("[ROUND {round}] checking if {avalanchego_s3_key} exists");
 
-            let res = s3_manager
-                .exists(
-                    Arc::new(s3_bucket.to_string()),
-                    Arc::new(avalanchego_s3_key.to_string()),
-                )
-                .await;
+            let res = s3_manager.exists(&s3_bucket, &avalanchego_s3_key).await;
 
             if res.is_ok() {
                 success = true;
@@ -211,7 +204,7 @@ pub async fn execute(
             log::info!("{avalanchego_s3_key} exists {exists}");
             avalanche_installer::avalanchego::s3::download_avalanche_and_plugins(
                 false, // not overwrite
-                Arc::clone(&s3_manager_arc),
+                &s3_manager,
                 s3_bucket,
                 avalanchego_s3_key,
                 avalanchego_target_file_path,
@@ -239,10 +232,7 @@ pub async fn execute(
             log::info!("[ROUND {round}] checking if {avalanche_config_s3_key} exists");
 
             let res = s3_manager
-                .exists(
-                    Arc::new(s3_bucket.to_string()),
-                    Arc::new(avalanche_config_s3_key.to_string()),
-                )
+                .exists(&s3_bucket, &avalanche_config_s3_key)
                 .await;
 
             if res.is_ok() {
@@ -278,7 +268,7 @@ pub async fn execute(
             log::info!("{avalanche_config_s3_key} exists {exists}");
             avalanche_config_installer::s3::download(
                 true, // overwrite
-                Arc::clone(&s3_manager_arc),
+                &s3_manager,
                 s3_bucket,
                 avalanche_config_s3_key,
                 avalanche_config_target_file_path,
@@ -313,10 +303,7 @@ pub async fn execute(
             log::info!("[ROUND {round}] checking if {aws_volume_provisioner_s3_key} exists");
 
             let res = s3_manager
-                .exists(
-                    Arc::new(s3_bucket.to_string()),
-                    Arc::new(aws_volume_provisioner_s3_key.to_string()),
-                )
+                .exists(&s3_bucket, &aws_volume_provisioner_s3_key)
                 .await;
 
             if res.is_ok() {
@@ -352,7 +339,7 @@ pub async fn execute(
             log::info!("{aws_volume_provisioner_s3_key} exists {exists}");
             aws_volume_provisioner_installer::s3::download(
                 true, // overwrite
-                Arc::clone(&s3_manager_arc),
+                &s3_manager,
                 s3_bucket,
                 aws_volume_provisioner_s3_key,
                 aws_volume_provisioner_target_file_path,
@@ -387,10 +374,7 @@ pub async fn execute(
             log::info!("[ROUND {round}] checking if {aws_ip_provisioner_s3_key} exists");
 
             let res = s3_manager
-                .exists(
-                    Arc::new(s3_bucket.to_string()),
-                    Arc::new(aws_ip_provisioner_s3_key.to_string()),
-                )
+                .exists(&s3_bucket, &aws_ip_provisioner_s3_key)
                 .await;
 
             if res.is_ok() {
@@ -426,7 +410,7 @@ pub async fn execute(
             log::info!("{aws_ip_provisioner_s3_key} exists {exists}");
             aws_ip_provisioner_installer::s3::download(
                 true, // overwrite
-                Arc::clone(&s3_manager_arc),
+                &s3_manager,
                 s3_bucket,
                 aws_ip_provisioner_s3_key,
                 aws_ip_provisioner_target_file_path,
@@ -463,10 +447,7 @@ pub async fn execute(
             );
 
             let res = s3_manager
-                .exists(
-                    Arc::new(s3_bucket.to_string()),
-                    Arc::new(avalanche_telemetry_cloudwatch_s3_key.to_string()),
-                )
+                .exists(&s3_bucket, &avalanche_telemetry_cloudwatch_s3_key)
                 .await;
 
             if res.is_ok() {
@@ -502,7 +483,7 @@ pub async fn execute(
             log::info!("{avalanche_telemetry_cloudwatch_s3_key} exists {exists}");
             avalanche_telemetry_cloudwatch_installer::s3::download(
                 true, // overwrite
-                Arc::clone(&s3_manager_arc),
+                &s3_manager,
                 s3_bucket,
                 avalanche_telemetry_cloudwatch_s3_key,
                 avalanche_telemetry_cloudwatch_target_file_path,

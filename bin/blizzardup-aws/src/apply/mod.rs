@@ -191,9 +191,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         // while instance bootstrapping
         s3_manager
             .put_object(
-                Arc::new(v.to_string()),
-                Arc::new(aws_resources.s3_bucket.clone()),
-                Arc::new(blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode()),
+                v,
+                &aws_resources.s3_bucket,
+                &blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode(),
             )
             .await
             .expect("failed put_object install_artifacts.blizzard_bin");
@@ -204,9 +204,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     log::info!("uploading blizzardup spec file...");
     s3_manager
         .put_object(
-            Arc::new(spec_file_path.to_string()),
-            Arc::new(aws_resources.s3_bucket.clone()),
-            Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+            &spec_file_path,
+            &aws_resources.s3_bucket,
+            &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
         .await
         .unwrap();
@@ -230,9 +230,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(ec2_key_path.clone()),
-                Arc::new(aws_resources.s3_bucket.clone()),
-                Arc::new(blizzardup_aws::StorageNamespace::Ec2AccessKey(spec.id.clone()).encode()),
+                &ec2_key_path,
+                &aws_resources.s3_bucket,
+                &blizzardup_aws::StorageNamespace::Ec2AccessKey(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -243,9 +243,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(aws_resources.s3_bucket.clone()),
-                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+                &spec_file_path,
+                &aws_resources.s3_bucket,
+                &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -313,9 +313,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(aws_resources.s3_bucket.clone()),
-                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+                &spec_file_path,
+                &aws_resources.s3_bucket,
+                &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -396,9 +396,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(aws_resources.s3_bucket.clone()),
-                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+                &spec_file_path,
+                &aws_resources.s3_bucket,
+                &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -638,9 +638,9 @@ aws ssm start-session --region {} --target {}
 
         s3_manager
             .put_object(
-                Arc::new(spec_file_path.to_string()),
-                Arc::new(aws_resources.s3_bucket.clone()),
-                Arc::new(blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode()),
+                &spec_file_path,
+                &aws_resources.s3_bucket,
+                &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .expect("failed put_object ConfigFile");

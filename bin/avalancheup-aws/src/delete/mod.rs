@@ -571,10 +571,7 @@ pub async fn execute(
         )?;
         sleep(Duration::from_secs(5)).await;
         s3_manager
-            .delete_objects(
-                Arc::new(spec.aws_resources.s3_bucket.clone()),
-                Some(Arc::new(spec.id.clone())),
-            )
+            .delete_objects(&spec.aws_resources.s3_bucket, Some(&spec.id))
             .await
             .unwrap();
     }
@@ -619,11 +616,11 @@ pub async fn execute(
         log::info!("found {} volumes", volumes.len());
         if !volumes.is_empty() {
             log::info!("deleting {} volumes", volumes.len());
-            let ec2_cli = ec2_manager.client();
             for v in volumes {
                 let volume_id = v.volume_id().unwrap().to_string();
                 log::info!("deleting EBS volume '{}'", volume_id);
-                ec2_cli
+                ec2_manager
+                    .cli
                     .delete_volume()
                     .volume_id(volume_id)
                     .send()
@@ -649,11 +646,11 @@ pub async fn execute(
         log::info!("found {} elastic IP addresses", eips.len());
         for eip_addr in eips.iter() {
             let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
-            let ec2_cli = ec2_manager.client();
 
             log::info!("releasing elastic IP via allocation Id {}", allocation_id);
 
-            ec2_cli
+            ec2_manager
+                .cli
                 .release_address()
                 .allocation_id(allocation_id)
                 .send()
