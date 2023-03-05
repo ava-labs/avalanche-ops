@@ -1,4 +1,4 @@
-use std::{fs, io, sync::Arc};
+use std::{fs, io};
 
 use avalanche_config_installer::{github, s3 as s3_installer};
 use aws_manager::{self, s3};
@@ -32,11 +32,7 @@ async fn main() -> io::Result<()> {
     sleep(Duration::from_secs(2)).await;
     let s3_installer_key = "sub-dir/test-bin".to_string();
     s3_manager
-        .put_object(
-            Arc::new(bin_path.clone()),
-            Arc::new(s3_bucket.clone()),
-            Arc::new(s3_installer_key.clone()),
-        )
+        .put_object(&bin_path, &s3_bucket, &s3_installer_key)
         .await
         .unwrap();
 
@@ -44,7 +40,7 @@ async fn main() -> io::Result<()> {
     let target_bin_path = random_manager::tmp_path(15, None)?;
     s3_installer::download(
         true,
-        Arc::new(s3_manager.clone()),
+        &s3_manager,
         &s3_bucket,
         &s3_installer_key,
         &target_bin_path,
@@ -55,10 +51,7 @@ async fn main() -> io::Result<()> {
     log::info!("removing {target_bin_path}");
     fs::remove_file(&target_bin_path)?;
 
-    s3_manager
-        .delete_objects(Arc::new(s3_bucket.clone()), None)
-        .await
-        .unwrap();
+    s3_manager.delete_objects(&s3_bucket, None).await.unwrap();
 
     sleep(Duration::from_secs(2)).await;
     s3_manager.delete_bucket(&s3_bucket).await.unwrap();

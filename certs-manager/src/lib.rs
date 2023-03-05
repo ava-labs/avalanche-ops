@@ -8,13 +8,13 @@ use aws_manager::{self, kms::envelope, s3};
 
 /// Generates a new certificate if there is no existing certificate for reuse.
 /// Once generated, it backs up to S3.
-pub struct Manager {
-    pub envelope_manager: envelope::Manager,
+pub struct Manager<'k> {
+    pub envelope_manager: envelope::Manager<'k>,
     pub s3_manager: s3::Manager,
     pub s3_bucket: String,
 }
 
-impl Manager {
+impl<'k> Manager<'k> {
     /// Uploads the staking certificates to the remote storage.
     /// It envelope-encrypts using KMS.
     pub async fn upload(
@@ -25,36 +25,36 @@ impl Manager {
         s3_key_tls_cert: &str,
     ) -> io::Result<()> {
         log::info!("uploading key file {}", tls_key_path);
-        s3::spawn_compress_seal_put_object(
-            self.s3_manager.clone(),
-            self.envelope_manager.clone(),
-            tls_key_path,
-            &self.s3_bucket,
-            s3_key_tls_key,
-        )
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed spawn_compress_seal_put_object tls_key_path: {}", e),
+        self.envelope_manager
+            .compress_seal_put_object(
+                &self.s3_manager,
+                tls_key_path,
+                &self.s3_bucket,
+                s3_key_tls_key,
             )
-        })?;
+            .await
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed spawn_compress_seal_put_object tls_key_path: {}", e),
+                )
+            })?;
 
         log::info!("uploading cert file {}", tls_cert_path);
-        s3::spawn_compress_seal_put_object(
-            self.s3_manager.clone(),
-            self.envelope_manager.clone(),
-            tls_cert_path,
-            &self.s3_bucket,
-            s3_key_tls_cert,
-        )
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
+        self.envelope_manager
+            .compress_seal_put_object(
+                &self.s3_manager,
+                tls_cert_path,
+                &self.s3_bucket,
+                s3_key_tls_cert,
             )
-        })
+            .await
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
+                )
+            })
     }
 
     /// Downloads the staking certificates from the remote storage.
@@ -91,42 +91,42 @@ impl Manager {
         }
 
         log::info!("downloading key file {}", tls_key_path);
-        s3::spawn_get_object_unseal_decompress(
-            self.s3_manager.clone(),
-            self.envelope_manager.clone(),
-            self.s3_bucket.as_str(),
-            s3_key_tls_key,
-            tls_key_path,
-        )
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!(
-                    "failed spawn_get_object_unseal_decompress tls_key_path: {}",
-                    e
-                ),
+        self.envelope_manager
+            .get_object_unseal_decompress(
+                &self.s3_manager,
+                self.s3_bucket.as_str(),
+                s3_key_tls_key,
+                tls_key_path,
             )
-        })?;
+            .await
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "failed spawn_get_object_unseal_decompress tls_key_path: {}",
+                        e
+                    ),
+                )
+            })?;
 
         log::info!("downloading cert file {}", tls_cert_path);
-        s3::spawn_get_object_unseal_decompress(
-            self.s3_manager.clone(),
-            self.envelope_manager.clone(),
-            self.s3_bucket.as_str(),
-            s3_key_tls_cert,
-            tls_cert_path,
-        )
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!(
-                    "failed spawn_get_object_unseal_decompress tls_cert_path: {}",
-                    e
-                ),
+        self.envelope_manager
+            .get_object_unseal_decompress(
+                &self.s3_manager,
+                self.s3_bucket.as_str(),
+                s3_key_tls_cert,
+                tls_cert_path,
             )
-        })?;
+            .await
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "failed spawn_get_object_unseal_decompress tls_cert_path: {}",
+                        e
+                    ),
+                )
+            })?;
 
         node::Id::from_cert_pem_file(tls_cert_path)
     }

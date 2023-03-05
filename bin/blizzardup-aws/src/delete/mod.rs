@@ -2,7 +2,6 @@ use std::{
     fs,
     io::{self, stdout, Error, ErrorKind},
     path::Path,
-    sync::Arc,
 };
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, s3, sts};
@@ -307,10 +306,7 @@ pub async fn execute(
         )?;
         sleep(Duration::from_secs(5)).await;
         s3_manager
-            .delete_objects(
-                Arc::new(aws_resources.s3_bucket.clone()),
-                Some(Arc::new(spec.id.clone())),
-            )
+            .delete_objects(&aws_resources.s3_bucket, Some(&spec.id))
             .await
             .unwrap();
     }
