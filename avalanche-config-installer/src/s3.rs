@@ -3,7 +3,6 @@ use std::{
     io::{self, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
     path::Path,
-    sync::Arc,
 };
 
 use aws_manager::{self, s3};
