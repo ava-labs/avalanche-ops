@@ -1669,6 +1669,55 @@ aws ssm start-session --region {} --target {}
         node_ids_to_instance_ids.insert(node_id, instance_id);
     }
 
+    // mainnet/fuji should not be done this automatic, must be done in a separate command
+    if !spec.avalanchego_config.is_custom_network() {
+        log::info!(
+            "skipping installing subnets for network Id {}",
+            spec.avalanchego_config.network_id
+        );
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+            ResetColor
+        )?;
+        // TODO: check "/ext/info"
+        // TODO: check "/ext/bc/C/rpc"
+        // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+        // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+        //
+        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+        // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
+        for host in rpc_hosts.iter() {
+            let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+
+            let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+            endpoints.http_rpc = Some(http_rpc.clone());
+            endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+            endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+            endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+            endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+            endpoints.health = Some(format!("{http_rpc}/ext/health"));
+            endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+            endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+            endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+            spec.created_endpoints = Some(endpoints.clone());
+
+            println!(
+                "{}",
+                spec.created_endpoints
+                    .clone()
+                    .unwrap()
+                    .encode_yaml()
+                    .unwrap()
+            );
+        }
+
+        return Ok(());
+    }
+
     println!();
     log::info!(
         "apply all success with node Ids {:?} and instance Ids {:?}",
@@ -1775,55 +1824,6 @@ default-spec \\
         )),
         ResetColor
     )?;
-
-    // mainnet/fuji should not be done this automatic, must be done in a separate command
-    if !spec.avalanchego_config.is_custom_network() {
-        log::info!(
-            "skipping installing subnets for network Id {}",
-            spec.avalanchego_config.network_id
-        );
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
-            ResetColor
-        )?;
-        // TODO: check "/ext/info"
-        // TODO: check "/ext/bc/C/rpc"
-        // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
-        // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
-        //
-        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
-        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
-        // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
-        for host in rpc_hosts.iter() {
-            let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
-
-            let mut endpoints = avalancheup_aws::spec::Endpoints::default();
-            endpoints.http_rpc = Some(http_rpc.clone());
-            endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
-            endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
-            endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-            endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
-            endpoints.health = Some(format!("{http_rpc}/ext/health"));
-            endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
-            endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-            endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-            spec.created_endpoints = Some(endpoints.clone());
-
-            println!(
-                "{}",
-                spec.created_endpoints
-                    .clone()
-                    .unwrap()
-                    .encode_yaml()
-                    .unwrap()
-            );
-        }
-
-        return Ok(());
-    }
 
     // TODO: support KMS CMK
     assert!(spec.test_key_infos.is_some());
@@ -2174,52 +2174,6 @@ default-spec \\
                 log::info!("status {:?} for instance id {}", status, instance_id);
             }
         }
-
-        for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
-            log::info!(
-                "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
-                node_ids
-            );
-            let mut chain_rpc_urls = Vec::new();
-            for http_rpc in http_rpcs.iter() {
-                chain_rpc_urls.push(format!(
-                    "{http_rpc}/ext/bc/{}/rpc",
-                    subnet_evm_blockchain_id
-                ));
-            }
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::DarkGreen),
-                Print(format!(
-                    "
-{exec_parent_dir}/blizzardup-aws \\
-default-spec \\
---log-level=info \\
---funded-keys={funded_keys} \\
---region={region} \\
---install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
---instance-mode=spot \\
---nodes=10 \\
---blizzard-log-level=info \\
---blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
---blizzard-keys-to-generate=100 \\
---blizzard-workers=100 \\
---blizzard-load-kinds=x-transfers,evm-transfers
-",
-                    exec_parent_dir = exec_parent_dir,
-                    funded_keys = if let Some(keys) = &spec.test_key_infos {
-                        keys.len()
-                    } else {
-                        1
-                    },
-                    region = spec.aws_resources.region,
-                    blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
-                )),
-                ResetColor
-            )?;
-        }
-        println!();
-        println!();
     }
 
     // maps xsvm blockchain id to its validator node Ids
@@ -2537,8 +2491,52 @@ default-spec \\
         }
     }
 
+    for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
+        log::info!(
+            "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
+            node_ids
+        );
+        let mut chain_rpc_urls = Vec::new();
+        for http_rpc in http_rpcs.iter() {
+            chain_rpc_urls.push(format!(
+                "{http_rpc}/ext/bc/{}/rpc",
+                subnet_evm_blockchain_id
+            ));
+        }
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::DarkGreen),
+            Print(format!(
+                "
+{exec_parent_dir}/blizzardup-aws \\
+default-spec \\
+--log-level=info \\
+--funded-keys={funded_keys} \\
+--region={region} \\
+--install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
+--instance-mode=spot \\
+--nodes=10 \\
+--blizzard-log-level=info \\
+--blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
+--blizzard-keys-to-generate=100 \\
+--blizzard-workers=100 \\
+--blizzard-load-kinds=x-transfers,evm-transfers
+",
+                exec_parent_dir = exec_parent_dir,
+                funded_keys = if let Some(keys) = &spec.test_key_infos {
+                    keys.len()
+                } else {
+                    1
+                },
+                region = spec.aws_resources.region,
+                blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
+            )),
+            ResetColor
+        )?;
+    }
     println!();
     println!();
+
     Ok(())
 }
 
