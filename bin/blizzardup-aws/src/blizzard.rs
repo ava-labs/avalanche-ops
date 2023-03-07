@@ -25,8 +25,7 @@ pub struct Spec {
 )]
 pub enum LoadKind {
     XTransfers,
-    CTransfers,
-    SubnetEvmTransfers,
+    EvmTransfers,
     Unknown(String),
 }
 
@@ -34,8 +33,7 @@ impl std::convert::From<&str> for LoadKind {
     fn from(s: &str) -> Self {
         match s {
             "x-transfers" => LoadKind::XTransfers,
-            "c-transfers" => LoadKind::CTransfers,
-            "subnet-evm-transfers" => LoadKind::SubnetEvmTransfers,
+            "evm-transfers" => LoadKind::EvmTransfers,
 
             other => LoadKind::Unknown(other.to_owned()),
         }
@@ -55,8 +53,7 @@ impl LoadKind {
     pub fn as_str(&self) -> &str {
         match self {
             LoadKind::XTransfers => "x-transfers",
-            LoadKind::CTransfers => "c-transfers",
-            LoadKind::SubnetEvmTransfers => "subnet-evm-transfers",
+            LoadKind::EvmTransfers => "evm-transfers",
 
             LoadKind::Unknown(s) => s.as_ref(),
         }
@@ -65,9 +62,8 @@ impl LoadKind {
     /// Returns all the `&str` values of the enum members.
     pub fn values() -> &'static [&'static str] {
         &[
-            "x-transfers",          //
-            "c-transfers",          //
-            "subnet-evm-transfers", //
+            "x-transfers",   //
+            "evm-transfers", //
         ]
     }
 }

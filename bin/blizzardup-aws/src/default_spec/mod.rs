@@ -49,15 +49,6 @@ pub fn command() -> Command {
                 .default_value("spot"),
         )
         .arg(
-            Arg::new("NETWORK_ID") 
-                .long("network-id")
-                .help("Sets the network Id")
-                .required(false)
-                .num_args(1)
-                .value_parser(value_parser!(u32))
-                .default_value("2000777"),
-        )
-        .arg(
             Arg::new("NODES") 
                 .long("nodes")
                 .help("Sets the number of blizzards nodes to create")
@@ -93,10 +84,10 @@ pub fn command() -> Command {
         .arg(
             Arg::new("BLIZZARD_LOAD_KINDS")
                 .long("blizzard-load-kinds")
-                .help("Comma-separated 'blizzard' load kinds (e.g., x-transfers,c-transfers)")
+                .help("Comma-separated 'blizzard' load kinds (e.g., x-transfers,evm-transfers)")
                 .required(false)
                 .num_args(1)
-                .default_value("x-transfers,c-transfers"),
+                .default_value("x-transfers,evm-transfers"),
         )
         .arg(
             Arg::new("BLIZZARD_KEYS_TO_GENERATE")

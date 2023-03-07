@@ -2204,7 +2204,7 @@ default-spec \\
 --blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
 --blizzard-keys-to-generate=100 \\
 --blizzard-workers=100 \\
---blizzard-load-kinds=subnet-evm-transfers
+--blizzard-load-kinds=x-transfers,evm-transfers
 ",
                     exec_parent_dir = exec_parent_dir,
                     funded_keys = if let Some(keys) = &spec.test_key_infos {

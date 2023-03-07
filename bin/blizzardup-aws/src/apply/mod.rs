@@ -341,7 +341,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("PublicSubnetCidr1", "10.0.64.0/19"),
             build_param("PublicSubnetCidr2", "10.0.128.0/19"),
             build_param("PublicSubnetCidr3", "10.0.192.0/19"),
-            build_param("IngressIpv4Range", "0.0.0.0/0"),
+            build_param("SshPortIngressIpv4Range", "0.0.0.0/0"),
         ]);
         cloudformation_manager
             .create_stack(

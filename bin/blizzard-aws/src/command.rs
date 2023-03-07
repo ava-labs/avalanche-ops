@@ -2,7 +2,6 @@ use std::{
     fs,
     io::{self, Error, ErrorKind},
     path::Path,
-    sync::Arc,
 };
 
 use crate::{cloudwatch as cw, evm, flags, x};
@@ -60,28 +59,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                     handles.push(tokio::spawn(x::make_transfers(worker_idx, spec.clone())))
                 }
             }
-            blizzardup_aws::blizzard::LoadKind::CTransfers => {
+            blizzardup_aws::blizzard::LoadKind::EvmTransfers => {
                 for worker_idx in 0..spec.blizzard_spec.workers {
-                    handles.push(tokio::spawn(evm::make_transfers(
-                        worker_idx,
-                        spec.clone(),
-                        Arc::new(String::from("C")),
-                    )));
-                }
-            }
-            blizzardup_aws::blizzard::LoadKind::SubnetEvmTransfers => {
-                if subnet_evm_blockchain_id.is_empty() {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        "invalid load kind subnet-evm (not exists)",
-                    ));
-                }
-                for worker_idx in 0..spec.blizzard_spec.workers {
-                    handles.push(tokio::spawn(evm::make_transfers(
-                        worker_idx,
-                        spec.clone(),
-                        Arc::new(subnet_evm_blockchain_id.clone()),
-                    )));
+                    handles.push(tokio::spawn(evm::make_transfers(worker_idx, spec.clone())));
                 }
             }
             blizzardup_aws::blizzard::LoadKind::Unknown(u) => {

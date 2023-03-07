@@ -1,26 +1,19 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use avalanche_types::{jsonrpc::client::evm as jsonrpc_client_evm, key, wallet};
 use tokio::time::{sleep, Duration};
 
-pub async fn make_transfers(
-    worker_idx: usize,
-    spec: blizzardup_aws::Spec,
-    chain_id_alias: Arc<String>,
-) {
+pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
     let total_rpc_eps = spec.blizzard_spec.chain_rpc_urls.len();
+    let total_funded_keys = spec.prefunded_key_infos.len();
     log::info!(
-        "[WORKER #{worker_idx}] STEP 1: start making EVM transfers to {} endpoints with chain id alias {}",
-        total_rpc_eps,
-        chain_id_alias,
+        "[WORKER #{worker_idx}] STEP 1: start making EVM transfers to {total_rpc_eps} endpoints (total funded keys {total_funded_keys})"
     );
 
     let chain_rpc_urls = spec.blizzard_spec.chain_rpc_urls.clone();
     let chain_id = jsonrpc_client_evm::chain_id(&chain_rpc_urls[0])
         .await
         .unwrap();
-
-    let total_funded_keys = spec.prefunded_key_infos.len();
 
     //
     //
@@ -32,7 +25,7 @@ pub async fn make_transfers(
         spec.blizzard_spec.keys_to_generate
     );
     let mut faucet_found = false;
-    let mut faucet_idx = random_manager::u8() as usize % total_funded_keys;
+    let mut faucet_idx = random_manager::usize() % total_funded_keys;
     for i in 0..total_funded_keys {
         let idx = (faucet_idx + i) % total_funded_keys;
 
