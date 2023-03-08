@@ -8,5 +8,4 @@ members = [
     "bin/blizzard-aws",
     "bin/blizzardup-aws",
     "bin/staking-key-cert-s3-downloader",
-    "certs-manager",
 ]
