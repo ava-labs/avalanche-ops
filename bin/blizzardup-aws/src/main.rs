@@ -42,7 +42,10 @@ async fn main() {
             let ss: Vec<&str> = s.split(',').collect();
             let mut blizzard_chain_rpc_urls: Vec<String> = Vec::new();
             for rpc in ss.iter() {
-                blizzard_chain_rpc_urls.push(rpc.to_string());
+                let trimmed = rpc.trim().to_string();
+                if !trimmed.is_empty() {
+                    blizzard_chain_rpc_urls.push(trimmed);
+                }
             }
 
             let blizzard_load_kinds_str = sub_matches

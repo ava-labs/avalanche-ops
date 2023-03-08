@@ -31,7 +31,10 @@ async fn main() -> io::Result<()> {
             let ss: Vec<&str> = s.split(',').collect();
             let mut subnet_evm_priority_regossip_addresses = Vec::new();
             for addr in ss.iter() {
-                subnet_evm_priority_regossip_addresses.push(addr.trim().to_string());
+                let trimmed = addr.trim().to_string();
+                if !trimmed.is_empty() {
+                    subnet_evm_priority_regossip_addresses.push(addr.trim().to_string());
+                }
             }
 
             let opt = avalancheup_aws::spec::DefaultSpecOption {
