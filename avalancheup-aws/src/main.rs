@@ -116,33 +116,37 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .to_string(),
 
-                install_artifacts_aws_volume_provisioner_local_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_VOLUME_PROVISIONER_LOCAL_BIN")
+                upload_artifacts_aws_volume_provisioner_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AWS_VOLUME_PROVISIONER_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_aws_ip_provisioner_local_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AWS_IP_PROVISIONER_LOCAL_BIN")
+                upload_artifacts_aws_ip_provisioner_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AWS_IP_PROVISIONER_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_avalanche_telemetry_cloudwatch_local_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_BIN")
+                upload_artifacts_avalanche_telemetry_cloudwatch_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
 
-                install_artifacts_avalanche_config_local_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN")
+                upload_artifacts_avalanche_config_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_avalanched_local_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHED_LOCAL_BIN")
+                upload_artifacts_avalanched_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHED_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_avalanche_local_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_AVALANCHE_LOCAL_BIN")
+                upload_artifacts_avalanche_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHE_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                install_artifacts_plugin_local_dir: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_PLUGIN_LOCAL_DIR")
+                upload_artifacts_plugin_local_dir: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_PLUGIN_LOCAL_DIR")
+                    .unwrap_or(&String::new())
+                    .to_string(),
+                upload_artifacts_prometheus_metrics_rules_file_path: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_PROMETHEUS_METRICS_RULES_FILE_PATH")
                     .unwrap_or(&String::new())
                     .to_string(),
 

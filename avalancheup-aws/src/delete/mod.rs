@@ -157,37 +157,33 @@ pub async fn execute(
 
     // delete this first since EC2 key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
-    if spec.aws_resources.ec2_key_name.is_some() && spec.aws_resources.ec2_key_path.is_some() {
-        sleep(Duration::from_secs(1)).await;
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\n\nSTEP: delete EC2 key pair\n"),
+        ResetColor
+    )?;
 
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete EC2 key pair\n"),
-            ResetColor
-        )?;
-
-        let ec2_key_path = spec.aws_resources.ec2_key_path.unwrap();
-        if Path::new(ec2_key_path.as_str()).exists() {
-            fs::remove_file(ec2_key_path.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed = format!(
-            "{}{}",
-            ec2_key_path,
-            compress_manager::Encoder::Zstd(3).ext()
-        );
-        if Path::new(ec2_key_path_compressed.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
-        if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
-        }
-        ec2_manager
-            .delete_key_pair(spec.aws_resources.ec2_key_name.unwrap().as_str())
-            .await
-            .unwrap();
+    let ec2_key_path = spec.aws_resources.ec2_key_path.clone();
+    if Path::new(ec2_key_path.as_str()).exists() {
+        fs::remove_file(ec2_key_path.as_str()).unwrap();
     }
+    let ec2_key_path_compressed = format!(
+        "{}{}",
+        ec2_key_path,
+        compress_manager::Encoder::Zstd(3).ext()
+    );
+    if Path::new(ec2_key_path_compressed.as_str()).exists() {
+        fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
+    }
+    let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
+    if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
+        fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
+    }
+    ec2_manager
+        .delete_key_pair(&spec.aws_resources.ec2_key_name)
+        .await
+        .unwrap();
 
     // delete this first since KMS key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)

@@ -15,7 +15,6 @@ use avalanche_types::{
     xsvm::genesis as xsvm_genesis,
 };
 use aws_manager::{ec2, kms};
-use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 
 pub const VERSION: usize = 1;
@@ -47,8 +46,10 @@ pub struct Spec {
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
     pub machine: Machine,
-    /// Install artifacts to share with remote machines.
-    pub install_artifacts: InstallArtifacts,
+
+    /// Upload artifacts from the local machine to share with remote machines.
+    #[serde(default)]
+    pub upload_artifacts: UploadArtifacts,
 
     /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: crate::avalanched::Flags,
@@ -108,11 +109,6 @@ pub struct Spec {
     /// Set to 0 to disable metrics collection.
     #[serde(default)]
     pub metrics_fetch_interval_seconds: u64,
-
-    /// Prometheus rules for telemetry.
-    /// "avalanched" reads this metrics and writes to disk (ALWAYS OVERWRITE).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub prometheus_metrics_rules: Option<prometheus_manager::Rules>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -158,13 +154,14 @@ pub struct DefaultSpecOption {
 
     pub nlb_acm_certificate_arn: String,
 
-    pub install_artifacts_aws_volume_provisioner_local_bin: String,
-    pub install_artifacts_aws_ip_provisioner_local_bin: String,
-    pub install_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
-    pub install_artifacts_avalanche_config_local_bin: String,
-    pub install_artifacts_avalanched_local_bin: String,
-    pub install_artifacts_avalanche_local_bin: String,
-    pub install_artifacts_plugin_local_dir: String,
+    pub upload_artifacts_aws_volume_provisioner_local_bin: String,
+    pub upload_artifacts_aws_ip_provisioner_local_bin: String,
+    pub upload_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
+    pub upload_artifacts_avalanche_config_local_bin: String,
+    pub upload_artifacts_avalanched_local_bin: String,
+    pub upload_artifacts_avalanche_local_bin: String,
+    pub upload_artifacts_plugin_local_dir: String,
+    pub upload_artifacts_prometheus_metrics_rules_file_path: String,
 
     pub avalanched_log_level: String,
     pub avalanched_use_default_config: bool,
@@ -209,17 +206,6 @@ pub struct DefaultSpecOption {
     pub xsvms: usize,
 
     pub spec_file_path: String,
-}
-
-pub fn default_prometheus_rules() -> prometheus_manager::Rules {
-    #[derive(RustEmbed)]
-    #[folder = "artifacts/"]
-    #[prefix = "artifacts/"]
-    struct Asset;
-
-    let filters_raw = Asset::get("artifacts/default.metrics.rules.yaml").unwrap();
-    let filters_raw = std::str::from_utf8(filters_raw.data.as_ref()).unwrap();
-    serde_yaml::from_str(filters_raw).unwrap()
 }
 
 impl Spec {
@@ -579,50 +565,61 @@ impl Spec {
             aws_resources.kms_cmk_secp256k1_cmks = Some(kms_cmk_secp256k1_cmks);
         }
 
-        let mut install_artifacts = InstallArtifacts {
-            avalanched_local_bin: None,
-            aws_volume_provisioner_local_bin: None,
-            aws_ip_provisioner_local_bin: None,
-            avalanche_telemetry_cloudwatch_local_bin: None,
-            avalanche_config_local_bin: None,
-            avalanchego_local_bin: None,
-            plugin_local_dir: None,
+        let mut upload_artifacts = UploadArtifacts {
+            avalanched_local_bin: String::new(),
+            aws_volume_provisioner_local_bin: String::new(),
+            aws_ip_provisioner_local_bin: String::new(),
+            avalanche_telemetry_cloudwatch_local_bin: String::new(),
+            avalanche_config_local_bin: String::new(),
+            avalanchego_local_bin: String::new(),
+            plugin_local_dir: String::new(),
+            prometheus_metrics_rules_file_path: String::new(),
         };
         if !opts
-            .install_artifacts_aws_volume_provisioner_local_bin
+            .upload_artifacts_aws_volume_provisioner_local_bin
             .is_empty()
         {
-            install_artifacts.aws_volume_provisioner_local_bin =
-                Some(opts.install_artifacts_aws_volume_provisioner_local_bin);
+            upload_artifacts.aws_volume_provisioner_local_bin = opts
+                .upload_artifacts_aws_volume_provisioner_local_bin
+                .clone();
         }
         if !opts
-            .install_artifacts_aws_ip_provisioner_local_bin
+            .upload_artifacts_aws_ip_provisioner_local_bin
             .is_empty()
         {
-            install_artifacts.aws_ip_provisioner_local_bin =
-                Some(opts.install_artifacts_aws_ip_provisioner_local_bin);
+            upload_artifacts.aws_ip_provisioner_local_bin =
+                opts.upload_artifacts_aws_ip_provisioner_local_bin.clone();
         }
         if !opts
-            .install_artifacts_avalanche_telemetry_cloudwatch_local_bin
+            .upload_artifacts_avalanche_telemetry_cloudwatch_local_bin
             .is_empty()
         {
-            install_artifacts.avalanche_telemetry_cloudwatch_local_bin =
-                Some(opts.install_artifacts_avalanche_telemetry_cloudwatch_local_bin);
+            upload_artifacts.avalanche_telemetry_cloudwatch_local_bin = opts
+                .upload_artifacts_avalanche_telemetry_cloudwatch_local_bin
+                .clone();
         }
-        if !opts.install_artifacts_avalanche_config_local_bin.is_empty() {
-            install_artifacts.avalanche_config_local_bin =
-                Some(opts.install_artifacts_avalanche_config_local_bin);
+        if !opts.upload_artifacts_avalanche_config_local_bin.is_empty() {
+            upload_artifacts.avalanche_config_local_bin =
+                opts.upload_artifacts_avalanche_config_local_bin.clone();
         }
-        if !opts.install_artifacts_avalanched_local_bin.is_empty() {
-            install_artifacts.avalanched_local_bin =
-                Some(opts.install_artifacts_avalanched_local_bin);
+        if !opts.upload_artifacts_avalanched_local_bin.is_empty() {
+            upload_artifacts.avalanched_local_bin =
+                opts.upload_artifacts_avalanched_local_bin.clone();
         }
-        if !opts.install_artifacts_avalanche_local_bin.is_empty() {
-            install_artifacts.avalanchego_local_bin =
-                Some(opts.install_artifacts_avalanche_local_bin);
+        if !opts.upload_artifacts_avalanche_local_bin.is_empty() {
+            upload_artifacts.avalanchego_local_bin =
+                opts.upload_artifacts_avalanche_local_bin.clone();
         }
-        if !opts.install_artifacts_plugin_local_dir.is_empty() {
-            install_artifacts.plugin_local_dir = Some(opts.install_artifacts_plugin_local_dir);
+        if !opts.upload_artifacts_plugin_local_dir.is_empty() {
+            upload_artifacts.plugin_local_dir = opts.upload_artifacts_plugin_local_dir.clone();
+        }
+        if !opts
+            .upload_artifacts_prometheus_metrics_rules_file_path
+            .is_empty()
+        {
+            upload_artifacts.prometheus_metrics_rules_file_path = opts
+                .upload_artifacts_prometheus_metrics_rules_file_path
+                .clone();
         }
 
         let mut coreth_chain_config = coreth_chain_config::Config::default();
@@ -699,7 +696,7 @@ impl Spec {
 
             aws_resources,
             machine,
-            install_artifacts,
+            upload_artifacts,
 
             avalanched_config,
 
@@ -719,7 +716,6 @@ impl Spec {
             created_endpoints: None,
 
             metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
-            prometheus_metrics_rules: Some(default_prometheus_rules()),
         }
     }
 
@@ -778,6 +774,13 @@ impl Spec {
     pub fn validate(&self) -> io::Result<()> {
         log::info!("validating Spec");
 
+        if self.version != VERSION {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("version unexpected {}, expected {}", self.version, VERSION),
+            ));
+        }
+
         if self.id.is_empty() {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
         }
@@ -825,44 +828,67 @@ impl Spec {
             ));
         }
 
-        if let Some(v) = &self.install_artifacts.aws_volume_provisioner_local_bin {
-            if !Path::new(v).exists() {
+        if !self
+            .upload_artifacts
+            .aws_volume_provisioner_local_bin
+            .is_empty()
+        {
+            if !Path::new(&self.upload_artifacts.aws_volume_provisioner_local_bin).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("aws_volume_provisioner_bin {} does not exist", v),
+                    format!(
+                        "aws_volume_provisioner_bin {} does not exist",
+                        self.upload_artifacts.aws_volume_provisioner_local_bin
+                    ),
                 ));
             }
         }
-        if let Some(v) = &self.install_artifacts.aws_ip_provisioner_local_bin {
-            if !Path::new(v).exists() {
+        if !self
+            .upload_artifacts
+            .aws_ip_provisioner_local_bin
+            .is_empty()
+        {
+            if !Path::new(&self.upload_artifacts.aws_ip_provisioner_local_bin).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("aws_ip_provisioner_bin {} does not exist", v),
+                    format!(
+                        "aws_ip_provisioner_bin {} does not exist",
+                        self.upload_artifacts.aws_ip_provisioner_local_bin
+                    ),
                 ));
             }
         }
 
-        if let Some(v) = &self.install_artifacts.avalanched_local_bin {
-            if !Path::new(v).exists() {
+        if !self.upload_artifacts.avalanched_local_bin.is_empty() {
+            if !Path::new(&self.upload_artifacts.avalanched_local_bin).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("avalanched_bin {} does not exist", v),
+                    format!(
+                        "avalanched_bin {} does not exist",
+                        self.upload_artifacts.avalanched_local_bin
+                    ),
                 ));
             }
         }
-        if let Some(v) = &self.install_artifacts.avalanchego_local_bin {
-            if !Path::new(v).exists() {
+        if !self.upload_artifacts.avalanchego_local_bin.is_empty() {
+            if !Path::new(&self.upload_artifacts.avalanchego_local_bin).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("avalanchego_bin {} does not exist", v),
+                    format!(
+                        "avalanchego_bin {} does not exist",
+                        self.upload_artifacts.avalanchego_local_bin
+                    ),
                 ));
             }
         }
-        if let Some(v) = &self.install_artifacts.plugin_local_dir {
-            if !Path::new(v).exists() {
+        if !self.upload_artifacts.plugin_local_dir.is_empty() {
+            if !Path::new(&self.upload_artifacts.plugin_local_dir).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("plugin_dir {} does not exist", v),
+                    format!(
+                        "plugin_dir {} does not exist",
+                        self.upload_artifacts.plugin_local_dir
+                    ),
                 ));
             }
         }
@@ -969,7 +995,7 @@ fn test_spec() {
     let contents = format!(
         r#"
 
-version: 1
+version: 2
 
 
 id: {id}
@@ -994,7 +1020,7 @@ machine:
   instance_mode: spot
   ip_mode: elastic
 
-install_artifacts:
+upload_artifacts:
   avalanched_local_bin: {avalanched_bin}
   avalanche_config_local_bin: {avalanche_config_bin}
   avalanchego_local_bin: {avalanchego_bin}
@@ -1100,16 +1126,18 @@ metrics_fetch_interval_seconds: 5000
             volume_size_in_gb: 500,
         },
 
-        install_artifacts: InstallArtifacts {
-            avalanched_local_bin: Some(avalanched_bin.to_string()),
+        upload_artifacts: UploadArtifacts {
+            avalanched_local_bin: avalanched_bin.to_string(),
 
-            aws_volume_provisioner_local_bin: None,
-            aws_ip_provisioner_local_bin: None,
-            avalanche_telemetry_cloudwatch_local_bin: None,
-            avalanche_config_local_bin: Some(avalanche_config_bin.to_string()),
+            aws_volume_provisioner_local_bin: String::new(),
+            aws_ip_provisioner_local_bin: String::new(),
+            avalanche_telemetry_cloudwatch_local_bin: String::new(),
+            avalanche_config_local_bin: avalanche_config_bin.to_string(),
 
-            avalanchego_local_bin: Some(avalanchego_bin.to_string()),
-            plugin_local_dir: Some(plugin_dir.to_string()),
+            avalanchego_local_bin: avalanchego_bin.to_string(),
+            plugin_local_dir: plugin_dir.to_string(),
+
+            prometheus_metrics_rules_file_path: String::new(),
         },
 
         avalanched_config: crate::avalanched::Flags {
@@ -1132,8 +1160,6 @@ metrics_fetch_interval_seconds: 5000
         test_key_infos: None,
         created_nodes: None,
         created_endpoints: None,
-
-        prometheus_metrics_rules: None,
     };
 
     cfg.validate().expect("unexpected validate failure");
@@ -1147,27 +1173,13 @@ metrics_fetch_interval_seconds: 5000
     assert_eq!(cfg.aws_resources.s3_bucket, bucket);
 
     assert_eq!(
-        cfg.install_artifacts
-            .avalanche_config_local_bin
-            .unwrap_or(String::new()),
+        cfg.upload_artifacts.avalanche_config_local_bin,
         avalanche_config_bin
     );
+    assert_eq!(cfg.upload_artifacts.avalanched_local_bin, avalanched_bin);
+    assert_eq!(cfg.upload_artifacts.avalanchego_local_bin, avalanchego_bin);
     assert_eq!(
-        cfg.install_artifacts
-            .avalanched_local_bin
-            .unwrap_or(String::new()),
-        avalanched_bin
-    );
-    assert_eq!(
-        cfg.install_artifacts
-            .avalanchego_local_bin
-            .unwrap_or(String::new()),
-        avalanchego_bin
-    );
-    assert_eq!(
-        cfg.install_artifacts
-            .plugin_local_dir
-            .unwrap_or(String::new()),
+        cfg.upload_artifacts.plugin_local_dir,
         plugin_dir.to_string()
     );
 
@@ -1473,18 +1485,18 @@ pub struct Machine {
 /// remote machines. All paths are local to the caller's environment.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct InstallArtifacts {
+pub struct UploadArtifacts {
     #[serde(default)]
-    pub avalanched_local_bin: Option<String>,
+    pub avalanched_local_bin: String,
 
     #[serde(default)]
-    pub aws_volume_provisioner_local_bin: Option<String>,
+    pub aws_volume_provisioner_local_bin: String,
     #[serde(default)]
-    pub aws_ip_provisioner_local_bin: Option<String>,
+    pub aws_ip_provisioner_local_bin: String,
     #[serde(default)]
-    pub avalanche_telemetry_cloudwatch_local_bin: Option<String>,
+    pub avalanche_telemetry_cloudwatch_local_bin: String,
     #[serde(default)]
-    pub avalanche_config_local_bin: Option<String>,
+    pub avalanche_config_local_bin: String,
 
     /// AvalancheGo binary path in the local environment.
     /// The file is "compressed" and uploaded to remote storage
@@ -1497,9 +1509,38 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub avalanchego_local_bin: Option<String>,
+    pub avalanchego_local_bin: String,
     #[serde(default)]
-    pub plugin_local_dir: Option<String>,
+    pub plugin_local_dir: String,
+
+    #[serde(default)]
+    pub prometheus_metrics_rules_file_path: String,
+}
+
+impl Default for UploadArtifacts {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl UploadArtifacts {
+    /// ref. <https://github.com/ava-labs/public-chain-assets/blob/main/chains/53935/genesis.json>
+    /// ref. <https://pkg.go.dev/github.com/ava-labs/subnet-evm/params#pkg-variables>
+    /// ref. <https://github.com/ava-labs/subnet-evm/blob/master/scripts/run.sh>
+    /// ref. <https://www.rapidtables.com/convert/number/decimal-to-hex.html>
+    /// ref. <https://www.rapidtables.com/convert/number/hex-to-decimal.html>
+    pub fn default() -> Self {
+        Self {
+            avalanched_local_bin: String::new(),
+            aws_volume_provisioner_local_bin: String::new(),
+            aws_ip_provisioner_local_bin: String::new(),
+            avalanche_telemetry_cloudwatch_local_bin: String::new(),
+            avalanche_config_local_bin: String::new(),
+            avalanchego_local_bin: String::new(),
+            plugin_local_dir: String::new(),
+            prometheus_metrics_rules_file_path: String::new(),
+        }
+    }
 }
 
 /// Represents the CloudFormation stack name.

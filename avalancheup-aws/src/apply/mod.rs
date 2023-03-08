@@ -109,8 +109,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     // set defaults based on ID
-    if spec.aws_resources.ec2_key_name.is_none() {
-        spec.aws_resources.ec2_key_name = Some(format!("{}-ec2-key", spec.id));
+    if spec.aws_resources.ec2_key_name.is_empty() {
+        spec.aws_resources.ec2_key_name = format!("{}-ec2-key", spec.id);
     }
     if spec
         .aws_resources
@@ -244,67 +244,88 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ResetColor
     )?;
 
-    if let Some(v) = &spec.install_artifacts.avalanched_local_bin {
+    if !spec.upload_artifacts.avalanched_local_bin.is_empty()
+        && Path::new(&spec.upload_artifacts.avalanched_local_bin).exists()
+    {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
         s3_manager
             .put_object(
-                v,
+                &spec.upload_artifacts.avalanched_local_bin,
                 &spec.aws_resources.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone()).encode(),
             )
             .await
-            .expect("failed put_object install_artifacts.avalanched_bin");
+            .expect("failed put_object upload_artifacts.avalanched_bin");
     } else {
         log::info!("skipping uploading avalanched_bin, will be downloaded on remote machines...");
     }
 
-    if let Some(v) = &spec.install_artifacts.aws_volume_provisioner_local_bin {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                v,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AwsVolumeProvisionerBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.aws_volume_provisioner_bin");
-    } else {
-        log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
-    }
-
-    if let Some(v) = &spec.install_artifacts.aws_ip_provisioner_local_bin {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                v,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.aws_ip_provisioner_bin");
-    } else {
-        log::info!(
-            "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
-        );
-    }
-
-    if let Some(v) = &spec
-        .install_artifacts
-        .avalanche_telemetry_cloudwatch_local_bin
+    if !spec
+        .upload_artifacts
+        .aws_volume_provisioner_local_bin
+        .is_empty()
+        && Path::new(&spec.upload_artifacts.aws_volume_provisioner_local_bin).exists()
     {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
 
         s3_manager
             .put_object(
-                v,
+                &spec.upload_artifacts.aws_volume_provisioner_local_bin,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AwsVolumeProvisionerBin(spec.id.clone())
+                    .encode(),
+            )
+            .await
+            .expect("failed put_object upload_artifacts.aws_volume_provisioner_bin");
+    } else {
+        log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
+    }
+
+    if !spec
+        .upload_artifacts
+        .aws_ip_provisioner_local_bin
+        .is_empty()
+        && Path::new(&spec.upload_artifacts.aws_ip_provisioner_local_bin).exists()
+    {
+        // don't compress since we need to download this in user data
+        // while instance bootstrapping
+
+        s3_manager
+            .put_object(
+                &spec.upload_artifacts.aws_ip_provisioner_local_bin,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup_aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
+                    .encode(),
+            )
+            .await
+            .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
+    } else {
+        log::info!(
+            "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
+        );
+    }
+
+    if !spec
+        .upload_artifacts
+        .avalanche_telemetry_cloudwatch_local_bin
+        .is_empty()
+        && Path::new(
+            &spec
+                .upload_artifacts
+                .avalanche_telemetry_cloudwatch_local_bin,
+        )
+        .exists()
+    {
+        // don't compress since we need to download this in user data
+        // while instance bootstrapping
+
+        s3_manager
+            .put_object(
+                &spec
+                    .upload_artifacts
+                    .avalanche_telemetry_cloudwatch_local_bin,
                 &spec.aws_resources.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
                     spec.id.clone(),
@@ -312,37 +333,41 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .encode(),
             )
             .await
-            .expect("failed put_object install_artifacts.avalanche_telemetry_cloudwatch_bin");
+            .expect("failed put_object upload_artifacts.avalanche_telemetry_cloudwatch_bin");
     } else {
         log::info!(
             "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
         );
     }
 
-    if let Some(v) = &spec.install_artifacts.avalanche_config_local_bin {
+    if !spec.upload_artifacts.avalanche_config_local_bin.is_empty()
+        && Path::new(&spec.upload_artifacts.avalanche_config_local_bin).exists()
+    {
         // don't compress since we need to download this in user data
         // while instance bootstrapping
 
         s3_manager
             .put_object(
-                v,
+                &spec.upload_artifacts.avalanche_config_local_bin,
                 &spec.aws_resources.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
                     .encode(),
             )
             .await
-            .expect("failed put_object install_artifacts.avalanche_config_bin");
+            .expect("failed put_object upload_artifacts.avalanche_config_bin");
     } else {
         log::info!(
             "skipping uploading avalanche_config_bin, will be downloaded on remote machines..."
         );
     }
 
-    if let Some(avalanchego_bin) = &spec.install_artifacts.avalanchego_local_bin {
+    if !spec.upload_artifacts.avalanchego_local_bin.is_empty()
+        && Path::new(&spec.upload_artifacts.avalanchego_local_bin).exists()
+    {
         // upload without compression first
         s3_manager
             .put_object(
-                avalanchego_bin,
+                &spec.upload_artifacts.avalanchego_local_bin,
                 &spec.aws_resources.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::AvalancheBin(spec.id.clone()).encode(),
             )
@@ -352,9 +377,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
     }
 
-    if spec.install_artifacts.plugin_local_dir.is_some() {
-        let plugins_dir = spec.install_artifacts.plugin_local_dir.clone().unwrap();
-        for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
+    if !spec.upload_artifacts.plugin_local_dir.is_empty()
+        && Path::new(&spec.upload_artifacts.plugin_local_dir).exists()
+    {
+        for entry in fs::read_dir(&spec.upload_artifacts.plugin_local_dir).unwrap() {
             let entry = entry.unwrap();
             let entry_path = entry.path();
 
@@ -365,7 +391,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             log::info!(
                 "uploading {} from plugins directory {}",
                 file_path,
-                plugins_dir,
+                spec.upload_artifacts.plugin_local_dir,
             );
             s3_manager
                 .put_object(
@@ -384,6 +410,21 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     } else {
         log::info!("skipping uploading plugin dir...");
     }
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: uploading metrics rules\n"),
+        ResetColor
+    )?;
+    s3_manager
+        .put_object(
+            &spec.upload_artifacts.prometheus_metrics_rules_file_path,
+            &spec.aws_resources.s3_bucket,
+            &avalancheup_aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+        )
+        .await
+        .unwrap();
 
     log::info!("uploading avalancheup spec file...");
     s3_manager
@@ -439,7 +480,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         "avalanche-ops".to_string(),
     );
 
-    if spec.aws_resources.ec2_key_path.is_none() {
+    if !Path::new(&spec.aws_resources.ec2_key_path).exists() {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -447,12 +488,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let ec2_key_path = get_ec2_key_path(spec_file_path);
+        let ec2_key_path = spec.aws_resources.ec2_key_path.clone();
         ec2_manager
-            .create_key_pair(
-                spec.aws_resources.ec2_key_name.clone().unwrap().as_str(),
-                ec2_key_path.as_str(),
-            )
+            .create_key_pair(&spec.aws_resources.ec2_key_name, ec2_key_path.as_str())
             .await
             .unwrap();
 
@@ -483,34 +521,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .await
             .unwrap();
 
-        spec.aws_resources.ec2_key_path = Some(ec2_key_path);
-        spec.sync(spec_file_path)?;
-
         s3_manager
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
                 &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .unwrap();
-    }
-
-    if let Some(metrics_rules) = &spec.prometheus_metrics_rules {
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: uploading metrics rules\n"),
-            ResetColor
-        )?;
-
-        let metrics_rules_file_path = random_manager::tmp_path(10, None).unwrap();
-        metrics_rules.sync(&metrics_rules_file_path).unwrap();
-        s3_manager
-            .put_object(
-                &metrics_rules_file_path,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -712,10 +727,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ),
         build_param("AadTag", &spec.aad_tag),
         build_param("S3BucketName", &spec.aws_resources.s3_bucket),
-        build_param(
-            "Ec2KeyPairName",
-            &spec.aws_resources.ec2_key_name.clone().unwrap(),
-        ),
+        build_param("Ec2KeyPairName", &spec.aws_resources.ec2_key_name),
         build_param(
             "InstanceProfileArn",
             &spec
@@ -771,10 +783,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ));
     }
 
-    let avalanched_download_source = if spec.install_artifacts.avalanched_local_bin.is_some() {
-        "s3"
-    } else {
+    let avalanched_download_source = if spec.upload_artifacts.avalanched_local_bin.is_empty() {
         "github"
+    } else {
+        "s3"
     };
     common_asg_params.push(build_param(
         "AvalanchedDownloadSource",
@@ -1034,8 +1046,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             }
         }
 
-        let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
-        let f = File::open(&ec2_key_path).unwrap();
+        let f = File::open(&spec.aws_resources.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
         println!();
@@ -1062,26 +1073,26 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
                 ip_kind,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
                 spec.aws_resources.region,
@@ -1378,8 +1389,7 @@ aws ssm start-session --region {} --target {}
             }
         }
 
-        let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
-        let f = File::open(&ec2_key_path).unwrap();
+        let f = File::open(&spec.aws_resources.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
         println!();
@@ -1406,26 +1416,26 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
                 ip_kind,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
                 spec.aws_resources.region,
@@ -1803,7 +1813,7 @@ default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
 --region={region} \\
---install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
+--upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --nodes=10 \\
 --blizzard-log-level=info \\
@@ -2513,7 +2523,7 @@ default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
 --region={region} \\
---install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
+--upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --nodes=10 \\
 --blizzard-log-level=info \\
@@ -2545,18 +2555,4 @@ fn build_param(k: &str, v: &str) -> Parameter {
         .parameter_key(k)
         .parameter_value(v)
         .build()
-}
-
-fn get_ec2_key_path(spec_file_path: &str) -> String {
-    let path = Path::new(spec_file_path);
-    let parent_dir = path.parent().unwrap();
-    let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
-    String::from(
-        parent_dir
-            .join(Path::new(new_name.as_str()))
-            .as_path()
-            .to_str()
-            .unwrap(),
-    )
 }

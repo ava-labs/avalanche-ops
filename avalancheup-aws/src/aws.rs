@@ -41,12 +41,8 @@ pub struct Resources {
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ec2_key_name: Option<String>,
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ec2_key_path: Option<String>,
+    pub ec2_key_name: String,
+    pub ec2_key_path: String,
 
     /// CloudFormation stack name for EC2 instance role.
     /// READ ONLY -- DO NOT SET.
@@ -158,8 +154,8 @@ impl Resources {
             kms_cmk_symmetric_default_encrypt_key: None,
             kms_cmk_secp256k1_cmks: None,
 
-            ec2_key_name: None,
-            ec2_key_path: None,
+            ec2_key_name: String::new(),
+            ec2_key_path: String::new(),
 
             cloudformation_ec2_instance_role: None,
             cloudformation_ec2_instance_profile_arn: None,
