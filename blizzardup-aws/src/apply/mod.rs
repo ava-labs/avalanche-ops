@@ -186,17 +186,19 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ResetColor
     )?;
 
-    if let Some(v) = &spec.install_artifacts.blizzard_bin {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-        s3_manager
-            .put_object(
-                v,
-                &aws_resources.s3_bucket,
-                &blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.blizzard_bin");
+    if let Some(v) = &spec.upload_artifacts {
+        if !v.blizzard_bin.is_empty() {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+            s3_manager
+                .put_object(
+                    &v.blizzard_bin,
+                    &aws_resources.s3_bucket,
+                    &blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.blizzard_bin");
+        }
     } else {
         log::info!("skipping uploading blizzard_bin, will be downloaded on remote machines...");
     }
@@ -462,8 +464,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ));
         }
 
-        let blizzard_download_source = if spec.install_artifacts.blizzard_bin.is_some() {
-            "s3"
+        let blizzard_download_source = if let Some(v) = &spec.upload_artifacts {
+            if v.blizzard_bin.is_empty() {
+                "github"
+            } else {
+                "s3"
+            }
         } else {
             "github"
         };

@@ -58,8 +58,8 @@ pub fn command() -> Command {
                 .default_value("10"),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_BLIZZARD_BIN") 
-                .long("install-artifacts-blizzard-bin")
+            Arg::new("UPLOAD_ARTIFACTS_BLIZZARD_BIN") 
+                .long("upload-artifacts-blizzard-bin")
                 .help("Sets the Blizzard binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
