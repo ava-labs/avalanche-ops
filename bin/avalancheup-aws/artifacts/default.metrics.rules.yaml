@@ -15,14 +15,22 @@ filters:
   - regex: ^avalanche_requests_average_latency$ # "Average Network Latency"
 
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_blk_builds_failed$ # "Block Build Failures"
-  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blks|txs)_(accepted|rejected|built|processing)[\s\S]*$ # "Accept Latency (Seconds)"
+
+  - regex: ^avalanche_(C|P|(([0-9a-zA-Z]+)+){40,})_(blks|txs)_(accepted|rejected|built|processing)[\s\S]*$ # "Accept Latency (Seconds)"
+  - regex: ^avalanche_X_(avalanche|snowman)_(blks|txs)_(accepted|rejected|built|processing)[\s\S]*$ # "Accept Latency (Seconds)"
+
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_vm_metervm_parse_block_(count|sum)$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_vm_chain_state_tx_accepted_count$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_benchlist_benched_num$
   - regex: ^avalanche_(P|(([0-9a-zA-Z]+)+){40,})_vm_percent_connected[\s\S]*$ # covers "vm_percent_connected_subnet" with subnetID label
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blocked|blockers)$ # "avalanche_C_blocked" and "avalanche_C_blockers" for "Consensus Dependencies"
-  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_polls_[\s\S]*$ # "Percentage of Successful Polls"
-  - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_(blks|txs)_polls_[\s\S]*$ # "Average Number of Polls Before Accept"
+
+  - regex: ^avalanche_(C|P|(([0-9a-zA-Z]+)+){40,})_polls_[\s\S]*$ # "Percentage of Successful Polls"
+  - regex: ^avalanche_X_(avalanche|snowman)_polls_[\s\S]*$ # "Percentage of Successful Polls"
+
+  - regex: ^avalanche_(C|P|(([0-9a-zA-Z]+)+){40,})_(blks|txs)_polls_[\s\S]*$ # "Average Number of Polls Before Accept"
+  - regex: ^avalanche_X_(avalanche|snowman)_(blks|txs)_polls_[\s\S]*$ # "Average Number of Polls Before Accept"
+
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_(chits|app_gossip|get|get_accepted|get_ancestors|gossip_request|query_failed)_(count|sum)$ # "Percentage of Successful Queries"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_unprocessed_msgs_len$ # "Unprocessed Messages"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_last_accepted_(height|timestamp)$
@@ -32,7 +40,7 @@ filters:
   - regex: ^avalanche_db_(put|delete|compact|get|batch_(write|put))_(count|sum)$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_db_(put|delete|compact|get|batch_(write|put)|write_size|read_size)_(count|sum)$
 
-  - regex: ^avalanche_X_whitelist_[\s\S]*$
+  - regex: ^avalanche_X_avalanche_whitelist_[\s\S]*$
 
   # "summary" type does not need to specify labels
   # this matches all quantiles (0.5, 0.75, 0.95, 0.99, 0.999, 0.9999)
