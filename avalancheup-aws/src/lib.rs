@@ -1,3 +1,3 @@
-mod avalanched;
+pub mod avalanched;
 pub mod aws;
 pub mod spec;

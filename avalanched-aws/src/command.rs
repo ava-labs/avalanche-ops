@@ -200,7 +200,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             avalanchego_config,
             coreth_chain_config,
             Vec::new(),
-            avalancheup_aws::spec::default_prometheus_rules(),
+            avalancheup_aws::default_spec::default_prometheus_rules(),
             true,
             0,
             false,
@@ -257,7 +257,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         let metrics_rules = if let Some(mm) = spec.prometheus_metrics_rules {
             mm
         } else {
-            avalancheup_aws::spec::default_prometheus_rules()
+            avalancheup_aws::default_spec::default_prometheus_rules()
         };
 
         let anchor_asg_names =
