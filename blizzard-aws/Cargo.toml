@@ -1,6 +1,6 @@
 [package]
 name = "blizzard-aws"
-version = "0.2.55" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.3.0-beta.0" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.67"
 
@@ -14,7 +14,7 @@ aws-manager = { version = "0.24.23", features = ["cloudwatch", "ec2", "s3"] } # 
 aws-sdk-cloudwatch = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
-blizzardup-aws = { path = "../../bin/blizzardup-aws" }
+blizzardup-aws = { path = "../blizzardup-aws" }
 clap = { version = "4.1.8", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
 ethers-signers = { version = "2.0.0", optional = false }

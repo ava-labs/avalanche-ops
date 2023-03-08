@@ -6,7 +6,7 @@
 
 See https://talks.gyuho.dev/avalanche-aws-2022q3.html for slides.
 
-See ["Cheapest way to set up a network or validator"](bin/avalancheup-aws/recipes-aws.md#cheapest-way-to-set-up-a-network-or-validator).
+See ["Cheapest way to set up a network or validator"](avalancheup-aws/recipes-aws.md#cheapest-way-to-set-up-a-network-or-validator).
 
 [![asciicast](https://asciinema.org/a/oHrRU83Zfd6hApexUknm8QphG.svg)](https://asciinema.org/a/oHrRU83Zfd6hApexUknm8QphG)
 
@@ -44,15 +44,15 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 
 To set up a custom network, provide **`avalancheup`** with executable binaries to run in remote machines. Which then generates a genesis file with pre-funded keys and provisions remote machines to install the user-provided artifacts. A custom network requires two groups of machines: (1) anchor node (beacon node, only required for custom network), and (2) non-anchor node. During the bootstrap phase, regardless of its node kind, **`avalanched`** auto-generates TLS certificates and stores them encrypted in the remote storage. Beacon nodes publish its information in YAML to the shared remote storage, and non-anchor nodes list the storage to discover anchor nodes.
 
-![avalanche-ops.drawio.png](./bin/avalancheup-aws/img/avalancheup.drawio.png)
+![avalanche-ops.drawio.png](./avalancheup-aws/img/avalancheup.drawio.png)
 
 ## `avalancheup` and `avalanched` on AWS
 
-See [`recipes-aws.md`](./bin/avalancheup-aws/recipes-aws.md) and [`example-aws.md`](./bin/avalancheup-aws/example-aws.md).
+See [`recipes-aws.md`](./avalancheup-aws/recipes-aws.md) and [`example-aws.md`](./avalancheup-aws/example-aws.md).
 
-![example-aws/32](./bin/avalancheup-aws/img/example-aws/32.png)
+![example-aws/32](./avalancheup-aws/img/example-aws/32.png)
 
-![example-aws/43](./bin/avalancheup-aws/img/example-aws/43.png)
+![example-aws/43](./avalancheup-aws/img/example-aws/43.png)
 
 ## Installation
 

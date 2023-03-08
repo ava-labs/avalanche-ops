@@ -132,7 +132,7 @@ npx cdk deploy avalancheup-aws-instance-role-stack
 
 ![demo2](./img/demo2.png)
 
-See [`ec2_instance_role.yaml`](../../bin/avalancheup-aws/cfn-templates/ec2_instance_role.yaml) for the CloudFormation template.
+See [`ec2_instance_role.yaml`](../../avalancheup-aws/cfn-templates/ec2_instance_role.yaml) for the CloudFormation template.
 
 ### Step 6. Create VPC for Avalanche node
 
@@ -168,7 +168,7 @@ avalancheup-aws-vpc-stack.SecurityGroupId = sg-04a4ec189b8057781
 avalancheup-aws-vpc-stack.VpcId = vpc-0a4e93c82440759d0
 ```
 
-See [`vpc.yaml`](../../bin/avalancheup-aws/cfn-templates/vpc.yaml) for the CloudFormation template.
+See [`vpc.yaml`](../../avalancheup-aws/cfn-templates/vpc.yaml) for the CloudFormation template.
 
 ### Step 7. Create EC2 autoscaling group for Avalanche node
 
@@ -209,7 +209,7 @@ npx cdk deploy avalancheup-aws-asg-stack
 
 ![demo5](./img/demo5.png)
 
-See [`asg_ubuntu.yaml`](../../bin/avalancheup-aws/cfn-templates/asg_ubuntu.yaml) for the CloudFormation template.
+See [`asg_ubuntu.yaml`](../../avalancheup-aws/cfn-templates/asg_ubuntu.yaml) for the CloudFormation template.
 
 ### Step 8. Check the created resources
 
@@ -272,4 +272,4 @@ cdk destroy avalancheup-aws-instance-role-stack
 
 ## Alternatives
 
-If you are looking for a Rust-based CLI, please check out [`avalancheup-aws/recipes`](https://github.com/ava-labs/avalanche-ops/blob/main/bin/avalancheup-aws/recipes-aws.md).
+If you are looking for a Rust-based CLI, please check out [`avalancheup-aws/recipes`](https://github.com/ava-labs/avalanche-ops/blob/main/avalancheup-aws/recipes-aws.md).
