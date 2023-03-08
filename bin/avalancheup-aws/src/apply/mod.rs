@@ -1809,7 +1809,7 @@ default-spec \\
 --blizzard-log-level=info \\
 --blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
 --blizzard-keys-to-generate=100 \\
---blizzard-workers=100 \\
+--blizzard-workers=10 \\
 --blizzard-load-kinds=x-transfers,c-transfers
 
 ",
@@ -2519,7 +2519,7 @@ default-spec \\
 --blizzard-log-level=info \\
 --blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
 --blizzard-keys-to-generate=100 \\
---blizzard-workers=100 \\
+--blizzard-workers=10 \\
 --blizzard-load-kinds=x-transfers,evm-transfers
 ",
                 exec_parent_dir = exec_parent_dir,
