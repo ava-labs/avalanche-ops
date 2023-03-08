@@ -1,6 +1,10 @@
-use std::io;
+use std::{
+    io::{self, Error, ErrorKind},
+    path::Path,
+};
 
 use crate::flags;
+use avalanche_types::ids::node;
 use aws_manager::{
     self,
     kms::{self, envelope},
@@ -15,28 +19,76 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
-    let aws_creds = load_aws_credential(&opts.region).await?;
+    let shared_config = aws_manager::load_config(Some(opts.region.clone())).await?;
+    let kms_manager = kms::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
+
     let envelope_manager = envelope::Manager::new(
-        &aws_creds.kms_manager,
+        &kms_manager,
         opts.kms_cmk_id.clone(),
         // must've be equal for envelope encryption
         // e.g., "cfn-templates" tag "AAD_TAG"
         opts.aad_tag.clone(),
     );
-    let certs_manager = certs_manager::Manager {
-        envelope_manager,
-        s3_manager: aws_creds.s3_manager.clone(),
-        s3_bucket: opts.s3_bucket.clone(),
-    };
 
-    let node_id = certs_manager
-        .download(
+    let tls_key_exists = Path::new(&opts.tls_key_path).exists();
+    log::info!(
+        "staking TLS key {} exists? {}",
+        opts.tls_key_path,
+        tls_key_exists
+    );
+
+    let tls_cert_exists = Path::new(&opts.tls_cert_path).exists();
+    log::info!(
+        "staking TLS cert {} exists? {}",
+        opts.tls_cert_path,
+        tls_cert_exists
+    );
+
+    if tls_key_exists || tls_cert_exists {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!(
+                "TLS key {} or cert {} already exists on disk",
+                opts.tls_key_path, opts.tls_cert_path
+            ),
+        ));
+    }
+
+    log::info!("downloading key file {}", opts.tls_key_path);
+    envelope_manager
+        .get_object_unseal_decompress(
+            &s3_manager,
+            &opts.s3_bucket,
             &opts.s3_key_tls_key,
-            &opts.s3_key_tls_cert,
             &opts.tls_key_path,
+        )
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed get_object_unseal_decompress tls_key_path: {}", e),
+            )
+        })?;
+
+    log::info!("downloading cert file {}", opts.tls_cert_path);
+    envelope_manager
+        .get_object_unseal_decompress(
+            &s3_manager,
+            &opts.s3_bucket,
+            &opts.s3_key_tls_cert,
             &opts.tls_cert_path,
         )
-        .await?;
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed get_object_unseal_decompress tls_cert_path: {}", e),
+            )
+        })?;
+
+    let node_id = node::Id::from_cert_pem_file(&opts.tls_cert_path)?;
+
     log::info!(
         "downloaded the node Id '{}' cert in '{}' and '{}'",
         node_id,
@@ -45,24 +97,4 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
 
     Ok(())
-}
-
-#[derive(Debug, Clone)]
-struct AwsCreds {
-    kms_manager: kms::Manager,
-    s3_manager: s3::Manager,
-}
-
-async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
-    log::info!("STEP: loading up AWS credential for region '{}'...", reg);
-
-    let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
-
-    let kms_manager = kms::Manager::new(&shared_config);
-    let s3_manager = s3::Manager::new(&shared_config);
-
-    Ok(AwsCreds {
-        kms_manager,
-        s3_manager,
-    })
 }
