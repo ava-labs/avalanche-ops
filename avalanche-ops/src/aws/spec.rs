@@ -1776,11 +1776,6 @@ impl Default for UploadArtifacts {
 }
 
 impl UploadArtifacts {
-    /// ref. <https://github.com/ava-labs/public-chain-assets/blob/main/chains/53935/genesis.json>
-    /// ref. <https://pkg.go.dev/github.com/ava-labs/subnet-evm/params#pkg-variables>
-    /// ref. <https://github.com/ava-labs/subnet-evm/blob/master/scripts/run.sh>
-    /// ref. <https://www.rapidtables.com/convert/number/decimal-to-hex.html>
-    /// ref. <https://www.rapidtables.com/convert/number/hex-to-decimal.html>
     pub fn default() -> Self {
         Self {
             avalanched_local_bin: String::new(),
