@@ -17,7 +17,7 @@ use avalanche_types::{
 use aws_manager::{ec2, kms, sts};
 use serde::{Deserialize, Serialize};
 
-pub const VERSION: usize = 1;
+pub const VERSION: usize = 2;
 
 /// Represents the KMS CMK resource.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
