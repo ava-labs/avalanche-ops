@@ -267,12 +267,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
         let metrics_rules = prometheus_manager::Rules::load(&tmp_prometheus_metrics_file_path)?;
 
-        let anchor_asg_names =
-            if let Some(names) = &spec.aws_resources.cloudformation_asg_anchor_nodes {
-                names.clone()
-            } else {
-                Vec::new()
-            };
+        let anchor_asg_names = if let Some(names) = &spec.resources.cloudformation_asg_anchor_nodes
+        {
+            names.clone()
+        } else {
+            Vec::new()
+        };
 
         (
             spec.avalanchego_config.clone(),

@@ -85,9 +85,9 @@ pub async fn execute(
     );
 
     let spec = blizzardup_aws::Spec::load(spec_file_path).expect("failed to load spec");
-    let aws_resources = spec.aws_resources.clone().unwrap();
+    let resources = spec.resources.clone().unwrap();
 
-    let shared_config = aws_manager::load_config(Some(aws_resources.region.clone()))
+    let shared_config = aws_manager::load_config(Some(resources.region.clone()))
         .await
         .unwrap();
 
@@ -95,7 +95,7 @@ pub async fn execute(
     let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
-    match aws_resources.identity {
+    match resources.identity {
         Some(identity) => {
             // AWS calls must be made from the same caller
             if identity != current_identity {
@@ -146,7 +146,7 @@ pub async fn execute(
 
     // delete this first since EC2 key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
-    if aws_resources.ec2_key_name.is_some() && aws_resources.ec2_key_path.is_some() {
+    if resources.ec2_key_name.is_some() && resources.ec2_key_path.is_some() {
         sleep(Duration::from_secs(1)).await;
 
         execute!(
@@ -156,21 +156,18 @@ pub async fn execute(
             ResetColor
         )?;
 
-        let ec2_key_path = aws_resources.ec2_key_path.unwrap();
+        let ec2_key_path = resources.ec2_key_path.unwrap();
         if Path::new(ec2_key_path.as_str()).exists() {
             fs::remove_file(ec2_key_path.as_str()).unwrap();
         }
         ec2_manager
-            .delete_key_pair(aws_resources.ec2_key_name.unwrap().as_str())
+            .delete_key_pair(resources.ec2_key_name.unwrap().as_str())
             .await
             .unwrap();
     }
 
     // IAM roles can be deleted without being blocked on ASG/VPC
-    if aws_resources
-        .cloudformation_ec2_instance_profile_arn
-        .is_some()
-    {
+    if resources.cloudformation_ec2_instance_profile_arn.is_some() {
         sleep(Duration::from_secs(1)).await;
 
         execute!(
@@ -180,10 +177,8 @@ pub async fn execute(
             ResetColor
         )?;
 
-        let ec2_instance_role_stack_name = aws_resources
-            .cloudformation_ec2_instance_role
-            .clone()
-            .unwrap();
+        let ec2_instance_role_stack_name =
+            resources.cloudformation_ec2_instance_role.clone().unwrap();
         cloudformation_manager
             .delete_stack(ec2_instance_role_stack_name.as_str())
             .await
@@ -199,7 +194,7 @@ pub async fn execute(
         Print("\n\n\nSTEP: triggering delete ASG for blizzard nodes\n"),
         ResetColor
     )?;
-    let asg_blizzards_stack_name = aws_resources.cloudformation_asg_blizzards.clone().unwrap();
+    let asg_blizzards_stack_name = resources.cloudformation_asg_blizzards.clone().unwrap();
     cloudformation_manager
         .delete_stack(asg_blizzards_stack_name.as_str())
         .await
@@ -229,9 +224,9 @@ pub async fn execute(
         .unwrap();
 
     // VPC delete must run after associated EC2 instances are terminated due to dependencies
-    if aws_resources.cloudformation_vpc_id.is_some()
-        && aws_resources.cloudformation_vpc_security_group_id.is_some()
-        && aws_resources.cloudformation_vpc_public_subnet_ids.is_some()
+    if resources.cloudformation_vpc_id.is_some()
+        && resources.cloudformation_vpc_security_group_id.is_some()
+        && resources.cloudformation_vpc_public_subnet_ids.is_some()
     {
         sleep(Duration::from_secs(1)).await;
 
@@ -241,7 +236,7 @@ pub async fn execute(
             Print("\n\n\nSTEP: delete VPC\n"),
             ResetColor
         )?;
-        let vpc_stack_name = aws_resources.cloudformation_vpc.unwrap();
+        let vpc_stack_name = resources.cloudformation_vpc.unwrap();
         cloudformation_manager
             .delete_stack(vpc_stack_name.as_str())
             .await
@@ -258,10 +253,7 @@ pub async fn execute(
             .unwrap();
     }
 
-    if aws_resources
-        .cloudformation_ec2_instance_profile_arn
-        .is_some()
-    {
+    if resources.cloudformation_ec2_instance_profile_arn.is_some() {
         sleep(Duration::from_secs(1)).await;
 
         execute!(
@@ -270,7 +262,7 @@ pub async fn execute(
             Print("\n\n\nSTEP: confirming delete EC2 instance role\n"),
             ResetColor
         )?;
-        let ec2_instance_role_stack_name = aws_resources.cloudformation_ec2_instance_role.unwrap();
+        let ec2_instance_role_stack_name = resources.cloudformation_ec2_instance_role.unwrap();
         cloudformation_manager
             .poll_stack(
                 ec2_instance_role_stack_name.as_str(),
@@ -306,7 +298,7 @@ pub async fn execute(
         )?;
         sleep(Duration::from_secs(5)).await;
         s3_manager
-            .delete_objects(&aws_resources.s3_bucket, Some(&spec.id))
+            .delete_objects(&resources.s3_bucket, Some(&spec.id))
             .await
             .unwrap();
     }
@@ -322,7 +314,7 @@ pub async fn execute(
         )?;
         sleep(Duration::from_secs(5)).await;
         s3_manager
-            .delete_bucket(&aws_resources.s3_bucket)
+            .delete_bucket(&resources.s3_bucket)
             .await
             .unwrap();
     }

@@ -80,7 +80,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
-    let shared_config = aws_manager::load_config(Some(spec.aws_resources.region.clone()))
+    let shared_config = aws_manager::load_config(Some(spec.resources.region.clone()))
         .await
         .expect("failed to aws_manager::load_config");
 
@@ -88,7 +88,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
-    if let Some(identity) = &spec.aws_resources.identity {
+    if let Some(identity) = &spec.resources.identity {
         // AWS calls must be made from the same caller
         if !identity.eq(&current_identity) {
             return Err(Error::new(
@@ -100,27 +100,23 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ));
         }
     } else {
-        spec.aws_resources.identity = Some(current_identity);
+        spec.resources.identity = Some(current_identity);
     }
 
     // set defaults based on ID
-    if spec.aws_resources.ec2_key_name.is_empty() {
-        spec.aws_resources.ec2_key_name = format!("{}-ec2-key", spec.id);
+    if spec.resources.ec2_key_name.is_empty() {
+        spec.resources.ec2_key_name = format!("{}-ec2-key", spec.id);
     }
-    if spec
-        .aws_resources
-        .cloudformation_ec2_instance_role
-        .is_none()
-    {
-        spec.aws_resources.cloudformation_ec2_instance_role =
+    if spec.resources.cloudformation_ec2_instance_role.is_none() {
+        spec.resources.cloudformation_ec2_instance_role =
             Some(avalanche_ops::aws::spec::StackName::Ec2InstanceRole(spec.id.clone()).encode());
     }
-    if spec.aws_resources.cloudformation_vpc.is_none() {
-        spec.aws_resources.cloudformation_vpc =
+    if spec.resources.cloudformation_vpc.is_none() {
+        spec.resources.cloudformation_vpc =
             Some(avalanche_ops::aws::spec::StackName::Vpc(spec.id.clone()).encode());
     }
 
-    // DON'T "spec.aws_resources.cloudformation_asg_anchor_nodes.is_none()"
+    // DON'T "spec.resources.cloudformation_asg_anchor_nodes.is_none()"
     // in case we edit anchor node size after default spec generation
     if spec.avalanchego_config.is_custom_network() {
         let anchor_nodes = spec.machine.anchor_nodes.unwrap_or(0);
@@ -129,10 +125,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch_type, i + 1);
             asg_names.push(asg_name);
         }
-        spec.aws_resources.cloudformation_asg_anchor_nodes = Some(asg_names);
+        spec.resources.cloudformation_asg_anchor_nodes = Some(asg_names);
     }
 
-    // DON'T "spec.aws_resources.cloudformation_asg_non_anchor_nodes.is_none()"
+    // DON'T "spec.resources.cloudformation_asg_non_anchor_nodes.is_none()"
     // in case we edit non-anchor node size after default spec generation
     let non_anchor_nodes = spec.machine.non_anchor_nodes;
     let mut asg_names = Vec::new();
@@ -145,25 +141,25 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         );
         asg_names.push(asg_name);
     }
-    spec.aws_resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
+    spec.resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
 
     if spec
-        .aws_resources
+        .resources
         .cloudwatch_avalanche_metrics_namespace
         .is_none()
     {
-        spec.aws_resources.cloudwatch_avalanche_metrics_namespace =
+        spec.resources.cloudwatch_avalanche_metrics_namespace =
             Some(format!("{}-avalanche", spec.id));
     }
     if spec.subnet_evms.is_some() {
-        spec.aws_resources
+        spec.resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm = Some(
             avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
                 spec.id.clone(),
             )
             .encode(),
         );
-        spec.aws_resources
+        spec.resources
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm = Some(
             avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
                 spec.id.clone(),
@@ -172,7 +168,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         );
     }
     if spec.xsvms.is_some() {
-        spec.aws_resources
+        spec.resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm = Some(
             avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(
                 spec.id.clone(),
@@ -229,7 +225,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ResetColor
     )?;
     s3_manager
-        .create_bucket(&spec.aws_resources.s3_bucket)
+        .create_bucket(&spec.resources.s3_bucket)
         .await
         .unwrap();
 
@@ -258,7 +254,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             s3_manager
                 .put_object(
                     &v.avalanched_local_bin,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
                         .encode(),
                 )
@@ -279,7 +275,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             s3_manager
                 .put_object(
                     &v.aws_volume_provisioner_local_bin,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
                         spec.id.clone(),
                     )
@@ -300,7 +296,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             s3_manager
                 .put_object(
                     &v.aws_ip_provisioner_local_bin,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AwsIpProvisionerBin(
                         spec.id.clone(),
                     )
@@ -323,7 +319,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             s3_manager
                 .put_object(
                     &v.avalanche_telemetry_cloudwatch_local_bin,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
                         spec.id.clone(),
                     )
@@ -346,7 +342,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             s3_manager
                 .put_object(
                     &v.avalanche_config_local_bin,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalancheConfigBin(
                         spec.id.clone(),
                     )
@@ -365,7 +361,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             s3_manager
                 .put_object(
                     &v.avalanchego_local_bin,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalancheBin(spec.id.clone())
                         .encode(),
                 )
@@ -394,7 +390,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 s3_manager
                     .put_object(
                         &file_path,
-                        &spec.aws_resources.s3_bucket,
+                        &spec.resources.s3_bucket,
                         &format!(
                             "{}/{}",
                             &avalanche_ops::aws::spec::StorageNamespace::PluginDir(spec.id.clone())
@@ -418,7 +414,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &v.prometheus_metrics_rules_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
             )
             .await
@@ -432,7 +428,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &spec_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
@@ -442,7 +438,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     if spec
-        .aws_resources
+        .resources
         .kms_cmk_symmetric_default_encrypt_key
         .is_none()
     {
@@ -459,7 +455,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .await
             .unwrap();
 
-        spec.aws_resources.kms_cmk_symmetric_default_encrypt_key =
+        spec.resources.kms_cmk_symmetric_default_encrypt_key =
             Some(avalanche_ops::aws::spec::KmsCmk {
                 id: key.id,
                 arn: key.arn,
@@ -469,7 +465,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &spec_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
@@ -477,7 +473,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
     let envelope_manager = envelope::Manager::new(
         &kms_manager,
-        spec.aws_resources
+        spec.resources
             .kms_cmk_symmetric_default_encrypt_key
             .clone()
             .unwrap()
@@ -485,7 +481,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         "avalanche-ops".to_string(),
     );
 
-    if !Path::new(&spec.aws_resources.ec2_key_path).exists() {
+    if !Path::new(&spec.resources.ec2_key_path).exists() {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -493,9 +489,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let ec2_key_path = spec.aws_resources.ec2_key_path.clone();
+        let ec2_key_path = spec.resources.ec2_key_path.clone();
         ec2_manager
-            .create_key_pair(&spec.aws_resources.ec2_key_name, ec2_key_path.as_str())
+            .create_key_pair(&spec.resources.ec2_key_name, ec2_key_path.as_str())
             .await
             .unwrap();
 
@@ -517,7 +513,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &tmp_encrypted_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
                     spec.id.clone(),
                 )
@@ -529,7 +525,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &spec_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
@@ -537,7 +533,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     if spec
-        .aws_resources
+        .resources
         .cloudformation_ec2_instance_profile_arn
         .is_none()
     {
@@ -551,7 +547,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let ec2_instance_role_tmpl =
             avalanche_ops::aws::artifacts::ec2_instance_role_yaml().unwrap();
         let ec2_instance_role_stack_name = spec
-            .aws_resources
+            .resources
             .cloudformation_ec2_instance_role
             .clone()
             .unwrap();
@@ -561,13 +557,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param(
                 "KmsCmkArn",
                 &spec
-                    .aws_resources
+                    .resources
                     .kms_cmk_symmetric_default_encrypt_key
                     .clone()
                     .unwrap()
                     .arn,
             ),
-            build_param("S3BucketName", &spec.aws_resources.s3_bucket),
+            build_param("S3BucketName", &spec.resources.s3_bucket),
         ]);
         cloudformation_manager
             .create_stack(
@@ -600,7 +596,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let v = o.output_value.unwrap();
             log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("InstanceProfileArn") {
-                spec.aws_resources.cloudformation_ec2_instance_profile_arn = Some(v)
+                spec.resources.cloudformation_ec2_instance_profile_arn = Some(v)
             }
         }
         spec.sync(spec_file_path)?;
@@ -608,20 +604,20 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &spec_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
     }
 
-    if spec.aws_resources.cloudformation_vpc_id.is_none()
+    if spec.resources.cloudformation_vpc_id.is_none()
         && spec
-            .aws_resources
+            .resources
             .cloudformation_vpc_security_group_id
             .is_none()
         && spec
-            .aws_resources
+            .resources
             .cloudformation_vpc_public_subnet_ids
             .is_none()
     {
@@ -633,7 +629,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         )?;
 
         let vpc_tmpl = avalanche_ops::aws::artifacts::vpc_yaml().unwrap();
-        let vpc_stack_name = spec.aws_resources.cloudformation_vpc.clone().unwrap();
+        let vpc_stack_name = spec.resources.cloudformation_vpc.clone().unwrap();
         let vpc_params = Vec::from([
             build_param("Id", &spec.id),
             build_param("VpcCidr", "10.0.0.0/16"),
@@ -684,11 +680,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let v = o.output_value.unwrap();
             log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("VpcId") {
-                spec.aws_resources.cloudformation_vpc_id = Some(v);
+                spec.resources.cloudformation_vpc_id = Some(v);
                 continue;
             }
             if k.eq("SecurityGroupId") {
-                spec.aws_resources.cloudformation_vpc_security_group_id = Some(v);
+                spec.resources.cloudformation_vpc_security_group_id = Some(v);
                 continue;
             }
             if k.eq("PublicSubnetIds") {
@@ -698,7 +694,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     log::info!("public subnet {}", s);
                     pub_subnets.push(String::from(s));
                 }
-                spec.aws_resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
+                spec.resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
             }
         }
         spec.sync(spec_file_path)?;
@@ -706,7 +702,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &spec_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
@@ -722,19 +718,19 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         build_param(
             "KmsCmkArn",
             &spec
-                .aws_resources
+                .resources
                 .kms_cmk_symmetric_default_encrypt_key
                 .clone()
                 .unwrap()
                 .arn,
         ),
         build_param("AadTag", &spec.aad_tag),
-        build_param("S3BucketName", &spec.aws_resources.s3_bucket),
-        build_param("Ec2KeyPairName", &spec.aws_resources.ec2_key_name),
+        build_param("S3BucketName", &spec.resources.s3_bucket),
+        build_param("Ec2KeyPairName", &spec.resources.ec2_key_name),
         build_param(
             "InstanceProfileArn",
             &spec
-                .aws_resources
+                .resources
                 .cloudformation_ec2_instance_profile_arn
                 .clone()
                 .unwrap(),
@@ -742,14 +738,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         build_param(
             "SecurityGroupId",
             &spec
-                .aws_resources
+                .resources
                 .cloudformation_vpc_security_group_id
                 .clone()
                 .unwrap(),
         ),
         build_param(
             "NlbVpcId",
-            &spec.aws_resources.cloudformation_vpc_id.clone().unwrap(),
+            &spec.resources.cloudformation_vpc_id.clone().unwrap(),
         ),
         build_param(
             "NlbHttpPort",
@@ -807,7 +803,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         format!("{}", on_demand_pct).as_str(),
     ));
 
-    if let Some(arn) = &spec.aws_resources.nlb_acm_certificate_arn {
+    if let Some(arn) = &spec.resources.nlb_acm_certificate_arn {
         common_asg_params.push(build_param("NlbAcmCertificateArn", arn));
     };
     if spec.enable_nlb {
@@ -817,7 +813,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     let public_subnet_ids = spec
-        .aws_resources
+        .resources
         .cloudformation_vpc_public_subnet_ids
         .clone()
         .unwrap();
@@ -830,7 +826,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
     if spec.machine.anchor_nodes.unwrap_or(0) > 0
         && spec
-            .aws_resources
+            .resources
             .cloudformation_asg_anchor_nodes_logical_ids
             .is_none()
     {
@@ -847,7 +843,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let cloudformation_asg_anchor_nodes_tmpl =
             avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
         let stack_names = spec
-            .aws_resources
+            .resources
             .cloudformation_asg_anchor_nodes
             .clone()
             .unwrap();
@@ -882,7 +878,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 ));
             }
 
-            if let Some(arn) = &spec.aws_resources.cloudformation_asg_nlb_target_group_arn {
+            if let Some(arn) = &spec.resources.cloudformation_asg_nlb_target_group_arn {
                 // NLB already created
                 asg_params.push(build_param("NlbTargetGroupArn", arn));
             }
@@ -927,15 +923,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     continue;
                 }
                 if k.eq("NlbArn") {
-                    spec.aws_resources.cloudformation_asg_nlb_arn = Some(v);
+                    spec.resources.cloudformation_asg_nlb_arn = Some(v);
                     continue;
                 }
                 if k.eq("NlbTargetGroupArn") {
-                    spec.aws_resources.cloudformation_asg_nlb_target_group_arn = Some(v);
+                    spec.resources.cloudformation_asg_nlb_target_group_arn = Some(v);
                     continue;
                 }
                 if k.eq("NlbDnsName") {
-                    spec.aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
+                    spec.resources.cloudformation_asg_nlb_dns_name = Some(v);
                     continue;
                 }
                 if k.eq("AsgLaunchTemplateId") {
@@ -949,22 +945,21 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             }
         }
 
-        spec.aws_resources
-            .cloudformation_asg_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
+        spec.resources.cloudformation_asg_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
         spec.sync(spec_file_path)?;
 
-        if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
+        if spec.resources.cloudformation_asg_nlb_arn.is_none() {
             if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB ARN...");
             } else {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_arn not found",
+                    "resources.cloudformation_asg_nlb_arn not found",
                 ));
             }
         }
         if spec
-            .aws_resources
+            .resources
             .cloudformation_asg_nlb_target_group_arn
             .is_none()
         {
@@ -973,17 +968,17 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             } else {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
+                    "resources.cloudformation_asg_nlb_target_group_arn not found",
                 ));
             }
         }
-        if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
+        if spec.resources.cloudformation_asg_nlb_dns_name.is_none() {
             if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB DNS name...");
             } else {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_dns_name not found",
+                    "resources.cloudformation_asg_nlb_dns_name not found",
                 ));
             }
         }
@@ -1042,7 +1037,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             }
         }
 
-        let f = File::open(&spec.aws_resources.ec2_key_path).unwrap();
+        let f = File::open(&spec.resources.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
         println!();
@@ -1069,29 +1064,29 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
                 ip_kind,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.region,
+                spec.resources.region,
                 d.instance_id,
             );
         }
@@ -1106,7 +1101,7 @@ aws ssm start-session --region {} --target {}
 
             objects = s3_manager
                 .list_objects(
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     Some(&s3::append_slash(
                         &avalanche_ops::aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
                             spec.id.clone(),
@@ -1155,7 +1150,7 @@ aws ssm start-session --region {} --target {}
         s3_manager
             .put_object(
                 &spec_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
@@ -1166,7 +1161,7 @@ aws ssm start-session --region {} --target {}
     }
 
     if spec
-        .aws_resources
+        .resources
         .cloudformation_asg_non_anchor_nodes_logical_ids
         .is_none()
     {
@@ -1183,7 +1178,7 @@ aws ssm start-session --region {} --target {}
         let cloudformation_asg_non_anchor_nodes_tmpl =
             avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
         let stack_names = spec
-            .aws_resources
+            .resources
             .cloudformation_asg_non_anchor_nodes
             .clone()
             .unwrap();
@@ -1223,7 +1218,7 @@ aws ssm start-session --region {} --target {}
                 ));
             }
 
-            if let Some(arn) = &spec.aws_resources.cloudformation_asg_nlb_target_group_arn {
+            if let Some(arn) = &spec.resources.cloudformation_asg_nlb_target_group_arn {
                 // NLB already created
                 asg_params.push(build_param("NlbTargetGroupArn", arn));
             }
@@ -1268,15 +1263,15 @@ aws ssm start-session --region {} --target {}
                     continue;
                 }
                 if k.eq("NlbArn") {
-                    spec.aws_resources.cloudformation_asg_nlb_arn = Some(v);
+                    spec.resources.cloudformation_asg_nlb_arn = Some(v);
                     continue;
                 }
                 if k.eq("NlbTargetGroupArn") {
-                    spec.aws_resources.cloudformation_asg_nlb_target_group_arn = Some(v);
+                    spec.resources.cloudformation_asg_nlb_target_group_arn = Some(v);
                     continue;
                 }
                 if k.eq("NlbDnsName") {
-                    spec.aws_resources.cloudformation_asg_nlb_dns_name = Some(v);
+                    spec.resources.cloudformation_asg_nlb_dns_name = Some(v);
                     continue;
                 }
                 if k.eq("AsgLaunchTemplateId") {
@@ -1290,22 +1285,22 @@ aws ssm start-session --region {} --target {}
             }
         }
 
-        spec.aws_resources
+        spec.resources
             .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
         spec.sync(spec_file_path)?;
 
-        if spec.aws_resources.cloudformation_asg_nlb_arn.is_none() {
+        if spec.resources.cloudformation_asg_nlb_arn.is_none() {
             if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB ARN...");
             } else {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_arn not found",
+                    "resources.cloudformation_asg_nlb_arn not found",
                 ));
             }
         }
         if spec
-            .aws_resources
+            .resources
             .cloudformation_asg_nlb_target_group_arn
             .is_none()
         {
@@ -1314,17 +1309,17 @@ aws ssm start-session --region {} --target {}
             } else {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_target_group_arn not found",
+                    "resources.cloudformation_asg_nlb_target_group_arn not found",
                 ));
             }
         }
-        if spec.aws_resources.cloudformation_asg_nlb_dns_name.is_none() {
+        if spec.resources.cloudformation_asg_nlb_dns_name.is_none() {
             if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB DNS name...");
             } else {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "aws_resources.cloudformation_asg_nlb_dns_name not found",
+                    "resources.cloudformation_asg_nlb_dns_name not found",
                 ));
             }
         }
@@ -1383,7 +1378,7 @@ aws ssm start-session --region {} --target {}
             }
         }
 
-        let f = File::open(&spec.aws_resources.ec2_key_path).unwrap();
+        let f = File::open(&spec.resources.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
         println!();
@@ -1410,29 +1405,29 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
                 ip_kind,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.ec2_key_path,
+                spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.aws_resources.region,
+                spec.resources.region,
                 d.instance_id,
             );
         }
@@ -1447,7 +1442,7 @@ aws ssm start-session --region {} --target {}
 
             objects = s3_manager
                 .list_objects(
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     Some(&s3::append_slash(
                         &avalanche_ops::aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
                             spec.id.clone(),
@@ -1494,7 +1489,7 @@ aws ssm start-session --region {} --target {}
         s3_manager
             .put_object(
                 &spec_file_path,
-                &spec.aws_resources.s3_bucket,
+                &spec.resources.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
@@ -1504,7 +1499,7 @@ aws ssm start-session --region {} --target {}
         sleep(Duration::from_secs(20)).await;
     }
 
-    spec.created_nodes = Some(created_nodes.clone());
+    spec.resources.created_nodes = Some(created_nodes.clone());
     spec.sync(spec_file_path)?;
 
     execute!(
@@ -1517,8 +1512,7 @@ aws ssm start-session --region {} --target {}
         println!("{}", node.encode_yaml().unwrap());
     }
 
-    let mut rpc_hosts = if let Some(dns_name) = &spec.aws_resources.cloudformation_asg_nlb_dns_name
-    {
+    let mut rpc_hosts = if let Some(dns_name) = &spec.resources.cloudformation_asg_nlb_dns_name {
         vec![dns_name.clone()]
     } else {
         Vec::new()
@@ -1530,7 +1524,7 @@ aws ssm start-session --region {} --target {}
     }
 
     let http_port = spec.avalanchego_config.http_port;
-    let nlb_https_enabled = spec.aws_resources.nlb_acm_certificate_arn.is_some();
+    let nlb_https_enabled = spec.resources.nlb_acm_certificate_arn.is_some();
     let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
         && spec.avalanchego_config.http_tls_enabled.unwrap();
     let (scheme_for_dns, port_for_dns) = {
@@ -1571,10 +1565,11 @@ aws ssm start-session --region {} --target {}
         endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
         endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
         endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-        spec.created_endpoints = Some(endpoints.clone());
+        spec.resources.created_endpoints = Some(endpoints.clone());
         println!(
             "{}",
-            spec.created_endpoints
+            spec.resources
+                .created_endpoints
                 .clone()
                 .unwrap()
                 .encode_yaml()
@@ -1588,7 +1583,7 @@ aws ssm start-session --region {} --target {}
     s3_manager
         .put_object(
             &spec_file_path,
-            &spec.aws_resources.s3_bucket,
+            &spec.resources.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
         .await
@@ -1707,11 +1702,12 @@ aws ssm start-session --region {} --target {}
             endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
             endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
             endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-            spec.created_endpoints = Some(endpoints.clone());
+            spec.resources.created_endpoints = Some(endpoints.clone());
 
             println!(
                 "{}",
-                spec.created_endpoints
+                spec.resources
+                    .created_endpoints
                     .clone()
                     .unwrap()
                     .encode_yaml()
@@ -1756,12 +1752,12 @@ aws ssm start-session --region {} --target {}
         SetForegroundColor(Color::Magenta),
         Print(format!(
             "aws --region {} s3 ls s3://{}/{}/pki/ --human-readable\n",
-            spec.aws_resources.region, spec.aws_resources.s3_bucket, spec.id
+            spec.resources.region, spec.resources.s3_bucket, spec.id
         )),
         ResetColor
     )?;
     let kms_cmk_id = spec
-        .aws_resources
+        .resources
         .kms_cmk_symmetric_default_encrypt_key
         .clone()
         .unwrap()
@@ -1786,8 +1782,8 @@ aws ssm start-session --region {} --target {}
 cat /tmp/{node_id}.crt
 ",
                 exec_parent_dir = exec_parent_dir,
-                region = spec.aws_resources.region,
-                s3_buckeet = spec.aws_resources.s3_bucket,
+                region = spec.resources.region,
+                s3_buckeet = spec.resources.s3_bucket,
                 id = spec.id,
                 kms_cmk_id = kms_cmk_id,
                 aad_tag = spec.aad_tag,
@@ -1823,7 +1819,7 @@ default-spec \\
             } else {
                 1
             },
-            region = spec.aws_resources.region,
+            region = spec.resources.region,
             blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
         )),
         ResetColor
@@ -1878,7 +1874,7 @@ default-spec \\
             avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_subnet_evm_yaml()
                 .unwrap();
         let ssm_doc_stack_name = spec
-            .aws_resources
+            .resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
             .clone()
             .unwrap();
@@ -1927,7 +1923,7 @@ default-spec \\
             avalanche_ops::aws::artifacts::ssm_doc_restart_node_chain_config_subnet_evm_yaml()
                 .unwrap();
         let ssm_doc_stack_name = spec
-            .aws_resources
+            .resources
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
             .clone()
             .unwrap();
@@ -2007,7 +2003,7 @@ default-spec \\
             s3_manager
                 .put_object(
                     &spec_file_path,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
                 )
@@ -2036,8 +2032,8 @@ default-spec \\
                 .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
                 .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
                 .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
-                .output_s3_region(spec.aws_resources.region.clone())
-                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                .output_s3_region(spec.resources.region.clone())
+                .output_s3_bucket_name(spec.resources.s3_bucket.clone())
                 .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
                 .send()
                 .await
@@ -2146,8 +2142,8 @@ default-spec \\
                 .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
                 .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
                 .parameters("newBlockchainId", vec![blockchain_id.to_string()])
-                .output_s3_region(spec.aws_resources.region.clone())
-                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                .output_s3_region(spec.resources.region.clone())
+                .output_s3_bucket_name(spec.resources.s3_bucket.clone())
                 .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
                 .send()
                 .await
@@ -2195,7 +2191,7 @@ default-spec \\
         let ssm_doc_tmpl =
             avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_xsvm_yaml().unwrap();
         let ssm_doc_stack_name = spec
-            .aws_resources
+            .resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .clone()
             .unwrap();
@@ -2279,7 +2275,7 @@ default-spec \\
             s3_manager
                 .put_object(
                     &spec_file_path,
-                    &spec.aws_resources.s3_bucket,
+                    &spec.resources.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
                 )
@@ -2308,8 +2304,8 @@ default-spec \\
                 .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
                 .parameters("xsvmName", vec![xsvm_name.clone()])
                 .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
-                .output_s3_region(spec.aws_resources.region.clone())
-                .output_s3_bucket_name(spec.aws_resources.s3_bucket.clone())
+                .output_s3_region(spec.resources.region.clone())
+                .output_s3_bucket_name(spec.resources.s3_bucket.clone())
                 .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
                 .send()
                 .await
@@ -2438,10 +2434,11 @@ default-spec \\
         endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
         endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
         endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-        spec.created_endpoints = Some(endpoints.clone());
+        spec.resources.created_endpoints = Some(endpoints.clone());
         println!(
             "\n---\n{node_id}\n{}",
-            spec.created_endpoints
+            spec.resources
+                .created_endpoints
                 .clone()
                 .unwrap()
                 .encode_yaml()
@@ -2533,7 +2530,7 @@ default-spec \\
                 } else {
                     1
                 },
-                region = spec.aws_resources.region,
+                region = spec.resources.region,
                 blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
             )),
             ResetColor

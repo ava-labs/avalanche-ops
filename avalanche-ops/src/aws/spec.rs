@@ -41,7 +41,7 @@ pub struct Spec {
     #[serde(default)]
     pub aad_tag: String,
     /// AWS resources if run in AWS.
-    pub aws_resources: Resources,
+    pub resources: Resources,
 
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
@@ -95,15 +95,6 @@ pub struct Spec {
     /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefunded_keys: Option<Vec<key::secp256k1::Info>>,
-
-    /// Created nodes at the start of the network.
-    /// May become stale.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_nodes: Option<Vec<Node>>,
-    /// Created endpoints at the start of the network.
-    /// May become stale.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_endpoints: Option<Endpoints>,
 
     /// Interval in seconds to fetch system and avalanche node metrics.
     /// Set to 0 to disable metrics collection.
@@ -254,6 +245,15 @@ pub struct Resources {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudwatch_avalanche_metrics_namespace: Option<String>,
+
+    /// Created nodes at the start of the network.
+    /// May become stale.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_nodes: Option<Vec<Node>>,
+    /// Created endpoints at the start of the network.
+    /// May become stale.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_endpoints: Option<Endpoints>,
 }
 
 impl Default for Resources {
@@ -304,6 +304,9 @@ impl Resources {
             cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,
             cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: None,
             cloudwatch_avalanche_metrics_namespace: None,
+
+            created_nodes: None,
+            created_endpoints: None,
         }
     }
 }
@@ -763,7 +766,7 @@ impl Spec {
             id_manager::system::string(10),
             opts.region
         );
-        let mut aws_resources = Resources {
+        let mut resources = Resources {
             region: opts.region.clone(),
             s3_bucket,
             ec2_key_name: format!("{id}-ec2-key"),
@@ -771,7 +774,7 @@ impl Spec {
             ..Resources::default()
         };
         if !opts.nlb_acm_certificate_arn.is_empty() {
-            aws_resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
+            resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
         }
         let mut kms_cmk_secp256k1_cmks = Vec::new();
         for ki in prefunded_keys_info.iter() {
@@ -783,7 +786,7 @@ impl Spec {
             }
         }
         if !kms_cmk_secp256k1_cmks.is_empty() {
-            aws_resources.kms_cmk_secp256k1_cmks = Some(kms_cmk_secp256k1_cmks);
+            resources.kms_cmk_secp256k1_cmks = Some(kms_cmk_secp256k1_cmks);
         }
 
         let mut upload_artifacts = UploadArtifacts {
@@ -950,7 +953,7 @@ impl Spec {
                 id,
                 aad_tag: opts.aad_tag,
 
-                aws_resources,
+                resources: resources,
                 machine,
                 upload_artifacts,
 
@@ -967,9 +970,6 @@ impl Spec {
                 xsvms,
 
                 prefunded_keys: Some(prefunded_keys_info),
-
-                created_nodes: None,
-                created_endpoints: None,
 
                 metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
             },
@@ -1051,7 +1051,7 @@ impl Spec {
             ));
         }
 
-        if self.aws_resources.region.is_empty() {
+        if self.resources.region.is_empty() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "'machine.region' cannot be empty",
@@ -1245,7 +1245,7 @@ id: {id}
 
 aad_tag: test
 
-aws_resources:
+resources:
   region: us-west-2
   use_spot_instance: false
   s3_bucket: {bucket}
@@ -1347,7 +1347,7 @@ metrics_fetch_interval_seconds: 5000
         id: id.clone(),
         aad_tag: String::from("test"),
 
-        aws_resources: Resources {
+        resources: Resources {
             region: String::from("us-west-2"),
             s3_bucket: bucket.clone(),
             ..Resources::default()
@@ -1401,8 +1401,6 @@ metrics_fetch_interval_seconds: 5000
         xsvms: None,
 
         prefunded_keys: None,
-        created_nodes: None,
-        created_endpoints: None,
     };
 
     cfg.validate().expect("unexpected validate failure");
@@ -1412,8 +1410,8 @@ metrics_fetch_interval_seconds: 5000
     assert_eq!(cfg.id, id);
     assert_eq!(cfg.aad_tag, "test");
 
-    assert_eq!(cfg.aws_resources.region, "us-west-2");
-    assert_eq!(cfg.aws_resources.s3_bucket, bucket);
+    assert_eq!(cfg.resources.region, "us-west-2");
+    assert_eq!(cfg.resources.s3_bucket, bucket);
 
     assert_eq!(
         cfg.upload_artifacts

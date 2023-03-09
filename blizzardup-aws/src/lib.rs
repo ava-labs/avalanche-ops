@@ -28,7 +28,7 @@ pub struct Spec {
 
     /// AWS resources if run in AWS.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub aws_resources: Option<aws::Resources>,
+    pub resources: Option<aws::Resources>,
 
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
@@ -155,12 +155,12 @@ impl Spec {
             id_manager::system::string(10),
             opts.region
         );
-        let aws_resources = aws::Resources {
+        let resources = aws::Resources {
             region: opts.region.clone(),
             s3_bucket,
             ..aws::Resources::default()
         };
-        let aws_resources = Some(aws_resources);
+        let resources = Some(resources);
 
         let upload_artifacts = if !opts.upload_artifacts_blizzard_bin.is_empty() {
             Some(UploadArtifacts {
@@ -184,7 +184,7 @@ impl Spec {
         Self {
             id,
 
-            aws_resources,
+            resources: resources,
             machine,
             upload_artifacts,
 
@@ -267,9 +267,9 @@ impl Spec {
             ));
         }
 
-        if self.aws_resources.is_some() {
-            let aws_resources = self.aws_resources.clone().unwrap();
-            if aws_resources.region.is_empty() {
+        if self.resources.is_some() {
+            let resources = self.resources.clone().unwrap();
+            if resources.region.is_empty() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     "'machine.region' cannot be empty",
@@ -327,7 +327,7 @@ fn test_spec() {
 
 id: {}
 
-aws_resources:
+resources:
   region: us-west-2
   use_spot_instance: false
   s3_bucket: {}
@@ -370,7 +370,7 @@ blizzard_spec:
 
     let orig = Spec {
         id: id.clone(),
-        aws_resources: Some(aws::Resources {
+        resources: Some(aws::Resources {
             region: String::from("us-west-2"),
             s3_bucket: bucket.clone(),
             ..aws::Resources::default()
@@ -413,9 +413,9 @@ blizzard_spec:
     // manually check to make sure the serde deserializer works
     assert_eq!(cfg.id, id);
 
-    let aws_resources = cfg.aws_resources.unwrap();
-    assert_eq!(aws_resources.region, "us-west-2");
-    assert_eq!(aws_resources.s3_bucket, bucket);
+    let resources = cfg.resources.unwrap();
+    assert_eq!(resources.region, "us-west-2");
+    assert_eq!(resources.s3_bucket, bucket);
 
     assert_eq!(
         cfg.upload_artifacts.clone().unwrap().blizzard_bin,

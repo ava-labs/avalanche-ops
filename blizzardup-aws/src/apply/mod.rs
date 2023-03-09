@@ -72,8 +72,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let mut spec = blizzardup_aws::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
-    let mut aws_resources = spec.aws_resources.clone().unwrap();
-    let shared_config = aws_manager::load_config(Some(aws_resources.region.clone()))
+    let mut resources = spec.resources.clone().unwrap();
+    let shared_config = aws_manager::load_config(Some(resources.region.clone()))
         .await
         .expect("failed to aws_manager::load_config");
 
@@ -81,7 +81,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
-    match aws_resources.clone().identity {
+    match resources.clone().identity {
         Some(identity) => {
             // AWS calls must be made from the same caller
             if identity != current_identity {
@@ -95,27 +95,27 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             }
         }
         None => {
-            aws_resources.identity = Some(current_identity);
+            resources.identity = Some(current_identity);
         }
     }
 
     // set defaults based on ID
-    if aws_resources.ec2_key_name.is_none() {
-        aws_resources.ec2_key_name = Some(format!("{}-ec2-key", spec.id));
+    if resources.ec2_key_name.is_none() {
+        resources.ec2_key_name = Some(format!("{}-ec2-key", spec.id));
     }
-    if aws_resources.cloudformation_ec2_instance_role.is_none() {
-        aws_resources.cloudformation_ec2_instance_role =
+    if resources.cloudformation_ec2_instance_role.is_none() {
+        resources.cloudformation_ec2_instance_role =
             Some(blizzardup_aws::StackName::Ec2InstanceRole(spec.id.clone()).encode());
     }
-    if aws_resources.cloudformation_vpc.is_none() {
-        aws_resources.cloudformation_vpc =
+    if resources.cloudformation_vpc.is_none() {
+        resources.cloudformation_vpc =
             Some(blizzardup_aws::StackName::Vpc(spec.id.clone()).encode());
     }
-    if aws_resources.cloudformation_asg_blizzards.is_none() {
-        aws_resources.cloudformation_asg_blizzards =
+    if resources.cloudformation_asg_blizzards.is_none() {
+        resources.cloudformation_asg_blizzards =
             Some(blizzardup_aws::StackName::AsgBlizzards(spec.id.clone()).encode());
     }
-    spec.aws_resources = Some(aws_resources.clone());
+    spec.resources = Some(resources.clone());
     spec.sync(spec_file_path)?;
 
     // fetch network_id, chain infos and save to spec
@@ -174,7 +174,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ResetColor
     )?;
     s3_manager
-        .create_bucket(&aws_resources.s3_bucket)
+        .create_bucket(&resources.s3_bucket)
         .await
         .unwrap();
 
@@ -203,7 +203,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             s3_manager
                 .put_object(
                     &v.blizzard_bin,
-                    &aws_resources.s3_bucket,
+                    &resources.s3_bucket,
                     &blizzardup_aws::StorageNamespace::BlizzardBin(spec.id.clone()).encode(),
                 )
                 .await
@@ -221,13 +221,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     s3_manager
         .put_object(
             &spec_file_path,
-            &aws_resources.s3_bucket,
+            &resources.s3_bucket,
             &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
         .await
         .unwrap();
 
-    if aws_resources.ec2_key_path.is_none() {
+    if resources.ec2_key_path.is_none() {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -238,7 +238,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let ec2_key_path = get_ec2_key_path(spec_file_path);
         ec2_manager
             .create_key_pair(
-                aws_resources.ec2_key_name.clone().unwrap().as_str(),
+                resources.ec2_key_name.clone().unwrap().as_str(),
                 ec2_key_path.as_str(),
             )
             .await
@@ -247,30 +247,27 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         s3_manager
             .put_object(
                 &ec2_key_path,
-                &aws_resources.s3_bucket,
+                &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::Ec2AccessKey(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
 
-        aws_resources.ec2_key_path = Some(ec2_key_path);
-        spec.aws_resources = Some(aws_resources.clone());
+        resources.ec2_key_path = Some(ec2_key_path);
+        spec.resources = Some(resources.clone());
         spec.sync(spec_file_path)?;
 
         s3_manager
             .put_object(
                 &spec_file_path,
-                &aws_resources.s3_bucket,
+                &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
     }
 
-    if aws_resources
-        .cloudformation_ec2_instance_profile_arn
-        .is_none()
-    {
+    if resources.cloudformation_ec2_instance_profile_arn.is_none() {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -281,14 +278,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let ec2_instance_role_yaml = Asset::get("cfn-templates/ec2_instance_role.yaml").unwrap();
         let ec2_instance_role_tmpl =
             std::str::from_utf8(ec2_instance_role_yaml.data.as_ref()).unwrap();
-        let ec2_instance_role_stack_name = aws_resources
-            .cloudformation_ec2_instance_role
-            .clone()
-            .unwrap();
+        let ec2_instance_role_stack_name =
+            resources.cloudformation_ec2_instance_role.clone().unwrap();
 
         let role_params = Vec::from([
             build_param("Id", &spec.id),
-            build_param("S3BucketName", &aws_resources.s3_bucket),
+            build_param("S3BucketName", &resources.s3_bucket),
         ]);
         cloudformation_manager
             .create_stack(
@@ -321,25 +316,25 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let v = o.output_value.unwrap();
             log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("InstanceProfileArn") {
-                aws_resources.cloudformation_ec2_instance_profile_arn = Some(v)
+                resources.cloudformation_ec2_instance_profile_arn = Some(v)
             }
         }
-        spec.aws_resources = Some(aws_resources.clone());
+        spec.resources = Some(resources.clone());
         spec.sync(spec_file_path)?;
 
         s3_manager
             .put_object(
                 &spec_file_path,
-                &aws_resources.s3_bucket,
+                &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
     }
 
-    if aws_resources.cloudformation_vpc_id.is_none()
-        && aws_resources.cloudformation_vpc_security_group_id.is_none()
-        && aws_resources.cloudformation_vpc_public_subnet_ids.is_none()
+    if resources.cloudformation_vpc_id.is_none()
+        && resources.cloudformation_vpc_security_group_id.is_none()
+        && resources.cloudformation_vpc_public_subnet_ids.is_none()
     {
         execute!(
             stdout(),
@@ -350,7 +345,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let vpc_yaml = Asset::get("cfn-templates/vpc.yaml").unwrap();
         let vpc_tmpl = std::str::from_utf8(vpc_yaml.data.as_ref()).unwrap();
-        let vpc_stack_name = aws_resources.cloudformation_vpc.clone().unwrap();
+        let vpc_stack_name = resources.cloudformation_vpc.clone().unwrap();
         let vpc_params = Vec::from([
             build_param("Id", &spec.id),
             build_param("VpcCidr", "10.0.0.0/16"),
@@ -390,11 +385,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let v = o.output_value.unwrap();
             log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("VpcId") {
-                aws_resources.cloudformation_vpc_id = Some(v);
+                resources.cloudformation_vpc_id = Some(v);
                 continue;
             }
             if k.eq("SecurityGroupId") {
-                aws_resources.cloudformation_vpc_security_group_id = Some(v);
+                resources.cloudformation_vpc_security_group_id = Some(v);
                 continue;
             }
             if k.eq("PublicSubnetIds") {
@@ -404,26 +399,23 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     log::info!("public subnet {}", s);
                     pub_subnets.push(String::from(s));
                 }
-                aws_resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
+                resources.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
             }
         }
-        spec.aws_resources = Some(aws_resources.clone());
+        spec.resources = Some(resources.clone());
         spec.sync(spec_file_path)?;
 
         s3_manager
             .put_object(
                 &spec_file_path,
-                &aws_resources.s3_bucket,
+                &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
     }
 
-    if aws_resources
-        .cloudformation_asg_blizzards_logical_id
-        .is_none()
-    {
+    if resources.cloudformation_asg_blizzards_logical_id.is_none() {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -431,28 +423,28 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let public_subnet_ids = aws_resources
+        let public_subnet_ids = resources
             .cloudformation_vpc_public_subnet_ids
             .clone()
             .unwrap();
         let mut asg_parameters = Vec::from([
             build_param("Id", &spec.id),
             build_param("NodeKind", "worker"),
-            build_param("S3BucketName", &aws_resources.s3_bucket),
+            build_param("S3BucketName", &resources.s3_bucket),
             build_param(
                 "Ec2KeyPairName",
-                &aws_resources.ec2_key_name.clone().unwrap(),
+                &resources.ec2_key_name.clone().unwrap(),
             ),
             build_param(
                 "InstanceProfileArn",
-                &aws_resources
+                &resources
                     .cloudformation_ec2_instance_profile_arn
                     .clone()
                     .unwrap(),
             ),
             build_param(
                 "SecurityGroupId",
-                &aws_resources
+                &resources
                     .cloudformation_vpc_security_group_id
                     .clone()
                     .unwrap(),
@@ -488,7 +480,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let cloudformation_asg_blizzards_tmpl =
             std::str::from_utf8(cloudformation_asg_blizzards_yaml.data.as_ref()).unwrap();
         let cloudformation_asg_blizzards_stack_name =
-            aws_resources.cloudformation_asg_blizzards.clone().unwrap();
+            resources.cloudformation_asg_blizzards.clone().unwrap();
 
         let desired_capacity = spec.machine.nodes;
 
@@ -554,24 +546,21 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let v = o.output_value.unwrap();
             log::info!("stack output key=[{}], value=[{}]", k, v,);
             if k.eq("AsgLogicalId") {
-                aws_resources.cloudformation_asg_blizzards_logical_id = Some(v);
+                resources.cloudformation_asg_blizzards_logical_id = Some(v);
                 continue;
             }
         }
-        if aws_resources
-            .cloudformation_asg_blizzards_logical_id
-            .is_none()
-        {
+        if resources.cloudformation_asg_blizzards_logical_id.is_none() {
             return Err(Error::new(
                 ErrorKind::Other,
-                "aws_resources.cloudformation_asg_blizzards_logical_id not found",
+                "resources.cloudformation_asg_blizzards_logical_id not found",
             ));
         }
 
-        spec.aws_resources = Some(aws_resources.clone());
+        spec.resources = Some(resources.clone());
         spec.sync(spec_file_path)?;
 
-        let asg_name = aws_resources
+        let asg_name = resources
             .cloudformation_asg_blizzards_logical_id
             .clone()
             .expect("unexpected None cloudformation_asg_blizzards_logical_id");
@@ -595,7 +584,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             sleep(Duration::from_secs(30)).await;
         }
 
-        let ec2_key_path = aws_resources.ec2_key_path.clone().unwrap();
+        let ec2_key_path = resources.ec2_key_path.clone().unwrap();
         let f = File::open(&ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
@@ -638,19 +627,19 @@ aws ssm start-session --region {} --target {}
                 ec2_key_path,
                 d.public_ipv4,
                 //
-                aws_resources.region,
+                resources.region,
                 d.instance_id,
             );
         }
         println!();
 
-        spec.aws_resources = Some(aws_resources.clone());
+        spec.resources = Some(resources.clone());
         spec.sync(spec_file_path)?;
 
         s3_manager
             .put_object(
                 &spec_file_path,
-                &aws_resources.s3_bucket,
+                &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
