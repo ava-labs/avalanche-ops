@@ -17,6 +17,8 @@ use avalanche_types::{
 use aws_manager::{ec2, kms, sts};
 use serde::{Deserialize, Serialize};
 
+pub const VERSION: usize = 1;
+
 /// Represents the KMS CMK resource.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -212,8 +214,6 @@ impl Resources {
     }
 }
 
-pub const VERSION: usize = 1;
-
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
 /// bootstrap process (e.g., certificates) and not defined
@@ -405,12 +405,31 @@ pub struct DefaultSpecOption {
 
 impl Spec {
     /// Creates a default spec.
-    pub async fn default_aws(opts: DefaultSpecOption) -> Self {
+    pub async fn default_aws(opts: DefaultSpecOption) -> io::Result<(Self, String)> {
         let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opts.network_name.as_str())
         {
             Some(v) => *v,
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
+
+        if opts.network_name == "custom" && opts.keys_to_generate == 0 {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "can't --keys-to-generate=0 for {} network",
+                    opts.network_name
+                ),
+            ));
+        }
+        if opts.network_name != "custom" && opts.keys_to_generate > 0 {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "can't --keys-to-generate={} (>0) for {} network",
+                    opts.keys_to_generate, opts.network_name
+                ),
+            ));
+        }
 
         let mut avalanched_config = crate::aws::avalanched::Flags {
             log_level: opts.avalanched_log_level,
@@ -458,17 +477,20 @@ impl Spec {
         };
 
         let network_id = avalanchego_config.network_id;
-        let id = {
+        let (id, spec_file_path) = {
             if !opts.spec_file_path.is_empty() {
                 let spec_file_stem = Path::new(&opts.spec_file_path).file_stem().unwrap();
-                spec_file_stem.to_str().unwrap().to_string()
+                let id = spec_file_stem.to_str().unwrap().to_string();
+                (id, opts.spec_file_path.clone())
             } else {
-                match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
+                let id = match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                     Some(v) => id_manager::time::with_prefix(format!("aops-{}", *v).as_str()),
                     None => id_manager::time::with_prefix("aops-custom"),
-                }
+                };
+                (id.clone(), dir_manager::home::named(&id, Some(".yaml")))
             }
         };
+
         let (anchor_nodes, non_anchor_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 // non-custom network only single node to utilize single AZ
@@ -742,6 +764,7 @@ impl Spec {
         let mut aws_resources = Resources {
             region: opts.region.clone(),
             s3_bucket,
+            ec2_key_path: get_ec2_key_path(&spec_file_path),
             ..Resources::default()
         };
         if !opts.nlb_acm_certificate_arn.is_empty() {
@@ -817,6 +840,23 @@ impl Spec {
                 .clone();
         }
 
+        if upload_artifacts
+            .prometheus_metrics_rules_file_path
+            .is_empty()
+        {
+            upload_artifacts.prometheus_metrics_rules_file_path =
+                get_prometheus_metrics_rules_file_path(&spec_file_path);
+        }
+        if !Path::new(&upload_artifacts.prometheus_metrics_rules_file_path).exists() {
+            log::info!(
+                "prometheus_metrics_rules_file_path {} does not exist -- writing default rules",
+                upload_artifacts.prometheus_metrics_rules_file_path
+            );
+
+            let metrics_rules = crate::artifacts::prometheus_rules();
+            metrics_rules.sync(&upload_artifacts.prometheus_metrics_rules_file_path)?;
+        }
+
         let mut coreth_chain_config = coreth_chain_config::Config::default();
         if opts.coreth_continuous_profiler_enabled {
             coreth_chain_config.continuous_profiler_dir =
@@ -883,35 +923,38 @@ impl Spec {
             volume_size_in_gb,
         };
 
-        Self {
-            version: VERSION,
+        Ok((
+            Self {
+                version: VERSION,
 
-            id,
-            aad_tag: opts.aad_tag,
+                id,
+                aad_tag: opts.aad_tag,
 
-            aws_resources,
-            machine,
-            upload_artifacts,
+                aws_resources,
+                machine,
+                upload_artifacts,
 
-            avalanched_config,
+                avalanched_config,
 
-            enable_nlb: opts.enable_nlb,
-            disable_logs_auto_removal: opts.disable_logs_auto_removal,
+                enable_nlb: opts.enable_nlb,
+                disable_logs_auto_removal: opts.disable_logs_auto_removal,
 
-            avalanchego_config,
-            coreth_chain_config,
-            avalanchego_genesis_template,
+                avalanchego_config,
+                coreth_chain_config,
+                avalanchego_genesis_template,
 
-            subnet_evms,
-            xsvms,
+                subnet_evms,
+                xsvms,
 
-            test_key_infos: Some(test_keys_infos),
+                test_key_infos: Some(test_keys_infos),
 
-            created_nodes: None,
-            created_endpoints: None,
+                created_nodes: None,
+                created_endpoints: None,
 
-            metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
-        }
+                metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
+            },
+            spec_file_path,
+        ))
     }
 
     /// Converts to string in YAML format.
@@ -2022,4 +2065,32 @@ impl NodeInfo {
 
         Ok(())
     }
+}
+
+fn get_ec2_key_path(spec_file_path: &str) -> String {
+    let path = Path::new(spec_file_path);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
+}
+
+fn get_prometheus_metrics_rules_file_path(spec_file_path: &str) -> String {
+    let path = Path::new(spec_file_path);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let new_name = format!("{}-prometheus-metrics-rules.yaml", name.to_str().unwrap(),);
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
 }

@@ -1,7 +1,4 @@
-use std::{
-    io::{self, stdout, Error, ErrorKind},
-    path::Path,
-};
+use std::io::{self, stdout};
 
 use avalanche_types::avalanchego::config as avalanchego_config;
 use clap::{value_parser, Arg, Command};
@@ -529,34 +526,6 @@ pub fn command() -> Command {
         )
 }
 
-fn get_ec2_key_path(spec_file_path: &str) -> String {
-    let path = Path::new(spec_file_path);
-    let parent_dir = path.parent().unwrap();
-    let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
-    String::from(
-        parent_dir
-            .join(Path::new(new_name.as_str()))
-            .as_path()
-            .to_str()
-            .unwrap(),
-    )
-}
-
-fn get_prometheus_metrics_rules_file_path(spec_file_path: &str) -> String {
-    let path = Path::new(spec_file_path);
-    let parent_dir = path.parent().unwrap();
-    let name = path.file_stem().unwrap();
-    let new_name = format!("{}-prometheus-metrics-rules.yaml", name.to_str().unwrap(),);
-    String::from(
-        parent_dir
-            .join(Path::new(new_name.as_str()))
-            .as_path()
-            .to_str()
-            .unwrap(),
-    )
-}
-
 pub async fn execute(opts: avalancheup::aws::spec::DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -564,57 +533,10 @@ pub async fn execute(opts: avalancheup::aws::spec::DefaultSpecOption) -> io::Res
             .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
     );
 
-    let mut cloned_opts = opts.clone();
-
-    if cloned_opts.network_name == "custom" && cloned_opts.keys_to_generate == 0 {
-        log::warn!("can't --keys-to-generate=0 for custom network -- defaulting to 2");
-        cloned_opts.keys_to_generate = 2;
-    }
-
-    if cloned_opts.network_name != "custom" && cloned_opts.keys_to_generate > 0 {
-        return Err(Error::new(
-            ErrorKind::Other,
-            format!(
-                "can't --keys-to-generate={} (>0) for {} network",
-                cloned_opts.keys_to_generate, cloned_opts.network_name
-            ),
-        ));
-    }
-
-    let mut spec = avalancheup::aws::spec::Spec::default_aws(cloned_opts.clone()).await;
+    let (spec, spec_file_path) = avalancheup::aws::spec::Spec::default_aws(opts)
+        .await
+        .unwrap();
     spec.validate()?;
-
-    let spec_file_path = {
-        if opts.spec_file_path.is_empty() {
-            dir_manager::home::named(&spec.id, Some(".yaml"))
-        } else {
-            opts.spec_file_path
-        }
-    };
-
-    if spec.aws_resources.ec2_key_path.is_empty() {
-        spec.aws_resources.ec2_key_path = get_ec2_key_path(&spec_file_path);
-    }
-    if spec
-        .upload_artifacts
-        .prometheus_metrics_rules_file_path
-        .is_empty()
-    {
-        spec.upload_artifacts.prometheus_metrics_rules_file_path =
-            get_prometheus_metrics_rules_file_path(&spec_file_path);
-    }
-    if !Path::new(&spec.upload_artifacts.prometheus_metrics_rules_file_path).exists() {
-        log::info!(
-            "prometheus_metrics_rules_file_path {} does not exist -- writing default rules",
-            spec.upload_artifacts.prometheus_metrics_rules_file_path
-        );
-
-        let metrics_rules = avalancheup::artifacts::prometheus_rules();
-        metrics_rules
-            .sync(&spec.upload_artifacts.prometheus_metrics_rules_file_path)
-            .unwrap();
-    }
-
     spec.sync(&spec_file_path)?;
 
     execute!(
