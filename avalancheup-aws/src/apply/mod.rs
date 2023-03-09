@@ -230,205 +230,197 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .await
         .unwrap();
 
-    sleep(Duration::from_secs(1)).await;
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
-        ResetColor
-    )?;
+    if let Some(v) = &spec.upload_artifacts {
+        sleep(Duration::from_secs(1)).await;
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
+            ResetColor
+        )?;
 
-    if !spec.upload_artifacts.avalanched_local_bin.is_empty()
-        && Path::new(&spec.upload_artifacts.avalanched_local_bin).exists()
-    {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-        s3_manager
-            .put_object(
-                &spec.upload_artifacts.avalanched_local_bin,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone()).encode(),
-            )
-            .await
-            .expect("failed put_object upload_artifacts.avalanched_bin");
-    } else {
-        log::info!("skipping uploading avalanched_bin, will be downloaded on remote machines...");
-    }
-
-    if !spec
-        .upload_artifacts
-        .aws_volume_provisioner_local_bin
-        .is_empty()
-        && Path::new(&spec.upload_artifacts.aws_volume_provisioner_local_bin).exists()
-    {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                &spec.upload_artifacts.aws_volume_provisioner_local_bin,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object upload_artifacts.aws_volume_provisioner_bin");
-    } else {
-        log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
-    }
-
-    if !spec
-        .upload_artifacts
-        .aws_ip_provisioner_local_bin
-        .is_empty()
-        && Path::new(&spec.upload_artifacts.aws_ip_provisioner_local_bin).exists()
-    {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                &spec.upload_artifacts.aws_ip_provisioner_local_bin,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
-    } else {
-        log::info!(
-            "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
-        );
-    }
-
-    if !spec
-        .upload_artifacts
-        .avalanche_telemetry_cloudwatch_local_bin
-        .is_empty()
-        && Path::new(
-            &spec
-                .upload_artifacts
-                .avalanche_telemetry_cloudwatch_local_bin,
-        )
-        .exists()
-    {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                &spec
-                    .upload_artifacts
-                    .avalanche_telemetry_cloudwatch_local_bin,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
-                    spec.id.clone(),
-                )
-                .encode(),
-            )
-            .await
-            .expect("failed put_object upload_artifacts.avalanche_telemetry_cloudwatch_bin");
-    } else {
-        log::info!(
-            "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
-        );
-    }
-
-    if !spec.upload_artifacts.avalanche_config_local_bin.is_empty()
-        && Path::new(&spec.upload_artifacts.avalanche_config_local_bin).exists()
-    {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                &spec.upload_artifacts.avalanche_config_local_bin,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object upload_artifacts.avalanche_config_bin");
-    } else {
-        log::info!(
-            "skipping uploading avalanche_config_bin, will be downloaded on remote machines..."
-        );
-    }
-
-    if !spec.upload_artifacts.avalanchego_local_bin.is_empty()
-        && Path::new(&spec.upload_artifacts.avalanchego_local_bin).exists()
-    {
-        // upload without compression first
-        s3_manager
-            .put_object(
-                &spec.upload_artifacts.avalanchego_local_bin,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::AvalancheBin(spec.id.clone()).encode(),
-            )
-            .await
-            .expect("failed put_object avalanchego_bin");
-    } else {
-        log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
-    }
-
-    if !spec.upload_artifacts.plugin_local_dir.is_empty()
-        && Path::new(&spec.upload_artifacts.plugin_local_dir).exists()
-    {
-        for entry in fs::read_dir(&spec.upload_artifacts.plugin_local_dir).unwrap() {
-            let entry = entry.unwrap();
-            let entry_path = entry.path();
-
-            let file_path = entry_path.to_str().unwrap();
-            let file_name = entry.file_name();
-            let file_name = file_name.as_os_str().to_str().unwrap();
-
-            log::info!(
-                "uploading {} from plugins directory {}",
-                file_path,
-                spec.upload_artifacts.plugin_local_dir,
-            );
+        if !v.avalanched_local_bin.is_empty() && Path::new(&v.avalanched_local_bin).exists() {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
             s3_manager
                 .put_object(
-                    &file_path,
+                    &v.avalanched_local_bin,
                     &spec.aws_resources.s3_bucket,
-                    &format!(
-                        "{}/{}",
-                        &avalancheup::aws::spec::StorageNamespace::PluginDir(spec.id.clone())
-                            .encode(),
-                        file_name,
-                    ),
+                    &avalancheup::aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
+                        .encode(),
                 )
                 .await
-                .expect("failed put_object file_path");
+                .expect("failed put_object upload_artifacts.avalanched_bin");
+        } else {
+            log::info!(
+                "skipping uploading avalanched_bin, will be downloaded on remote machines..."
+            );
         }
-    } else {
-        log::info!("skipping uploading plugin dir...");
+
+        if !v.aws_volume_provisioner_local_bin.is_empty()
+            && Path::new(&v.aws_volume_provisioner_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.aws_volume_provisioner_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalancheup::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.aws_volume_provisioner_bin");
+        } else {
+            log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
+        }
+
+        if !v.aws_ip_provisioner_local_bin.is_empty()
+            && Path::new(&v.aws_ip_provisioner_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.aws_ip_provisioner_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalancheup::aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
+        } else {
+            log::info!(
+            "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
+        );
+        }
+
+        if !v.avalanche_telemetry_cloudwatch_local_bin.is_empty()
+            && Path::new(&v.avalanche_telemetry_cloudwatch_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.avalanche_telemetry_cloudwatch_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalancheup::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.avalanche_telemetry_cloudwatch_bin");
+        } else {
+            log::info!(
+            "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
+        );
+        }
+
+        if !v.avalanche_config_local_bin.is_empty()
+            && Path::new(&v.avalanche_config_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.avalanche_config_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalancheup::aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.avalanche_config_bin");
+        } else {
+            log::info!(
+                "skipping uploading avalanche_config_bin, will be downloaded on remote machines..."
+            );
+        }
+
+        if !v.avalanchego_local_bin.is_empty() && Path::new(&v.avalanchego_local_bin).exists() {
+            // upload without compression first
+            s3_manager
+                .put_object(
+                    &v.avalanchego_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalancheup::aws::spec::StorageNamespace::AvalancheBin(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object avalanchego_bin");
+        } else {
+            log::info!(
+                "skipping uploading avalanchego_bin, will be downloaded on remote machines..."
+            );
+        }
+
+        if !v.plugin_local_dir.is_empty() && Path::new(&v.plugin_local_dir).exists() {
+            for entry in fs::read_dir(&v.plugin_local_dir).unwrap() {
+                let entry = entry.unwrap();
+                let entry_path = entry.path();
+
+                let file_path = entry_path.to_str().unwrap();
+                let file_name = entry.file_name();
+                let file_name = file_name.as_os_str().to_str().unwrap();
+
+                log::info!(
+                    "uploading {} from plugins directory {}",
+                    file_path,
+                    v.plugin_local_dir,
+                );
+                s3_manager
+                    .put_object(
+                        &file_path,
+                        &spec.aws_resources.s3_bucket,
+                        &format!(
+                            "{}/{}",
+                            &avalancheup::aws::spec::StorageNamespace::PluginDir(spec.id.clone())
+                                .encode(),
+                            file_name,
+                        ),
+                    )
+                    .await
+                    .expect("failed put_object file_path");
+            }
+        } else {
+            log::info!("skipping uploading plugin dir...");
+        }
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: uploading metrics rules\n"),
+            ResetColor
+        )?;
+        s3_manager
+            .put_object(
+                &v.prometheus_metrics_rules_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+            )
+            .await
+            .unwrap();
+
+        log::info!("done with uploading artifacts, thus reset!");
+        spec.upload_artifacts = None;
+        spec.sync(spec_file_path)?;
+
+        log::info!("uploading avalancheup spec file...");
+        s3_manager
+            .put_object(
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            )
+            .await
+            .unwrap();
     }
-
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: uploading metrics rules\n"),
-        ResetColor
-    )?;
-    s3_manager
-        .put_object(
-            &spec.upload_artifacts.prometheus_metrics_rules_file_path,
-            &spec.aws_resources.s3_bucket,
-            &avalancheup::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
-        )
-        .await
-        .unwrap();
-
-    log::info!("uploading avalancheup spec file...");
-    s3_manager
-        .put_object(
-            &spec_file_path,
-            &spec.aws_resources.s3_bucket,
-            &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-        )
-        .await
-        .unwrap();
 
     if spec
         .aws_resources
@@ -774,10 +766,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ));
     }
 
-    let avalanched_download_source = if spec.upload_artifacts.avalanched_local_bin.is_empty() {
-        "github"
+    let avalanched_download_source = if let Some(v) = &spec.upload_artifacts {
+        if v.avalanched_local_bin.is_empty() {
+            "github"
+        } else {
+            "s3"
+        }
     } else {
-        "s3"
+        "github"
     };
     common_asg_params.push(build_param(
         "AvalanchedDownloadSource",

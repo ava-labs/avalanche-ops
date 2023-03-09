@@ -19,6 +19,98 @@ use serde::{Deserialize, Serialize};
 
 pub const VERSION: usize = 2;
 
+/// Represents network-level configuration shared among all nodes.
+/// The node-level configuration is generated during each
+/// bootstrap process (e.g., certificates) and not defined
+/// in this cluster-level "Config".
+/// At the beginning, the user is expected to provide this configuration.
+/// "Clone" is for deep-copying.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Spec {
+    #[serde(default)]
+    pub version: usize,
+
+    /// User-provided ID of the cluster/test.
+    /// This is NOT the avalanche node ID.
+    /// This is NOT the avalanche network ID.
+    #[serde(default)]
+    pub id: String,
+
+    /// AAD tag used for envelope encryption with KMS.
+    #[serde(default)]
+    pub aad_tag: String,
+    /// AWS resources if run in AWS.
+    pub aws_resources: Resources,
+
+    /// Defines how the underlying infrastructure is set up.
+    /// MUST BE NON-EMPTY.
+    pub machine: Machine,
+
+    /// Upload artifacts from the local machine to share with remote machines.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upload_artifacts: Option<UploadArtifacts>,
+
+    /// Flag to pass to the "avalanched" command-line interface.
+    pub avalanched_config: crate::aws::avalanched::Flags,
+
+    /// Set "true" to enable NLB.
+    #[serde(default)]
+    pub enable_nlb: bool,
+    /// Set "true" to disable CloudWatch log auto removal.
+    #[serde(default)]
+    pub disable_logs_auto_removal: bool,
+
+    /// Represents the configuration for "avalanchego".
+    /// Set as if run in remote machines.
+    /// For instance, "config-file" must be the path valid
+    /// in the remote machines.
+    /// MUST BE "kebab-case" to be compatible with "avalanchego".
+    pub avalanchego_config: avalanchego_config::Config,
+    /// If non-empty, the JSON-encoded data are saved to a file
+    /// in Path::new(&avalanchego_config.chain_config_dir).join("C").
+    pub coreth_chain_config: coreth_chain_config::Config,
+
+    /// If non-empty, the JSON-encoded data are saved to a file
+    /// and used for "--genesis" in Path::new(&avalanchego_config.genesis).
+    /// This includes "coreth_genesis::Genesis".
+    /// Names after "_template" since it has not included
+    /// initial stakers yet with to-be-created node IDs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
+
+    /// Use sorted map in order to map each tracked subnet id (placeholder)
+    /// to each subnet/chain configuration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subnet_evms: Option<BTreeMap<String, SubnetEvm>>,
+    /// Use sorted map in order to map each tracked subnet id (placeholder)
+    /// to each subnet configuration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub xsvms: Option<BTreeMap<String, Xsvm>>,
+
+    /// NOTE: Only required for custom networks with pre-funded wallets!
+    /// These are used for custom primary network genesis generation and will be pre-funded.
+    /// The first key will have locked P-chain balance with initial stake duration in genesis.
+    /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
+    /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test_key_infos: Option<Vec<key::secp256k1::Info>>,
+
+    /// Created nodes at the start of the network.
+    /// May become stale.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_nodes: Option<Vec<Node>>,
+    /// Created endpoints at the start of the network.
+    /// May become stale.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_endpoints: Option<Endpoints>,
+
+    /// Interval in seconds to fetch system and avalanche node metrics.
+    /// Set to 0 to disable metrics collection.
+    #[serde(default)]
+    pub metrics_fetch_interval_seconds: u64,
+}
+
 /// Represents the KMS CMK resource.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -214,98 +306,6 @@ impl Resources {
             cloudwatch_avalanche_metrics_namespace: None,
         }
     }
-}
-
-/// Represents network-level configuration shared among all nodes.
-/// The node-level configuration is generated during each
-/// bootstrap process (e.g., certificates) and not defined
-/// in this cluster-level "Config".
-/// At the beginning, the user is expected to provide this configuration.
-/// "Clone" is for deep-copying.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct Spec {
-    #[serde(default)]
-    pub version: usize,
-
-    /// User-provided ID of the cluster/test.
-    /// This is NOT the avalanche node ID.
-    /// This is NOT the avalanche network ID.
-    #[serde(default)]
-    pub id: String,
-
-    /// AAD tag used for envelope encryption with KMS.
-    #[serde(default)]
-    pub aad_tag: String,
-    /// AWS resources if run in AWS.
-    pub aws_resources: Resources,
-
-    /// Defines how the underlying infrastructure is set up.
-    /// MUST BE NON-EMPTY.
-    pub machine: Machine,
-
-    /// Upload artifacts from the local machine to share with remote machines.
-    #[serde(default)]
-    pub upload_artifacts: UploadArtifacts,
-
-    /// Flag to pass to the "avalanched" command-line interface.
-    pub avalanched_config: crate::aws::avalanched::Flags,
-
-    /// Set "true" to enable NLB.
-    #[serde(default)]
-    pub enable_nlb: bool,
-    /// Set "true" to disable CloudWatch log auto removal.
-    #[serde(default)]
-    pub disable_logs_auto_removal: bool,
-
-    /// Represents the configuration for "avalanchego".
-    /// Set as if run in remote machines.
-    /// For instance, "config-file" must be the path valid
-    /// in the remote machines.
-    /// MUST BE "kebab-case" to be compatible with "avalanchego".
-    pub avalanchego_config: avalanchego_config::Config,
-    /// If non-empty, the JSON-encoded data are saved to a file
-    /// in Path::new(&avalanchego_config.chain_config_dir).join("C").
-    pub coreth_chain_config: coreth_chain_config::Config,
-
-    /// If non-empty, the JSON-encoded data are saved to a file
-    /// and used for "--genesis" in Path::new(&avalanchego_config.genesis).
-    /// This includes "coreth_genesis::Genesis".
-    /// Names after "_template" since it has not included
-    /// initial stakers yet with to-be-created node IDs.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
-
-    /// Use sorted map in order to map each tracked subnet id (placeholder)
-    /// to each subnet/chain configuration.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subnet_evms: Option<BTreeMap<String, SubnetEvm>>,
-    /// Use sorted map in order to map each tracked subnet id (placeholder)
-    /// to each subnet configuration.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub xsvms: Option<BTreeMap<String, Xsvm>>,
-
-    /// NOTE: Only required for custom networks with pre-funded wallets!
-    /// These are used for custom primary network genesis generation and will be pre-funded.
-    /// The first key will have locked P-chain balance with initial stake duration in genesis.
-    /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
-    /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub test_key_infos: Option<Vec<key::secp256k1::Info>>,
-
-    /// Created nodes at the start of the network.
-    /// May become stale.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_nodes: Option<Vec<Node>>,
-    /// Created endpoints at the start of the network.
-    /// May become stale.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_endpoints: Option<Endpoints>,
-
-    /// Interval in seconds to fetch system and avalanche node metrics.
-    /// Set to 0 to disable metrics collection.
-    #[serde(default)]
-    pub metrics_fetch_interval_seconds: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -859,6 +859,23 @@ impl Spec {
             let metrics_rules = crate::artifacts::prometheus_rules();
             metrics_rules.sync(&upload_artifacts.prometheus_metrics_rules_file_path)?;
         }
+        let upload_artifacts = if upload_artifacts.avalanched_local_bin.is_empty()
+            && upload_artifacts.aws_volume_provisioner_local_bin.is_empty()
+            && upload_artifacts.aws_ip_provisioner_local_bin.is_empty()
+            && upload_artifacts
+                .avalanche_telemetry_cloudwatch_local_bin
+                .is_empty()
+            && upload_artifacts.avalanche_config_local_bin.is_empty()
+            && upload_artifacts.avalanchego_local_bin.is_empty()
+            && upload_artifacts.plugin_local_dir.is_empty()
+            && upload_artifacts
+                .prometheus_metrics_rules_file_path
+                .is_empty()
+        {
+            None
+        } else {
+            Some(upload_artifacts)
+        };
 
         let mut coreth_chain_config = coreth_chain_config::Config::default();
         if opts.coreth_continuous_profiler_enabled {
@@ -1069,68 +1086,53 @@ impl Spec {
             ));
         }
 
-        if !self
-            .upload_artifacts
-            .aws_volume_provisioner_local_bin
-            .is_empty()
-        {
-            if !Path::new(&self.upload_artifacts.aws_volume_provisioner_local_bin).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "aws_volume_provisioner_bin {} does not exist",
-                        self.upload_artifacts.aws_volume_provisioner_local_bin
-                    ),
-                ));
+        if let Some(v) = &self.upload_artifacts {
+            if !v.aws_volume_provisioner_local_bin.is_empty() {
+                if !Path::new(&v.aws_volume_provisioner_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!(
+                            "aws_volume_provisioner_bin {} does not exist",
+                            v.aws_volume_provisioner_local_bin
+                        ),
+                    ));
+                }
             }
-        }
-        if !self
-            .upload_artifacts
-            .aws_ip_provisioner_local_bin
-            .is_empty()
-        {
-            if !Path::new(&self.upload_artifacts.aws_ip_provisioner_local_bin).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "aws_ip_provisioner_bin {} does not exist",
-                        self.upload_artifacts.aws_ip_provisioner_local_bin
-                    ),
-                ));
+            if !v.aws_ip_provisioner_local_bin.is_empty() {
+                if !Path::new(&v.aws_ip_provisioner_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!(
+                            "aws_ip_provisioner_bin {} does not exist",
+                            v.aws_ip_provisioner_local_bin
+                        ),
+                    ));
+                }
             }
-        }
 
-        if !self.upload_artifacts.avalanched_local_bin.is_empty() {
-            if !Path::new(&self.upload_artifacts.avalanched_local_bin).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "avalanched_bin {} does not exist",
-                        self.upload_artifacts.avalanched_local_bin
-                    ),
-                ));
+            if !v.avalanched_local_bin.is_empty() {
+                if !Path::new(&v.avalanched_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!("avalanched_bin {} does not exist", v.avalanched_local_bin),
+                    ));
+                }
             }
-        }
-        if !self.upload_artifacts.avalanchego_local_bin.is_empty() {
-            if !Path::new(&self.upload_artifacts.avalanchego_local_bin).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "avalanchego_bin {} does not exist",
-                        self.upload_artifacts.avalanchego_local_bin
-                    ),
-                ));
+            if !v.avalanchego_local_bin.is_empty() {
+                if !Path::new(&v.avalanchego_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!("avalanchego_bin {} does not exist", v.avalanchego_local_bin),
+                    ));
+                }
             }
-        }
-        if !self.upload_artifacts.plugin_local_dir.is_empty() {
-            if !Path::new(&self.upload_artifacts.plugin_local_dir).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!(
-                        "plugin_dir {} does not exist",
-                        self.upload_artifacts.plugin_local_dir
-                    ),
-                ));
+            if !v.plugin_local_dir.is_empty() {
+                if !Path::new(&v.plugin_local_dir).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!("plugin_dir {} does not exist", v.plugin_local_dir),
+                    ));
+                }
             }
         }
 
@@ -1367,7 +1369,7 @@ metrics_fetch_interval_seconds: 5000
             volume_size_in_gb: 500,
         },
 
-        upload_artifacts: UploadArtifacts {
+        upload_artifacts: Some(UploadArtifacts {
             avalanched_local_bin: avalanched_bin.to_string(),
 
             aws_volume_provisioner_local_bin: String::new(),
@@ -1379,7 +1381,7 @@ metrics_fetch_interval_seconds: 5000
             plugin_local_dir: plugin_dir.to_string(),
 
             prometheus_metrics_rules_file_path: String::new(),
-        },
+        }),
 
         avalanched_config: crate::aws::avalanched::Flags {
             log_level: String::from("info"),
@@ -1414,13 +1416,22 @@ metrics_fetch_interval_seconds: 5000
     assert_eq!(cfg.aws_resources.s3_bucket, bucket);
 
     assert_eq!(
-        cfg.upload_artifacts.avalanche_config_local_bin,
+        cfg.upload_artifacts
+            .clone()
+            .unwrap()
+            .avalanche_config_local_bin,
         avalanche_config_bin
     );
-    assert_eq!(cfg.upload_artifacts.avalanched_local_bin, avalanched_bin);
-    assert_eq!(cfg.upload_artifacts.avalanchego_local_bin, avalanchego_bin);
     assert_eq!(
-        cfg.upload_artifacts.plugin_local_dir,
+        cfg.upload_artifacts.clone().unwrap().avalanched_local_bin,
+        avalanched_bin
+    );
+    assert_eq!(
+        cfg.upload_artifacts.clone().unwrap().avalanchego_local_bin,
+        avalanchego_bin
+    );
+    assert_eq!(
+        cfg.upload_artifacts.clone().unwrap().plugin_local_dir,
         plugin_dir.to_string()
     );
 
