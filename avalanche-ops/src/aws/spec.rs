@@ -59,6 +59,18 @@ pub struct Spec {
     /// Set "true" to disable CloudWatch log auto removal.
     #[serde(default)]
     pub disable_logs_auto_removal: bool,
+    /// Interval in seconds to fetch system and avalanche node metrics.
+    /// Set to 0 to disable metrics collection.
+    #[serde(default)]
+    pub metrics_fetch_interval_seconds: u64,
+
+    /// NOTE: Only required for custom networks with pre-funded wallets!
+    /// These are used for custom primary network genesis generation and will be pre-funded.
+    /// The first key will have locked P-chain balance with initial stake duration in genesis.
+    /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
+    /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefunded_keys: Option<Vec<key::secp256k1::Info>>,
 
     /// Represents the configuration for "avalanchego".
     /// Set as if run in remote machines.
@@ -86,19 +98,6 @@ pub struct Spec {
     /// to each subnet configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub xsvms: Option<BTreeMap<String, Xsvm>>,
-
-    /// NOTE: Only required for custom networks with pre-funded wallets!
-    /// These are used for custom primary network genesis generation and will be pre-funded.
-    /// The first key will have locked P-chain balance with initial stake duration in genesis.
-    /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
-    /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub prefunded_keys: Option<Vec<key::secp256k1::Info>>,
-
-    /// Interval in seconds to fetch system and avalanche node metrics.
-    /// Set to 0 to disable metrics collection.
-    #[serde(default)]
-    pub metrics_fetch_interval_seconds: u64,
 }
 
 /// Represents the KMS CMK resource.
@@ -904,6 +903,9 @@ impl Spec {
 
                 enable_nlb: opts.enable_nlb,
                 disable_logs_auto_removal: opts.disable_logs_auto_removal,
+                metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
+
+                prefunded_keys: Some(prefunded_keys_info),
 
                 avalanchego_config,
                 coreth_chain_config,
@@ -911,10 +913,6 @@ impl Spec {
 
                 subnet_evms,
                 xsvms,
-
-                prefunded_keys: Some(prefunded_keys_info),
-
-                metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
             },
             spec_file_path,
         ))
@@ -1219,6 +1217,7 @@ avalanched_config:
 
 enable_nlb: false
 disable_logs_auto_removal: false
+metrics_fetch_interval_seconds: 5000
 
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
@@ -1268,8 +1267,6 @@ coreth_chain_config:
   - internal-eth
   - internal-blockchain
   - internal-transaction
-
-metrics_fetch_interval_seconds: 5000
 
 "#
     );
@@ -1336,14 +1333,14 @@ metrics_fetch_interval_seconds: 5000
         disable_logs_auto_removal: false,
         metrics_fetch_interval_seconds: 5000,
 
+        prefunded_keys: None,
+
         avalanchego_config,
         coreth_chain_config: coreth_chain_config::Config::default(),
         avalanchego_genesis_template: None,
 
         subnet_evms: None,
         xsvms: None,
-
-        prefunded_keys: None,
     };
 
     cfg.validate().expect("unexpected validate failure");
