@@ -1171,7 +1171,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
 
     // "initial_staked_funds" is reserved for locked P-chain balance
     // with "spec.generated_seed_private_key_with_locked_p_chain_balance"
-    let seed_priv_keys = spec.clone().test_key_infos.unwrap();
+    let seed_priv_keys = spec.clone().prefunded_keys.unwrap();
     let seed_priv_key = seed_priv_keys[0].clone();
 
     let mut initial_stakers: Vec<avalanchego_genesis::Staker> = vec![];

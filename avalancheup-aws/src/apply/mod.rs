@@ -1817,7 +1817,7 @@ default-spec \\
 
 ",
             exec_parent_dir = exec_parent_dir,
-            funded_keys = if let Some(keys) = &spec.test_key_infos {
+            funded_keys = if let Some(keys) = &spec.prefunded_keys {
                 keys.len()
             } else {
                 1
@@ -1829,11 +1829,10 @@ default-spec \\
     )?;
 
     // TODO: support KMS CMK
-    assert!(spec.test_key_infos.is_some());
-    let test_key_info = spec.test_key_infos.clone().unwrap()[0].clone();
-    let test_key_pk = key::secp256k1::private_key::Key::from_cb58(
-        test_key_info.private_key_cb58.clone().unwrap(),
-    )?;
+    assert!(spec.prefunded_keys.is_some());
+    let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
+    let test_key_pk =
+        key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
 
     let wallet_to_spend = wallet::Builder::new(&test_key_pk)
         .base_http_urls(http_rpcs.clone())
@@ -2528,7 +2527,7 @@ default-spec \\
 --blizzard-load-kinds=x-transfers,evm-transfers
 ",
                 exec_parent_dir = exec_parent_dir,
-                funded_keys = if let Some(keys) = &spec.test_key_infos {
+                funded_keys = if let Some(keys) = &spec.prefunded_keys {
                     keys.len()
                 } else {
                     1

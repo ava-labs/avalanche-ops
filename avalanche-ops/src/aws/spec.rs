@@ -94,7 +94,7 @@ pub struct Spec {
     /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
     /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub test_key_infos: Option<Vec<key::secp256k1::Info>>,
+    pub prefunded_keys: Option<Vec<key::secp256k1::Info>>,
 
     /// Created nodes at the start of the network.
     /// May become stale.
@@ -533,8 +533,8 @@ impl Spec {
             );
         }
 
-        let mut test_keys_infos: Vec<key::secp256k1::Info> = Vec::new();
-        let mut test_keys_read_only: Vec<key::secp256k1::public_key::Key> = Vec::new();
+        let mut prefunded_keys_info: Vec<key::secp256k1::Info> = Vec::new();
+        let mut prefunded_pubkeys: Vec<key::secp256k1::public_key::Key> = Vec::new();
         for i in 0..opts.keys_to_generate {
             let (key_info, key_read_only) = {
                 match key_type {
@@ -572,8 +572,8 @@ impl Spec {
                     _ => panic!("unknown key type {}", key_type),
                 }
             };
-            test_keys_infos.push(key_info.clone());
-            test_keys_read_only.push(key_read_only);
+            prefunded_keys_info.push(key_info.clone());
+            prefunded_pubkeys.push(key_read_only);
 
             if key_type == key::secp256k1::KeyType::Hot && !opts.key_files_dir.is_empty() {
                 // file name is eth address with 0x, contents are "private_key_hex"
@@ -590,7 +590,7 @@ impl Spec {
 
         let avalanchego_genesis_template = {
             if avalanchego_config.is_custom_network() {
-                let g = avalanchego_genesis::Genesis::new(network_id, &test_keys_read_only)
+                let g = avalanchego_genesis::Genesis::new(network_id, &prefunded_pubkeys)
                     .expect("unexpected None genesis");
                 Some(g)
             } else {
@@ -600,7 +600,7 @@ impl Spec {
 
         let subnet_evms = {
             if opts.subnet_evms > 0 {
-                let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys_read_only)
+                let mut genesis = subnet_evm_genesis::Genesis::new(&prefunded_pubkeys)
                     .expect("failed to generate genesis");
 
                 let mut genesis_chain_config = subnet_evm_genesis::ChainConfig::default();
@@ -633,7 +633,7 @@ impl Spec {
                 genesis_chain_config.fee_config = Some(fee_config);
 
                 let mut admin_addresses: Vec<String> = Vec::new();
-                for key_info in test_keys_infos.iter() {
+                for key_info in prefunded_keys_info.iter() {
                     admin_addresses.push(key_info.eth_address.clone());
                 }
                 if opts.subnet_evm_auto_contract_deployer_allow_list_config {
@@ -730,7 +730,7 @@ impl Spec {
 
         let xsvms = {
             if opts.xsvms > 0 {
-                let genesis = xsvm_genesis::Genesis::new(&test_keys_read_only)
+                let genesis = xsvm_genesis::Genesis::new(&prefunded_pubkeys)
                     .expect("failed to generate genesis");
 
                 let mut subnet_config = subnet::config::Config::default();
@@ -774,11 +774,11 @@ impl Spec {
             aws_resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
         }
         let mut kms_cmk_secp256k1_cmks = Vec::new();
-        for test_key_info in test_keys_infos.iter() {
-            if test_key_info.key_type == key::secp256k1::KeyType::AwsKms {
+        for ki in prefunded_keys_info.iter() {
+            if ki.key_type == key::secp256k1::KeyType::AwsKms {
                 kms_cmk_secp256k1_cmks.push(KmsCmk {
-                    id: test_key_info.id.clone().unwrap(),
-                    arn: test_key_info.id.clone().unwrap(),
+                    id: ki.id.clone().unwrap(),
+                    arn: ki.id.clone().unwrap(),
                 })
             }
         }
@@ -966,7 +966,7 @@ impl Spec {
                 subnet_evms,
                 xsvms,
 
-                test_key_infos: Some(test_keys_infos),
+                prefunded_keys: Some(prefunded_keys_info),
 
                 created_nodes: None,
                 created_endpoints: None,
@@ -1400,7 +1400,7 @@ metrics_fetch_interval_seconds: 5000
         subnet_evms: None,
         xsvms: None,
 
-        test_key_infos: None,
+        prefunded_keys: None,
         created_nodes: None,
         created_endpoints: None,
     };
