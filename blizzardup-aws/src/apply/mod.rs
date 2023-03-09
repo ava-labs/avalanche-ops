@@ -199,8 +199,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .await
                 .expect("failed put_object upload_artifacts.blizzard_bin");
         }
+
+        log::info!("done with uploading artifacts, thus reset!");
+        spec.upload_artifacts = None;
+        spec.sync(spec_file_path)?;
     } else {
-        log::info!("skipping uploading blizzard_bin, will be downloaded on remote machines...");
+        log::info!("skipping uploading artifacts...");
     }
 
     log::info!("uploading blizzardup spec file...");

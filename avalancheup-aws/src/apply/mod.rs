@@ -420,6 +420,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             )
             .await
             .unwrap();
+    } else {
+        log::info!("skipping uploading artifacts...");
     }
 
     if spec
