@@ -237,65 +237,58 @@ pub async fn execute(
             .unwrap();
     }
 
-    if spec.subnet_evms.is_some() && spec.avalanchego_config.is_custom_network() {
-        sleep(Duration::from_secs(1)).await;
+    sleep(Duration::from_secs(1)).await;
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Red),
+        Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with subnet-evm track\n"),
+        ResetColor
+    )?;
+    let ssm_doc_stack_name = spec
+        .resources
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
+        .clone()
+        .unwrap();
+    cloudformation_manager
+        .delete_stack(ssm_doc_stack_name.as_str())
+        .await
+        .unwrap();
 
-        execute!(
+    execute!(
             stdout(),
             SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with subnet-evm track\n"),
+            Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node to reload chain config\n"),
             ResetColor
         )?;
-        let ssm_doc_stack_name = spec
-            .resources
-            .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
-            .clone()
-            .unwrap();
-        cloudformation_manager
-            .delete_stack(ssm_doc_stack_name.as_str())
-            .await
-            .unwrap();
+    let ssm_doc_stack_name = spec
+        .resources
+        .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
+        .clone()
+        .unwrap();
+    cloudformation_manager
+        .delete_stack(ssm_doc_stack_name.as_str())
+        .await
+        .unwrap();
 
-        execute!(
-                stdout(),
-                SetForegroundColor(Color::Red),
-                Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node to reload chain config\n"),
-                ResetColor
-            )?;
-        let ssm_doc_stack_name = spec
-            .resources
-            .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
-            .clone()
-            .unwrap();
-        cloudformation_manager
-            .delete_stack(ssm_doc_stack_name.as_str())
-            .await
-            .unwrap();
-    }
-
-    if spec.xsvms.is_some() && spec.avalanchego_config.is_custom_network() {
-        sleep(Duration::from_secs(1)).await;
-
-        execute!(
+    sleep(Duration::from_secs(1)).await;
+    execute!(
             stdout(),
             SetForegroundColor(Color::Red),
             Print("\n\n\nSTEP: triggering delete SSM document for restart avalanche node with xsvm track\n"),
             ResetColor
         )?;
-        let ssm_doc_stack_name = spec
-            .resources
-            .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
-            .clone()
-            .unwrap();
-        cloudformation_manager
-            .delete_stack(ssm_doc_stack_name.as_str())
-            .await
-            .unwrap();
-    }
+    let ssm_doc_stack_name = spec
+        .resources
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
+        .clone()
+        .unwrap();
+    cloudformation_manager
+        .delete_stack(ssm_doc_stack_name.as_str())
+        .await
+        .unwrap();
 
     // delete no matter what, in case node provision failed
     sleep(Duration::from_secs(1)).await;
-
     execute!(
         stdout(),
         SetForegroundColor(Color::Red),
