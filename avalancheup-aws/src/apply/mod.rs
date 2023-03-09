@@ -233,6 +233,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .await
         .unwrap();
 
+    // set before we update "upload_artifacts"
+    let avalanched_download_source = if let Some(v) = &spec.upload_artifacts {
+        if v.avalanched_local_bin.is_empty() {
+            "github"
+        } else {
+            "s3"
+        }
+    } else {
+        "github"
+    };
     if let Some(v) = &spec.upload_artifacts {
         sleep(Duration::from_secs(1)).await;
         execute!(
@@ -300,8 +310,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
         } else {
             log::info!(
-            "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
-        );
+                "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
+            );
         }
 
         if !v.avalanche_telemetry_cloudwatch_local_bin.is_empty()
@@ -323,8 +333,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .expect("failed put_object upload_artifacts.avalanche_telemetry_cloudwatch_bin");
         } else {
             log::info!(
-            "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
-        );
+                "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
+            );
         }
 
         if !v.avalanche_config_local_bin.is_empty()
@@ -776,15 +786,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ));
     }
 
-    let avalanched_download_source = if let Some(v) = &spec.upload_artifacts {
-        if v.avalanched_local_bin.is_empty() {
-            "github"
-        } else {
-            "s3"
-        }
-    } else {
-        "github"
-    };
     common_asg_params.push(build_param(
         "AvalanchedDownloadSource",
         avalanched_download_source,
