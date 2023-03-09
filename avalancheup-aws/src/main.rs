@@ -73,10 +73,6 @@ async fn main() -> io::Result<()> {
                     .get_one::<usize>("KEYS_TO_GENERATE")
                     .unwrap_or(&5)
                     .clone(),
-                keys_to_generate_type: sub_matches
-                    .get_one::<String>("KEYS_TO_GENERATE_TYPE")
-                    .unwrap_or(&String::from("hot"))
-                    .clone(),
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
 

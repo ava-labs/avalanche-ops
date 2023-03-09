@@ -1,9 +1,8 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
-    str::FromStr,
 };
 
 use avalanche_types::{
@@ -146,9 +145,6 @@ pub struct Resources {
     /// TODO: support existing key and load the ARN based on region and account number.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kms_cmk_symmetric_default_encrypt_key: Option<KmsCmk>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// Generated CMKs.
-    pub kms_cmk_secp256k1_cmks: Option<Vec<KmsCmk>>,
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// READ ONLY -- DO NOT SET.
@@ -274,7 +270,6 @@ impl Resources {
             nlb_acm_certificate_arn: None,
 
             kms_cmk_symmetric_default_encrypt_key: None,
-            kms_cmk_secp256k1_cmks: None,
 
             ec2_key_name: String::new(),
             ec2_key_path: String::new(),
@@ -337,7 +332,6 @@ pub struct DefaultSpecOption {
 
     pub key_files_dir: String,
     pub keys_to_generate: usize,
-    pub keys_to_generate_type: String,
 
     pub region: String,
     pub instance_mode: String,
@@ -523,62 +517,23 @@ impl Spec {
             fs::create_dir_all(&opts.key_files_dir).unwrap();
         }
 
-        let key_type = key::secp256k1::KeyType::from_str(&opts.keys_to_generate_type).unwrap();
-        match key_type {
-            key::secp256k1::KeyType::Hot => log::info!("generating hot keys..."),
-            key::secp256k1::KeyType::AwsKms => log::info!("generating AWS KMS CMKs..."),
-            _ => panic!("unknown key type {}", key_type),
-        }
-        if key_type == key::secp256k1::KeyType::AwsKms && opts.keys_to_generate > 2 {
-            panic!(
-                "key::secp256k1::KeyType::AwsKms only supported up to 2 keys, got {}",
-                opts.keys_to_generate
-            );
-        }
-
+        log::info!("generating hot keys...");
         let mut prefunded_keys_info: Vec<key::secp256k1::Info> = Vec::new();
         let mut prefunded_pubkeys: Vec<key::secp256k1::public_key::Key> = Vec::new();
         for i in 0..opts.keys_to_generate {
-            let (key_info, key_read_only) = {
-                match key_type {
-                    key::secp256k1::KeyType::Hot => {
-                        if i < key::secp256k1::TEST_KEYS.len() {
-                            (
-                                key::secp256k1::TEST_KEYS[i].to_info(network_id).unwrap(),
-                                key::secp256k1::TEST_KEYS[i].to_public_key(),
-                            )
-                        } else {
-                            let k = key::secp256k1::private_key::Key::generate().unwrap();
-                            (k.to_info(network_id).unwrap(), k.to_public_key())
-                        }
-                    }
-
-                    key::secp256k1::KeyType::AwsKms => {
-                        let shared_config = aws_manager::load_config(Some(opts.region.clone()))
-                            .await
-                            .unwrap();
-
-                        let kms_manager = kms::Manager::new(&shared_config);
-
-                        let mut tags = HashMap::new();
-                        tags.insert(String::from("Name"), format!("{id}-cmk-{i}"));
-                        let cmk = key::secp256k1::kms::aws::Cmk::create(kms_manager.clone(), tags)
-                            .await
-                            .unwrap();
-
-                        let cmk_info = cmk.to_info(network_id).unwrap();
-                        println!("cmk_info: {}", cmk_info);
-
-                        (cmk_info, cmk.to_public_key())
-                    }
-
-                    _ => panic!("unknown key type {}", key_type),
-                }
+            let (key_info, key_read_only) = if i < key::secp256k1::TEST_KEYS.len() {
+                (
+                    key::secp256k1::TEST_KEYS[i].to_info(network_id).unwrap(),
+                    key::secp256k1::TEST_KEYS[i].to_public_key(),
+                )
+            } else {
+                let k = key::secp256k1::private_key::Key::generate().unwrap();
+                (k.to_info(network_id).unwrap(), k.to_public_key())
             };
             prefunded_keys_info.push(key_info.clone());
             prefunded_pubkeys.push(key_read_only);
 
-            if key_type == key::secp256k1::KeyType::Hot && !opts.key_files_dir.is_empty() {
+            if !opts.key_files_dir.is_empty() {
                 // file name is eth address with 0x, contents are "private_key_hex"
                 let p = Path::new(&opts.key_files_dir).join(Path::new(&key_info.eth_address));
                 log::info!("writing key file {:?}", p);
@@ -775,18 +730,6 @@ impl Spec {
         };
         if !opts.nlb_acm_certificate_arn.is_empty() {
             resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
-        }
-        let mut kms_cmk_secp256k1_cmks = Vec::new();
-        for ki in prefunded_keys_info.iter() {
-            if ki.key_type == key::secp256k1::KeyType::AwsKms {
-                kms_cmk_secp256k1_cmks.push(KmsCmk {
-                    id: ki.id.clone().unwrap(),
-                    arn: ki.id.clone().unwrap(),
-                })
-            }
-        }
-        if !kms_cmk_secp256k1_cmks.is_empty() {
-            resources.kms_cmk_secp256k1_cmks = Some(kms_cmk_secp256k1_cmks);
         }
 
         let mut upload_artifacts = UploadArtifacts {

@@ -211,24 +211,6 @@ pub async fn execute(
             .unwrap();
     }
 
-    if let Some(cmks) = &spec.resources.kms_cmk_secp256k1_cmks {
-        sleep(Duration::from_secs(1)).await;
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print("\n\n\nSTEP: delete KMS key for signing\n"),
-            ResetColor
-        )?;
-
-        for cmk in cmks.iter() {
-            kms_manager
-                .schedule_to_delete(cmk.id.as_str(), 7)
-                .await
-                .unwrap();
-        }
-    }
-
     // IAM roles can be deleted without being blocked on ASG/VPC
     if spec
         .resources
