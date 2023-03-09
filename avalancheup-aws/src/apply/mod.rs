@@ -1831,10 +1831,10 @@ default-spec \\
     // TODO: support KMS CMK
     assert!(spec.prefunded_keys.is_some());
     let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
-    let priv =
+    let priv_key =
         key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
 
-    let wallet_to_spend = wallet::Builder::new(&priv)
+    let wallet_to_spend = wallet::Builder::new(&priv_key)
         .base_http_urls(http_rpcs.clone())
         .build()
         .await
