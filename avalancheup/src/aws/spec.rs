@@ -14,8 +14,203 @@ use avalanche_types::{
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
     xsvm::genesis as xsvm_genesis,
 };
-use aws_manager::{ec2, kms};
+use aws_manager::{ec2, kms, sts};
 use serde::{Deserialize, Serialize};
+
+/// Represents the KMS CMK resource.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct KmsCmk {
+    /// CMK Id.
+    pub id: String,
+    /// CMK Arn.
+    pub arn: String,
+}
+
+/// Represents the current AWS resource status.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Resources {
+    /// AWS STS caller loaded from its local environment.
+    /// READ ONLY.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub identity: Option<sts::Identity>,
+
+    /// AWS region to create resources.
+    /// MUST BE NON-EMPTY.
+    #[serde(default)]
+    pub region: String,
+
+    /// Name of the bucket to store (or download from)
+    /// the configuration and resources (e.g., S3).
+    /// If not exists, it creates automatically.
+    /// If exists, it skips creation and uses the existing one.
+    /// MUST BE NON-EMPTY.
+    #[serde(default)]
+    pub s3_bucket: String,
+
+    /// AWS region to create resources.
+    /// NON-EMPTY TO ENABLE HTTPS over NLB.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nlb_acm_certificate_arn: Option<String>,
+
+    /// KMS CMK ID to encrypt resources.
+    /// Only used for encrypting node certs and EC2 keys.
+    /// None if not created yet.
+    /// READ ONLY -- DO NOT SET.
+    /// TODO: support existing key and load the ARN based on region and account number.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kms_cmk_symmetric_default_encrypt_key: Option<KmsCmk>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Generated CMKs.
+    pub kms_cmk_secp256k1_cmks: Option<Vec<KmsCmk>>,
+
+    /// EC2 key pair name for SSH access to EC2 instances.
+    /// READ ONLY -- DO NOT SET.
+    pub ec2_key_name: String,
+    pub ec2_key_path: String,
+
+    /// CloudFormation stack name for EC2 instance role.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ec2_instance_role: Option<String>,
+    /// Instance profile ARN from "cloudformation_ec2_instance_role".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ec2_instance_profile_arn: Option<String>,
+
+    /// CloudFormation stack name for VPC.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc: Option<String>,
+    /// VPC ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_id: Option<String>,
+    /// Security group ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_security_group_id: Option<String>,
+    /// Public subnet IDs from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
+
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
+    /// for anchor nodes.
+    /// None if mainnet.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_anchor_nodes: Option<Vec<String>>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_anchor_nodes_logical_ids: Option<Vec<String>>,
+
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
+    /// for non-anchor nodes.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_non_anchor_nodes: Option<Vec<String>>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_non_anchor_nodes_logical_ids: Option<Vec<String>>,
+
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_arn: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_target_group_arn: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_dns_name: Option<String>,
+
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_id: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_version: Option<String>,
+
+    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: Option<String>,
+    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: Option<String>,
+    /// CloudFormation stack name for SSM document that restarts node to load chain config.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudwatch_avalanche_metrics_namespace: Option<String>,
+}
+
+impl Default for Resources {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl Resources {
+    pub fn default() -> Self {
+        Self {
+            identity: None,
+
+            region: String::from("us-west-2"),
+
+            s3_bucket: String::new(),
+
+            nlb_acm_certificate_arn: None,
+
+            kms_cmk_symmetric_default_encrypt_key: None,
+            kms_cmk_secp256k1_cmks: None,
+
+            ec2_key_name: String::new(),
+            ec2_key_path: String::new(),
+
+            cloudformation_ec2_instance_role: None,
+            cloudformation_ec2_instance_profile_arn: None,
+
+            cloudformation_vpc: None,
+            cloudformation_vpc_id: None,
+            cloudformation_vpc_security_group_id: None,
+            cloudformation_vpc_public_subnet_ids: None,
+
+            cloudformation_asg_anchor_nodes: None,
+            cloudformation_asg_anchor_nodes_logical_ids: None,
+
+            cloudformation_asg_non_anchor_nodes: None,
+            cloudformation_asg_non_anchor_nodes_logical_ids: None,
+
+            cloudformation_asg_nlb_arn: None,
+            cloudformation_asg_nlb_target_group_arn: None,
+            cloudformation_asg_nlb_dns_name: None,
+
+            cloudformation_asg_launch_template_id: None,
+            cloudformation_asg_launch_template_version: None,
+
+            cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: None,
+            cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,
+            cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: None,
+            cloudwatch_avalanche_metrics_namespace: None,
+        }
+    }
+}
 
 pub const VERSION: usize = 1;
 
@@ -41,7 +236,7 @@ pub struct Spec {
     #[serde(default)]
     pub aad_tag: String,
     /// AWS resources if run in AWS.
-    pub aws_resources: crate::aws::Resources,
+    pub aws_resources: Resources,
 
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
@@ -52,7 +247,7 @@ pub struct Spec {
     pub upload_artifacts: UploadArtifacts,
 
     /// Flag to pass to the "avalanched" command-line interface.
-    pub avalanched_config: crate::avalanched::Flags,
+    pub avalanched_config: crate::aws::avalanched::Flags,
 
     /// Set "true" to enable NLB.
     #[serde(default)]
@@ -217,7 +412,7 @@ impl Spec {
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
-        let mut avalanched_config = crate::avalanched::Flags {
+        let mut avalanched_config = crate::aws::avalanched::Flags {
             log_level: opts.avalanched_log_level,
             use_default_config: opts.avalanched_use_default_config,
             publish_periodic_node_info: None,
@@ -544,10 +739,10 @@ impl Spec {
             id_manager::system::string(10),
             opts.region
         );
-        let mut aws_resources = crate::aws::Resources {
+        let mut aws_resources = Resources {
             region: opts.region.clone(),
             s3_bucket,
-            ..crate::aws::Resources::default()
+            ..Resources::default()
         };
         if !opts.nlb_acm_certificate_arn.is_empty() {
             aws_resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
@@ -555,7 +750,7 @@ impl Spec {
         let mut kms_cmk_secp256k1_cmks = Vec::new();
         for test_key_info in test_keys_infos.iter() {
             if test_key_info.key_type == key::secp256k1::KeyType::AwsKms {
-                kms_cmk_secp256k1_cmks.push(crate::aws::KmsCmk {
+                kms_cmk_secp256k1_cmks.push(KmsCmk {
                     id: test_key_info.id.clone().unwrap(),
                     arn: test_key_info.id.clone().unwrap(),
                 })
@@ -1104,10 +1299,10 @@ metrics_fetch_interval_seconds: 5000
         id: id.clone(),
         aad_tag: String::from("test"),
 
-        aws_resources: crate::aws::Resources {
+        aws_resources: Resources {
             region: String::from("us-west-2"),
             s3_bucket: bucket.clone(),
-            ..crate::aws::Resources::default()
+            ..Resources::default()
         },
 
         machine: Machine {
@@ -1140,7 +1335,7 @@ metrics_fetch_interval_seconds: 5000
             prometheus_metrics_rules_file_path: String::new(),
         },
 
-        avalanched_config: crate::avalanched::Flags {
+        avalanched_config: crate::aws::avalanched::Flags {
             log_level: String::from("info"),
             use_default_config: false,
             publish_periodic_node_info: Some(false),

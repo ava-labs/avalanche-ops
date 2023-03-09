@@ -1,3 +1,3 @@
+pub mod artifacts;
 pub mod avalanched;
-pub mod aws;
 pub mod spec;

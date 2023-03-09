@@ -9,7 +9,6 @@ use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
-use rust_embed::RustEmbed;
 
 pub const NAME: &str = "default-spec";
 
@@ -558,18 +557,7 @@ fn get_prometheus_metrics_rules_file_path(spec_file_path: &str) -> String {
     )
 }
 
-pub fn default_prometheus_rules() -> prometheus_manager::Rules {
-    #[derive(RustEmbed)]
-    #[folder = "artifacts/"]
-    #[prefix = "artifacts/"]
-    struct Asset;
-
-    let filters_raw = Asset::get("artifacts/default.metrics.rules.yaml").unwrap();
-    let filters_raw = std::str::from_utf8(filters_raw.data.as_ref()).unwrap();
-    serde_yaml::from_str(filters_raw).unwrap()
-}
-
-pub async fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()> {
+pub async fn execute(opts: avalancheup::aws::spec::DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default()
@@ -593,7 +581,7 @@ pub async fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Resu
         ));
     }
 
-    let mut spec = avalancheup_aws::spec::Spec::default_aws(cloned_opts.clone()).await;
+    let mut spec = avalancheup::aws::spec::Spec::default_aws(cloned_opts.clone()).await;
     spec.validate()?;
 
     let spec_file_path = {
@@ -621,7 +609,7 @@ pub async fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Resu
             spec.upload_artifacts.prometheus_metrics_rules_file_path
         );
 
-        let metrics_rules = default_prometheus_rules();
+        let metrics_rules = avalancheup::artifacts::prometheus_rules();
         metrics_rules
             .sync(&spec.upload_artifacts.prometheus_metrics_rules_file_path)
             .unwrap();

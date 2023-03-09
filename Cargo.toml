@@ -4,6 +4,7 @@ members = [
     "avalanche-config-installer",
     "avalanche-kms",
     "avalanched-aws",
+    "avalancheup",
     "avalancheup-aws",
     "blizzard-aws",
     "blizzardup-aws",
