@@ -186,6 +186,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ResetColor
     )?;
 
+    // set before we update "upload_artifacts"
+    let blizzard_download_source = if let Some(v) = &spec.upload_artifacts {
+        if v.blizzard_bin.is_empty() {
+            "github"
+        } else {
+            "s3"
+        }
+    } else {
+        "github"
+    };
     if let Some(v) = &spec.upload_artifacts {
         if !v.blizzard_bin.is_empty() {
             // don't compress since we need to download this in user data
@@ -468,15 +478,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ));
         }
 
-        let blizzard_download_source = if let Some(v) = &spec.upload_artifacts {
-            if v.blizzard_bin.is_empty() {
-                "github"
-            } else {
-                "s3"
-            }
-        } else {
-            "github"
-        };
         asg_parameters.push(build_param(
             "BlizzardDownloadSource",
             blizzard_download_source,
