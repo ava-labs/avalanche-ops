@@ -151,31 +151,25 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.resources.cloudwatch_avalanche_metrics_namespace =
             Some(format!("{}-avalanche", spec.id));
     }
-    if spec.subnet_evms.is_some() {
-        spec.resources
-            .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm = Some(
-            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
-                spec.id.clone(),
-            )
+
+    // just create these no matter what for simplification
+    spec.resources
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm = Some(
+        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
+            spec.id.clone(),
+        )
+        .encode(),
+    );
+    spec.resources
+        .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm = Some(
+        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(spec.id.clone())
             .encode(),
-        );
-        spec.resources
-            .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm = Some(
-            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
-                spec.id.clone(),
-            )
+    );
+    spec.resources
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm = Some(
+        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
             .encode(),
-        );
-    }
-    if spec.xsvms.is_some() {
-        spec.resources
-            .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm = Some(
-            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(
-                spec.id.clone(),
-            )
-            .encode(),
-        );
-    }
+    );
     spec.sync(spec_file_path)?;
 
     execute!(
@@ -1378,10 +1372,9 @@ aws ssm start-session --region {} --target {}
             }
         }
 
+        println!();
         let f = File::open(&spec.resources.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
-
-        println!();
         for d in droplets {
             let (instance_ip, ip_kind) =
                 if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
@@ -1825,8 +1818,167 @@ default-spec \\
         ResetColor
     )?;
 
-    // TODO: support KMS CMK
-    assert!(spec.prefunded_keys.is_some());
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet subnet-evm...\n\n"),
+        ResetColor
+    )?;
+    let ssm_doc_tmpl =
+        avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_subnet_evm_yaml()
+            .unwrap();
+    let ssm_doc_stack_name = spec
+        .resources
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
+        .clone()
+        .unwrap();
+    let ssm_document_name_restart_tracked_subnet =
+        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
+            spec.id.clone(),
+        )
+        .encode();
+    let cfn_params = Vec::from([build_param(
+        "DocumentName",
+        &ssm_document_name_restart_tracked_subnet,
+    )]);
+    cloudformation_manager
+        .create_stack(
+            ssm_doc_stack_name.as_str(),
+            Some(vec![Capability::CapabilityNamedIam]),
+            OnFailure::Delete,
+            &ssm_doc_tmpl,
+            Some(Vec::from([Tag::builder()
+                .key("KIND")
+                .value("avalanche-ops")
+                .build()])),
+            Some(cfn_params),
+        )
+        .await
+        .unwrap();
+    sleep(Duration::from_secs(10)).await;
+    cloudformation_manager
+        .poll_stack(
+            ssm_doc_stack_name.as_str(),
+            StackStatus::CreateComplete,
+            Duration::from_secs(500),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+    log::info!("created ssm document for restarting node with tracked subnet");
+
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: creating an SSM document for restarting node to load chain config subnet-evm...\n\n"),
+        ResetColor
+    )?;
+    let ssm_doc_tmpl =
+        avalanche_ops::aws::artifacts::ssm_doc_restart_node_chain_config_subnet_evm_yaml().unwrap();
+    let ssm_doc_stack_name = spec
+        .resources
+        .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
+        .clone()
+        .unwrap();
+    let ssm_document_name_restart_node_chain_config =
+        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(spec.id.clone())
+            .encode();
+    let cfn_params = Vec::from([build_param(
+        "DocumentName",
+        &ssm_document_name_restart_node_chain_config,
+    )]);
+    cloudformation_manager
+        .create_stack(
+            ssm_doc_stack_name.as_str(),
+            Some(vec![Capability::CapabilityNamedIam]),
+            OnFailure::Delete,
+            &ssm_doc_tmpl,
+            Some(Vec::from([Tag::builder()
+                .key("KIND")
+                .value("avalanche-ops")
+                .build()])),
+            Some(cfn_params),
+        )
+        .await
+        .unwrap();
+    sleep(Duration::from_secs(10)).await;
+    cloudformation_manager
+        .poll_stack(
+            ssm_doc_stack_name.as_str(),
+            StackStatus::CreateComplete,
+            Duration::from_secs(500),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+    log::info!("created ssm document for restarting node to load chain config");
+
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet xsvm...\n\n"),
+        ResetColor
+    )?;
+    let ssm_doc_tmpl =
+        avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_xsvm_yaml().unwrap();
+    let ssm_doc_stack_name = spec
+        .resources
+        .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
+        .clone()
+        .unwrap();
+    let ssm_document_name_restart_tracked_subnet =
+        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
+            .encode();
+    let cfn_params = Vec::from([build_param(
+        "DocumentName",
+        &ssm_document_name_restart_tracked_subnet,
+    )]);
+    cloudformation_manager
+        .create_stack(
+            ssm_doc_stack_name.as_str(),
+            Some(vec![Capability::CapabilityNamedIam]),
+            OnFailure::Delete,
+            &ssm_doc_tmpl,
+            Some(Vec::from([Tag::builder()
+                .key("KIND")
+                .value("avalanche-ops")
+                .build()])),
+            Some(cfn_params),
+        )
+        .await
+        .unwrap();
+    sleep(Duration::from_secs(10)).await;
+    cloudformation_manager
+        .poll_stack(
+            ssm_doc_stack_name.as_str(),
+            StackStatus::CreateComplete,
+            Duration::from_secs(500),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+    log::info!("created ssm document for restarting node with tracked subnet");
+
+    //
+    //
+    //
+    //
+    //
     let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
     let priv_key =
         key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
@@ -1837,6 +1989,11 @@ default-spec \\
         .await
         .unwrap();
 
+    //
+    //
+    //
+    //
+    //
     // add nodes as validators for the primary network
     execute!(
         stdout(),
@@ -1863,104 +2020,6 @@ default-spec \\
         println!();
         log::info!("non-empty subnet_evms and custom network, so install with test keys");
         println!();
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet subnet-evm...\n\n"),
-            ResetColor
-        )?;
-        let ssm_doc_tmpl =
-            avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_subnet_evm_yaml()
-                .unwrap();
-        let ssm_doc_stack_name = spec
-            .resources
-            .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
-            .clone()
-            .unwrap();
-        let ssm_document_name_restart_tracked_subnet =
-            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
-                spec.id.clone(),
-            )
-            .encode();
-        let cfn_params = Vec::from([build_param(
-            "DocumentName",
-            &ssm_document_name_restart_tracked_subnet,
-        )]);
-        cloudformation_manager
-            .create_stack(
-                ssm_doc_stack_name.as_str(),
-                Some(vec![Capability::CapabilityNamedIam]),
-                OnFailure::Delete,
-                &ssm_doc_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
-                Some(cfn_params),
-            )
-            .await
-            .unwrap();
-        sleep(Duration::from_secs(10)).await;
-        cloudformation_manager
-            .poll_stack(
-                ssm_doc_stack_name.as_str(),
-                StackStatus::CreateComplete,
-                Duration::from_secs(500),
-                Duration::from_secs(30),
-            )
-            .await
-            .unwrap();
-        log::info!("created ssm document for restarting node with tracked subnet");
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: creating an SSM document for restarting node to load chain config subnet-evm...\n\n"),
-            ResetColor
-        )?;
-        let ssm_doc_tmpl =
-            avalanche_ops::aws::artifacts::ssm_doc_restart_node_chain_config_subnet_evm_yaml()
-                .unwrap();
-        let ssm_doc_stack_name = spec
-            .resources
-            .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
-            .clone()
-            .unwrap();
-        let ssm_document_name_restart_node_chain_config =
-            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
-                spec.id.clone(),
-            )
-            .encode();
-        let cfn_params = Vec::from([build_param(
-            "DocumentName",
-            &ssm_document_name_restart_node_chain_config,
-        )]);
-        cloudformation_manager
-            .create_stack(
-                ssm_doc_stack_name.as_str(),
-                Some(vec![Capability::CapabilityNamedIam]),
-                OnFailure::Delete,
-                &ssm_doc_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
-                Some(cfn_params),
-            )
-            .await
-            .unwrap();
-        sleep(Duration::from_secs(10)).await;
-        cloudformation_manager
-            .poll_stack(
-                ssm_doc_stack_name.as_str(),
-                StackStatus::CreateComplete,
-                Duration::from_secs(500),
-                Duration::from_secs(30),
-            )
-            .await
-            .unwrap();
-        log::info!("created ssm document for restarting node to load chain config");
 
         let mut tracked_subnets = Vec::new();
         for (subnet_evm_name, subnet_evm) in subnet_evms.iter() {
@@ -2181,54 +2240,6 @@ default-spec \\
         println!();
         log::info!("non-empty xsvms and custom network, so install with test keys");
         println!();
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet xsvm...\n\n"),
-            ResetColor
-        )?;
-        let ssm_doc_tmpl =
-            avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_xsvm_yaml().unwrap();
-        let ssm_doc_stack_name = spec
-            .resources
-            .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
-            .clone()
-            .unwrap();
-        let ssm_document_name_restart_tracked_subnet =
-            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(
-                spec.id.clone(),
-            )
-            .encode();
-        let cfn_params = Vec::from([build_param(
-            "DocumentName",
-            &ssm_document_name_restart_tracked_subnet,
-        )]);
-        cloudformation_manager
-            .create_stack(
-                ssm_doc_stack_name.as_str(),
-                Some(vec![Capability::CapabilityNamedIam]),
-                OnFailure::Delete,
-                &ssm_doc_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
-                Some(cfn_params),
-            )
-            .await
-            .unwrap();
-        sleep(Duration::from_secs(10)).await;
-        cloudformation_manager
-            .poll_stack(
-                ssm_doc_stack_name.as_str(),
-                StackStatus::CreateComplete,
-                Duration::from_secs(500),
-                Duration::from_secs(30),
-            )
-            .await
-            .unwrap();
-        log::info!("created ssm document for restarting node with tracked subnet");
 
         for (xsvm_name, xsvm) in xsvms.iter() {
             execute!(
