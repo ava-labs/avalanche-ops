@@ -79,8 +79,8 @@ async fn main() {
 
                 nodes,
 
-                install_artifacts_blizzard_bin: sub_matches
-                    .get_one::<String>("INSTALL_ARTIFACTS_BLIZZARD_BIN")
+                upload_artifacts_blizzard_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_BLIZZARD_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
                 blizzard_log_level: sub_matches

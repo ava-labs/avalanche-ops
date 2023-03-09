@@ -14,11 +14,10 @@ use avalanche_types::{
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
     xsvm::genesis as xsvm_genesis,
 };
-use aws_manager::{ec2, kms};
-use rust_embed::RustEmbed;
+use aws_manager::{ec2, kms, sts};
 use serde::{Deserialize, Serialize};
 
-pub const VERSION: usize = 1;
+pub const VERSION: usize = 2;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
@@ -42,16 +41,18 @@ pub struct Spec {
     #[serde(default)]
     pub aad_tag: String,
     /// AWS resources if run in AWS.
-    pub aws_resources: crate::aws::Resources,
+    pub aws_resources: Resources,
 
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
     pub machine: Machine,
-    /// Install artifacts to share with remote machines.
-    pub install_artifacts: InstallArtifacts,
+
+    /// Upload artifacts from the local machine to share with remote machines.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upload_artifacts: Option<UploadArtifacts>,
 
     /// Flag to pass to the "avalanched" command-line interface.
-    pub avalanched_config: crate::avalanched::Flags,
+    pub avalanched_config: crate::aws::avalanched::Flags,
 
     /// Set "true" to enable NLB.
     #[serde(default)]
@@ -93,7 +94,7 @@ pub struct Spec {
     /// Except the first key in the list, all keys have immediately unlocked P-chain balance.
     /// Should never be used for mainnet as it's store in plaintext for testing purposes only.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub test_key_infos: Option<Vec<key::secp256k1::Info>>,
+    pub prefunded_keys: Option<Vec<key::secp256k1::Info>>,
 
     /// Created nodes at the start of the network.
     /// May become stale.
@@ -108,11 +109,203 @@ pub struct Spec {
     /// Set to 0 to disable metrics collection.
     #[serde(default)]
     pub metrics_fetch_interval_seconds: u64,
+}
 
-    /// Prometheus rules for telemetry.
-    /// "avalanched" reads this metrics and writes to disk (ALWAYS OVERWRITE).
+/// Represents the KMS CMK resource.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct KmsCmk {
+    /// CMK Id.
+    pub id: String,
+    /// CMK Arn.
+    pub arn: String,
+}
+
+/// Represents the current AWS resource status.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Resources {
+    /// AWS STS caller loaded from its local environment.
+    /// READ ONLY.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub prometheus_metrics_rules: Option<prometheus_manager::Rules>,
+    pub identity: Option<sts::Identity>,
+
+    /// AWS region to create resources.
+    /// MUST BE NON-EMPTY.
+    #[serde(default)]
+    pub region: String,
+
+    /// Name of the bucket to store (or download from)
+    /// the configuration and resources (e.g., S3).
+    /// If not exists, it creates automatically.
+    /// If exists, it skips creation and uses the existing one.
+    /// MUST BE NON-EMPTY.
+    #[serde(default)]
+    pub s3_bucket: String,
+
+    /// AWS region to create resources.
+    /// NON-EMPTY TO ENABLE HTTPS over NLB.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nlb_acm_certificate_arn: Option<String>,
+
+    /// KMS CMK ID to encrypt resources.
+    /// Only used for encrypting node certs and EC2 keys.
+    /// None if not created yet.
+    /// READ ONLY -- DO NOT SET.
+    /// TODO: support existing key and load the ARN based on region and account number.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kms_cmk_symmetric_default_encrypt_key: Option<KmsCmk>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Generated CMKs.
+    pub kms_cmk_secp256k1_cmks: Option<Vec<KmsCmk>>,
+
+    /// EC2 key pair name for SSH access to EC2 instances.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(default)]
+    pub ec2_key_name: String,
+    #[serde(default)]
+    pub ec2_key_path: String,
+
+    /// CloudFormation stack name for EC2 instance role.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ec2_instance_role: Option<String>,
+    /// Instance profile ARN from "cloudformation_ec2_instance_role".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ec2_instance_profile_arn: Option<String>,
+
+    /// CloudFormation stack name for VPC.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc: Option<String>,
+    /// VPC ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_id: Option<String>,
+    /// Security group ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_security_group_id: Option<String>,
+    /// Public subnet IDs from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
+
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
+    /// for anchor nodes.
+    /// None if mainnet.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_anchor_nodes: Option<Vec<String>>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_anchor_nodes_logical_ids: Option<Vec<String>>,
+
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
+    /// for non-anchor nodes.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_non_anchor_nodes: Option<Vec<String>>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_non_anchor_nodes_logical_ids: Option<Vec<String>>,
+
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_arn: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_target_group_arn: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_dns_name: Option<String>,
+
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_id: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_version: Option<String>,
+
+    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: Option<String>,
+    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: Option<String>,
+    /// CloudFormation stack name for SSM document that restarts node to load chain config.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudwatch_avalanche_metrics_namespace: Option<String>,
+}
+
+impl Default for Resources {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl Resources {
+    pub fn default() -> Self {
+        Self {
+            identity: None,
+
+            region: String::from("us-west-2"),
+
+            s3_bucket: String::new(),
+
+            nlb_acm_certificate_arn: None,
+
+            kms_cmk_symmetric_default_encrypt_key: None,
+            kms_cmk_secp256k1_cmks: None,
+
+            ec2_key_name: String::new(),
+            ec2_key_path: String::new(),
+
+            cloudformation_ec2_instance_role: None,
+            cloudformation_ec2_instance_profile_arn: None,
+
+            cloudformation_vpc: None,
+            cloudformation_vpc_id: None,
+            cloudformation_vpc_security_group_id: None,
+            cloudformation_vpc_public_subnet_ids: None,
+
+            cloudformation_asg_anchor_nodes: None,
+            cloudformation_asg_anchor_nodes_logical_ids: None,
+
+            cloudformation_asg_non_anchor_nodes: None,
+            cloudformation_asg_non_anchor_nodes_logical_ids: None,
+
+            cloudformation_asg_nlb_arn: None,
+            cloudformation_asg_nlb_target_group_arn: None,
+            cloudformation_asg_nlb_dns_name: None,
+
+            cloudformation_asg_launch_template_id: None,
+            cloudformation_asg_launch_template_version: None,
+
+            cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: None,
+            cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,
+            cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: None,
+            cloudwatch_avalanche_metrics_namespace: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -158,13 +351,14 @@ pub struct DefaultSpecOption {
 
     pub nlb_acm_certificate_arn: String,
 
-    pub install_artifacts_aws_volume_provisioner_local_bin: String,
-    pub install_artifacts_aws_ip_provisioner_local_bin: String,
-    pub install_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
-    pub install_artifacts_avalanche_config_local_bin: String,
-    pub install_artifacts_avalanched_local_bin: String,
-    pub install_artifacts_avalanche_local_bin: String,
-    pub install_artifacts_plugin_local_dir: String,
+    pub upload_artifacts_aws_volume_provisioner_local_bin: String,
+    pub upload_artifacts_aws_ip_provisioner_local_bin: String,
+    pub upload_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
+    pub upload_artifacts_avalanche_config_local_bin: String,
+    pub upload_artifacts_avalanched_local_bin: String,
+    pub upload_artifacts_avalanche_local_bin: String,
+    pub upload_artifacts_plugin_local_dir: String,
+    pub upload_artifacts_prometheus_metrics_rules_file_path: String,
 
     pub avalanched_log_level: String,
     pub avalanched_use_default_config: bool,
@@ -211,27 +405,35 @@ pub struct DefaultSpecOption {
     pub spec_file_path: String,
 }
 
-pub fn default_prometheus_rules() -> prometheus_manager::Rules {
-    #[derive(RustEmbed)]
-    #[folder = "artifacts/"]
-    #[prefix = "artifacts/"]
-    struct Asset;
-
-    let filters_raw = Asset::get("artifacts/default.metrics.rules.yaml").unwrap();
-    let filters_raw = std::str::from_utf8(filters_raw.data.as_ref()).unwrap();
-    serde_yaml::from_str(filters_raw).unwrap()
-}
-
 impl Spec {
     /// Creates a default spec.
-    pub async fn default_aws(opts: DefaultSpecOption) -> Self {
+    pub async fn default_aws(opts: DefaultSpecOption) -> io::Result<(Self, String)> {
         let network_id = match constants::NETWORK_NAME_TO_NETWORK_ID.get(opts.network_name.as_str())
         {
             Some(v) => *v,
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
-        let mut avalanched_config = crate::avalanched::Flags {
+        if opts.network_name == "custom" && opts.keys_to_generate == 0 {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "can't --keys-to-generate=0 for {} network",
+                    opts.network_name
+                ),
+            ));
+        }
+        if opts.network_name != "custom" && opts.keys_to_generate > 0 {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "can't --keys-to-generate={} (>0) for {} network",
+                    opts.keys_to_generate, opts.network_name
+                ),
+            ));
+        }
+
+        let mut avalanched_config = crate::aws::avalanched::Flags {
             log_level: opts.avalanched_log_level,
             use_default_config: opts.avalanched_use_default_config,
             publish_periodic_node_info: None,
@@ -277,17 +479,20 @@ impl Spec {
         };
 
         let network_id = avalanchego_config.network_id;
-        let id = {
+        let (id, spec_file_path) = {
             if !opts.spec_file_path.is_empty() {
                 let spec_file_stem = Path::new(&opts.spec_file_path).file_stem().unwrap();
-                spec_file_stem.to_str().unwrap().to_string()
+                let id = spec_file_stem.to_str().unwrap().to_string();
+                (id, opts.spec_file_path.clone())
             } else {
-                match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
+                let id = match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                     Some(v) => id_manager::time::with_prefix(format!("aops-{}", *v).as_str()),
                     None => id_manager::time::with_prefix("aops-custom"),
-                }
+                };
+                (id.clone(), dir_manager::home::named(&id, Some(".yaml")))
             }
         };
+
         let (anchor_nodes, non_anchor_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 // non-custom network only single node to utilize single AZ
@@ -328,8 +533,8 @@ impl Spec {
             );
         }
 
-        let mut test_keys_infos: Vec<key::secp256k1::Info> = Vec::new();
-        let mut test_keys_read_only: Vec<key::secp256k1::public_key::Key> = Vec::new();
+        let mut prefunded_keys_info: Vec<key::secp256k1::Info> = Vec::new();
+        let mut prefunded_pubkeys: Vec<key::secp256k1::public_key::Key> = Vec::new();
         for i in 0..opts.keys_to_generate {
             let (key_info, key_read_only) = {
                 match key_type {
@@ -367,8 +572,8 @@ impl Spec {
                     _ => panic!("unknown key type {}", key_type),
                 }
             };
-            test_keys_infos.push(key_info.clone());
-            test_keys_read_only.push(key_read_only);
+            prefunded_keys_info.push(key_info.clone());
+            prefunded_pubkeys.push(key_read_only);
 
             if key_type == key::secp256k1::KeyType::Hot && !opts.key_files_dir.is_empty() {
                 // file name is eth address with 0x, contents are "private_key_hex"
@@ -385,7 +590,7 @@ impl Spec {
 
         let avalanchego_genesis_template = {
             if avalanchego_config.is_custom_network() {
-                let g = avalanchego_genesis::Genesis::new(network_id, &test_keys_read_only)
+                let g = avalanchego_genesis::Genesis::new(network_id, &prefunded_pubkeys)
                     .expect("unexpected None genesis");
                 Some(g)
             } else {
@@ -395,7 +600,7 @@ impl Spec {
 
         let subnet_evms = {
             if opts.subnet_evms > 0 {
-                let mut genesis = subnet_evm_genesis::Genesis::new(&test_keys_read_only)
+                let mut genesis = subnet_evm_genesis::Genesis::new(&prefunded_pubkeys)
                     .expect("failed to generate genesis");
 
                 let mut genesis_chain_config = subnet_evm_genesis::ChainConfig::default();
@@ -428,7 +633,7 @@ impl Spec {
                 genesis_chain_config.fee_config = Some(fee_config);
 
                 let mut admin_addresses: Vec<String> = Vec::new();
-                for key_info in test_keys_infos.iter() {
+                for key_info in prefunded_keys_info.iter() {
                     admin_addresses.push(key_info.eth_address.clone());
                 }
                 if opts.subnet_evm_auto_contract_deployer_allow_list_config {
@@ -525,7 +730,7 @@ impl Spec {
 
         let xsvms = {
             if opts.xsvms > 0 {
-                let genesis = xsvm_genesis::Genesis::new(&test_keys_read_only)
+                let genesis = xsvm_genesis::Genesis::new(&prefunded_pubkeys)
                     .expect("failed to generate genesis");
 
                 let mut subnet_config = subnet::config::Config::default();
@@ -558,20 +763,22 @@ impl Spec {
             id_manager::system::string(10),
             opts.region
         );
-        let mut aws_resources = crate::aws::Resources {
+        let mut aws_resources = Resources {
             region: opts.region.clone(),
             s3_bucket,
-            ..crate::aws::Resources::default()
+            ec2_key_name: format!("{id}-ec2-key"),
+            ec2_key_path: get_ec2_key_path(&spec_file_path),
+            ..Resources::default()
         };
         if !opts.nlb_acm_certificate_arn.is_empty() {
             aws_resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
         }
         let mut kms_cmk_secp256k1_cmks = Vec::new();
-        for test_key_info in test_keys_infos.iter() {
-            if test_key_info.key_type == key::secp256k1::KeyType::AwsKms {
-                kms_cmk_secp256k1_cmks.push(crate::aws::KmsCmk {
-                    id: test_key_info.id.clone().unwrap(),
-                    arn: test_key_info.id.clone().unwrap(),
+        for ki in prefunded_keys_info.iter() {
+            if ki.key_type == key::secp256k1::KeyType::AwsKms {
+                kms_cmk_secp256k1_cmks.push(KmsCmk {
+                    id: ki.id.clone().unwrap(),
+                    arn: ki.id.clone().unwrap(),
                 })
             }
         }
@@ -579,51 +786,96 @@ impl Spec {
             aws_resources.kms_cmk_secp256k1_cmks = Some(kms_cmk_secp256k1_cmks);
         }
 
-        let mut install_artifacts = InstallArtifacts {
-            avalanched_local_bin: None,
-            aws_volume_provisioner_local_bin: None,
-            aws_ip_provisioner_local_bin: None,
-            avalanche_telemetry_cloudwatch_local_bin: None,
-            avalanche_config_local_bin: None,
-            avalanchego_local_bin: None,
-            plugin_local_dir: None,
+        let mut upload_artifacts = UploadArtifacts {
+            avalanched_local_bin: String::new(),
+            aws_volume_provisioner_local_bin: String::new(),
+            aws_ip_provisioner_local_bin: String::new(),
+            avalanche_telemetry_cloudwatch_local_bin: String::new(),
+            avalanche_config_local_bin: String::new(),
+            avalanchego_local_bin: String::new(),
+            plugin_local_dir: String::new(),
+            prometheus_metrics_rules_file_path: String::new(),
         };
         if !opts
-            .install_artifacts_aws_volume_provisioner_local_bin
+            .upload_artifacts_aws_volume_provisioner_local_bin
             .is_empty()
         {
-            install_artifacts.aws_volume_provisioner_local_bin =
-                Some(opts.install_artifacts_aws_volume_provisioner_local_bin);
+            upload_artifacts.aws_volume_provisioner_local_bin = opts
+                .upload_artifacts_aws_volume_provisioner_local_bin
+                .clone();
         }
         if !opts
-            .install_artifacts_aws_ip_provisioner_local_bin
+            .upload_artifacts_aws_ip_provisioner_local_bin
             .is_empty()
         {
-            install_artifacts.aws_ip_provisioner_local_bin =
-                Some(opts.install_artifacts_aws_ip_provisioner_local_bin);
+            upload_artifacts.aws_ip_provisioner_local_bin =
+                opts.upload_artifacts_aws_ip_provisioner_local_bin.clone();
         }
         if !opts
-            .install_artifacts_avalanche_telemetry_cloudwatch_local_bin
+            .upload_artifacts_avalanche_telemetry_cloudwatch_local_bin
             .is_empty()
         {
-            install_artifacts.avalanche_telemetry_cloudwatch_local_bin =
-                Some(opts.install_artifacts_avalanche_telemetry_cloudwatch_local_bin);
+            upload_artifacts.avalanche_telemetry_cloudwatch_local_bin = opts
+                .upload_artifacts_avalanche_telemetry_cloudwatch_local_bin
+                .clone();
         }
-        if !opts.install_artifacts_avalanche_config_local_bin.is_empty() {
-            install_artifacts.avalanche_config_local_bin =
-                Some(opts.install_artifacts_avalanche_config_local_bin);
+        if !opts.upload_artifacts_avalanche_config_local_bin.is_empty() {
+            upload_artifacts.avalanche_config_local_bin =
+                opts.upload_artifacts_avalanche_config_local_bin.clone();
         }
-        if !opts.install_artifacts_avalanched_local_bin.is_empty() {
-            install_artifacts.avalanched_local_bin =
-                Some(opts.install_artifacts_avalanched_local_bin);
+        if !opts.upload_artifacts_avalanched_local_bin.is_empty() {
+            upload_artifacts.avalanched_local_bin =
+                opts.upload_artifacts_avalanched_local_bin.clone();
         }
-        if !opts.install_artifacts_avalanche_local_bin.is_empty() {
-            install_artifacts.avalanchego_local_bin =
-                Some(opts.install_artifacts_avalanche_local_bin);
+        if !opts.upload_artifacts_avalanche_local_bin.is_empty() {
+            upload_artifacts.avalanchego_local_bin =
+                opts.upload_artifacts_avalanche_local_bin.clone();
         }
-        if !opts.install_artifacts_plugin_local_dir.is_empty() {
-            install_artifacts.plugin_local_dir = Some(opts.install_artifacts_plugin_local_dir);
+        if !opts.upload_artifacts_plugin_local_dir.is_empty() {
+            upload_artifacts.plugin_local_dir = opts.upload_artifacts_plugin_local_dir.clone();
         }
+        if !opts
+            .upload_artifacts_prometheus_metrics_rules_file_path
+            .is_empty()
+        {
+            upload_artifacts.prometheus_metrics_rules_file_path = opts
+                .upload_artifacts_prometheus_metrics_rules_file_path
+                .clone();
+        }
+
+        if upload_artifacts
+            .prometheus_metrics_rules_file_path
+            .is_empty()
+        {
+            upload_artifacts.prometheus_metrics_rules_file_path =
+                get_prometheus_metrics_rules_file_path(&spec_file_path);
+        }
+        if !Path::new(&upload_artifacts.prometheus_metrics_rules_file_path).exists() {
+            log::info!(
+                "prometheus_metrics_rules_file_path {} does not exist -- writing default rules",
+                upload_artifacts.prometheus_metrics_rules_file_path
+            );
+
+            let metrics_rules = crate::artifacts::prometheus_rules();
+            metrics_rules.sync(&upload_artifacts.prometheus_metrics_rules_file_path)?;
+        }
+        let upload_artifacts = if upload_artifacts.avalanched_local_bin.is_empty()
+            && upload_artifacts.aws_volume_provisioner_local_bin.is_empty()
+            && upload_artifacts.aws_ip_provisioner_local_bin.is_empty()
+            && upload_artifacts
+                .avalanche_telemetry_cloudwatch_local_bin
+                .is_empty()
+            && upload_artifacts.avalanche_config_local_bin.is_empty()
+            && upload_artifacts.avalanchego_local_bin.is_empty()
+            && upload_artifacts.plugin_local_dir.is_empty()
+            && upload_artifacts
+                .prometheus_metrics_rules_file_path
+                .is_empty()
+        {
+            None
+        } else {
+            Some(upload_artifacts)
+        };
 
         let mut coreth_chain_config = coreth_chain_config::Config::default();
         if opts.coreth_continuous_profiler_enabled {
@@ -691,36 +943,38 @@ impl Spec {
             volume_size_in_gb,
         };
 
-        Self {
-            version: VERSION,
+        Ok((
+            Self {
+                version: VERSION,
 
-            id,
-            aad_tag: opts.aad_tag,
+                id,
+                aad_tag: opts.aad_tag,
 
-            aws_resources,
-            machine,
-            install_artifacts,
+                aws_resources,
+                machine,
+                upload_artifacts,
 
-            avalanched_config,
+                avalanched_config,
 
-            enable_nlb: opts.enable_nlb,
-            disable_logs_auto_removal: opts.disable_logs_auto_removal,
+                enable_nlb: opts.enable_nlb,
+                disable_logs_auto_removal: opts.disable_logs_auto_removal,
 
-            avalanchego_config,
-            coreth_chain_config,
-            avalanchego_genesis_template,
+                avalanchego_config,
+                coreth_chain_config,
+                avalanchego_genesis_template,
 
-            subnet_evms,
-            xsvms,
+                subnet_evms,
+                xsvms,
 
-            test_key_infos: Some(test_keys_infos),
+                prefunded_keys: Some(prefunded_keys_info),
 
-            created_nodes: None,
-            created_endpoints: None,
+                created_nodes: None,
+                created_endpoints: None,
 
-            metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
-            prometheus_metrics_rules: Some(default_prometheus_rules()),
-        }
+                metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
+            },
+            spec_file_path,
+        ))
     }
 
     /// Converts to string in YAML format.
@@ -778,6 +1032,13 @@ impl Spec {
     pub fn validate(&self) -> io::Result<()> {
         log::info!("validating Spec");
 
+        if self.version != VERSION {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("version unexpected {}, expected {}", self.version, VERSION),
+            ));
+        }
+
         if self.id.is_empty() {
             return Err(Error::new(ErrorKind::InvalidInput, "'id' cannot be empty"));
         }
@@ -825,45 +1086,53 @@ impl Spec {
             ));
         }
 
-        if let Some(v) = &self.install_artifacts.aws_volume_provisioner_local_bin {
-            if !Path::new(v).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("aws_volume_provisioner_bin {} does not exist", v),
-                ));
+        if let Some(v) = &self.upload_artifacts {
+            if !v.aws_volume_provisioner_local_bin.is_empty() {
+                if !Path::new(&v.aws_volume_provisioner_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!(
+                            "aws_volume_provisioner_bin {} does not exist",
+                            v.aws_volume_provisioner_local_bin
+                        ),
+                    ));
+                }
             }
-        }
-        if let Some(v) = &self.install_artifacts.aws_ip_provisioner_local_bin {
-            if !Path::new(v).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("aws_ip_provisioner_bin {} does not exist", v),
-                ));
+            if !v.aws_ip_provisioner_local_bin.is_empty() {
+                if !Path::new(&v.aws_ip_provisioner_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!(
+                            "aws_ip_provisioner_bin {} does not exist",
+                            v.aws_ip_provisioner_local_bin
+                        ),
+                    ));
+                }
             }
-        }
 
-        if let Some(v) = &self.install_artifacts.avalanched_local_bin {
-            if !Path::new(v).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("avalanched_bin {} does not exist", v),
-                ));
+            if !v.avalanched_local_bin.is_empty() {
+                if !Path::new(&v.avalanched_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!("avalanched_bin {} does not exist", v.avalanched_local_bin),
+                    ));
+                }
             }
-        }
-        if let Some(v) = &self.install_artifacts.avalanchego_local_bin {
-            if !Path::new(v).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("avalanchego_bin {} does not exist", v),
-                ));
+            if !v.avalanchego_local_bin.is_empty() {
+                if !Path::new(&v.avalanchego_local_bin).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!("avalanchego_bin {} does not exist", v.avalanchego_local_bin),
+                    ));
+                }
             }
-        }
-        if let Some(v) = &self.install_artifacts.plugin_local_dir {
-            if !Path::new(v).exists() {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("plugin_dir {} does not exist", v),
-                ));
+            if !v.plugin_local_dir.is_empty() {
+                if !Path::new(&v.plugin_local_dir).exists() {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        format!("plugin_dir {} does not exist", v.plugin_local_dir),
+                    ));
+                }
             }
         }
 
@@ -969,7 +1238,7 @@ fn test_spec() {
     let contents = format!(
         r#"
 
-version: 1
+version: 2
 
 
 id: {id}
@@ -994,7 +1263,7 @@ machine:
   instance_mode: spot
   ip_mode: elastic
 
-install_artifacts:
+upload_artifacts:
   avalanched_local_bin: {avalanched_bin}
   avalanche_config_local_bin: {avalanche_config_bin}
   avalanchego_local_bin: {avalanchego_bin}
@@ -1078,10 +1347,10 @@ metrics_fetch_interval_seconds: 5000
         id: id.clone(),
         aad_tag: String::from("test"),
 
-        aws_resources: crate::aws::Resources {
+        aws_resources: Resources {
             region: String::from("us-west-2"),
             s3_bucket: bucket.clone(),
-            ..crate::aws::Resources::default()
+            ..Resources::default()
         },
 
         machine: Machine {
@@ -1100,19 +1369,21 @@ metrics_fetch_interval_seconds: 5000
             volume_size_in_gb: 500,
         },
 
-        install_artifacts: InstallArtifacts {
-            avalanched_local_bin: Some(avalanched_bin.to_string()),
+        upload_artifacts: Some(UploadArtifacts {
+            avalanched_local_bin: avalanched_bin.to_string(),
 
-            aws_volume_provisioner_local_bin: None,
-            aws_ip_provisioner_local_bin: None,
-            avalanche_telemetry_cloudwatch_local_bin: None,
-            avalanche_config_local_bin: Some(avalanche_config_bin.to_string()),
+            aws_volume_provisioner_local_bin: String::new(),
+            aws_ip_provisioner_local_bin: String::new(),
+            avalanche_telemetry_cloudwatch_local_bin: String::new(),
+            avalanche_config_local_bin: avalanche_config_bin.to_string(),
 
-            avalanchego_local_bin: Some(avalanchego_bin.to_string()),
-            plugin_local_dir: Some(plugin_dir.to_string()),
-        },
+            avalanchego_local_bin: avalanchego_bin.to_string(),
+            plugin_local_dir: plugin_dir.to_string(),
 
-        avalanched_config: crate::avalanched::Flags {
+            prometheus_metrics_rules_file_path: String::new(),
+        }),
+
+        avalanched_config: crate::aws::avalanched::Flags {
             log_level: String::from("info"),
             use_default_config: false,
             publish_periodic_node_info: Some(false),
@@ -1129,11 +1400,9 @@ metrics_fetch_interval_seconds: 5000
         subnet_evms: None,
         xsvms: None,
 
-        test_key_infos: None,
+        prefunded_keys: None,
         created_nodes: None,
         created_endpoints: None,
-
-        prometheus_metrics_rules: None,
     };
 
     cfg.validate().expect("unexpected validate failure");
@@ -1147,27 +1416,22 @@ metrics_fetch_interval_seconds: 5000
     assert_eq!(cfg.aws_resources.s3_bucket, bucket);
 
     assert_eq!(
-        cfg.install_artifacts
-            .avalanche_config_local_bin
-            .unwrap_or(String::new()),
+        cfg.upload_artifacts
+            .clone()
+            .unwrap()
+            .avalanche_config_local_bin,
         avalanche_config_bin
     );
     assert_eq!(
-        cfg.install_artifacts
-            .avalanched_local_bin
-            .unwrap_or(String::new()),
+        cfg.upload_artifacts.clone().unwrap().avalanched_local_bin,
         avalanched_bin
     );
     assert_eq!(
-        cfg.install_artifacts
-            .avalanchego_local_bin
-            .unwrap_or(String::new()),
+        cfg.upload_artifacts.clone().unwrap().avalanchego_local_bin,
         avalanchego_bin
     );
     assert_eq!(
-        cfg.install_artifacts
-            .plugin_local_dir
-            .unwrap_or(String::new()),
+        cfg.upload_artifacts.clone().unwrap().plugin_local_dir,
         plugin_dir.to_string()
     );
 
@@ -1473,18 +1737,18 @@ pub struct Machine {
 /// remote machines. All paths are local to the caller's environment.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct InstallArtifacts {
+pub struct UploadArtifacts {
     #[serde(default)]
-    pub avalanched_local_bin: Option<String>,
+    pub avalanched_local_bin: String,
 
     #[serde(default)]
-    pub aws_volume_provisioner_local_bin: Option<String>,
+    pub aws_volume_provisioner_local_bin: String,
     #[serde(default)]
-    pub aws_ip_provisioner_local_bin: Option<String>,
+    pub aws_ip_provisioner_local_bin: String,
     #[serde(default)]
-    pub avalanche_telemetry_cloudwatch_local_bin: Option<String>,
+    pub avalanche_telemetry_cloudwatch_local_bin: String,
     #[serde(default)]
-    pub avalanche_config_local_bin: Option<String>,
+    pub avalanche_config_local_bin: String,
 
     /// AvalancheGo binary path in the local environment.
     /// The file is "compressed" and uploaded to remote storage
@@ -1497,9 +1761,33 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub avalanchego_local_bin: Option<String>,
+    pub avalanchego_local_bin: String,
     #[serde(default)]
-    pub plugin_local_dir: Option<String>,
+    pub plugin_local_dir: String,
+
+    #[serde(default)]
+    pub prometheus_metrics_rules_file_path: String,
+}
+
+impl Default for UploadArtifacts {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl UploadArtifacts {
+    pub fn default() -> Self {
+        Self {
+            avalanched_local_bin: String::new(),
+            aws_volume_provisioner_local_bin: String::new(),
+            aws_ip_provisioner_local_bin: String::new(),
+            avalanche_telemetry_cloudwatch_local_bin: String::new(),
+            avalanche_config_local_bin: String::new(),
+            avalanchego_local_bin: String::new(),
+            plugin_local_dir: String::new(),
+            prometheus_metrics_rules_file_path: String::new(),
+        }
+    }
 }
 
 /// Represents the CloudFormation stack name.
@@ -1786,4 +2074,32 @@ impl NodeInfo {
 
         Ok(())
     }
+}
+
+fn get_ec2_key_path(spec_file_path: &str) -> String {
+    let path = Path::new(spec_file_path);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
+}
+
+fn get_prometheus_metrics_rules_file_path(spec_file_path: &str) -> String {
+    let path = Path::new(spec_file_path);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let new_name = format!("{}-prometheus-metrics-rules.yaml", name.to_str().unwrap(),);
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
 }

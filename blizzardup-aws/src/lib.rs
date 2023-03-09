@@ -34,7 +34,8 @@ pub struct Spec {
     /// MUST BE NON-EMPTY.
     pub machine: Machine,
     /// Install artifacts to share with remote machines.
-    pub install_artifacts: InstallArtifacts,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upload_artifacts: Option<UploadArtifacts>,
 
     /// Flag to pass to the "blizzard" command-line interface.
     pub blizzard_spec: blizzard::Spec,
@@ -66,7 +67,7 @@ pub struct Machine {
 /// remote machines. All paths are local to the caller's environment.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct InstallArtifacts {
+pub struct UploadArtifacts {
     /// "blizzard" agent binary path in the local environment.
     /// The file is uploaded to the remote storage with the path
     /// "bootstrap/install/blizzard" to be shared with remote machines.
@@ -74,7 +75,7 @@ pub struct InstallArtifacts {
     ///
     /// If none, it downloads the latest from github.
     #[serde(default)]
-    pub blizzard_bin: Option<String>,
+    pub blizzard_bin: String,
 }
 
 /// Represents the CloudFormation stack name.
@@ -106,7 +107,7 @@ pub struct DefaultSpecOption {
 
     pub nodes: usize,
 
-    pub install_artifacts_blizzard_bin: String,
+    pub upload_artifacts_blizzard_bin: String,
     pub blizzard_log_level: String,
     pub blizzard_chain_rpc_urls: Vec<String>,
     pub blizzard_load_kinds: Vec<String>,
@@ -161,10 +162,13 @@ impl Spec {
         };
         let aws_resources = Some(aws_resources);
 
-        let mut install_artifacts = InstallArtifacts { blizzard_bin: None };
-        if !opts.install_artifacts_blizzard_bin.is_empty() {
-            install_artifacts.blizzard_bin = Some(opts.install_artifacts_blizzard_bin);
-        }
+        let upload_artifacts = if !opts.upload_artifacts_blizzard_bin.is_empty() {
+            Some(UploadArtifacts {
+                blizzard_bin: opts.upload_artifacts_blizzard_bin.clone(),
+            })
+        } else {
+            None
+        };
 
         let machine = Machine {
             nodes: opts.nodes,
@@ -182,7 +186,7 @@ impl Spec {
 
             aws_resources,
             machine,
-            install_artifacts,
+            upload_artifacts,
 
             blizzard_spec,
 
@@ -292,11 +296,11 @@ impl Spec {
             ));
         }
 
-        if let Some(v) = &self.install_artifacts.blizzard_bin {
-            if !Path::new(v).exists() {
+        if let Some(v) = &self.upload_artifacts {
+            if !v.blizzard_bin.is_empty() && !Path::new(&v.blizzard_bin).exists() {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
-                    format!("blizzard_bin {} does not exist", v),
+                    format!("blizzard_bin {} does not exist", v.blizzard_bin),
                 ));
             }
         }
@@ -339,14 +343,14 @@ machine:
   - t3.large
   instance_mode: spot
 
-install_artifacts:
+upload_artifacts:
   blizzard_bin: {}
 
 blizzard_spec:
   log_level: info
   network_id: 99999
   chain_rpc_urls: []
-  load_kinds: ["x-transfers", "c-transfers"]
+  load_kinds: ["x-transfers", "evm-transfers"]
   metrics_push_interval_seconds: 60
   workers: 10
   keys_to_generate: 1000
@@ -385,14 +389,14 @@ blizzard_spec:
             instance_mode: String::from("spot"),
         },
 
-        install_artifacts: InstallArtifacts {
-            blizzard_bin: Some(blizzard_bin.to_string()),
-        },
+        upload_artifacts: Some(UploadArtifacts {
+            blizzard_bin: blizzard_bin.to_string(),
+        }),
 
         blizzard_spec: blizzard::Spec {
             log_level: String::from("info"),
             chain_rpc_urls: Vec::new(),
-            load_kinds: vec![String::from("x-transfers"), String::from("c-transfers")],
+            load_kinds: vec![String::from("x-transfers"), String::from("evm-transfers")],
             keys_to_generate: 1000,
             workers: 10,
         },
@@ -414,7 +418,7 @@ blizzard_spec:
     assert_eq!(aws_resources.s3_bucket, bucket);
 
     assert_eq!(
-        cfg.install_artifacts.blizzard_bin.unwrap_or(String::new()),
+        cfg.upload_artifacts.clone().unwrap().blizzard_bin,
         blizzard_bin
     );
 

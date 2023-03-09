@@ -1,4 +1,4 @@
-use std::io::{self, stdout, Error, ErrorKind};
+use std::io::{self, stdout};
 
 use avalanche_types::avalanchego::config as avalanchego_config;
 use clap::{value_parser, Arg, Command};
@@ -159,51 +159,58 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_AWS_VOLUME_PROVISIONER_LOCAL_BIN") 
-                .long("install-artifacts-aws-volume-provisioner-local-bin")
+            Arg::new("UPLOAD_ARTIFACTS_AWS_VOLUME_PROVISIONER_LOCAL_BIN") 
+                .long("upload-artifacts-aws-volume-provisioner-local-bin")
                 .help("Sets the aws-volume-provisioner binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_AWS_IP_PROVISIONER_LOCAL_BIN") 
-                .long("install-artifacts-aws-ip-provisioner-local-bin")
+            Arg::new("UPLOAD_ARTIFACTS_AWS_IP_PROVISIONER_LOCAL_BIN") 
+                .long("upload-artifacts-aws-ip-provisioner-local-bin")
                 .help("Sets the aws-ip-provisioner binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_BIN") 
-                .long("install-artifacts-avalanche-telemetry-cloudwatch-local-bin")
+            Arg::new("UPLOAD_ARTIFACTS_AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_BIN") 
+                .long("upload-artifacts-avalanche-telemetry-cloudwatch-local-bin")
                 .help("Sets the avalanche-telemetry-cloudwatch binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN") 
-                .long("install-artifacts-avalanche-config-local-bin")
+            Arg::new("UPLOAD_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN") 
+                .long("upload-artifacts-avalanche-config-local-bin")
                 .help("Sets the avalanche-config binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_AVALANCHED_LOCAL_BIN") 
-                .long("install-artifacts-avalanched-local-bin")
+            Arg::new("UPLOAD_ARTIFACTS_AVALANCHED_LOCAL_BIN") 
+                .long("upload-artifacts-avalanched-local-bin")
                 .help("Sets the avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_AVALANCHE_LOCAL_BIN") 
-                .long("install-artifacts-avalanche-local-bin")
+            Arg::new("UPLOAD_ARTIFACTS_AVALANCHE_LOCAL_BIN") 
+                .long("upload-artifacts-avalanche-local-bin")
                 .help("Sets the Avalanche node binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),
         )
         .arg(
-            Arg::new("INSTALL_ARTIFACTS_PLUGIN_LOCAL_DIR") 
-                .long("install-artifacts-plugin-local-dir")
+            Arg::new("UPLOAD_ARTIFACTS_PLUGIN_LOCAL_DIR") 
+                .long("upload-artifacts-plugin-local-dir")
                 .help("Sets 'plugins' directory in the local machine to be shared with remote machines")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("UPLOAD_ARTIFACTS_PROMETHEUS_METRICS_RULES_FILE_PATH") 
+                .long("upload-artifacts-prometheus-metrics-rules-file-path")
+                .help("Sets prometheus rules file path in the local machine to be shared with remote machines")
                 .required(false)
                 .num_args(1),
         )
@@ -519,40 +526,17 @@ pub fn command() -> Command {
         )
 }
 
-pub async fn execute(opts: avalancheup_aws::spec::DefaultSpecOption) -> io::Result<()> {
+pub async fn execute(opts: avalanche_ops::aws::spec::DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default()
             .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
     );
 
-    let mut cloned_opts = opts.clone();
-
-    if cloned_opts.network_name == "custom" && cloned_opts.keys_to_generate == 0 {
-        log::warn!("can't --keys-to-generate=0 for custom network -- defaulting to 2");
-        cloned_opts.keys_to_generate = 2;
-    }
-
-    if cloned_opts.network_name != "custom" && cloned_opts.keys_to_generate > 0 {
-        return Err(Error::new(
-            ErrorKind::Other,
-            format!(
-                "can't --keys-to-generate={} (>0) for {} network",
-                cloned_opts.keys_to_generate, cloned_opts.network_name
-            ),
-        ));
-    }
-
-    let spec = avalancheup_aws::spec::Spec::default_aws(cloned_opts.clone()).await;
+    let (spec, spec_file_path) = avalanche_ops::aws::spec::Spec::default_aws(opts)
+        .await
+        .unwrap();
     spec.validate()?;
-
-    let spec_file_path = {
-        if opts.spec_file_path.is_empty() {
-            dir_manager::home::named(&spec.id, Some(".yaml"))
-        } else {
-            opts.spec_file_path
-        }
-    };
     spec.sync(&spec_file_path)?;
 
     execute!(

@@ -16,9 +16,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
 
     let meta = fetch_metadata().await?;
-
     let aws_creds = load_aws_credential(&meta.region).await?;
-
     let tags = fetch_tags(&aws_creds.ec2_manager, &meta.ec2_instance_id).await?;
 
     let spec = download_spec(

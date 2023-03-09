@@ -33,8 +33,8 @@ avalancheup-aws default-spec --network-name custom --subnet-evms 1
 # 3. simple, subnet-evm with custom binaries
 # some plugins/binaries are downloaded automatic from S3 to the hosts
 avalancheup-aws default-spec \
---install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugin-local-dir ${AVALANCHE_PLUGIN_DIR_PATH} \
+--upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGIN_DIR_PATH} \
 --instance-mode=on-demand \
 --ip-mode=elastic \
 --network-name custom \
@@ -56,13 +56,13 @@ AVALANCHE_PLUGIN_DIR_PATH=/home/ubuntu/go/src/github.com/ava-labs/avalanchego/bu
 cd /home/ubuntu/avalanche-ops
 avalancheup-aws default-spec \
 --region ap-northeast-2 \
---install-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---install-artifacts-aws-volume-provisioner-local-bin ${AWS_VOLUME_PROVISIONER_BIN_PATH} \
---install-artifacts-aws-ip-provisioner-local-bin ${AWS_IP_PROVISIONER_BIN_PATH} \
---install-artifacts-avalanche-telemetry-cloudwatch-local-bin ${AVALANCHE_TELEMETRY_CLOUDWATCH_BIN_PATH} \
---install-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
---install-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
---install-artifacts-plugin-local-dir ${AVALANCHE_PLUGIN_DIR_PATH} \
+--upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-aws-volume-provisioner-local-bin ${AWS_VOLUME_PROVISIONER_BIN_PATH} \
+--upload-artifacts-aws-ip-provisioner-local-bin ${AWS_IP_PROVISIONER_BIN_PATH} \
+--upload-artifacts-avalanche-telemetry-cloudwatch-local-bin ${AVALANCHE_TELEMETRY_CLOUDWATCH_BIN_PATH} \
+--upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
+--upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGIN_DIR_PATH} \
 --instance-mode=on-demand \
 --ip-mode=elastic \
 --network-name custom \

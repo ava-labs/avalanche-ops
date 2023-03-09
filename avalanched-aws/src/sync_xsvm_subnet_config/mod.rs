@@ -63,7 +63,7 @@ pub fn execute(
     log::info!("validated subnet-id '{}'", converted);
 
     log::info!("loading spec {spec_file_path} for xsvm name {xsvm_name}");
-    let spec = avalancheup_aws::spec::Spec::load(spec_file_path)?;
+    let spec = avalanche_ops::aws::spec::Spec::load(spec_file_path)?;
     let subnet_config_dir = spec.avalanchego_config.subnet_config_dir;
     let xsvm = if let Some(xsvms) = &spec.xsvms {
         if let Some(xsvm) = xsvms.get(xsvm_name) {

@@ -16,7 +16,7 @@ export class AvalancheupInstanceRoleStack extends cdk.Stack {
 
     // ref. https://docs.aws.amazon.com/cdk/api/v1/docs/cloudformation-include-readme.html#non-resource-template-elements
     const tmplAsg = new cfn_include.CfnInclude(this, `included-template-instance-role-${process.env.CLUSTER_ID || ''}`, {
-      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'ec2_instance_role.yaml'),
+      templateFile: path.join('..', '..', 'avalancheup', 'src', 'aws', 'cfn-templates', 'ec2_instance_role.yaml'),
     });
 
     // mutate default parameters
@@ -44,7 +44,7 @@ export class AvalancheupInstanceVpcStack extends cdk.Stack {
 
     // ref. https://docs.aws.amazon.com/cdk/api/v1/docs/cloudformation-include-readme.html#non-resource-template-elements
     const tmplVpc = new cfn_include.CfnInclude(this, `included-template-vpc-${process.env.CLUSTER_ID || ''}`, {
-      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'vpc.yaml'),
+      templateFile: path.join('..', '..', 'avalancheup', 'src', 'aws', 'cfn-templates', 'vpc.yaml'),
     });
 
     // mutate default parameters
@@ -73,7 +73,7 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
 
     // ref. https://docs.aws.amazon.com/cdk/api/v1/docs/cloudformation-include-readme.html#non-resource-template-elements
     const tmplAsg = new cfn_include.CfnInclude(this, `included-template-asg-${process.env.CLUSTER_ID || ''}`, {
-      templateFile: path.join('..', '..', 'bin', 'avalancheup-aws', 'cfn-templates', 'asg_ubuntu.yaml'),
+      templateFile: path.join('..', '..', 'avalancheup', 'src', 'aws', 'cfn-templates', 'asg_ubuntu.yaml'),
     });
 
     // mutate default parameters

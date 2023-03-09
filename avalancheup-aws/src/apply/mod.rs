@@ -32,7 +32,6 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
-use rust_embed::RustEmbed;
 use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "apply";
@@ -72,17 +71,13 @@ pub fn command() -> Command {
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
 pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
-    #[derive(RustEmbed)]
-    #[folder = "cfn-templates/"]
-    #[prefix = "cfn-templates/"]
-    struct Asset;
-
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut spec = avalancheup_aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
+    let mut spec =
+        avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
     let shared_config = aws_manager::load_config(Some(spec.aws_resources.region.clone()))
@@ -109,8 +104,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     // set defaults based on ID
-    if spec.aws_resources.ec2_key_name.is_none() {
-        spec.aws_resources.ec2_key_name = Some(format!("{}-ec2-key", spec.id));
+    if spec.aws_resources.ec2_key_name.is_empty() {
+        spec.aws_resources.ec2_key_name = format!("{}-ec2-key", spec.id);
     }
     if spec
         .aws_resources
@@ -118,11 +113,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .is_none()
     {
         spec.aws_resources.cloudformation_ec2_instance_role =
-            Some(avalancheup_aws::spec::StackName::Ec2InstanceRole(spec.id.clone()).encode());
+            Some(avalanche_ops::aws::spec::StackName::Ec2InstanceRole(spec.id.clone()).encode());
     }
     if spec.aws_resources.cloudformation_vpc.is_none() {
         spec.aws_resources.cloudformation_vpc =
-            Some(avalancheup_aws::spec::StackName::Vpc(spec.id.clone()).encode());
+            Some(avalanche_ops::aws::spec::StackName::Vpc(spec.id.clone()).encode());
     }
 
     // DON'T "spec.aws_resources.cloudformation_asg_anchor_nodes.is_none()"
@@ -163,14 +158,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     if spec.subnet_evms.is_some() {
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm = Some(
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
                 spec.id.clone(),
             )
             .encode(),
         );
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm = Some(
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
                 spec.id.clone(),
             )
             .encode(),
@@ -179,8 +174,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     if spec.xsvms.is_some() {
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm = Some(
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
-                .encode(),
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(
+                spec.id.clone(),
+            )
+            .encode(),
         );
     }
     spec.sync(spec_file_path)?;
@@ -236,164 +233,213 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .await
         .unwrap();
 
-    sleep(Duration::from_secs(1)).await;
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
-        ResetColor
-    )?;
-
-    if let Some(v) = &spec.install_artifacts.avalanched_local_bin {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-        s3_manager
-            .put_object(
-                v,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone()).encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.avalanched_bin");
-    } else {
-        log::info!("skipping uploading avalanched_bin, will be downloaded on remote machines...");
-    }
-
-    if let Some(v) = &spec.install_artifacts.aws_volume_provisioner_local_bin {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                v,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AwsVolumeProvisionerBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.aws_volume_provisioner_bin");
-    } else {
-        log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
-    }
-
-    if let Some(v) = &spec.install_artifacts.aws_ip_provisioner_local_bin {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                v,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.aws_ip_provisioner_bin");
-    } else {
-        log::info!(
-            "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
-        );
-    }
-
-    if let Some(v) = &spec
-        .install_artifacts
-        .avalanche_telemetry_cloudwatch_local_bin
-    {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                v,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
-                    spec.id.clone(),
-                )
-                .encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.avalanche_telemetry_cloudwatch_bin");
-    } else {
-        log::info!(
-            "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
-        );
-    }
-
-    if let Some(v) = &spec.install_artifacts.avalanche_config_local_bin {
-        // don't compress since we need to download this in user data
-        // while instance bootstrapping
-
-        s3_manager
-            .put_object(
-                v,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
-                    .encode(),
-            )
-            .await
-            .expect("failed put_object install_artifacts.avalanche_config_bin");
-    } else {
-        log::info!(
-            "skipping uploading avalanche_config_bin, will be downloaded on remote machines..."
-        );
-    }
-
-    if let Some(avalanchego_bin) = &spec.install_artifacts.avalanchego_local_bin {
-        // upload without compression first
-        s3_manager
-            .put_object(
-                avalanchego_bin,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::AvalancheBin(spec.id.clone()).encode(),
-            )
-            .await
-            .expect("failed put_object avalanchego_bin");
-    } else {
-        log::info!("skipping uploading avalanchego_bin, will be downloaded on remote machines...");
-    }
-
-    if spec.install_artifacts.plugin_local_dir.is_some() {
-        let plugins_dir = spec.install_artifacts.plugin_local_dir.clone().unwrap();
-        for entry in fs::read_dir(plugins_dir.as_str()).unwrap() {
-            let entry = entry.unwrap();
-            let entry_path = entry.path();
-
-            let file_path = entry_path.to_str().unwrap();
-            let file_name = entry.file_name();
-            let file_name = file_name.as_os_str().to_str().unwrap();
-
-            log::info!(
-                "uploading {} from plugins directory {}",
-                file_path,
-                plugins_dir,
-            );
-            s3_manager
-                .put_object(
-                    &file_path,
-                    &spec.aws_resources.s3_bucket,
-                    &format!(
-                        "{}/{}",
-                        &avalancheup_aws::spec::StorageNamespace::PluginDir(spec.id.clone())
-                            .encode(),
-                        file_name,
-                    ),
-                )
-                .await
-                .expect("failed put_object file_path");
+    // set before we update "upload_artifacts"
+    let avalanched_download_source = if let Some(v) = &spec.upload_artifacts {
+        if v.avalanched_local_bin.is_empty() {
+            "github"
+        } else {
+            "s3"
         }
     } else {
-        log::info!("skipping uploading plugin dir...");
-    }
+        "github"
+    };
+    if let Some(v) = &spec.upload_artifacts {
+        sleep(Duration::from_secs(1)).await;
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: upload artifacts to S3 bucket\n"),
+            ResetColor
+        )?;
 
-    log::info!("uploading avalancheup spec file...");
-    s3_manager
-        .put_object(
-            &spec_file_path,
-            &spec.aws_resources.s3_bucket,
-            &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-        )
-        .await
-        .unwrap();
+        if !v.avalanched_local_bin.is_empty() && Path::new(&v.avalanched_local_bin).exists() {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+            s3_manager
+                .put_object(
+                    &v.avalanched_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.avalanched_bin");
+        } else {
+            log::info!(
+                "skipping uploading avalanched_bin, will be downloaded on remote machines..."
+            );
+        }
+
+        if !v.aws_volume_provisioner_local_bin.is_empty()
+            && Path::new(&v.aws_volume_provisioner_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.aws_volume_provisioner_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.aws_volume_provisioner_bin");
+        } else {
+            log::info!("skipping uploading aws_volume_provisioner_bin, will be downloaded on remote machines...");
+        }
+
+        if !v.aws_ip_provisioner_local_bin.is_empty()
+            && Path::new(&v.aws_ip_provisioner_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.aws_ip_provisioner_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::AwsIpProvisionerBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
+        } else {
+            log::info!(
+                "skipping uploading aws_ip_provisioner_bin, will be downloaded on remote machines..."
+            );
+        }
+
+        if !v.avalanche_telemetry_cloudwatch_local_bin.is_empty()
+            && Path::new(&v.avalanche_telemetry_cloudwatch_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.avalanche_telemetry_cloudwatch_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.avalanche_telemetry_cloudwatch_bin");
+        } else {
+            log::info!(
+                "skipping uploading avalanche_telemetry_cloudwatch_bin, will be downloaded on remote machines..."
+            );
+        }
+
+        if !v.avalanche_config_local_bin.is_empty()
+            && Path::new(&v.avalanche_config_local_bin).exists()
+        {
+            // don't compress since we need to download this in user data
+            // while instance bootstrapping
+
+            s3_manager
+                .put_object(
+                    &v.avalanche_config_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheConfigBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
+                )
+                .await
+                .expect("failed put_object upload_artifacts.avalanche_config_bin");
+        } else {
+            log::info!(
+                "skipping uploading avalanche_config_bin, will be downloaded on remote machines..."
+            );
+        }
+
+        if !v.avalanchego_local_bin.is_empty() && Path::new(&v.avalanchego_local_bin).exists() {
+            // upload without compression first
+            s3_manager
+                .put_object(
+                    &v.avalanchego_local_bin,
+                    &spec.aws_resources.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheBin(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object avalanchego_bin");
+        } else {
+            log::info!(
+                "skipping uploading avalanchego_bin, will be downloaded on remote machines..."
+            );
+        }
+
+        if !v.plugin_local_dir.is_empty() && Path::new(&v.plugin_local_dir).exists() {
+            for entry in fs::read_dir(&v.plugin_local_dir).unwrap() {
+                let entry = entry.unwrap();
+                let entry_path = entry.path();
+
+                let file_path = entry_path.to_str().unwrap();
+                let file_name = entry.file_name();
+                let file_name = file_name.as_os_str().to_str().unwrap();
+
+                log::info!(
+                    "uploading {} from plugins directory {}",
+                    file_path,
+                    v.plugin_local_dir,
+                );
+                s3_manager
+                    .put_object(
+                        &file_path,
+                        &spec.aws_resources.s3_bucket,
+                        &format!(
+                            "{}/{}",
+                            &avalanche_ops::aws::spec::StorageNamespace::PluginDir(spec.id.clone())
+                                .encode(),
+                            file_name,
+                        ),
+                    )
+                    .await
+                    .expect("failed put_object file_path");
+            }
+        } else {
+            log::info!("skipping uploading plugin dir...");
+        }
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: uploading metrics rules\n"),
+            ResetColor
+        )?;
+        s3_manager
+            .put_object(
+                &v.prometheus_metrics_rules_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+            )
+            .await
+            .unwrap();
+
+        log::info!("done with uploading artifacts, thus reset!");
+        spec.upload_artifacts = None;
+        spec.sync(spec_file_path)?;
+
+        log::info!("uploading avalancheup spec file...");
+        s3_manager
+            .put_object(
+                &spec_file_path,
+                &spec.aws_resources.s3_bucket,
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            )
+            .await
+            .unwrap();
+    } else {
+        log::info!("skipping uploading artifacts...");
+    }
 
     if spec
         .aws_resources
@@ -414,7 +460,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .unwrap();
 
         spec.aws_resources.kms_cmk_symmetric_default_encrypt_key =
-            Some(avalancheup_aws::aws::KmsCmk {
+            Some(avalanche_ops::aws::spec::KmsCmk {
                 id: key.id,
                 arn: key.arn,
             });
@@ -424,7 +470,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -439,7 +485,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         "avalanche-ops".to_string(),
     );
 
-    if spec.aws_resources.ec2_key_path.is_none() {
+    if !Path::new(&spec.aws_resources.ec2_key_path).exists() {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -447,12 +493,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let ec2_key_path = get_ec2_key_path(spec_file_path);
+        let ec2_key_path = spec.aws_resources.ec2_key_path.clone();
         ec2_manager
-            .create_key_pair(
-                spec.aws_resources.ec2_key_name.clone().unwrap().as_str(),
-                ec2_key_path.as_str(),
-            )
+            .create_key_pair(&spec.aws_resources.ec2_key_name, ec2_key_path.as_str())
             .await
             .unwrap();
 
@@ -475,7 +518,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &tmp_encrypted_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
+                &avalanche_ops::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
                     spec.id.clone(),
                 )
                 .encode(),
@@ -483,34 +526,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .await
             .unwrap();
 
-        spec.aws_resources.ec2_key_path = Some(ec2_key_path);
-        spec.sync(spec_file_path)?;
-
         s3_manager
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .unwrap();
-    }
-
-    if let Some(metrics_rules) = &spec.prometheus_metrics_rules {
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: uploading metrics rules\n"),
-            ResetColor
-        )?;
-
-        let metrics_rules_file_path = random_manager::tmp_path(10, None).unwrap();
-        metrics_rules.sync(&metrics_rules_file_path).unwrap();
-        s3_manager
-            .put_object(
-                &metrics_rules_file_path,
-                &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -528,9 +548,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let ec2_instance_role_yaml = Asset::get("cfn-templates/ec2_instance_role.yaml").unwrap();
         let ec2_instance_role_tmpl =
-            std::str::from_utf8(ec2_instance_role_yaml.data.as_ref()).unwrap();
+            avalanche_ops::aws::artifacts::ec2_instance_role_yaml().unwrap();
         let ec2_instance_role_stack_name = spec
             .aws_resources
             .cloudformation_ec2_instance_role
@@ -555,7 +574,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 ec2_instance_role_stack_name.as_str(),
                 Some(vec![Capability::CapabilityNamedIam]),
                 OnFailure::Delete,
-                ec2_instance_role_tmpl,
+                &ec2_instance_role_tmpl,
                 Some(Vec::from([Tag::builder()
                     .key("KIND")
                     .value("avalanche-ops")
@@ -590,7 +609,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -613,8 +632,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let vpc_yaml = Asset::get("cfn-templates/vpc.yaml").unwrap();
-        let vpc_tmpl = std::str::from_utf8(vpc_yaml.data.as_ref()).unwrap();
+        let vpc_tmpl = avalanche_ops::aws::artifacts::vpc_yaml().unwrap();
         let vpc_stack_name = spec.aws_resources.cloudformation_vpc.clone().unwrap();
         let vpc_params = Vec::from([
             build_param("Id", &spec.id),
@@ -640,7 +658,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 vpc_stack_name.as_str(),
                 None,
                 OnFailure::Delete,
-                vpc_tmpl,
+                &vpc_tmpl,
                 Some(Vec::from([Tag::builder()
                     .key("KIND")
                     .value("avalanche-ops")
@@ -689,7 +707,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -712,10 +730,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ),
         build_param("AadTag", &spec.aad_tag),
         build_param("S3BucketName", &spec.aws_resources.s3_bucket),
-        build_param(
-            "Ec2KeyPairName",
-            &spec.aws_resources.ec2_key_name.clone().unwrap(),
-        ),
+        build_param("Ec2KeyPairName", &spec.aws_resources.ec2_key_name),
         build_param(
             "InstanceProfileArn",
             &spec
@@ -771,11 +786,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ));
     }
 
-    let avalanched_download_source = if spec.install_artifacts.avalanched_local_bin.is_some() {
-        "s3"
-    } else {
-        "github"
-    };
     common_asg_params.push(build_param(
         "AvalanchedDownloadSource",
         avalanched_download_source,
@@ -813,7 +823,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .unwrap();
 
     // TODO: support bootstrap from existing DB for anchor nodes
-    let mut created_nodes: Vec<avalancheup_aws::spec::Node> = Vec::new();
+    let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
 
     let mut asg_launch_template_id = String::new();
     let mut asg_launch_template_version = String::new();
@@ -834,10 +844,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let cloudformation_asg_anchor_nodes_yaml =
-            Asset::get("cfn-templates/asg_ubuntu.yaml").unwrap();
         let cloudformation_asg_anchor_nodes_tmpl =
-            std::str::from_utf8(cloudformation_asg_anchor_nodes_yaml.data.as_ref()).unwrap();
+            avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
         let stack_names = spec
             .aws_resources
             .cloudformation_asg_anchor_nodes
@@ -884,7 +892,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     &stack_names[i],
                     None,
                     OnFailure::Delete,
-                    cloudformation_asg_anchor_nodes_tmpl,
+                    &cloudformation_asg_anchor_nodes_tmpl,
                     Some(Vec::from([Tag::builder()
                         .key("KIND")
                         .value("avalanche-ops")
@@ -1034,8 +1042,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             }
         }
 
-        let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
-        let f = File::open(&ec2_key_path).unwrap();
+        let f = File::open(&spec.aws_resources.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
         println!();
@@ -1062,26 +1069,26 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
                 ip_kind,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
                 spec.aws_resources.region,
@@ -1101,7 +1108,7 @@ aws ssm start-session --region {} --target {}
                 .list_objects(
                     &spec.aws_resources.s3_bucket,
                     Some(&s3::append_slash(
-                        &avalancheup_aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
+                        &avalanche_ops::aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
                             spec.id.clone(),
                         )
                         .encode(),
@@ -1139,7 +1146,7 @@ aws ssm start-session --region {} --target {}
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let anchor_node =
-                avalancheup_aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
+                avalanche_ops::aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             created_nodes.push(anchor_node.clone());
         }
 
@@ -1149,7 +1156,7 @@ aws ssm start-session --region {} --target {}
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -1173,10 +1180,8 @@ aws ssm start-session --region {} --target {}
             ResetColor
         )?;
 
-        let cloudformation_asg_non_anchor_nodes_yaml =
-            Asset::get("cfn-templates/asg_ubuntu.yaml").unwrap();
         let cloudformation_asg_non_anchor_nodes_tmpl =
-            std::str::from_utf8(cloudformation_asg_non_anchor_nodes_yaml.data.as_ref()).unwrap();
+            avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
         let stack_names = spec
             .aws_resources
             .cloudformation_asg_non_anchor_nodes
@@ -1228,7 +1233,7 @@ aws ssm start-session --region {} --target {}
                     &stack_names[i],
                     None,
                     OnFailure::Delete,
-                    cloudformation_asg_non_anchor_nodes_tmpl,
+                    &cloudformation_asg_non_anchor_nodes_tmpl,
                     Some(Vec::from([Tag::builder()
                         .key("KIND")
                         .value("avalanche-ops")
@@ -1378,8 +1383,7 @@ aws ssm start-session --region {} --target {}
             }
         }
 
-        let ec2_key_path = spec.aws_resources.ec2_key_path.clone().unwrap();
-        let f = File::open(&ec2_key_path).unwrap();
+        let f = File::open(&spec.aws_resources.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
         println!();
@@ -1406,26 +1410,26 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
                 ip_kind,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
-                ec2_key_path,
+                spec.aws_resources.ec2_key_path,
                 instance_ip,
                 //
                 spec.aws_resources.region,
@@ -1445,7 +1449,7 @@ aws ssm start-session --region {} --target {}
                 .list_objects(
                     &spec.aws_resources.s3_bucket,
                     Some(&s3::append_slash(
-                        &avalancheup_aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
+                        &avalanche_ops::aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
                             spec.id.clone(),
                         )
                         .encode(),
@@ -1483,7 +1487,7 @@ aws ssm start-session --region {} --target {}
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let non_anchor_node =
-                avalancheup_aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
+                avalanche_ops::aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             created_nodes.push(non_anchor_node.clone());
         }
 
@@ -1491,7 +1495,7 @@ aws ssm start-session --region {} --target {}
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -1557,7 +1561,7 @@ aws ssm start-session --region {} --target {}
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
         http_rpcs.push(http_rpc.clone());
 
-        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
         endpoints.http_rpc = Some(http_rpc.clone());
         endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
         endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
@@ -1585,7 +1589,7 @@ aws ssm start-session --region {} --target {}
         .put_object(
             &spec_file_path,
             &spec.aws_resources.s3_bucket,
-            &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
         .await
         .expect("failed put_object ConfigFile");
@@ -1693,7 +1697,7 @@ aws ssm start-session --region {} --target {}
         for host in rpc_hosts.iter() {
             let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
 
-            let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+            let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
             endpoints.http_rpc = Some(http_rpc.clone());
             endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
             endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
@@ -1803,18 +1807,18 @@ default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
 --region={region} \\
---install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
+--upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --nodes=10 \\
 --blizzard-log-level=info \\
 --blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
 --blizzard-keys-to-generate=100 \\
 --blizzard-workers=10 \\
---blizzard-load-kinds=x-transfers,c-transfers
+--blizzard-load-kinds=x-transfers,evm-transfers
 
 ",
             exec_parent_dir = exec_parent_dir,
-            funded_keys = if let Some(keys) = &spec.test_key_infos {
+            funded_keys = if let Some(keys) = &spec.prefunded_keys {
                 keys.len()
             } else {
                 1
@@ -1826,13 +1830,12 @@ default-spec \\
     )?;
 
     // TODO: support KMS CMK
-    assert!(spec.test_key_infos.is_some());
-    let test_key_info = spec.test_key_infos.clone().unwrap()[0].clone();
-    let test_key_pk = key::secp256k1::private_key::Key::from_cb58(
-        test_key_info.private_key_cb58.clone().unwrap(),
-    )?;
+    assert!(spec.prefunded_keys.is_some());
+    let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
+    let priv_key =
+        key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
 
-    let wallet_to_spend = wallet::Builder::new(&test_key_pk)
+    let wallet_to_spend = wallet::Builder::new(&priv_key)
         .base_http_urls(http_rpcs.clone())
         .build()
         .await
@@ -1871,17 +1874,16 @@ default-spec \\
             Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet subnet-evm...\n\n"),
             ResetColor
         )?;
-        let ssm_doc_yaml =
-            Asset::get("cfn-templates/ssm_doc_restart_node_tracked_subnet_subnet_evm.yaml")
+        let ssm_doc_tmpl =
+            avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_subnet_evm_yaml()
                 .unwrap();
-        let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
             .clone()
             .unwrap();
         let ssm_document_name_restart_tracked_subnet =
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
                 spec.id.clone(),
             )
             .encode();
@@ -1894,7 +1896,7 @@ default-spec \\
                 ssm_doc_stack_name.as_str(),
                 Some(vec![Capability::CapabilityNamedIam]),
                 OnFailure::Delete,
-                ssm_doc_tmpl,
+                &ssm_doc_tmpl,
                 Some(Vec::from([Tag::builder()
                     .key("KIND")
                     .value("avalanche-ops")
@@ -1921,16 +1923,16 @@ default-spec \\
             Print("\n\n\nSTEP: creating an SSM document for restarting node to load chain config subnet-evm...\n\n"),
             ResetColor
         )?;
-        let ssm_doc_yaml =
-            Asset::get("cfn-templates/ssm_doc_restart_node_chain_config_subnet_evm.yaml").unwrap();
-        let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
+        let ssm_doc_tmpl =
+            avalanche_ops::aws::artifacts::ssm_doc_restart_node_chain_config_subnet_evm_yaml()
+                .unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
             .clone()
             .unwrap();
         let ssm_document_name_restart_node_chain_config =
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
                 spec.id.clone(),
             )
             .encode();
@@ -1943,7 +1945,7 @@ default-spec \\
                 ssm_doc_stack_name.as_str(),
                 Some(vec![Capability::CapabilityNamedIam]),
                 OnFailure::Delete,
-                ssm_doc_tmpl,
+                &ssm_doc_tmpl,
                 Some(Vec::from([Tag::builder()
                     .key("KIND")
                     .value("avalanche-ops")
@@ -2006,7 +2008,8 @@ default-spec \\
                 .put_object(
                     &spec_file_path,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
                 )
                 .await
                 .unwrap();
@@ -2189,17 +2192,18 @@ default-spec \\
             Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet xsvm...\n\n"),
             ResetColor
         )?;
-        let ssm_doc_yaml =
-            Asset::get("cfn-templates/ssm_doc_restart_node_tracked_subnet_xsvm.yaml").unwrap();
-        let ssm_doc_tmpl = std::str::from_utf8(ssm_doc_yaml.data.as_ref()).unwrap();
+        let ssm_doc_tmpl =
+            avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_xsvm_yaml().unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .clone()
             .unwrap();
         let ssm_document_name_restart_tracked_subnet =
-            avalancheup_aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
-                .encode();
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(
+                spec.id.clone(),
+            )
+            .encode();
         let cfn_params = Vec::from([build_param(
             "DocumentName",
             &ssm_document_name_restart_tracked_subnet,
@@ -2209,7 +2213,7 @@ default-spec \\
                 ssm_doc_stack_name.as_str(),
                 Some(vec![Capability::CapabilityNamedIam]),
                 OnFailure::Delete,
-                ssm_doc_tmpl,
+                &ssm_doc_tmpl,
                 Some(Vec::from([Tag::builder()
                     .key("KIND")
                     .value("avalanche-ops")
@@ -2276,7 +2280,8 @@ default-spec \\
                 .put_object(
                     &spec_file_path,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup_aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
                 )
                 .await
                 .unwrap();
@@ -2423,7 +2428,7 @@ default-spec \\
         };
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
 
-        let mut endpoints = avalancheup_aws::spec::Endpoints::default();
+        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
         endpoints.http_rpc = Some(http_rpc.clone());
         endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
         endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
@@ -2513,7 +2518,7 @@ default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
 --region={region} \\
---install-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
+--upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
 --instance-mode=spot \\
 --nodes=10 \\
 --blizzard-log-level=info \\
@@ -2523,7 +2528,7 @@ default-spec \\
 --blizzard-load-kinds=x-transfers,evm-transfers
 ",
                 exec_parent_dir = exec_parent_dir,
-                funded_keys = if let Some(keys) = &spec.test_key_infos {
+                funded_keys = if let Some(keys) = &spec.prefunded_keys {
                     keys.len()
                 } else {
                     1
@@ -2545,18 +2550,4 @@ fn build_param(k: &str, v: &str) -> Parameter {
         .parameter_key(k)
         .parameter_value(v)
         .build()
-}
-
-fn get_ec2_key_path(spec_file_path: &str) -> String {
-    let path = Path::new(spec_file_path);
-    let parent_dir = path.parent().unwrap();
-    let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
-    String::from(
-        parent_dir
-            .join(Path::new(new_name.as_str()))
-            .as_path()
-            .to_str()
-            .unwrap(),
-    )
 }
