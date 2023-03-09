@@ -63,7 +63,7 @@ pub fn execute(
     log::info!("validated subnet-id '{}'", converted);
 
     log::info!("loading spec {spec_file_path} for subnet-evm name {subnet_evm_name}");
-    let spec = avalancheup::aws::spec::Spec::load(spec_file_path)?;
+    let spec = avalanche_ops::aws::spec::Spec::load(spec_file_path)?;
     let subnet_config_dir = spec.avalanchego_config.subnet_config_dir;
     let subnet_evm = if let Some(subnet_evms) = &spec.subnet_evms {
         if let Some(subnet_evm) = subnet_evms.get(subnet_evm_name) {

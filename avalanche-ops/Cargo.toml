@@ -1,6 +1,6 @@
 [package]
-name = "avalancheup"
-version = "0.3.0-beta.0" # https://github.com/ava-labs/avalanche-ops/releases
+name = "avalanche-ops"
+version = "0.3.0-beta.0" # https://crates.io/avalanche-ops
 edition = "2021"
 rust-version = "1.67"
 

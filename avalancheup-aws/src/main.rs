@@ -37,7 +37,7 @@ async fn main() -> io::Result<()> {
                 }
             }
 
-            let opt = avalancheup::aws::spec::DefaultSpecOption {
+            let opt = avalanche_ops::aws::spec::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))

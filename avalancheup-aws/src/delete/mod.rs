@@ -99,7 +99,7 @@ pub async fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalancheup::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
+    let spec = avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
 
     let shared_config = aws_manager::load_config(Some(spec.aws_resources.region.clone()))
         .await

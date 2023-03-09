@@ -76,7 +76,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let mut spec = avalancheup::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
+    let mut spec =
+        avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
     let shared_config = aws_manager::load_config(Some(spec.aws_resources.region.clone()))
@@ -112,11 +113,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .is_none()
     {
         spec.aws_resources.cloudformation_ec2_instance_role =
-            Some(avalancheup::aws::spec::StackName::Ec2InstanceRole(spec.id.clone()).encode());
+            Some(avalanche_ops::aws::spec::StackName::Ec2InstanceRole(spec.id.clone()).encode());
     }
     if spec.aws_resources.cloudformation_vpc.is_none() {
         spec.aws_resources.cloudformation_vpc =
-            Some(avalancheup::aws::spec::StackName::Vpc(spec.id.clone()).encode());
+            Some(avalanche_ops::aws::spec::StackName::Vpc(spec.id.clone()).encode());
     }
 
     // DON'T "spec.aws_resources.cloudformation_asg_anchor_nodes.is_none()"
@@ -157,14 +158,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     if spec.subnet_evms.is_some() {
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm = Some(
-            avalancheup::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
                 spec.id.clone(),
             )
             .encode(),
         );
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm = Some(
-            avalancheup::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
                 spec.id.clone(),
             )
             .encode(),
@@ -173,8 +174,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     if spec.xsvms.is_some() {
         spec.aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm = Some(
-            avalancheup::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
-                .encode(),
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(
+                spec.id.clone(),
+            )
+            .encode(),
         );
     }
     spec.sync(spec_file_path)?;
@@ -246,7 +249,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .put_object(
                     &v.avalanched_local_bin,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
                         .encode(),
                 )
                 .await
@@ -267,7 +270,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .put_object(
                     &v.aws_volume_provisioner_local_bin,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
+                    &avalanche_ops::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
                         spec.id.clone(),
                     )
                     .encode(),
@@ -288,8 +291,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .put_object(
                     &v.aws_ip_provisioner_local_bin,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::AwsIpProvisionerBin(spec.id.clone())
-                        .encode(),
+                    &avalanche_ops::aws::spec::StorageNamespace::AwsIpProvisionerBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
@@ -309,7 +314,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .put_object(
                     &v.avalanche_telemetry_cloudwatch_local_bin,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
                         spec.id.clone(),
                     )
                     .encode(),
@@ -332,8 +337,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .put_object(
                     &v.avalanche_config_local_bin,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::AvalancheConfigBin(spec.id.clone())
-                        .encode(),
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheConfigBin(
+                        spec.id.clone(),
+                    )
+                    .encode(),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.avalanche_config_bin");
@@ -349,7 +356,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .put_object(
                     &v.avalanchego_local_bin,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::AvalancheBin(spec.id.clone())
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheBin(spec.id.clone())
                         .encode(),
                 )
                 .await
@@ -380,7 +387,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         &spec.aws_resources.s3_bucket,
                         &format!(
                             "{}/{}",
-                            &avalancheup::aws::spec::StorageNamespace::PluginDir(spec.id.clone())
+                            &avalanche_ops::aws::spec::StorageNamespace::PluginDir(spec.id.clone())
                                 .encode(),
                             file_name,
                         ),
@@ -402,7 +409,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &v.prometheus_metrics_rules_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -416,7 +423,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -443,7 +450,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .unwrap();
 
         spec.aws_resources.kms_cmk_symmetric_default_encrypt_key =
-            Some(avalancheup::aws::spec::KmsCmk {
+            Some(avalanche_ops::aws::spec::KmsCmk {
                 id: key.id,
                 arn: key.arn,
             });
@@ -453,7 +460,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -501,7 +508,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &tmp_encrypted_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
+                &avalanche_ops::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
                     spec.id.clone(),
                 )
                 .encode(),
@@ -513,7 +520,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -531,7 +538,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let ec2_instance_role_tmpl = avalancheup::aws::artifacts::ec2_instance_role_yaml().unwrap();
+        let ec2_instance_role_tmpl =
+            avalanche_ops::aws::artifacts::ec2_instance_role_yaml().unwrap();
         let ec2_instance_role_stack_name = spec
             .aws_resources
             .cloudformation_ec2_instance_role
@@ -591,7 +599,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -614,7 +622,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
-        let vpc_tmpl = avalancheup::aws::artifacts::vpc_yaml().unwrap();
+        let vpc_tmpl = avalanche_ops::aws::artifacts::vpc_yaml().unwrap();
         let vpc_stack_name = spec.aws_resources.cloudformation_vpc.clone().unwrap();
         let vpc_params = Vec::from([
             build_param("Id", &spec.id),
@@ -689,7 +697,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -814,7 +822,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .unwrap();
 
     // TODO: support bootstrap from existing DB for anchor nodes
-    let mut created_nodes: Vec<avalancheup::aws::spec::Node> = Vec::new();
+    let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
 
     let mut asg_launch_template_id = String::new();
     let mut asg_launch_template_version = String::new();
@@ -836,7 +844,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         )?;
 
         let cloudformation_asg_anchor_nodes_tmpl =
-            avalancheup::aws::artifacts::asg_ubuntu_yaml().unwrap();
+            avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
         let stack_names = spec
             .aws_resources
             .cloudformation_asg_anchor_nodes
@@ -1099,7 +1107,7 @@ aws ssm start-session --region {} --target {}
                 .list_objects(
                     &spec.aws_resources.s3_bucket,
                     Some(&s3::append_slash(
-                        &avalancheup::aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
+                        &avalanche_ops::aws::spec::StorageNamespace::DiscoverReadyAnchorNodesDir(
                             spec.id.clone(),
                         )
                         .encode(),
@@ -1137,7 +1145,7 @@ aws ssm start-session --region {} --target {}
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let anchor_node =
-                avalancheup::aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
+                avalanche_ops::aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             created_nodes.push(anchor_node.clone());
         }
 
@@ -1147,7 +1155,7 @@ aws ssm start-session --region {} --target {}
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .unwrap();
@@ -1172,7 +1180,7 @@ aws ssm start-session --region {} --target {}
         )?;
 
         let cloudformation_asg_non_anchor_nodes_tmpl =
-            avalancheup::aws::artifacts::asg_ubuntu_yaml().unwrap();
+            avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
         let stack_names = spec
             .aws_resources
             .cloudformation_asg_non_anchor_nodes
@@ -1440,7 +1448,7 @@ aws ssm start-session --region {} --target {}
                 .list_objects(
                     &spec.aws_resources.s3_bucket,
                     Some(&s3::append_slash(
-                        &avalancheup::aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
+                        &avalanche_ops::aws::spec::StorageNamespace::DiscoverReadyNonAnchorNodesDir(
                             spec.id.clone(),
                         )
                         .encode(),
@@ -1478,7 +1486,7 @@ aws ssm start-session --region {} --target {}
         for obj in objects.iter() {
             let s3_key = obj.key().unwrap();
             let non_anchor_node =
-                avalancheup::aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
+                avalanche_ops::aws::spec::StorageNamespace::parse_node_from_path(s3_key).unwrap();
             created_nodes.push(non_anchor_node.clone());
         }
 
@@ -1486,7 +1494,7 @@ aws ssm start-session --region {} --target {}
             .put_object(
                 &spec_file_path,
                 &spec.aws_resources.s3_bucket,
-                &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -1552,7 +1560,7 @@ aws ssm start-session --region {} --target {}
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
         http_rpcs.push(http_rpc.clone());
 
-        let mut endpoints = avalancheup::aws::spec::Endpoints::default();
+        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
         endpoints.http_rpc = Some(http_rpc.clone());
         endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
         endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
@@ -1580,7 +1588,7 @@ aws ssm start-session --region {} --target {}
         .put_object(
             &spec_file_path,
             &spec.aws_resources.s3_bucket,
-            &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
         .await
         .expect("failed put_object ConfigFile");
@@ -1688,7 +1696,7 @@ aws ssm start-session --region {} --target {}
         for host in rpc_hosts.iter() {
             let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
 
-            let mut endpoints = avalancheup::aws::spec::Endpoints::default();
+            let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
             endpoints.http_rpc = Some(http_rpc.clone());
             endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
             endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
@@ -1867,7 +1875,7 @@ default-spec \\
             ResetColor
         )?;
         let ssm_doc_tmpl =
-            avalancheup::aws::artifacts::ssm_doc_restart_node_tracked_subnet_subnet_evm_yaml()
+            avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_subnet_evm_yaml()
                 .unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
@@ -1875,7 +1883,7 @@ default-spec \\
             .clone()
             .unwrap();
         let ssm_document_name_restart_tracked_subnet =
-            avalancheup::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
                 spec.id.clone(),
             )
             .encode();
@@ -1916,7 +1924,7 @@ default-spec \\
             ResetColor
         )?;
         let ssm_doc_tmpl =
-            avalancheup::aws::artifacts::ssm_doc_restart_node_chain_config_subnet_evm_yaml()
+            avalanche_ops::aws::artifacts::ssm_doc_restart_node_chain_config_subnet_evm_yaml()
                 .unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
@@ -1924,7 +1932,7 @@ default-spec \\
             .clone()
             .unwrap();
         let ssm_document_name_restart_node_chain_config =
-            avalancheup::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(
                 spec.id.clone(),
             )
             .encode();
@@ -2000,7 +2008,8 @@ default-spec \\
                 .put_object(
                     &spec_file_path,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
                 )
                 .await
                 .unwrap();
@@ -2184,15 +2193,17 @@ default-spec \\
             ResetColor
         )?;
         let ssm_doc_tmpl =
-            avalancheup::aws::artifacts::ssm_doc_restart_node_tracked_subnet_xsvm_yaml().unwrap();
+            avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_xsvm_yaml().unwrap();
         let ssm_doc_stack_name = spec
             .aws_resources
             .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
             .clone()
             .unwrap();
         let ssm_document_name_restart_tracked_subnet =
-            avalancheup::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
-                .encode();
+            avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(
+                spec.id.clone(),
+            )
+            .encode();
         let cfn_params = Vec::from([build_param(
             "DocumentName",
             &ssm_document_name_restart_tracked_subnet,
@@ -2269,7 +2280,8 @@ default-spec \\
                 .put_object(
                     &spec_file_path,
                     &spec.aws_resources.s3_bucket,
-                    &avalancheup::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
                 )
                 .await
                 .unwrap();
@@ -2416,7 +2428,7 @@ default-spec \\
         };
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
 
-        let mut endpoints = avalancheup::aws::spec::Endpoints::default();
+        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
         endpoints.http_rpc = Some(http_rpc.clone());
         endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
         endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));

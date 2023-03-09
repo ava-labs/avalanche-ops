@@ -526,14 +526,14 @@ pub fn command() -> Command {
         )
 }
 
-pub async fn execute(opts: avalancheup::aws::spec::DefaultSpecOption) -> io::Result<()> {
+pub async fn execute(opts: avalanche_ops::aws::spec::DefaultSpecOption) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default()
             .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
     );
 
-    let (spec, spec_file_path) = avalancheup::aws::spec::Spec::default_aws(opts)
+    let (spec, spec_file_path) = avalanche_ops::aws::spec::Spec::default_aws(opts)
         .await
         .unwrap();
     spec.validate()?;
