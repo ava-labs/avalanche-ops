@@ -13,7 +13,7 @@ use avalanche_types::{
     subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
     xsvm::genesis as xsvm_genesis,
 };
-use aws_manager::{ec2, kms, sts};
+use aws_manager::{ec2, sts};
 use serde::{Deserialize, Serialize};
 
 pub const VERSION: usize = 2;
