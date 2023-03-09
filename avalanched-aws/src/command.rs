@@ -200,7 +200,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             avalanchego_config,
             coreth_chain_config,
             Vec::new(),
-            avalancheup::aws::default_spec::default_prometheus_rules(),
+            avalancheup::artifacts::prometheus_rules(),
             true,
             0,
             false,
@@ -254,8 +254,18 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
         write_coreth_chain_config_from_spec(&spec)?;
 
-        // TODO: download from S3
-        let metrics_rules = iavalancheup::artifacts::prometheus_rules();
+        // download from S3
+        let tmp_prometheus_metrics_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
+        s3_manager
+            .get_object(
+                &fetched_tags.s3_bucket,
+                &avalancheup::aws::spec::StorageNamespace::MetricsRules(fetched_tags.id.clone())
+                    .encode(),
+                &tmp_prometheus_metrics_file_path,
+            )
+            .await
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+        let metrics_rules = prometheus_manager::Rules::load(&tmp_prometheus_metrics_file_path)?;
 
         let anchor_asg_names =
             if let Some(names) = &spec.aws_resources.cloudformation_asg_anchor_nodes {

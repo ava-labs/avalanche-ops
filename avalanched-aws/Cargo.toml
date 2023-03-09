@@ -26,6 +26,7 @@ command-manager = "0.0.1"
 compress-manager = "0.0.6"
 env_logger = "0.10.0"
 log = "0.4.17"
+prometheus-manager = "0.0.23"
 random-manager = "0.0.5"
 tempfile = "3.4.0"
 tokio = { version = "1.26.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
