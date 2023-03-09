@@ -69,7 +69,9 @@ pub struct Resources {
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// READ ONLY -- DO NOT SET.
+    #[serde(default)]
     pub ec2_key_name: String,
+    #[serde(default)]
     pub ec2_key_path: String,
 
     /// CloudFormation stack name for EC2 instance role.
@@ -764,6 +766,7 @@ impl Spec {
         let mut aws_resources = Resources {
             region: opts.region.clone(),
             s3_bucket,
+            ec2_key_name: format!("{id}-ec2-key"),
             ec2_key_path: get_ec2_key_path(&spec_file_path),
             ..Resources::default()
         };
