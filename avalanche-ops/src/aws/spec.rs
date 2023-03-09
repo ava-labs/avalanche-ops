@@ -953,7 +953,7 @@ impl Spec {
                 id,
                 aad_tag: opts.aad_tag,
 
-                resources: resources,
+                resources,
                 machine,
                 upload_artifacts,
 

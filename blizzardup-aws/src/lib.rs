@@ -184,7 +184,7 @@ impl Spec {
         Self {
             id,
 
-            resources: resources,
+            resources,
             machine,
             upload_artifacts,
 
