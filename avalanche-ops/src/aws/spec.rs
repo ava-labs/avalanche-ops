@@ -94,6 +94,7 @@ pub struct Spec {
     /// to each subnet/chain configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subnet_evms: Option<BTreeMap<String, SubnetEvm>>,
+
     /// Use sorted map in order to map each tracked subnet id (placeholder)
     /// to each subnet configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
