@@ -128,7 +128,7 @@ pub fn command() -> Command {
         )
 }
 
-pub  fn execute(opts: Flags) -> io::Result<()> {
+pub fn execute(opts: Flags) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default()
