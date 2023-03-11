@@ -34,7 +34,7 @@ pub struct Flags {
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Writes a default genesis")
+        .about("Writes a default genesis file for subnet-evm")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")

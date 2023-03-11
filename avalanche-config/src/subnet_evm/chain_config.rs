@@ -30,7 +30,7 @@ pub struct Flags {
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Writes a default chain config")
+        .about("Writes a default chain configuration for subnet-evm")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")

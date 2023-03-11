@@ -20,7 +20,7 @@ pub struct Flags {
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Writes a default configuration")
+        .about("Writes a default subnet configuration")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")

@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 avalanche-ops = { path = "../avalanche-ops" }
-avalanche-types = { version = "0.0.282", features = ["avalanchego", "cert", "jsonrpc_client", "wallet", "subnet", "subnet_evm", "kms_aws", "xsvm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.283", features = ["avalanchego", "cert", "jsonrpc_client", "wallet", "subnet", "subnet_evm", "kms_aws", "xsvm"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.24.24", features = ["cloudformation", "cloudwatch", "ec2", "s3", "ssm", "sts"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudformation = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
