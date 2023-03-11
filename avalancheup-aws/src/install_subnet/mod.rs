@@ -44,6 +44,8 @@ pub struct Flags {
     pub region: String,
     pub s3_bucket: String,
     pub s3_key_vm_binary: String,
+    pub s3_key_subnet_config: String,
+    pub s3_key_chain_config: String,
     pub ssm_doc: String,
 
     pub node_ids_to_instance_ids: HashMap<String, String>,
@@ -189,6 +191,22 @@ pub fn command() -> Command {
                 .long("s3-key-vm-binary")
                 .help("Sets the S3 key for the Vm binary (if empty, default to file name)")
                 .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("S3_KEY_SUBNET_CONFIG")
+                .long("s3-key-subnet-config")
+                .help("Sets the S3 key for the subnet config")
+                .required(false)
+                .default_value("subnet-config.json")
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("S3_KEY_CHAIN_CONFIG")
+                .long("s3-key-chain-config")
+                .help("Sets the S3 key for the subnet chain config")
+                .required(false)
+                .default_value("subnet-chain-config.json")
                 .num_args(1),
         )
         .arg(
@@ -412,9 +430,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print(
-                "\n\n\nSTEP: update subnet config by sending SSM commands to remote machines\n\n"
-            ),
+            Print("\n\n\nSTEP: upload subnet config to S3\n\n"),
             ResetColor
         )?;
         // TODO: write subnet config if not empty on remote machines
@@ -455,9 +471,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print(
-                "\n\n\nSTEP: update subnet chain config by sending SSM commands to remote machines\n\n"
-            ),
+            Print("\n\n\nSTEP: upload subnet chain config to S3\n\n"),
             ResetColor
         )?;
         // TODO: write chain config if not empty on remote machines

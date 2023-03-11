@@ -2153,6 +2153,9 @@ default-spec \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --region {region} \\
 --s3-bucket {s3_bucket} \\
+--s3-key-vm-binary {id}/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
+--s3-key-subnet-config {id}/subnet-config.json \\
+--s3-key-chain-config {id}/subnet-chain-config.json \\
 --ssm-doc {ssm_doc_name} \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 ",
@@ -2162,6 +2165,7 @@ default-spec \\
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
             region = spec.resources.region,
             s3_bucket = spec.resources.s3_bucket,
+            id = spec.id,
             ssm_doc_name = ssm_install_subnet_doc_name,
             nodes_to_instances = nodes_to_instances,
         )),

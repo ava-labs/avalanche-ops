@@ -373,6 +373,14 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("S3_KEY_VM_BINARY")
                     .unwrap_or(&String::new())
                     .clone(),
+                s3_key_subnet_config: sub_matches
+                    .get_one::<String>("S3_KEY_SUBNET_CONFIG")
+                    .unwrap_or(&"subnet-config.json".to_string())
+                    .clone(),
+                s3_key_chain_config: sub_matches
+                    .get_one::<String>("S3_KEY_CHAIN_CONFIG")
+                    .unwrap_or(&"subnet-chain-config.json".to_string())
+                    .clone(),
                 ssm_doc: sub_matches.get_one::<String>("SSM_DOC").unwrap().clone(),
 
                 node_ids_to_instance_ids,
