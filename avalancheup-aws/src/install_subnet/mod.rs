@@ -194,6 +194,17 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         }
     }
 
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: uploading VM binary to S3\n\n"),
+        ResetColor
+    )?;
     if !Path::new(&opts.vm_binary_path).exists() {
         return Err(Error::new(
             ErrorKind::InvalidInput,
@@ -213,26 +224,116 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
     // TODO: upload VM binary to S3
 
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: loading wallets to install subnets\n\n"),
+        ResetColor
+    )?;
     // TODO: load wallet
 
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: adding all nodes as primary network validators if not yet\n\n"),
+        ResetColor
+    )?;
     // TODO: add nodes as primary network validator if not yet
 
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: creating a subnet\n\n"),
+        ResetColor
+    )?;
     // TODO: create subnet
 
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: track the subnet in remote nodes\n\n"),
+        ResetColor
+    )?;
     // TODO: track subnet by restarting nodes
 
     if !opts.subnet_config_path.is_empty() {
+        //
+        //
+        //
+        //
+        //
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(
+                "\n\n\nSTEP: update subnet config by sending SSM commands to remote machines\n\n"
+            ),
+            ResetColor
+        )?;
         // TODO: write subnet config if not empty on remote machines
-        log::info!("subnet config not empty -- sending SSM commands to write subnet config on remote machines");
     }
 
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: adding all nodes as subnet validators\n\n"),
+        ResetColor
+    )?;
     // TODO: add nodes as subnet network validator if not yet
 
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: creating a blockchain with the genesis\n\n"),
+        ResetColor
+    )?;
     // TODO: create blockchain with genesis
 
     if !opts.chain_config_path.is_empty() {
+        //
+        //
+        //
+        //
+        //
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(
+                "\n\n\nSTEP: update subnet chain config by sending SSM commands to remote machines\n\n"
+            ),
+            ResetColor
+        )?;
         // TODO: write chain config if not empty on remote machines
-        log::info!("chain config not empty -- sending SSM commands to write chain config on remote machines");
     }
 
     Ok(())

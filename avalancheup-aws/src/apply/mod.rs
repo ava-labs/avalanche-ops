@@ -2136,7 +2136,7 @@ default-spec \\
 --ssm-doc {ssm_doc_name} \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 
-# to customize subnet config and others
+# to customize subnet config (and others)
 # use '--s3-key-vm-binary my-vm-binary-s3-key.v1' to customize s3 key path for binary
 {exec_path} install-subnet \\
 --log-level info \\
