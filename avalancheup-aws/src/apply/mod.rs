@@ -2027,12 +2027,12 @@ default-spec \\
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{exec_parent_dir}/avalanche-config subnet-config \\
+            "{exec_path} subnet-config \\
 --log-level=info \\
 --proposer-min-block-delay 250000000 \\
 --file-path /tmp/subnet-config.json
 ",
-            exec_parent_dir = exec_parent_dir,
+            exec_path = exec_path.display(),
         )),
         ResetColor
     )?;
@@ -2056,7 +2056,7 @@ default-spec \\
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{exec_parent_dir}/avalanche-config subnet-evm chain-config \\
+            "{exec_path} subnet-evm chain-config \\
 --log-level=info \\
 --tx-pool-account-slots 1000000 \\
 --tx-pool-global-slots 10000000000 \\
@@ -2068,7 +2068,7 @@ default-spec \\
 --priority-regossip-txs-per-address 100{priority_regossip_addresses_flag} \\
 --file-path /tmp/subnet-evm-chain-config.json
 ",
-            exec_parent_dir = exec_parent_dir,
+            exec_path = exec_path.display(),
             priority_regossip_addresses_flag = priority_regossip_addresses_flag,
         )),
         ResetColor
@@ -2100,7 +2100,7 @@ default-spec \\
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{exec_parent_dir}/avalanche-config subnet-evm genesis \\
+            "{exec_path} subnet-evm genesis \\
 --log-level=info \\
 --seed-eth-addresses {seed_eth_addresses} \\
 --gas-limit 300000000 \\
@@ -2113,7 +2113,7 @@ default-spec \\
 --block-gas-cost-step 500000 \\
 --file-path /tmp/subnet-evm-genesis.json
 ",
-            exec_parent_dir = exec_parent_dir,
+            exec_path = exec_path.display(),
             seed_eth_addresses = seed_eth_addresses,
         )),
         ResetColor
@@ -2131,6 +2131,7 @@ default-spec \\
 --key {priv_key_hex} \\
 --staking-perioid-in-days 14 \\
 --vm-binary-path REPLACE_ME \\
+--chain-name subnetevm \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --region {region} \\
 --s3-bucket {s3_bucket} \\
@@ -2138,7 +2139,7 @@ default-spec \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 
 # to customize subnet config (and others)
-# use '--s3-key-vm-binary my-vm-binary-s3-key.v1' to customize s3 key path for binary
+# use '--s3-key-vm-binary' to customize s3 key path for binary
 {exec_path} install-subnet \\
 --log-level info \\
 --chain-rpc-url {chain_rpc_url} \\
@@ -2146,6 +2147,8 @@ default-spec \\
 --staking-perioid-in-days 14 \\
 --subnet-config-path /tmp/subnet-config.json \\
 --vm-binary-path REPLACE_ME \\
+--vm-id srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
+--chain-name subnetevm \\
 --chain-config-path /tmp/subnet-evm-chain-config.json \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --region {region} \\

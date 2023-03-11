@@ -5,7 +5,11 @@ use std::{
     str::FromStr,
 };
 
-use avalanche_types::{ids::node, jsonrpc::client::info as json_client_info, key, units, wallet};
+use avalanche_types::{
+    ids::{self, node},
+    jsonrpc::client::info as json_client_info,
+    key, subnet, units, wallet,
+};
 use aws_manager::{self, s3, ssm, sts};
 use clap::{value_parser, Arg, Command};
 use crossterm::{
@@ -32,6 +36,8 @@ pub struct Flags {
 
     pub subnet_config_path: String,
     pub vm_binary_path: String,
+    pub vm_id: String,
+    pub chain_name: String,
     pub chain_config_path: String,
     pub chain_genesis_path: String,
 
@@ -136,6 +142,20 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("VM_ID")
+                .long("vm-id")
+                .help("Sets the 32-byte Vm Id for the Vm binary (if empty, converts chain name to Id)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("CHAIN_NAME")
+                .long("chain-name")
+                .help("Sets the chain name")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("CHAIN_CONFIG_PATH")
                 .long("chain-config-path")
                 .help("Chain configuration file path")
@@ -167,7 +187,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("S3_KEY_VM_BINARY")
                 .long("s3-key-vm-binary")
-                .help("Sets the S3 key for the Vm binary")
+                .help("Sets the S3 key for the Vm binary (if empty, default to file name)")
                 .required(false)
                 .num_args(1),
         )
@@ -194,16 +214,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "\nInstalling subnet with chain rpc url '{}', subnet config '{}', VM binary '{}', chain config '{}', chain genesis '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
-            opts.chain_rpc_url, opts.subnet_config_path, opts.vm_binary_path, opts.chain_config_path, opts.chain_genesis_path, opts.staking_period_in_days, opts.staking_amount_in_avax, opts.node_ids_to_instance_ids,
-        )),
-        ResetColor
-    )?;
-
     if !Path::new(&opts.vm_binary_path).exists() {
         return Err(Error::new(
             ErrorKind::InvalidInput,
@@ -211,10 +221,24 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ));
     }
 
+    let vm_id = if opts.vm_id.is_empty() {
+        subnet::vm_name_to_id(&opts.chain_name)?
+    } else {
+        ids::Id::from_str(&opts.vm_id)?
+    };
+
+    let s3_key_vm_binary = if !opts.s3_key_vm_binary.is_empty() {
+        opts.s3_key_vm_binary.clone()
+    } else {
+        let file_stem = Path::new(&opts.vm_binary_path).file_stem().unwrap();
+        file_stem.to_str().unwrap().to_string()
+    };
+
     let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
         .await
         .unwrap();
     let network_id = resp.result.unwrap().network_id;
+
     let priv_key = key::secp256k1::private_key::Key::from_hex(&opts.key)?;
     let wallet_to_spend = wallet::Builder::new(&priv_key)
         .base_http_url(opts.chain_rpc_url.clone())
@@ -230,6 +254,27 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         "loaded wallet '{p_chain_address}', fetched its P-chain balance {} AVAX ({p_chain_balance} nAVAX, network id {network_id})",
         units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))
     );
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', subnet config '{}', VM binary '{}', VM Id '{}', chain name '{}', chain config '{}', chain genesis '{}', staking period in days '{}', staking amount in avax '{}', S3 bucket '{}', S3 key vm binary '{}', node ids to instance ids '{:?}'\n",
+            opts.chain_rpc_url,
+            opts.subnet_config_path,
+            opts.vm_binary_path,
+            vm_id,
+            opts.chain_name,
+            opts.chain_config_path,
+            opts.chain_genesis_path,
+            opts.staking_period_in_days,
+            opts.staking_amount_in_avax,
+            opts.s3_bucket,
+            s3_key_vm_binary,
+            opts.node_ids_to_instance_ids,
+        )),
+        ResetColor
+    )?;
 
     let shared_config = aws_manager::load_config(Some(opts.region.clone())).await?;
     let sts_manager = sts::Manager::new(&shared_config);
@@ -276,12 +321,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: uploading VM binary to S3\n\n"),
         ResetColor
     )?;
-    let s3_key_vm_binary = if !opts.s3_key_vm_binary.is_empty() {
-        opts.s3_key_vm_binary.clone()
-    } else {
-        let file_stem = Path::new(&opts.vm_binary_path).file_stem().unwrap();
-        file_stem.to_str().unwrap().to_string()
-    };
     log::info!(
         "uploading vm binary '{}' to {} {s3_key_vm_binary}",
         opts.vm_binary_path,
@@ -359,7 +398,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: track the subnet in remote nodes\n\n"),
+        Print("\n\n\nSTEP: send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
         ResetColor
     )?;
     // TODO: track subnet by restarting nodes
