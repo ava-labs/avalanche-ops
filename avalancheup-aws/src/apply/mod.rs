@@ -1941,12 +1941,12 @@ default-spec \\
         .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
         .clone()
         .unwrap();
-    let ssm_document_name_restart_tracked_subnet =
+    let ssm_document_name_restart_tracked_subnet_xsvm =
         avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
             .encode();
     let cfn_params = Vec::from([build_param(
         "DocumentName",
-        &ssm_document_name_restart_tracked_subnet,
+        &ssm_document_name_restart_tracked_subnet_xsvm,
     )]);
     cloudformation_manager
         .create_stack(
