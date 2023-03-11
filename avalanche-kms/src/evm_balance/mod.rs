@@ -48,7 +48,7 @@ pub async fn execute(log_level: &str, chain_rpc_url: &str, addr: H160) -> io::Re
         "{} balance: {} ({} ETH/AVAX)",
         addr,
         balance,
-        units::cast_navax_to_avax_i64(balance)
+        units::cast_evm_navax_to_avax_i64(balance)
     );
 
     Ok(())

@@ -4,6 +4,9 @@ use std::{
     path::Path,
 };
 
+use avalanche_types::{jsonrpc::client::info as json_client_info, key, units, wallet};
+use aws_manager::{self, s3, ssm, sts};
+use aws_sdk_ssm::model::CommandInvocationStatus;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -178,10 +181,38 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ResetColor
     )?;
 
+    let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
+        .await
+        .unwrap();
+    let network_id = resp.result.unwrap().network_id;
+    let priv_key = key::secp256k1::private_key::Key::from_hex(&opts.key)?;
+    let wallet_to_spend = wallet::Builder::new(&priv_key)
+        .base_http_url(opts.chain_rpc_url.clone())
+        .build()
+        .await
+        .unwrap();
+    let p_chain_balance = wallet_to_spend.p().balance().await.unwrap();
+    let p_chain_address = priv_key
+        .to_public_key()
+        .to_hrp_address(network_id, "P")
+        .unwrap();
+    log::info!(
+        "loaded wallet '{p_chain_address}', fetched its P-chain balance {} AVAX ({p_chain_balance} nAVAX, network id {network_id})",
+        units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))
+    );
+
+    let shared_config = aws_manager::load_config(Some(opts.region.clone())).await?;
+    let sts_manager = sts::Manager::new(&shared_config);
+    let s3_manager = s3::Manager::new(&shared_config);
+    let _ssm_manager = ssm::Manager::new(&shared_config);
+
+    let current_identity = sts_manager.get_identity().await.unwrap();
+    log::info!("current AWS identity: {:?}", current_identity);
+
     if !opts.skip_prompt {
         let options = &[
-            "No, I am not ready to install a subnet.",
-            "Yes, let's install a subnet.",
+            format!("No, I am not ready to install a subnet with the wallet {p_chain_address} of balance {} AVAX", units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))).to_string(),
+            format!("Yes, let's install a subnet with the wallet {p_chain_address} of balance {} AVAX", units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))).to_string(),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select your 'install-subnet' option")
@@ -222,20 +253,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         opts.vm_binary_path,
         opts.s3_bucket
     );
-    // TODO: upload VM binary to S3
-
-    //
-    //
-    //
-    //
-    //
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: loading wallets to install subnets\n\n"),
-        ResetColor
-    )?;
-    // TODO: load wallet
+    s3_manager
+        .put_object(&opts.vm_binary_path, &opts.s3_bucket, &s3_key_vm_binary)
+        .await
+        .expect("failed put_object vm_binary_path");
 
     //
     //

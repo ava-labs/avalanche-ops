@@ -101,11 +101,11 @@ pub async fn execute(
         let options = &[
             format!(
                 "No, I am not ready to transfer {transfer_amount_navax} ({} ETH/AVX) from {} to total {} addresses: {:?}",
-                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address, transferee_addrs.len(), transferee_addrs
+                units::cast_evm_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address, transferee_addrs.len(), transferee_addrs
             ),
             format!(
                 "Yes, let's transfer {transfer_amount_navax} ({} ETH/AVX) from {} to total {} addresses: {:?}",
-                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address, transferee_addrs.len(), transferee_addrs
+                units::cast_evm_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address, transferee_addrs.len(), transferee_addrs
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -127,7 +127,7 @@ pub async fn execute(
             SetForegroundColor(Color::Green),
             Print(format!(
                 "\ntransfering {transfer_amount_navax} ({} ETH/AVAX) from {} to {transferee_addr} via {chain_rpc_url}\n",
-                units::cast_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
+                units::cast_evm_navax_to_avax_i64(transfer_amount_navax), transferer_key_info.eth_address
             )),
             ResetColor
         )?;
@@ -146,7 +146,7 @@ pub async fn execute(
             "transferrer {} current balance: {} ({} ETH/AVAX)",
             transferer_key_info.eth_address,
             transferer_balance,
-            units::cast_navax_to_avax_i64(transferer_balance)
+            units::cast_evm_navax_to_avax_i64(transferer_balance)
         );
         let transferee_balance =
             json_client_evm::get_balance(chain_rpc_url, *transferee_addr).await?;
@@ -154,7 +154,7 @@ pub async fn execute(
             "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
             transferee_addr,
             transferee_balance,
-            units::cast_navax_to_avax_i64(transferee_balance)
+            units::cast_evm_navax_to_avax_i64(transferee_balance)
         );
 
         let tx_id = transferer_evm_wallet
