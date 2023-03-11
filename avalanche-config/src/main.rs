@@ -140,7 +140,7 @@ fn main() {
             Some((subnet_evm::genesis::NAME, sub_sub_matches)) => {
                 let s = sub_sub_matches
                     .get_one::<String>("SEED_ETH_ADDRESSES")
-                    .unwrap_or(&String::new())
+                    .unwrap()
                     .clone();
                 let ss: Vec<&str> = s.split(',').collect();
                 let mut seed_eth_addresses = Vec::new();
