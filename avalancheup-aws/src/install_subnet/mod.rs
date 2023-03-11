@@ -6,7 +6,7 @@ use std::{
 
 use avalanche_types::{jsonrpc::client::info as json_client_info, key, units, wallet};
 use aws_manager::{self, s3, ssm, sts};
-use clap::{Arg, Command};
+use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
@@ -25,6 +25,8 @@ pub struct Flags {
 
     pub chain_rpc_url: String,
     pub key: String,
+    pub staking_in_days: usize,
+    pub staking_amount_in_avax: u64,
 
     pub subnet_config_path: String,
     pub vm_binary_path: String,
@@ -96,6 +98,26 @@ pub fn command() -> Command {
                 .help("Sets the key Id (if hotkey, use private key in hex format)")
                 .required(true)
                 .num_args(1),
+        )
+        .arg(
+            Arg::new("STAKING_IN_DAYS")
+                .long("staking-in-days")
+                .help("Sets the number of days to stake the node (primary network + subnet)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("14"),
+        )
+        .arg(
+            Arg::new("STAKING_AMOUNT_IN_AVAX")
+                .long("staking-amount-in-avax")
+                .help(
+                    "Sets the staking amount in avax (not in nAVAX) for primary network validator",
+                )
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("2000"),
         )
         .arg(
             Arg::new("SUBNET_CONFIG_PATH")
@@ -174,11 +196,18 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with chain rpc url '{}', subnet config '{}', VM binary '{}', chain config '{}', chain genesis '{}', node ids to instance ids '{:?}'\n",
-            opts.chain_rpc_url, opts.subnet_config_path, opts.vm_binary_path, opts.chain_config_path, opts.chain_genesis_path, opts.node_ids_to_instance_ids,
+            "\nInstalling subnet with chain rpc url '{}', subnet config '{}', VM binary '{}', chain config '{}', chain genesis '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            opts.chain_rpc_url, opts.subnet_config_path, opts.vm_binary_path, opts.chain_config_path, opts.chain_genesis_path, opts.staking_in_days, opts.staking_amount_in_avax, opts.node_ids_to_instance_ids,
         )),
         ResetColor
     )?;
+
+    if !Path::new(&opts.vm_binary_path).exists() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("vm binary '{}' not found", opts.vm_binary_path),
+        ));
+    }
 
     let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
         .await
@@ -210,8 +239,18 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
     if !opts.skip_prompt {
         let options = &[
-            format!("No, I am not ready to install a subnet with the wallet {p_chain_address} of balance {} AVAX", units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))).to_string(),
-            format!("Yes, let's install a subnet with the wallet {p_chain_address} of balance {} AVAX", units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))).to_string(),
+            format!(
+                "No, I am not ready to install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, staking {} days",
+                    units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
+                    opts.staking_amount_in_avax,
+                    opts.staking_in_days,
+            ).to_string(),
+            format!(
+                "Yes, let's install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, staking {} days",
+                    units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
+                    opts.staking_amount_in_avax,
+                    opts.staking_in_days,
+                ).to_string(),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select your 'install-subnet' option")
@@ -235,12 +274,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: uploading VM binary to S3\n\n"),
         ResetColor
     )?;
-    if !Path::new(&opts.vm_binary_path).exists() {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            format!("vm binary '{}' not found", opts.vm_binary_path),
-        ));
-    }
     let s3_key_vm_binary = if !opts.s3_key_vm_binary.is_empty() {
         opts.s3_key_vm_binary.clone()
     } else {
@@ -268,6 +301,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: adding all nodes as primary network validators if not yet\n\n"),
         ResetColor
     )?;
+    // let start_time =
+    // let end_time =
     // TODO: add nodes as primary network validator if not yet
 
     //
