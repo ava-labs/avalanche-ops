@@ -6,7 +6,6 @@ use std::{
 
 use avalanche_types::{jsonrpc::client::info as json_client_info, key, units, wallet};
 use aws_manager::{self, s3, ssm, sts};
-use aws_sdk_ssm::model::CommandInvocationStatus;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
