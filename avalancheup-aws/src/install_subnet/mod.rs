@@ -14,6 +14,7 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use serde::{Deserialize, Serialize};
+use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "install-subnet";
 
@@ -331,7 +332,24 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: creating a subnet\n\n"),
         ResetColor
     )?;
-    // TODO: create subnet
+    let subnet_id = wallet_to_spend
+        .p()
+        .create_subnet()
+        .dry_mode(true)
+        .issue()
+        .await
+        .unwrap();
+    log::info!("[dry mode] subnet Id '{}'", subnet_id);
+
+    let created_subnet_id = wallet_to_spend
+        .p()
+        .create_subnet()
+        .check_acceptance(true)
+        .issue()
+        .await
+        .unwrap();
+    log::info!("created subnet '{}' (still need track)", created_subnet_id);
+    sleep(Duration::from_secs(10)).await;
 
     //
     //
