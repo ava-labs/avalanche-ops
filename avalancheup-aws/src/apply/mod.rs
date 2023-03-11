@@ -170,6 +170,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
             .encode(),
     );
+    spec.resources.cloudformation_ssm_install_subnet =
+        Some(avalanche_ops::aws::spec::StackName::SsmInstallSubnet(spec.id.clone()).encode());
     spec.sync(spec_file_path)?;
 
     execute!(
@@ -1973,6 +1975,52 @@ default-spec \\
         .await
         .unwrap();
     log::info!("created ssm document for restarting node with tracked subnet");
+
+    //
+    //
+    //
+    //
+    //
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: creating an SSM document for installing subnet...\n\n"),
+        ResetColor
+    )?;
+    let ssm_doc_tmpl = avalanche_ops::aws::artifacts::ssm_install_subnet_yaml().unwrap();
+    let ssm_doc_stack_name = spec
+        .resources
+        .cloudformation_ssm_install_subnet
+        .clone()
+        .unwrap();
+    let ssm_install_subnet_doc_name =
+        avalanche_ops::aws::spec::StackName::SsmInstallSubnet(spec.id.clone()).encode();
+    let cfn_params = Vec::from([build_param("DocumentName", &ssm_install_subnet_doc_name)]);
+    cloudformation_manager
+        .create_stack(
+            ssm_doc_stack_name.as_str(),
+            Some(vec![Capability::CapabilityNamedIam]),
+            OnFailure::Delete,
+            &ssm_doc_tmpl,
+            Some(Vec::from([Tag::builder()
+                .key("KIND")
+                .value("avalanche-ops")
+                .build()])),
+            Some(cfn_params),
+        )
+        .await
+        .unwrap();
+    sleep(Duration::from_secs(10)).await;
+    cloudformation_manager
+        .poll_stack(
+            ssm_doc_stack_name.as_str(),
+            StackStatus::CreateComplete,
+            Duration::from_secs(500),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+    log::info!("created ssm document for installing subnet");
 
     //
     //

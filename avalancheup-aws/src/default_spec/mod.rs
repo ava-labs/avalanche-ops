@@ -318,6 +318,25 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("SPEC_FILE_PATH")
+                .long("spec-file-path")
+                .short('s')
+                .help("The config file to create")
+                .required(false)
+                .num_args(1),
+        )
+        // TODO: to remove
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        .arg(
             Arg::new("SUBNET_EVMS")
                 .long("subnet-evms")
                 .help("Sets the number of subnet-evms")
@@ -506,14 +525,6 @@ pub fn command() -> Command {
                 .num_args(1)
                 .value_parser(value_parser!(usize))
                 .default_value("0"),
-        )
-        .arg(
-            Arg::new("SPEC_FILE_PATH")
-                .long("spec-file-path")
-                .short('s')
-                .help("The config file to create")
-                .required(false)
-                .num_args(1),
         )
 }
 

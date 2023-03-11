@@ -237,6 +237,19 @@ pub async fn execute(
             .unwrap();
     }
 
+    if let Some(ssm_doc_stack_name) = &spec.resources.cloudformation_ssm_install_subnet {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: triggering delete SSM document for installing subnet\n"),
+            ResetColor
+        )?;
+        cloudformation_manager
+            .delete_stack(ssm_doc_stack_name)
+            .await
+            .unwrap();
+    }
+
     sleep(Duration::from_secs(1)).await;
     execute!(
         stdout(),
@@ -417,6 +430,26 @@ pub async fn execute(
         cloudformation_manager
             .poll_stack(
                 ec2_instance_role_stack_name.as_str(),
+                StackStatus::DeleteComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+    }
+
+    if let Some(ssm_doc_stack_name) = &spec.resources.cloudformation_ssm_install_subnet {
+        sleep(Duration::from_secs(1)).await;
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print("\n\n\nSTEP: confirming delete SSM document for installing subnet\n"),
+            ResetColor
+        )?;
+        cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
                 StackStatus::DeleteComplete,
                 Duration::from_secs(500),
                 Duration::from_secs(30),

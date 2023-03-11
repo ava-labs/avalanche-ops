@@ -1,8 +1,9 @@
 mod apply;
 mod default_spec;
 mod delete;
+mod install_subnet;
 
-use std::io;
+use std::{collections::HashMap, io};
 
 use clap::{crate_version, Command};
 
@@ -19,6 +20,7 @@ async fn main() -> io::Result<()> {
             default_spec::command(),
             apply::command(),
             delete::command(),
+            install_subnet::command(),
         ])
         .get_matches();
 
@@ -309,6 +311,48 @@ async fn main() -> io::Result<()> {
             )
             .await
             .expect("failed to execute 'delete'");
+        }
+
+        Some((install_subnet::NAME, sub_matches)) => {
+            let node_ids_to_instance_ids = sub_matches
+                .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
+                .unwrap()
+                .clone();
+            install_subnet::execute(install_subnet::Flags {
+                log_level: sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+
+                chain_rpc_url: sub_matches
+                    .get_one::<String>("CHAIN_RPC_URL")
+                    .unwrap()
+                    .clone(),
+                key: sub_matches.get_one::<String>("KEY").unwrap().clone(),
+
+                subnet_config_path: sub_matches
+                    .get_one::<String>("SUBNET_CONFIG_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
+                vm_binary_path: sub_matches
+                    .get_one::<String>("VM_BINARY_PATH")
+                    .unwrap()
+                    .clone(),
+                chain_genesis_path: sub_matches
+                    .get_one::<String>("CHAIN_GENESIS_PATH")
+                    .unwrap()
+                    .clone(),
+                chain_config_path: sub_matches
+                    .get_one::<String>("CHAIN_CONFIG_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
+
+                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
+                node_ids_to_instance_ids,
+            })
+            .await
+            .expect("failed to execute 'install-subnet'");
         }
 
         _ => unreachable!("unknown subcommand"),
