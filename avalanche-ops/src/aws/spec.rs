@@ -238,6 +238,10 @@ pub struct Resources {
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: Option<String>,
+    /// CloudFormation stack name for SSM document that installs subnet.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_install_subnet: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudwatch_avalanche_metrics_namespace: Option<String>,
@@ -298,6 +302,7 @@ impl Resources {
             cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: None,
             cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,
             cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: None,
+            cloudformation_ssm_install_subnet: None,
             cloudwatch_avalanche_metrics_namespace: None,
 
             created_nodes: None,
@@ -558,7 +563,11 @@ impl Spec {
 
         let subnet_evms = {
             if opts.subnet_evms > 0 {
-                let mut genesis = subnet_evm_genesis::Genesis::new(&prefunded_pubkeys)
+                let mut seed_eth_addrs = Vec::new();
+                for k in prefunded_pubkeys.iter() {
+                    seed_eth_addrs.push(k.to_eth_address());
+                }
+                let mut genesis = subnet_evm_genesis::Genesis::new(seed_eth_addrs)
                     .expect("failed to generate genesis");
 
                 let mut genesis_chain_config = subnet_evm_genesis::ChainConfig::default();
@@ -1736,6 +1745,7 @@ pub enum StackName {
     SsmDocRestartNodeTrackedSubnetSubnetEvm(String),
     SsmDocRestartNodeTrackedSubnetXsvm(String),
     SsmDocRestartNodeChainConfigSubnetEvm(String),
+    SsmInstallSubnet(String),
 }
 
 impl StackName {
@@ -1751,6 +1761,9 @@ impl StackName {
             }
             StackName::SsmDocRestartNodeChainConfigSubnetEvm(id) => {
                 format!("{}-ssm-doc-restart-node-chain-config-subnet-evm", id)
+            }
+            StackName::SsmInstallSubnet(id) => {
+                format!("{}-ssm-install-subnet", id)
             }
         }
     }
