@@ -558,7 +558,11 @@ impl Spec {
 
         let subnet_evms = {
             if opts.subnet_evms > 0 {
-                let mut genesis = subnet_evm_genesis::Genesis::new(&prefunded_pubkeys)
+                let mut seed_eth_addrs = Vec::new();
+                for k in prefunded_pubkeys.iter() {
+                    seed_eth_addrs.push(k.to_eth_address());
+                }
+                let mut genesis = subnet_evm_genesis::Genesis::new(seed_eth_addrs)
                     .expect("failed to generate genesis");
 
                 let mut genesis_chain_config = subnet_evm_genesis::ChainConfig::default();
