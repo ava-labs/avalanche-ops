@@ -324,6 +324,8 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::from("info"))
                     .clone(),
 
+                skip_prompt: sub_matches.get_flag("SKIP_PROMPT"),
+
                 chain_rpc_url: sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
                     .unwrap()
@@ -338,13 +340,13 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("VM_BINARY_PATH")
                     .unwrap()
                     .clone(),
-                chain_genesis_path: sub_matches
-                    .get_one::<String>("CHAIN_GENESIS_PATH")
-                    .unwrap()
-                    .clone(),
                 chain_config_path: sub_matches
                     .get_one::<String>("CHAIN_CONFIG_PATH")
                     .unwrap_or(&String::new())
+                    .clone(),
+                chain_genesis_path: sub_matches
+                    .get_one::<String>("CHAIN_GENESIS_PATH")
+                    .unwrap()
                     .clone(),
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),

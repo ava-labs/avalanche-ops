@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
-    io::{self, stdout},
+    io::{self, stdout, Error, ErrorKind},
+    path::Path,
 };
 
 use clap::{Arg, Command};
@@ -8,6 +9,7 @@ use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
+use dialoguer::{theme::ColorfulTheme, Select};
 use serde::{Deserialize, Serialize};
 
 pub const NAME: &str = "install-subnet";
@@ -17,13 +19,15 @@ pub const NAME: &str = "install-subnet";
 pub struct Flags {
     pub log_level: String,
 
+    pub skip_prompt: bool,
+
     pub chain_rpc_url: String,
     pub key: String,
 
     pub subnet_config_path: String,
     pub vm_binary_path: String,
-    pub chain_genesis_path: String,
     pub chain_config_path: String,
+    pub chain_genesis_path: String,
 
     pub region: String,
     pub s3_bucket: String,
@@ -67,6 +71,14 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
+            Arg::new("SKIP_PROMPT")
+                .long("skip-prompt")
+                .short('s')
+                .help("Skips prompt mode")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
             Arg::new("CHAIN_RPC_URL")
                 .long("chain-rpc-url")
                 .help("Sets the P-chain or Avalanche RPC endpoint")
@@ -95,17 +107,17 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("CHAIN_GENESIS_PATH")
-                .long("chain-genesis-path")
-                .help("Chain genesis file path")
-                .required(true)
-                .num_args(1),
-        )
-        .arg(
             Arg::new("CHAIN_CONFIG_PATH")
                 .long("chain-config-path")
                 .help("Chain configuration file path")
                 .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("CHAIN_GENESIS_PATH")
+                .long("chain-genesis-path")
+                .help("Chain genesis file path")
+                .required(true)
                 .num_args(1),
         )
         .arg(
@@ -143,12 +155,35 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with chain rpc url '{}', subnet config '{}', VM binary '{}', chain genesis '{}', chain config '{}', node ids to instance ids '{:?}'\n",
-            opts.chain_rpc_url, opts.subnet_config_path, opts.vm_binary_path, opts.chain_genesis_path, opts.chain_config_path, opts.node_ids_to_instance_ids,
+            "\nInstalling subnet with chain rpc url '{}', subnet config '{}', VM binary '{}', chain config '{}', chain genesis '{}', node ids to instance ids '{:?}'\n",
+            opts.chain_rpc_url, opts.subnet_config_path, opts.vm_binary_path, opts.chain_config_path, opts.chain_genesis_path, opts.node_ids_to_instance_ids,
         )),
         ResetColor
     )?;
+
+    if !opts.skip_prompt {
+        let options = &[
+            "No, I am not ready to install a subnet.",
+            "Yes, let's install a subnet.",
+        ];
+        let selected = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Select your 'install-subnet' option")
+            .items(&options[..])
+            .default(0)
+            .interact()
+            .unwrap();
+        if selected == 0 {
+            return Ok(());
+        }
+    }
+
     // TODO: upload VM binary to S3
+    if !Path::new(&opts.vm_binary_path).exists() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("vm binary '{}' not found", opts.vm_binary_path),
+        ));
+    }
 
     // TODO: load wallet
 

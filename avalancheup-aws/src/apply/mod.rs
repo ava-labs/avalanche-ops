@@ -1119,7 +1119,7 @@ aws ssm start-session --region {} --target {}
             if term.load(Ordering::Relaxed) {
                 log::warn!("received signal {}", signal_hook::consts::SIGINT);
                 println!();
-                println!("# run the following to delete resources");
+                println!("# delete resources");
                 execute!(
                         stdout(),
                         SetForegroundColor(Color::Green),
@@ -1459,7 +1459,7 @@ aws ssm start-session --region {} --target {}
             if term.load(Ordering::Relaxed) {
                 log::warn!("received signal {}", signal_hook::consts::SIGINT);
                 println!();
-                println!("# run the following to delete resources");
+                println!("# delete resources");
                 execute!(
                         stdout(),
                         SetForegroundColor(Color::Green),
@@ -1721,7 +1721,7 @@ aws ssm start-session --region {} --target {}
     );
 
     println!();
-    println!("# run the following to delete resources");
+    println!("# delete resources");
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -1741,7 +1741,7 @@ aws ssm start-session --region {} --target {}
     )?;
 
     println!();
-    println!("# run the following to download the generated certificates");
+    println!("# download the generated certificates");
     execute!(
         stdout(),
         SetForegroundColor(Color::Magenta),
@@ -2022,11 +2022,231 @@ default-spec \\
         .unwrap();
     log::info!("created ssm document for installing subnet");
 
+    println!("# EXAMPLE: write subnet config");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_parent_dir}/avalanche-config subnet-config \\
+--log-level=info \\
+--proposer-min-block-delay 250000000 \\
+--file-path /tmp/subnet-config.json
+",
+            exec_parent_dir = exec_parent_dir,
+        )),
+        ResetColor
+    )?;
+
+    println!("\n# EXAMPLE: write subnet-evm chain config");
+    let priority_regossip_addresses_flag = if let Some(keys) = &spec.prefunded_keys {
+        let mut ss = Vec::new();
+        for k in keys.iter() {
+            ss.push(k.eth_address.clone());
+        }
+        format!(" --priority-regossip-addresses {}", ss.join(","))
+    } else {
+        String::new()
+    };
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_parent_dir}/avalanche-config subnet-evm chain-config \\
+--log-level=info \\
+--tx-pool-account-slots 1000000 \\
+--tx-pool-global-slots 10000000000 \\
+--tx-pool-account-queue 300000 \\
+--tx-pool-global-queue 10000000 \\
+--local-txs-enabled \\
+--priority-regossip-frequency 30000000000 \\
+--priority-regossip-max-txs 1000 \\
+--priority-regossip-txs-per-address 100{priority_regossip_addresses_flag} \\
+--file-path /tmp/subnet-evm-chain-config.json
+",
+            exec_parent_dir = exec_parent_dir,
+            priority_regossip_addresses_flag = priority_regossip_addresses_flag,
+        )),
+        ResetColor
+    )?;
+
+    println!("\n# EXAMPLE: write subnet-evm genesis");
+    let seed_eth_addresses = if let Some(keys) = &spec.prefunded_keys {
+        let mut addresses = Vec::new();
+        for k in keys.iter() {
+            addresses.push(k.eth_address.clone());
+        }
+        addresses.join(",")
+    } else {
+        let mut addresses = Vec::new();
+        for i in 0..5 {
+            let eth_addr = if i < key::secp256k1::TEST_KEYS.len() {
+                key::secp256k1::TEST_KEYS[i]
+                    .to_public_key()
+                    .to_eth_address()
+            } else {
+                let k = key::secp256k1::private_key::Key::generate().unwrap();
+                k.to_public_key().to_eth_address()
+            };
+            addresses.push(eth_addr);
+        }
+        addresses.join(",")
+    };
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_parent_dir}/avalanche-config subnet-evm genesis \\
+--log-level=info \\
+--seed-eth-addresses {seed_eth_addresses} \\
+--gas-limit 300000000 \\
+--target-block-rate 1 \\
+--min-base-fee 10000000 \\
+--target-gas 999999999999999999 \\
+--base-fee-change-denominator 4800000 \\
+--min-block-gas-cost 0 \\
+--max-block-gas-cost 10000000 \\
+--block-gas-cost-step 500000 \\
+--file-path /tmp/subnet-evm-genesis.json
+",
+            exec_parent_dir = exec_parent_dir,
+            seed_eth_addresses = seed_eth_addresses,
+        )),
+        ResetColor
+    )?;
+
+    println!("\n# EXAMPLE: install subnet-evm in all nodes");
+    let nodes_to_instances = serde_json::to_string(&node_ids_to_instance_ids).unwrap();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_path} install-subnet \\
+--log-level info \\
+--chain-rpc-url {chain_rpc_url} \\
+--key \\
+--subnet-config-path /tmp/subnet-config.json \\
+--vm-binary-path \\
+--chain-config-path /tmp/subnet-evm-chain-config.json \\
+--chain-genesis-path /tmp/subnet-evm-genesis.json \\
+--region {region} \\
+--s3-bucket {s3_bucket} \\
+--node-ids-to-instance-ids '{nodes_to_instances}'
+",
+            exec_path = exec_path.display(),
+            chain_rpc_url =
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+            region = spec.resources.region,
+            s3_bucket = spec.resources.s3_bucket,
+            nodes_to_instances = nodes_to_instances,
+        )),
+        ResetColor
+    )?;
+
     //
     //
     //
     //
     //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // TODO: remove all below
     let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
     let priv_key =
         key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
