@@ -351,6 +351,12 @@ async fn main() -> io::Result<()> {
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
+                s3_key_vm_binary: sub_matches
+                    .get_one::<String>("S3_KEY_VM_BINARY")
+                    .unwrap_or(&String::new())
+                    .clone(),
+                ssm_doc: sub_matches.get_one::<String>("SSM_DOC").unwrap().clone(),
+
                 node_ids_to_instance_ids,
             })
             .await

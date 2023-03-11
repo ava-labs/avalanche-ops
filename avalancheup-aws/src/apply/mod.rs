@@ -2037,6 +2037,11 @@ default-spec \\
         ResetColor
     )?;
 
+    //
+    //
+    //
+    //
+    //
     println!("\n# EXAMPLE: write subnet-evm chain config");
     let priority_regossip_addresses_flag = if let Some(keys) = &spec.prefunded_keys {
         let mut ss = Vec::new();
@@ -2123,20 +2128,36 @@ default-spec \\
             "{exec_path} install-subnet \\
 --log-level info \\
 --chain-rpc-url {chain_rpc_url} \\
---key \\
+--key {priv_key_hex} \\
+--vm-binary-path REPLACE_ME \\
+--chain-genesis-path /tmp/subnet-evm-genesis.json \\
+--region {region} \\
+--s3-bucket {s3_bucket} \\
+--ssm-doc {ssm_doc_name} \\
+--node-ids-to-instance-ids '{nodes_to_instances}'
+
+# to customize subnet config and others
+# use '--s3-key-vm-binary my-vm-binary-s3-key.v1' to customize s3 key path for binary
+{exec_path} install-subnet \\
+--log-level info \\
+--chain-rpc-url {chain_rpc_url} \\
+--key {priv_key_hex} \\
 --subnet-config-path /tmp/subnet-config.json \\
---vm-binary-path \\
+--vm-binary-path REPLACE_ME \\
 --chain-config-path /tmp/subnet-evm-chain-config.json \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --region {region} \\
 --s3-bucket {s3_bucket} \\
+--ssm-doc {ssm_doc_name} \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 ",
             exec_path = exec_path.display(),
             chain_rpc_url =
                 format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+            priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
             region = spec.resources.region,
             s3_bucket = spec.resources.s3_bucket,
+            ssm_doc_name = ssm_install_subnet_doc_name,
             nodes_to_instances = nodes_to_instances,
         )),
         ResetColor

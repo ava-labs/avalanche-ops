@@ -31,6 +31,9 @@ pub struct Flags {
 
     pub region: String,
     pub s3_bucket: String,
+    pub s3_key_vm_binary: String,
+    pub ssm_doc: String,
+
     pub node_ids_to_instance_ids: HashMap<String, String>,
 }
 
@@ -136,6 +139,20 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("S3_KEY_VM_BINARY")
+                .long("s3-key-vm-binary")
+                .help("Sets the S3 key for the Vm binary")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("SSM_DOC")
+                .long("ssm-doc")
+                .help("Sets the SSM document name for subnet install")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("NODE_IDS_TO_INSTANCE_IDS")
                 .long("node-ids-to-instance-ids")
                 .help("Sets the hash map of node Id to instance Id in JSON format")
@@ -177,13 +194,24 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         }
     }
 
-    // TODO: upload VM binary to S3
     if !Path::new(&opts.vm_binary_path).exists() {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             format!("vm binary '{}' not found", opts.vm_binary_path),
         ));
     }
+    let s3_key_vm_binary = if !opts.s3_key_vm_binary.is_empty() {
+        opts.s3_key_vm_binary.clone()
+    } else {
+        let file_stem = Path::new(&opts.vm_binary_path).file_stem().unwrap();
+        file_stem.to_str().unwrap().to_string()
+    };
+    log::info!(
+        "uploading vm binary '{}' to {} {s3_key_vm_binary}",
+        opts.vm_binary_path,
+        opts.s3_bucket
+    );
+    // TODO: upload VM binary to S3
 
     // TODO: load wallet
 
