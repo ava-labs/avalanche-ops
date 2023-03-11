@@ -2129,7 +2129,7 @@ default-spec \\
 --log-level info \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
---staking-in-days 14 \\
+--staking-perioid-in-days 14 \\
 --vm-binary-path REPLACE_ME \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --region {region} \\
@@ -2143,7 +2143,7 @@ default-spec \\
 --log-level info \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
---staking-in-days 14 \\
+--staking-perioid-in-days 14 \\
 --subnet-config-path /tmp/subnet-config.json \\
 --vm-binary-path REPLACE_ME \\
 --chain-config-path /tmp/subnet-evm-chain-config.json \\

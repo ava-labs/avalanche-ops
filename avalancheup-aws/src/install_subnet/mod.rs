@@ -2,9 +2,10 @@ use std::{
     collections::HashMap,
     io::{self, stdout, Error, ErrorKind},
     path::Path,
+    str::FromStr,
 };
 
-use avalanche_types::{jsonrpc::client::info as json_client_info, key, units, wallet};
+use avalanche_types::{ids::node, jsonrpc::client::info as json_client_info, key, units, wallet};
 use aws_manager::{self, s3, ssm, sts};
 use clap::{value_parser, Arg, Command};
 use crossterm::{
@@ -25,7 +26,7 @@ pub struct Flags {
 
     pub chain_rpc_url: String,
     pub key: String,
-    pub staking_in_days: usize,
+    pub staking_period_in_days: u64,
     pub staking_amount_in_avax: u64,
 
     pub subnet_config_path: String,
@@ -100,12 +101,12 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("STAKING_IN_DAYS")
-                .long("staking-in-days")
+            Arg::new("STAKING_PERIOID_IN_DAYS")
+                .long("staking-perioid-in-days")
                 .help("Sets the number of days to stake the node (primary network + subnet)")
                 .required(false)
                 .num_args(1)
-                .value_parser(value_parser!(usize))
+                .value_parser(value_parser!(u64))
                 .default_value("14"),
         )
         .arg(
@@ -197,7 +198,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         SetForegroundColor(Color::Green),
         Print(format!(
             "\nInstalling subnet with chain rpc url '{}', subnet config '{}', VM binary '{}', chain config '{}', chain genesis '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
-            opts.chain_rpc_url, opts.subnet_config_path, opts.vm_binary_path, opts.chain_config_path, opts.chain_genesis_path, opts.staking_in_days, opts.staking_amount_in_avax, opts.node_ids_to_instance_ids,
+            opts.chain_rpc_url, opts.subnet_config_path, opts.vm_binary_path, opts.chain_config_path, opts.chain_genesis_path, opts.staking_period_in_days, opts.staking_amount_in_avax, opts.node_ids_to_instance_ids,
         )),
         ResetColor
     )?;
@@ -243,13 +244,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 "No, I am not ready to install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, staking {} days",
                     units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
                     opts.staking_amount_in_avax,
-                    opts.staking_in_days,
+                    opts.staking_period_in_days,
             ).to_string(),
             format!(
                 "Yes, let's install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, staking {} days",
                     units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
                     opts.staking_amount_in_avax,
-                    opts.staking_in_days,
+                    opts.staking_period_in_days,
                 ).to_string(),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -301,9 +302,23 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: adding all nodes as primary network validators if not yet\n\n"),
         ResetColor
     )?;
-    // let start_time =
-    // let end_time =
-    // TODO: add nodes as primary network validator if not yet
+    let stake_amount_in_navax =
+        units::cast_avax_to_xp_navax(primitive_types::U256::from(opts.staking_amount_in_avax))
+            .as_u64();
+    for (node_id, instance_id) in opts.node_ids_to_instance_ids.iter() {
+        log::info!("adding {} in instance {}", node_id, instance_id);
+        let (tx_id, added) = wallet_to_spend
+            .p()
+            .add_validator()
+            .node_id(node::Id::from_str(node_id).unwrap())
+            .stake_amount(stake_amount_in_navax)
+            .validate_period_in_days(60, opts.staking_period_in_days)
+            .check_acceptance(true)
+            .issue()
+            .await
+            .unwrap();
+        log::info!("validator tx id {}, added {}", tx_id, added);
+    }
 
     //
     //
