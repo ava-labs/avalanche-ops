@@ -5,10 +5,12 @@ edition = "2021"
 rust-version = "1.67"
 
 [dependencies]
-avalanche-types = { version = "0.0.282", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.282", features = ["avalanchego", "subnet", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 clap = { version = "4.1.8", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.26.1"
 dialoguer = "0.10.3"
 env_logger = "0.10.0"
 log = "0.4.17"
+primitive-types = { version = "0.12.1", features = ["impl-serde"], optional = false } # https://crates.io/crates/primitive-types
 random-manager = "0.0.5"
+serde = { version = "1.0.154", features = ["derive"] }

@@ -1,13 +1,6 @@
 use std::io::{self, stdout};
 
-use avalanche_types::{
-    avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
-    constants,
-    coreth::chain_config as coreth_chain_config,
-    key, node, subnet,
-    subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
-    xsvm::genesis as xsvm_genesis,
-};
+use avalanche_types::subnet_evm::chain_config as subnet_evm_chain_config;
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
@@ -135,7 +128,7 @@ pub fn command() -> Command {
         )
 }
 
-pub async fn execute(opts: Flags) -> io::Result<()> {
+pub  fn execute(opts: Flags) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
         env_logger::Env::default()
