@@ -24,7 +24,7 @@ async fn main() {
                 .help("Sets the log level")
                 .required(false)
                 .num_args(1)
-                 .value_parser(["debug", "info"])
+                .value_parser(["debug", "info"])
                 .default_value("info"),
         )
         .arg(
