@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     env,
-    fs::{self, File},
+    fs::File,
     io::{self, stdout, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
     path::Path,
@@ -12,11 +12,7 @@ use std::{
     },
 };
 
-use avalanche_types::{
-    ids::{self, node},
-    jsonrpc::client::health as client_health,
-    key, wallet,
-};
+use avalanche_types::{ids::node, jsonrpc::client::health as client_health, key, wallet};
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
