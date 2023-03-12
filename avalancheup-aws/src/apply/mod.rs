@@ -16,7 +16,7 @@ use avalanche_types::{ids::node, jsonrpc::client::health as client_health, key, 
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
-    s3, ssm, sts,
+    s3, sts,
 };
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_ec2::model::Address;
