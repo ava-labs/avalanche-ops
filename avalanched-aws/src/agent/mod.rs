@@ -1,3 +1,5 @@
+mod cloudwatch;
+
 use std::{
     collections::HashSet,
     fs,
@@ -6,7 +8,6 @@ use std::{
     sync::Arc,
 };
 
-use crate::{cloudwatch, flags};
 use avalanche_installer::subnet_evm::github as subnet_evm_github;
 use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
@@ -21,9 +22,58 @@ use aws_manager::{
     s3,
 };
 use aws_sdk_ec2::model::{Filter, Tag};
+use clap::{Arg, Command};
+use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 
-pub async fn execute(opts: flags::Options) -> io::Result<()> {
+pub const NAME: &str = "agent";
+
+/// Defines "install-subnet" option.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct Flags {
+    pub log_level: String,
+
+    /// Set "true" to run "avalanched" without downloading any "avalancheup" spec dependencies.
+    /// Used for CDK integration.
+    pub use_default_config: bool,
+
+    /// The node information is published regardless of anchor/non-anchor.
+    /// This is set "true" iff the node wishes to publish it periodically.
+    /// Otherwise, publish only once until success!
+    /// Might be useful to publish ready heartbeats to S3 in the future.
+    pub publish_periodic_node_info: bool,
+}
+
+pub fn command() -> Command {
+    Command::new(NAME)
+        .about("Runs an Avalanche agent (daemon) on AWS")
+        .arg(
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
+                .required(false)
+                .num_args(1)
+                .value_parser(["debug", "info"])
+                .default_value("info"),
+        )
+        .arg(
+            Arg::new("USE_DEFAULT_CONFIG")
+                .long("use-default-config")
+                .help("Enables to use the default config without downloading the spec from S3 (useful for CDK integration)")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
+            Arg::new("PUBLISH_PERIODIC_NODE_INFO")
+                .long("publish-periodic-node-info")
+                .help("Enables to periodically publish ready node information to S3")
+                .required(false)
+                .num_args(0),
+        )
+}
+
+pub async fn execute(opts: Flags) -> io::Result<()> {
     println!("starting {} with {:?}", crate::APP_NAME, opts);
 
     // ref. https://github.com/env-logger-rs/env_logger/issues/47

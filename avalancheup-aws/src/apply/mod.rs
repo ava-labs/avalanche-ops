@@ -765,7 +765,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ),
         ),
         build_param("RustOsType", &spec.machine.rust_os_type),
-        build_param("AvalanchedFlag", &spec.avalanched_config.to_flags()),
+        build_param(
+            "AvalanchedArgs",
+            &format!("agent {}", spec.avalanched_config.to_flags()),
+        ),
         build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
     ]);
 
