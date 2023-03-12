@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
-    io::{self, stdout, Error, ErrorKind},
+    fs::File,
+    io::{self, stdout, BufReader, Error, ErrorKind, Read},
     path::Path,
     str::FromStr,
 };
@@ -146,13 +147,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("STAKING_PERIOID_IN_DAYS")
+            Arg::new("STAKING_PERIOID_IN_DAYS") // TODO: use float
                 .long("staking-perioid-in-days")
-                .help("Sets the number of days to stake the node (primary network + subnet)")
+                .help("Sets the number of days to stake the node (primary network + subnet, subnet validation is one-day earlier)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("14"),
+                .default_value("15"),
         )
         .arg(
             Arg::new("STAKING_AMOUNT_IN_AVAX")
@@ -280,12 +281,35 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             format!("vm binary file '{}' not found", opts.vm_binary_local_path),
         ));
     }
+
+    if !opts.subnet_config_local_path.is_empty() && opts.subnet_config_remote_dir.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "subnet_config_local_path not empty but subnet_config_remote_dir empty",
+        ));
+    }
+    if !opts.chain_config_local_path.is_empty() && opts.chain_config_remote_dir.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "chain_config_local_path not empty but chain_config_remote_dir empty",
+        ));
+    }
+
     if !Path::new(&opts.chain_genesis_path).exists() {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             format!("chain genesis file '{}' not found", opts.chain_genesis_path),
         ));
     }
+    let f = File::open(&opts.chain_genesis_path).map_err(|e| {
+        Error::new(
+            ErrorKind::Other,
+            format!("failed to open {} ({})", opts.chain_genesis_path, e),
+        )
+    })?;
+    let mut reader = BufReader::new(f);
+    let mut chain_genesis_bytes = Vec::new();
+    reader.read_to_end(&mut chain_genesis_bytes)?;
 
     let vm_id = if opts.vm_id.is_empty() {
         subnet::vm_name_to_id(&opts.chain_name)?
@@ -314,6 +338,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         "loaded wallet '{p_chain_address}', fetched its P-chain balance {} AVAX ({p_chain_balance} nAVAX, network id {network_id})",
         units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))
     );
+
+    let mut all_node_ids = Vec::new();
+    let mut all_instance_ids = Vec::new();
+    for (node_id, instance_id) in opts.node_ids_to_instance_ids.iter() {
+        log::info!("will send SSM doc to {node_id} {instance_id}");
+        all_node_ids.push(node_id.clone());
+        all_instance_ids.push(instance_id.clone());
+    }
 
     execute!(
         stdout(),
@@ -579,12 +611,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     } else {
         subcmd
     };
-    let mut all_instance_ids = Vec::new();
-    for (node_id, instance_id) in opts.node_ids_to_instance_ids.iter() {
-        log::info!("will send SSM doc to {node_id} {instance_id}");
-        all_instance_ids.push(instance_id.clone());
-    }
-    // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
+    // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
     let ssm_output = ssm_manager
         .cli
         .send_command()
@@ -593,7 +620,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         .parameters("avalanchedArgs", vec![avalanched_args.clone()])
         .output_s3_region(opts.region.clone())
         .output_s3_bucket_name(opts.s3_bucket.clone())
-        .output_s3_key_prefix(opts.s3_key_prefix)
+        .output_s3_key_prefix(opts.s3_key_prefix.clone())
         .send()
         .await
         .unwrap();
@@ -634,7 +661,20 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: adding all nodes as subnet validators\n\n"),
         ResetColor
     )?;
-    // TODO: add nodes as subnet network validator if not yet
+    for node_id in all_node_ids.iter() {
+        wallet_to_spend
+            .p()
+            .add_subnet_validator()
+            .node_id(node::Id::from_str(node_id).unwrap())
+            .subnet_id(created_subnet_id)
+            .validate_period_in_days(60, opts.staking_period_in_days - 1)
+            .check_acceptance(true)
+            .issue()
+            .await
+            .unwrap();
+    }
+    log::info!("added subnet validators for {}", created_subnet_id);
+    sleep(Duration::from_secs(5)).await;
 
     //
     //
@@ -647,24 +687,96 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: creating a blockchain with the genesis\n\n"),
         ResetColor
     )?;
-    // TODO: create blockchain with genesis
+    let blockchain_id = wallet_to_spend
+        .p()
+        .create_chain()
+        .subnet_id(created_subnet_id)
+        .genesis_data(chain_genesis_bytes.clone())
+        .vm_id(vm_id.clone())
+        .chain_name(opts.chain_name.clone())
+        .dry_mode(true)
+        .issue()
+        .await
+        .unwrap();
+    log::info!("[dry mode] blockchain Id {blockchain_id} for subnet {created_subnet_id}");
 
-    // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
-    // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
+    let blockchain_id = wallet_to_spend
+        .p()
+        .create_chain()
+        .subnet_id(created_subnet_id)
+        .genesis_data(chain_genesis_bytes.clone())
+        .vm_id(vm_id.clone())
+        .chain_name(opts.chain_name.clone())
+        .check_acceptance(true)
+        .issue()
+        .await
+        .unwrap();
+    log::info!("created a blockchain {blockchain_id} for subnet {created_subnet_id}");
 
     if !opts.chain_config_local_path.is_empty() {
-        //
-        //
-        //
-        //
-        //
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: upload subnet chain config to S3\n\n"),
+            Print("\n\n\nSTEP: sending SSM doc for chain-config updates\n\n"),
             ResetColor
         )?;
-        // TODO: write chain config if not empty on remote machines
+
+        let file_stem = Path::new(&opts.chain_config_local_path)
+            .file_stem()
+            .unwrap();
+        let chain_config_s3_key = format!(
+            "{}{}",
+            s3::append_slash(&opts.s3_key_prefix),
+            file_stem.to_str().unwrap().to_string()
+        );
+
+        // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+        // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
+        let avalanched_args = format!("install-chain --log-level info --region {region} --s3-bucket {s3_bucket} --chain-config-s3-key {chain_config_s3_key} --chain-config-local-path {chain_config_local_path}",
+            region = opts.region,
+            s3_bucket = opts.s3_bucket,
+            chain_config_s3_key = chain_config_s3_key,
+            chain_config_local_path = format!("{}{}/config.json", s3::append_slash(&opts.chain_config_remote_dir), blockchain_id.to_string()),
+        );
+
+        // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
+        let ssm_output = ssm_manager
+            .cli
+            .send_command()
+            .document_name(opts.ssm_doc.clone())
+            .set_instance_ids(Some(all_instance_ids.clone()))
+            .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+            .output_s3_region(opts.region.clone())
+            .output_s3_bucket_name(opts.s3_bucket.clone())
+            .output_s3_key_prefix(opts.s3_key_prefix.clone())
+            .send()
+            .await
+            .unwrap();
+        let ssm_output = ssm_output.command().unwrap();
+        let ssm_command_id = ssm_output.command_id().unwrap();
+        log::info!("sent SSM command {}", ssm_command_id);
+        sleep(Duration::from_secs(30)).await;
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+            ResetColor
+        )?;
+        for instance_id in all_instance_ids.iter() {
+            let status = ssm_manager
+                .poll_command(
+                    ssm_command_id,
+                    instance_id,
+                    CommandInvocationStatus::Success,
+                    Duration::from_secs(300),
+                    Duration::from_secs(5),
+                )
+                .await
+                .unwrap();
+            log::info!("status {:?} for instance id {}", status, instance_id);
+        }
+        sleep(Duration::from_secs(5)).await;
     }
 
     Ok(())

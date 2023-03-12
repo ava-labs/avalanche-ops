@@ -346,7 +346,7 @@ async fn main() -> io::Result<()> {
                 key: sub_matches.get_one::<String>("KEY").unwrap().clone(),
                 staking_period_in_days: sub_matches
                     .get_one::<u64>("STAKING_PERIOID_IN_DAYS")
-                    .unwrap_or(&14)
+                    .unwrap_or(&15)
                     .clone(),
                 staking_amount_in_avax: sub_matches
                     .get_one::<u64>("STAKING_AMOUNT_IN_AVAX")
