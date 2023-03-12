@@ -418,7 +418,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             ResetColor
         )?;
 
-        if Path::new(&opts.subnet_config_local_path).exists() {
+        if !Path::new(&opts.subnet_config_local_path).exists() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
@@ -485,7 +485,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             ResetColor
         )?;
 
-        if Path::new(&opts.chain_config_local_path).exists() {
+        if !Path::new(&opts.chain_config_local_path).exists() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(

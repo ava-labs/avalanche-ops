@@ -2028,7 +2028,7 @@ default-spec \\
         .unwrap();
     log::info!("created ssm document for installing subnet");
 
-    println!("# EXAMPLE: write subnet config");
+    println!("\n# EXAMPLE: write subnet config");
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -2139,7 +2139,7 @@ default-spec \\
 --ssm-doc {ssm_doc_name} \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
---staking-perioid-in-days 14 \\
+--staking-perioid-in-days 15 \\
 --subnet-config-local-path /tmp/subnet-config.json \\
 --subnet-config-remote-dir {subnet_config_remote_dir} \\
 --vm-binary-local-path REPLACE_ME \\
