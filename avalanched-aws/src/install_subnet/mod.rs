@@ -3,8 +3,10 @@ use std::{
     io::{self, Error, ErrorKind},
     os::unix::fs::PermissionsExt,
     path::Path,
+    str::FromStr,
 };
 
+use avalanche_types::{avalanchego::config as avalanchego_config, ids};
 use aws_manager::{self, s3};
 use clap::{Arg, Command};
 use serde::{Deserialize, Serialize};
@@ -25,6 +27,9 @@ pub struct Flags {
 
     pub vm_binary_s3_key: String,
     pub vm_binary_local_path: String,
+
+    pub subnet_id_to_track: String,
+    pub avalanchego_config_path: String,
 }
 
 pub fn command() -> Command {
@@ -81,6 +86,20 @@ pub fn command() -> Command {
             Arg::new("VM_BINARY_LOCAL_PATH")
                 .long("vm-binary-local-path")
                 .help("VM binary local file path")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("SUBNET_ID_TO_TRACK")
+                .long("subnet-id-to-track")
+                .help("Subnet Id to track via avalanchego config file")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_CONFIG_PATH")
+                .long("avalanchego-config-path")
+                .help("avalanchego config file path")
                 .required(true)
                 .num_args(1),
         )
@@ -214,6 +233,31 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         log::info!("copying {tmp_path} to {}", opts.vm_binary_local_path);
         fs::copy(&tmp_path, &opts.vm_binary_local_path)?;
         fs::remove_file(&tmp_path)?;
+    }
+
+    {
+        log::info!(
+            "adding a subnet-id '{}' to track-subnets flag in {}",
+            opts.subnet_id_to_track,
+            opts.avalanchego_config_path,
+        );
+        let converted = ids::Id::from_str(&opts.subnet_id_to_track)?;
+        log::info!("validated a subnet-id '{}'", converted);
+
+        let mut config = avalanchego_config::Config::load(&opts.avalanchego_config_path)?;
+        if let Some(existing_config_path) = &config.config_file {
+            if existing_config_path.ne(&opts.avalanchego_config_path) {
+                log::warn!(
+                    "overwriting existing config-file {} to {}",
+                    existing_config_path,
+                    opts.avalanchego_config_path
+                );
+                config.config_file = Some(opts.avalanchego_config_path.clone());
+            }
+        }
+        config.add_track_subnets(Some(converted.to_string()));
+
+        config.sync(None)?;
     }
 
     Ok(())

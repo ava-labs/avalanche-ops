@@ -11,6 +11,7 @@ use avalanche_types::{
     key, subnet, units, wallet,
 };
 use aws_manager::{self, s3, ssm, sts};
+use aws_sdk_ssm::model::CommandInvocationStatus;
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
@@ -51,6 +52,8 @@ pub struct Flags {
 
     pub chain_config_local_path: String,
     pub chain_config_remote_dir: String,
+
+    pub avalanchego_config_remote_path: String,
 
     pub node_ids_to_instance_ids: HashMap<String, String>,
 }
@@ -246,6 +249,13 @@ pub fn command() -> Command {
                 .long("chain-config-remote-dir")
                 .help("Chain configuration remote file path")
                 .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_CONFIG_REMOTE_PATH")
+                .long("avalanchego-config-remote-path")
+                .help("avalanchego config remote file path")
+                .required(true)
                 .num_args(1),
         )
         .arg(
@@ -542,11 +552,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
         ResetColor
     )?;
-    let subcmd = format!("install-subnet --log-level info --region {region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-local-path {vm_binary_local_path}",
+    let subcmd = format!("install-subnet --log-level info --region {region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-local-path {vm_binary_local_path} --subnet-id-to-track {subnet_id_to_track} --avalanchego-config-path {avalanchego_config_remote_path}",
         region = opts.region,
         s3_bucket = opts.s3_bucket,
         vm_binary_s3_key = vm_binary_s3_key,
         vm_binary_local_path = format!("{}{}", s3::append_slash(&opts.vm_binary_remote_dir), vm_id.to_string()),
+        subnet_id_to_track = created_subnet_id.to_string(),
+        avalanchego_config_remote_path = opts.avalanchego_config_remote_path,
     );
     let avalanched_args = if !opts.subnet_config_local_path.is_empty() {
         let file_stem = Path::new(&opts.subnet_config_local_path)
@@ -567,11 +579,49 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     } else {
         subcmd
     };
+    let mut all_instance_ids = Vec::new();
     for (node_id, instance_id) in opts.node_ids_to_instance_ids.iter() {
-        log::info!("sending SSM doc to {node_id} {instance_id}");
-
-        // TODO
+        log::info!("will send SSM doc to {node_id} {instance_id}");
+        all_instance_ids.push(instance_id.clone());
     }
+    // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
+    let ssm_output = ssm_manager
+        .cli
+        .send_command()
+        .document_name(opts.ssm_doc.clone())
+        .set_instance_ids(Some(all_instance_ids.clone()))
+        .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+        .output_s3_region(opts.region.clone())
+        .output_s3_bucket_name(opts.s3_bucket.clone())
+        .output_s3_key_prefix(opts.s3_key_prefix)
+        .send()
+        .await
+        .unwrap();
+    let ssm_output = ssm_output.command().unwrap();
+    let ssm_command_id = ssm_output.command_id().unwrap();
+    log::info!("sent SSM command {}", ssm_command_id);
+    sleep(Duration::from_secs(30)).await;
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+        ResetColor
+    )?;
+    for instance_id in all_instance_ids.iter() {
+        let status = ssm_manager
+            .poll_command(
+                ssm_command_id,
+                instance_id,
+                CommandInvocationStatus::Success,
+                Duration::from_secs(300),
+                Duration::from_secs(5),
+            )
+            .await
+            .unwrap();
+        log::info!("status {:?} for instance id {}", status, instance_id);
+    }
+    sleep(Duration::from_secs(5)).await;
 
     //
     //

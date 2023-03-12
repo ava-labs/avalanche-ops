@@ -69,7 +69,7 @@ pub fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    log::info!("adding a subnet-id '{}' to tracked-subnets flag", subnet_id);
+    log::info!("adding a subnet-id '{}' to track-subnets flag", subnet_id);
     let converted = ids::Id::from_str(subnet_id)?;
     log::info!("validated a subnet-id '{}'", converted);
 

@@ -2148,6 +2148,7 @@ default-spec \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --chain-config-local-path /tmp/subnet-evm-chain-config.json \\
 --chain-config-remote-dir {chain_config_remote_dir} \\
+--avalanchego-config-remote-path {avalanchego_config_remote_path} \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 ",
             exec_path = exec_path.display(),
@@ -2161,6 +2162,7 @@ default-spec \\
             subnet_config_remote_dir = spec.avalanchego_config.subnet_config_dir,
             vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
             chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
+            avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
             nodes_to_instances = nodes_to_instances,
         )),
         ResetColor

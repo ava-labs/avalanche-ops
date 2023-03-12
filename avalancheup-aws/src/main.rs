@@ -390,6 +390,11 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
 
+                avalanchego_config_remote_path: sub_matches
+                    .get_one::<String>("AVALANCHEGO_CONFIG_REMOTE_PATH")
+                    .unwrap()
+                    .clone(),
+
                 node_ids_to_instance_ids,
             })
             .await

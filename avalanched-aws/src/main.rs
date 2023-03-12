@@ -135,6 +135,14 @@ async fn main() {
                     .get_one::<String>("VM_BINARY_LOCAL_PATH")
                     .unwrap()
                     .to_string(),
+                subnet_id_to_track: sub_matches
+                    .get_one::<String>("SUBNET_ID_TO_TRACK")
+                    .unwrap()
+                    .to_string(),
+                avalanchego_config_path: sub_matches
+                    .get_one::<String>("AVALANCHEGO_CONFIG_PATH")
+                    .unwrap()
+                    .to_string(),
             })
             .await
             .unwrap();
