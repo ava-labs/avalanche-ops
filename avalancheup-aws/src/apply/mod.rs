@@ -1690,6 +1690,7 @@ aws ssm start-session --region {} --target {}
 --tls-cert-path=/tmp/{node_id}.crt
 
 cat /tmp/{node_id}.crt
+
 ",
                 exec_parent_dir = exec_parent_dir,
                 region = spec.resources.region,
@@ -1702,38 +1703,6 @@ cat /tmp/{node_id}.crt
             ResetColor
         )?;
     }
-
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::DarkGreen),
-        Print(format!(
-            "
-{exec_parent_dir}/blizzardup-aws \\
-default-spec \\
---log-level=info \\
---funded-keys={funded_keys} \\
---region={region} \\
---upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
---instance-mode=spot \\
---nodes=10 \\
---blizzard-log-level=info \\
---blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
---blizzard-keys-to-generate=100 \\
---blizzard-workers=10 \\
---blizzard-load-kinds=x-transfers,evm-transfers
-
-",
-            exec_parent_dir = exec_parent_dir,
-            funded_keys = if let Some(keys) = &spec.prefunded_keys {
-                keys.len()
-            } else {
-                1
-            },
-            region = spec.resources.region,
-            blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
-        )),
-        ResetColor
-    )?;
 
     //
     //
@@ -1953,6 +1922,38 @@ default-spec \\
             chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
             avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
             nodes_to_instances = nodes_to_instances,
+        )),
+        ResetColor
+    )?;
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::DarkGreen),
+        Print(format!(
+            "
+{exec_parent_dir}/blizzardup-aws \\
+default-spec \\
+--log-level=info \\
+--funded-keys={funded_keys} \\
+--region={region} \\
+--upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
+--instance-mode=spot \\
+--nodes=10 \\
+--blizzard-log-level=info \\
+--blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
+--blizzard-keys-to-generate=100 \\
+--blizzard-workers=10 \\
+--blizzard-load-kinds=x-transfers,evm-transfers
+
+",
+            exec_parent_dir = exec_parent_dir,
+            funded_keys = if let Some(keys) = &spec.prefunded_keys {
+                keys.len()
+            } else {
+                1
+            },
+            region = spec.resources.region,
+            blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
         )),
         ResetColor
     )?;
