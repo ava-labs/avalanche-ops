@@ -170,7 +170,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let f = File::open(&tmp_path)?;
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
         }
-        log::info!("copying {tmp_path} to {}", opts.subnet_config_local_path);
+        log::info!(
+            "copying subnet-config file {tmp_path} to {}",
+            opts.subnet_config_local_path
+        );
         fs::copy(&tmp_path, &opts.subnet_config_local_path)?;
         fs::remove_file(&tmp_path)?;
     } else {
@@ -230,7 +233,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let f = File::open(&tmp_path)?;
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
         }
-        log::info!("copying {tmp_path} to {}", opts.vm_binary_local_path);
+        log::info!(
+            "copying Vm binary file {tmp_path} to {}",
+            opts.vm_binary_local_path
+        );
         fs::copy(&tmp_path, &opts.vm_binary_local_path)?;
         fs::remove_file(&tmp_path)?;
     }
