@@ -82,7 +82,7 @@ Now you need to write specification of how networks/nodes are to be provisioned.
 avalancheup-aws default-spec \
 --region us-west-2 \
 --upload-artifacts-avalanched-local-bin ./avalanched-aws.x86_64-unknown-linux-gnu \
---upload-artifacts-avalanche-local-bin [AVALANCHE_BUILD_DIR]/avalanchego \
+--upload-artifacts-avalanchego-local-bin [AVALANCHE_BUILD_DIR]/avalanchego \
 --upload-artifacts-plugin-local-dir [AVALANCHE_BUILD_DIR]/plugins \
 --network-name custom \
 --avalanchego-log-level INFO \
@@ -312,16 +312,6 @@ GOOS=linux GOARCH=amd64 ./scripts/build.sh
 
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -354,9 +344,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level DEBUG
@@ -419,16 +408,6 @@ See https://pkg.go.dev/github.com/ava-labs/coreth/plugin/evm#Config for more.
 
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -461,9 +440,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --coreth-metrics-enabled \
 --coreth-continuous-profiler-enabled \
@@ -480,16 +458,6 @@ cd ${HOME}/avalanche-ops
 ```bash
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -522,9 +490,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO
@@ -536,7 +503,7 @@ cd ${HOME}/avalanche-ops
 ```bash
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws events update-artifacts \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --spec-file-path [YOUR_SPEC_PATH]
 ```
@@ -553,16 +520,6 @@ ACM_CERT_ARN=arn:aws:acm:...:...:certificate/...
 
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -595,9 +552,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --nlb-acm-certificate-arn $ACM_CERT_ARN \
 --network-name custom \
@@ -618,16 +574,6 @@ cat ${HOME}/test-custom-https-for-nlb.yaml \
 ```bash
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -660,9 +606,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
@@ -680,16 +625,6 @@ See https://pkg.go.dev/github.com/ava-labs/snow-machine for more.
 ```bash
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -722,9 +657,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --upload-artifacts-snow-machine-file-path ${HOME}/coreth.json \
 --network-name custom \
@@ -777,16 +711,6 @@ subnet-cli create VMID subnetevm
 ```bash
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -824,9 +748,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
 --avalanchego-log-level INFO \
@@ -839,7 +762,7 @@ rm -rf ${HOME}/subnet-evm-test-keys
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --instance-mode spot \
 --network-name custom \
@@ -855,7 +778,7 @@ rm -rf ${HOME}/subnet-evm-test-keys
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --instance-mode spot \
 --network-name custom \
@@ -913,30 +836,6 @@ chmod 400 /Users/gyuho.lee/aops-custom-202203-2wh8w4-ec2-access.key
 ```
 
 ```bash
-# when "2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7" is the subnet ID from subnet-cli
-sudo systemctl cat avalanche
-/usr/local/bin/plugin/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy --version
-
-# to replace the avalanche configuration
-sudo cat /data/avalanche-configs/config.json
-cp /data/avalanche-configs/config.json /tmp/avalanche.config.json
-sed -i -- 's/hac2sQTf29JJvveiJssb4tz8TNRQ3SyKSW7GgcwGTMk3xabgf/2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7/g' /tmp/avalanche.config.json
-cat /tmp/avalanche.config.json
-sudo cp /tmp/avalanche.config.json /data/avalanche-configs/config.json
-
-sudo systemctl restart avalanche
-sleep 5
-sudo tail -200 /var/log/avalanche/avalanche.log | grep 2S6hhvrG4yKsyNngETcph9Rfmvc6RvAemAwu4fPaYenndwLUs7
-
-# to check the status
-sudo find /var/log/avalanche/
-sudo tail /var/log/avalanche/avalanche.log
-```
-
-> 2022-08-17T12:00:04.041-0700	info	client/p.go:497	creating blockchain	{"subnetId": "2cGHaEMbdPUdTJQjKhaxi8TPYeFCmwBAW1iqzFzY3KvBU6b4xG", "chainName": "subnetevm", "vmId": "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", "createBlockchainTxFee": 100000000}
-created blockchain "55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1" (took 179.72724ms)
-
-```bash
 # when "55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1" is the blockchain ID
 # for instance, the subnet-cli will return
 # created blockchain "55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1" (took 179.72724ms)
@@ -955,16 +854,6 @@ sudo tail /var/log/avalanche/55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1.l
 This will sync from peer (rather than downloading from S3):
 
 ```bash
-##
-# if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
 ##
 # if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
@@ -999,9 +888,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO
@@ -1043,16 +931,6 @@ This will sync from peer (rather than downloading from S3):
 ```bash
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -1066,7 +944,6 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --avalanched-use-default-config \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO
@@ -1080,16 +957,6 @@ cd ${HOME}/avalanche-ops
 This will fast-sync from peer (rather than downloading from S3):
 
 ```bash
-##
-# if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
 ##
 # if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
@@ -1124,9 +991,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO \
@@ -1145,16 +1011,6 @@ This will sync from peer (rather than downloading from S3):
 ```bash
 ##
 # if compiled locally
-AVALANCHE_CONFIG_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanche-config
-# download from https://github.com/ava-labs/avalanche-ops/releases
-curl -L \
-https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanche-config.x86_64-unknown-linux-gnu \
--o ${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-# if downloaded from https://github.com/ava-labs/avalanche-ops/releases
-AVALANCHE_CONFIG_BIN_PATH=${HOME}/avalanche-config.x86_64-unknown-linux-gnu
-
-##
-# if compiled locally
 AVALANCHED_BIN_PATH=./target/x86_64-unknown-linux-musl/release/avalanched-aws
 # download from https://github.com/ava-labs/avalanche-ops/releases
 curl -L \
@@ -1187,9 +1043,8 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanche-config-local-bin ${AVALANCHE_CONFIG_BIN_PATH} \
 --upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
---upload-artifacts-avalanche-local-bin ${AVALANCHE_BIN_PATH} \
+--upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name mainnet \
 --avalanchego-log-level INFO

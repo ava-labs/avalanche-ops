@@ -11,7 +11,7 @@ use aws_volume_provisioner_installer;
 use clap::{Arg, Command};
 use tokio::time::{sleep, Duration};
 
-pub const NAME: &str = "install";
+pub const NAME: &str = "install-artifacts";
 
 pub fn command() -> Command {
     Command::new(NAME)
@@ -48,23 +48,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("AVALANCHEGO_TARGET_FILE_PATH")
-                .long("avalanchego-target-file-path")
+            Arg::new("AVALANCHEGO_LOCAL_PATH")
+                .long("avalanchego-local-path")
                 .help("Non-empty to download avalanchego")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("AVALANCHEGO_PLUGIN_S3_PREFIX")
-                .long("avalanchego-plugin-s3-prefix")
-                .help("Non-empty to download from S3")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("AVALANCHEGO_PLUGIN_TARGET_DIR")
-                .long("avalanchego-plugin-target-dir")
-                .help("Non-empty to download avalanchego plugins from S3")
                 .required(false)
                 .num_args(1),
         )
@@ -78,20 +64,6 @@ pub fn command() -> Command {
                 .default_value("ubuntu20.04"),
         )
         .arg(
-            Arg::new("AVALANCHE_CONFIG_S3_KEY")
-                .long("avalanche-config-s3-key")
-                .help("Non-empty to download from S3")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("AVALANCHE_CONFIG_TARGET_FILE_PATH")
-                .long("avalanche-config-target-file-path")
-                .help("Non-empty to download avalanche-config")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
             Arg::new("AWS_VOLUME_PROVISIONER_S3_KEY")
                 .long("aws-volume-provisioner-s3-key")
                 .help("Non-empty to download from S3")
@@ -99,8 +71,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("AWS_VOLUME_PROVISIONER_TARGET_FILE_PATH")
-                .long("aws-volume-provisioner-target-file-path")
+            Arg::new("AWS_VOLUME_PROVISIONER_LOCAL_PATH")
+                .long("aws-volume-provisioner-local-path")
                 .help("Non-empty to download aws-volume-provisioner")
                 .required(false)
                 .num_args(1),
@@ -113,8 +85,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("AWS_IP_PROVISIONER_TARGET_FILE_PATH")
-                .long("aws-ip-provisioner-target-file-path")
+            Arg::new("AWS_IP_PROVISIONER_LOCAL_PATH")
+                .long("aws-ip-provisioner-local-path")
                 .help("Non-empty to download aws-ip-provisioner")
                 .required(false)
                 .num_args(1),
@@ -127,8 +99,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("AVALANCHE_TELEMETRY_CLOUDWATCH_TARGET_FILE_PATH")
-                .long("avalanche-telemetry-cloudwatch-target-file-path")
+            Arg::new("AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_PATH")
+                .long("avalanche-telemetry-cloudwatch-local-path")
                 .help("Non-empty to download avalanche-telemetry-cloudwatch")
                 .required(false)
                 .num_args(1),
@@ -143,18 +115,14 @@ pub async fn execute(
     region: &str,
     s3_bucket: &str,
     avalanchego_s3_key: &str,
-    avalanchego_target_file_path: &str,
-    avalanchego_plugin_s3_prefix: &str,
-    avalanchego_plugin_target_dir: &str,
+    avalanchego_local_path: &str,
     rust_os_type: &str,
-    avalanche_config_s3_key: &str,
-    avalanche_config_target_file_path: &str,
     aws_volume_provisioner_s3_key: &str,
-    aws_volume_provisioner_target_file_path: &str,
+    aws_volume_provisioner_local_path: &str,
     aws_ip_provisioner_s3_key: &str,
-    aws_ip_provisioner_target_file_path: &str,
+    aws_ip_provisioner_local_path: &str,
     avalanche_telemetry_cloudwatch_s3_key: &str,
-    avalanche_telemetry_cloudwatch_target_file_path: &str,
+    avalanche_telemetry_cloudwatch_local_path: &str,
 ) -> io::Result<()> {
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
     env_logger::init_from_env(
@@ -207,9 +175,9 @@ pub async fn execute(
                 &s3_manager,
                 s3_bucket,
                 avalanchego_s3_key,
-                avalanchego_target_file_path,
-                avalanchego_plugin_s3_prefix,
-                avalanchego_plugin_target_dir,
+                avalanchego_local_path,
+                None,
+                None,
             )
             .await?;
             false
@@ -220,79 +188,8 @@ pub async fn execute(
     if need_github_download {
         log::info!("downloading avalanchego from github");
         let tmp_path = avalanche_installer::avalanchego::github::download(None, None, None).await?;
-        fs::copy(&tmp_path, &avalanchego_target_file_path)?;
+        fs::copy(&tmp_path, &avalanchego_local_path)?;
         fs::remove_file(&tmp_path)?;
-    }
-
-    let need_github_download = if !avalanche_config_s3_key.is_empty() {
-        log::info!("downloading avalanche-config from s3");
-
-        let (mut success, mut exists) = (false, false);
-        for round in 0..20 {
-            log::info!("[ROUND {round}] checking if {avalanche_config_s3_key} exists");
-
-            let res = s3_manager
-                .exists(&s3_bucket, &avalanche_config_s3_key)
-                .await;
-
-            if res.is_ok() {
-                success = true;
-                exists = res.unwrap();
-                break;
-            }
-
-            let err = res.err().unwrap();
-            if err.is_retryable() {
-                log::warn!("s3 exists retriable error: {}", err);
-                sleep(Duration::from_secs((round + 1) * 5)).await;
-                continue;
-            }
-
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("s3 exists failed for non-retriable error {}", err),
-            ));
-        }
-        if !success {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "s3 exists check failed with retries",
-            ));
-        }
-        if !exists {
-            log::info!(
-                "{avalanche_config_s3_key} does not exist, falling back to github downloads"
-            );
-            true
-        } else {
-            log::info!("{avalanche_config_s3_key} exists {exists}");
-            avalanche_config_installer::s3::download(
-                true, // overwrite
-                &s3_manager,
-                s3_bucket,
-                avalanche_config_s3_key,
-                avalanche_config_target_file_path,
-            )
-            .await?;
-            false
-        }
-    } else {
-        true
-    };
-    if need_github_download {
-        log::info!("downloading avalanche-config from github");
-        let ot = if rust_os_type.is_empty() {
-            None
-        } else {
-            Some(avalanche_config_installer::github::Os::new(rust_os_type).unwrap())
-        };
-        avalanche_config_installer::github::download(
-            None,
-            ot,
-            None,
-            avalanche_config_target_file_path,
-        )
-        .await?;
     }
 
     let need_github_download = if !aws_volume_provisioner_s3_key.is_empty() {
@@ -342,7 +239,7 @@ pub async fn execute(
                 &s3_manager,
                 s3_bucket,
                 aws_volume_provisioner_s3_key,
-                aws_volume_provisioner_target_file_path,
+                aws_volume_provisioner_local_path,
             )
             .await?;
             false
@@ -361,7 +258,7 @@ pub async fn execute(
             None,
             ot,
             None,
-            aws_volume_provisioner_target_file_path,
+            aws_volume_provisioner_local_path,
         )
         .await?;
     }
@@ -413,7 +310,7 @@ pub async fn execute(
                 &s3_manager,
                 s3_bucket,
                 aws_ip_provisioner_s3_key,
-                aws_ip_provisioner_target_file_path,
+                aws_ip_provisioner_local_path,
             )
             .await?;
             false
@@ -432,7 +329,7 @@ pub async fn execute(
             None,
             ot,
             None,
-            aws_ip_provisioner_target_file_path,
+            aws_ip_provisioner_local_path,
         )
         .await?;
     }
@@ -486,7 +383,7 @@ pub async fn execute(
                 &s3_manager,
                 s3_bucket,
                 avalanche_telemetry_cloudwatch_s3_key,
-                avalanche_telemetry_cloudwatch_target_file_path,
+                avalanche_telemetry_cloudwatch_local_path,
             )
             .await?;
             false
@@ -505,7 +402,7 @@ pub async fn execute(
             None,
             ot,
             None,
-            avalanche_telemetry_cloudwatch_target_file_path,
+            avalanche_telemetry_cloudwatch_local_path,
         )
         .await?;
     }

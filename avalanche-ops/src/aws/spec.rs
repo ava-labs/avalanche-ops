@@ -1,5 +1,4 @@
 use std::{
-    collections::BTreeMap,
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -89,16 +88,6 @@ pub struct Spec {
     /// initial stakers yet with to-be-created node IDs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
-
-    /// Use sorted map in order to map each tracked subnet id (placeholder)
-    /// to each subnet/chain configuration.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subnet_evms: Option<BTreeMap<String, SubnetEvm>>,
-
-    /// Use sorted map in order to map each tracked subnet id (placeholder)
-    /// to each subnet configuration.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub xsvms: Option<BTreeMap<String, Xsvm>>,
 }
 
 /// Represents the KMS CMK resource.
@@ -226,18 +215,6 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_launch_template_version: Option<String>,
 
-    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: Option<String>,
-    /// CloudFormation stack name for SSM document that restarts node with subnet tracking.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: Option<String>,
-    /// CloudFormation stack name for SSM document that restarts node to load chain config.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: Option<String>,
     /// CloudFormation stack name for SSM document that installs subnet.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -299,9 +276,6 @@ impl Resources {
             cloudformation_asg_launch_template_id: None,
             cloudformation_asg_launch_template_version: None,
 
-            cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: None,
-            cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,
-            cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: None,
             cloudformation_ssm_install_subnet_chain: None,
             cloudwatch_avalanche_metrics_namespace: None,
 
@@ -356,10 +330,8 @@ pub struct DefaultSpecOption {
     pub upload_artifacts_aws_volume_provisioner_local_bin: String,
     pub upload_artifacts_aws_ip_provisioner_local_bin: String,
     pub upload_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
-    pub upload_artifacts_avalanche_config_local_bin: String,
     pub upload_artifacts_avalanched_local_bin: String,
-    pub upload_artifacts_avalanche_local_bin: String,
-    pub upload_artifacts_plugin_local_dir: String,
+    pub upload_artifacts_avalanchego_local_bin: String,
     pub upload_artifacts_prometheus_metrics_rules_file_path: String,
 
     pub avalanched_log_level: String,
@@ -377,32 +349,6 @@ pub struct DefaultSpecOption {
     pub coreth_continuous_profiler_enabled: bool,
     pub coreth_offline_pruning_enabled: bool,
     pub coreth_state_sync_enabled: bool,
-
-    pub subnet_evms: usize,
-
-    pub subnet_evm_gas_limit: u64,
-    pub subnet_evm_target_block_rate: u64,
-    pub subnet_evm_min_base_fee: u64,
-    pub subnet_evm_target_gas: u64,
-    pub subnet_evm_base_fee_change_denominator: u64,
-    pub subnet_evm_min_block_gas_cost: u64,
-    pub subnet_evm_max_block_gas_cost: u64,
-    pub subnet_evm_block_gas_cost_step: u64,
-    pub subnet_evm_tx_pool_account_slots: u64,
-    pub subnet_evm_tx_pool_global_slots: u64,
-    pub subnet_evm_tx_pool_account_queue: u64,
-    pub subnet_evm_tx_pool_global_queue: u64,
-    pub subnet_evm_local_txs_enabled: bool,
-    pub subnet_evm_priority_regossip_frequency: i64,
-    pub subnet_evm_priority_regossip_max_txs: i32,
-    pub subnet_evm_priority_regossip_txs_per_address: i32,
-    pub subnet_evm_priority_regossip_addresses: Vec<String>,
-    pub subnet_evm_proposer_min_block_delay: u64,
-
-    pub subnet_evm_auto_contract_deployer_allow_list_config: bool,
-    pub subnet_evm_auto_contract_native_minter_config: bool,
-
-    pub xsvms: usize,
 
     pub spec_file_path: String,
 }
@@ -561,168 +507,6 @@ impl Spec {
             }
         };
 
-        let subnet_evms = {
-            if opts.subnet_evms > 0 {
-                let mut seed_eth_addrs = Vec::new();
-                for k in prefunded_pubkeys.iter() {
-                    seed_eth_addrs.push(k.to_eth_address());
-                }
-                let mut genesis = subnet_evm_genesis::Genesis::new(seed_eth_addrs)
-                    .expect("failed to generate genesis");
-
-                let mut genesis_chain_config = subnet_evm_genesis::ChainConfig::default();
-
-                let mut fee_config = subnet_evm_genesis::FeeConfig::default();
-                if opts.subnet_evm_gas_limit > 0 {
-                    fee_config.gas_limit = Some(opts.subnet_evm_gas_limit);
-                    genesis.gas_limit = primitive_types::U256::from(opts.subnet_evm_gas_limit);
-                }
-                if opts.subnet_evm_target_block_rate > 0 {
-                    fee_config.target_block_rate = Some(opts.subnet_evm_target_block_rate);
-                }
-                if opts.subnet_evm_min_base_fee > 0 {
-                    fee_config.min_base_fee = Some(opts.subnet_evm_min_base_fee);
-                }
-                if opts.subnet_evm_target_gas > 0 {
-                    fee_config.target_gas = Some(opts.subnet_evm_target_gas);
-                }
-                if opts.subnet_evm_base_fee_change_denominator > 0 {
-                    fee_config.base_fee_change_denominator =
-                        Some(opts.subnet_evm_base_fee_change_denominator);
-                }
-
-                fee_config.min_block_gas_cost = Some(opts.subnet_evm_min_block_gas_cost);
-                fee_config.max_block_gas_cost = Some(opts.subnet_evm_max_block_gas_cost);
-
-                if opts.subnet_evm_block_gas_cost_step > 0 {
-                    fee_config.block_gas_cost_step = Some(opts.subnet_evm_block_gas_cost_step);
-                }
-                genesis_chain_config.fee_config = Some(fee_config);
-
-                let mut admin_addresses: Vec<String> = Vec::new();
-                for key_info in prefunded_keys_info.iter() {
-                    admin_addresses.push(key_info.eth_address.clone());
-                }
-                if opts.subnet_evm_auto_contract_deployer_allow_list_config {
-                    genesis_chain_config.contract_deployer_allow_list_config =
-                        Some(subnet_evm_genesis::ContractDeployerAllowListConfig {
-                            allow_list_admins: Some(admin_addresses.clone()),
-                            ..subnet_evm_genesis::ContractDeployerAllowListConfig::default()
-                        });
-                }
-                if opts.subnet_evm_auto_contract_native_minter_config {
-                    genesis_chain_config.contract_native_minter_config =
-                        Some(subnet_evm_genesis::ContractNativeMinterConfig {
-                            allow_list_admins: Some(admin_addresses.clone()),
-                            ..subnet_evm_genesis::ContractNativeMinterConfig::default()
-                        });
-                }
-                genesis_chain_config.fee_manager_config =
-                    Some(subnet_evm_genesis::FeeManagerConfig {
-                        allow_list_admins: Some(admin_addresses.clone()),
-                        ..subnet_evm_genesis::FeeManagerConfig::default()
-                    });
-
-                genesis.config = Some(genesis_chain_config);
-
-                let mut subnet_config = subnet::config::Config::default();
-                if opts.subnet_evm_proposer_min_block_delay > 0 {
-                    subnet_config.proposer_min_block_delay =
-                        opts.subnet_evm_proposer_min_block_delay;
-                }
-
-                let mut subnet_evm_chain_config = subnet_evm_chain_config::Config::default();
-                subnet_evm_chain_config.priority_regossip_addresses = Some(admin_addresses.clone());
-
-                if opts.subnet_evm_tx_pool_account_slots > 0 {
-                    subnet_evm_chain_config.tx_pool_account_slots =
-                        Some(opts.subnet_evm_tx_pool_account_slots);
-                }
-                if opts.subnet_evm_tx_pool_global_slots > 0 {
-                    subnet_evm_chain_config.tx_pool_global_slots =
-                        Some(opts.subnet_evm_tx_pool_global_slots);
-                }
-                if opts.subnet_evm_tx_pool_account_queue > 0 {
-                    subnet_evm_chain_config.tx_pool_account_queue =
-                        Some(opts.subnet_evm_tx_pool_account_queue);
-                }
-                if opts.subnet_evm_tx_pool_global_queue > 0 {
-                    subnet_evm_chain_config.tx_pool_global_queue =
-                        Some(opts.subnet_evm_tx_pool_global_queue);
-                }
-                if opts.subnet_evm_local_txs_enabled {
-                    subnet_evm_chain_config.local_txs_enabled = Some(true);
-                }
-                if opts.subnet_evm_priority_regossip_frequency > 0 {
-                    subnet_evm_chain_config.priority_regossip_frequency =
-                        Some(opts.subnet_evm_priority_regossip_frequency);
-                }
-                if opts.subnet_evm_priority_regossip_max_txs > 0 {
-                    subnet_evm_chain_config.priority_regossip_max_txs =
-                        Some(opts.subnet_evm_priority_regossip_max_txs);
-                }
-                if opts.subnet_evm_priority_regossip_txs_per_address > 0 {
-                    subnet_evm_chain_config.priority_regossip_txs_per_address =
-                        Some(opts.subnet_evm_priority_regossip_txs_per_address);
-                }
-                if !opts.subnet_evm_priority_regossip_addresses.is_empty() {
-                    let addresses =
-                        if let Some(ss) = &subnet_evm_chain_config.priority_regossip_addresses {
-                            let mut copied = ss.clone();
-                            copied.extend(opts.subnet_evm_priority_regossip_addresses);
-                            copied
-                        } else {
-                            opts.subnet_evm_priority_regossip_addresses.clone()
-                        };
-                    subnet_evm_chain_config.priority_regossip_addresses = Some(addresses);
-                }
-
-                let subnet_evm = SubnetEvm {
-                    genesis,
-                    chain_config: subnet_evm_chain_config,
-                    subnet_config,
-                };
-                let mut subnet_evms = BTreeMap::new();
-                for i in 0..opts.subnet_evms {
-                    subnet_evms.insert(
-                        format!("{}{}", i + 1, random_manager::secure_string(5)),
-                        subnet_evm.clone(),
-                    );
-                }
-                Some(subnet_evms)
-            } else {
-                None
-            }
-        };
-
-        let xsvms = {
-            if opts.xsvms > 0 {
-                let genesis = xsvm_genesis::Genesis::new(&prefunded_pubkeys)
-                    .expect("failed to generate genesis");
-
-                let mut subnet_config = subnet::config::Config::default();
-                if opts.subnet_evm_proposer_min_block_delay > 0 {
-                    subnet_config.proposer_min_block_delay =
-                        opts.subnet_evm_proposer_min_block_delay * 1000 * 1000 * 1000;
-                }
-
-                let xsvm = Xsvm {
-                    genesis,
-                    subnet_config,
-                };
-                let mut xsvms = BTreeMap::new();
-                for i in 0..opts.xsvms {
-                    xsvms.insert(
-                        format!("{}{}", i + 1, random_manager::secure_string(5)),
-                        xsvm.clone(),
-                    );
-                }
-                Some(xsvms)
-            } else {
-                None
-            }
-        };
-
         // [year][month][date]-[system host-based id]
         let s3_bucket = format!(
             "avalanche-ops-{}-{}-{}",
@@ -746,9 +530,7 @@ impl Spec {
             aws_volume_provisioner_local_bin: String::new(),
             aws_ip_provisioner_local_bin: String::new(),
             avalanche_telemetry_cloudwatch_local_bin: String::new(),
-            avalanche_config_local_bin: String::new(),
             avalanchego_local_bin: String::new(),
-            plugin_local_dir: String::new(),
             prometheus_metrics_rules_file_path: String::new(),
         };
         if !opts
@@ -774,20 +556,13 @@ impl Spec {
                 .upload_artifacts_avalanche_telemetry_cloudwatch_local_bin
                 .clone();
         }
-        if !opts.upload_artifacts_avalanche_config_local_bin.is_empty() {
-            upload_artifacts.avalanche_config_local_bin =
-                opts.upload_artifacts_avalanche_config_local_bin.clone();
-        }
         if !opts.upload_artifacts_avalanched_local_bin.is_empty() {
             upload_artifacts.avalanched_local_bin =
                 opts.upload_artifacts_avalanched_local_bin.clone();
         }
-        if !opts.upload_artifacts_avalanche_local_bin.is_empty() {
+        if !opts.upload_artifacts_avalanchego_local_bin.is_empty() {
             upload_artifacts.avalanchego_local_bin =
-                opts.upload_artifacts_avalanche_local_bin.clone();
-        }
-        if !opts.upload_artifacts_plugin_local_dir.is_empty() {
-            upload_artifacts.plugin_local_dir = opts.upload_artifacts_plugin_local_dir.clone();
+                opts.upload_artifacts_avalanchego_local_bin.clone();
         }
         if !opts
             .upload_artifacts_prometheus_metrics_rules_file_path
@@ -820,9 +595,7 @@ impl Spec {
             && upload_artifacts
                 .avalanche_telemetry_cloudwatch_local_bin
                 .is_empty()
-            && upload_artifacts.avalanche_config_local_bin.is_empty()
             && upload_artifacts.avalanchego_local_bin.is_empty()
-            && upload_artifacts.plugin_local_dir.is_empty()
             && upload_artifacts
                 .prometheus_metrics_rules_file_path
                 .is_empty()
@@ -920,9 +693,6 @@ impl Spec {
                 avalanchego_config,
                 coreth_chain_config,
                 avalanchego_genesis_template,
-
-                subnet_evms,
-                xsvms,
             },
             spec_file_path,
         ))
@@ -1079,14 +849,6 @@ impl Spec {
                     ));
                 }
             }
-            if !v.plugin_local_dir.is_empty() {
-                if !Path::new(&v.plugin_local_dir).exists() {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!("plugin_dir {} does not exist", v.plugin_local_dir),
-                    ));
-                }
-            }
         }
 
         if !self.avalanchego_config.is_custom_network() {
@@ -1220,7 +982,6 @@ upload_artifacts:
   avalanched_local_bin: {avalanched_bin}
   avalanche_config_local_bin: {avalanche_config_bin}
   avalanchego_local_bin: {avalanchego_bin}
-  plugin_local_dir: {plugin_dir}
 
 avalanched_config:
   log_level: info
@@ -1327,10 +1088,8 @@ coreth_chain_config:
             aws_volume_provisioner_local_bin: String::new(),
             aws_ip_provisioner_local_bin: String::new(),
             avalanche_telemetry_cloudwatch_local_bin: String::new(),
-            avalanche_config_local_bin: avalanche_config_bin.to_string(),
 
             avalanchego_local_bin: avalanchego_bin.to_string(),
-            plugin_local_dir: plugin_dir.to_string(),
 
             prometheus_metrics_rules_file_path: String::new(),
         }),
@@ -1350,9 +1109,6 @@ coreth_chain_config:
         avalanchego_config,
         coreth_chain_config: coreth_chain_config::Config::default(),
         avalanchego_genesis_template: None,
-
-        subnet_evms: None,
-        xsvms: None,
     };
 
     cfg.validate().expect("unexpected validate failure");
@@ -1366,23 +1122,12 @@ coreth_chain_config:
     assert_eq!(cfg.resources.s3_bucket, bucket);
 
     assert_eq!(
-        cfg.upload_artifacts
-            .clone()
-            .unwrap()
-            .avalanche_config_local_bin,
-        avalanche_config_bin
-    );
-    assert_eq!(
         cfg.upload_artifacts.clone().unwrap().avalanched_local_bin,
         avalanched_bin
     );
     assert_eq!(
         cfg.upload_artifacts.clone().unwrap().avalanchego_local_bin,
         avalanchego_bin
-    );
-    assert_eq!(
-        cfg.upload_artifacts.clone().unwrap().plugin_local_dir,
-        plugin_dir.to_string()
     );
 
     assert!(cfg.machine.anchor_nodes.is_none());
@@ -1699,8 +1444,6 @@ pub struct UploadArtifacts {
     pub aws_ip_provisioner_local_bin: String,
     #[serde(default)]
     pub avalanche_telemetry_cloudwatch_local_bin: String,
-    #[serde(default)]
-    pub avalanche_config_local_bin: String,
 
     /// AvalancheGo binary path in the local environment.
     /// The file is "compressed" and uploaded to remote storage
@@ -1714,8 +1457,6 @@ pub struct UploadArtifacts {
     /// If none, it downloads the latest from github.
     #[serde(default)]
     pub avalanchego_local_bin: String,
-    #[serde(default)]
-    pub plugin_local_dir: String,
 
     #[serde(default)]
     pub prometheus_metrics_rules_file_path: String,
@@ -1734,9 +1475,7 @@ impl UploadArtifacts {
             aws_volume_provisioner_local_bin: String::new(),
             aws_ip_provisioner_local_bin: String::new(),
             avalanche_telemetry_cloudwatch_local_bin: String::new(),
-            avalanche_config_local_bin: String::new(),
             avalanchego_local_bin: String::new(),
-            plugin_local_dir: String::new(),
             prometheus_metrics_rules_file_path: String::new(),
         }
     }
@@ -1746,9 +1485,6 @@ impl UploadArtifacts {
 pub enum StackName {
     Ec2InstanceRole(String),
     Vpc(String),
-    SsmDocRestartNodeTrackedSubnetSubnetEvm(String),
-    SsmDocRestartNodeTrackedSubnetXsvm(String),
-    SsmDocRestartNodeChainConfigSubnetEvm(String),
     SsmInstallSubnetChain(String),
 }
 
@@ -1757,15 +1493,6 @@ impl StackName {
         match self {
             StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
             StackName::Vpc(id) => format!("{}-vpc", id),
-            StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(id) => {
-                format!("{}-ssm-doc-restart-node-tracked-subnet-subnet-evm", id)
-            }
-            StackName::SsmDocRestartNodeTrackedSubnetXsvm(id) => {
-                format!("{}-ssm-doc-restart-node-tracked-subnet-xsvm", id)
-            }
-            StackName::SsmDocRestartNodeChainConfigSubnetEvm(id) => {
-                format!("{}-ssm-doc-restart-node-chain-config-subnet-evm", id)
-            }
             StackName::SsmInstallSubnetChain(id) => {
                 format!("{}-ssm-install-subnet-chain", id)
             }
@@ -1789,9 +1516,7 @@ pub enum StorageNamespace {
     AwsIpProvisionerBin(String),
     AvalancheTelemetryCloudwatchBin(String),
 
-    AvalancheConfigBin(String),
-    AvalancheBin(String),
-    PluginDir(String),
+    AvalancheGoBin(String),
 
     PkiKeyDir(String),
     MetricsRules(String),
@@ -1841,13 +1566,9 @@ impl StorageNamespace {
                 format!("{}/bootstrap/install/avalanche-telemetry-cloudwatch", id)
             }
 
-            StorageNamespace::AvalancheConfigBin(id) => {
-                format!("{}/bootstrap/install/avalanche-config", id)
-            }
-            StorageNamespace::AvalancheBin(id) => {
+            StorageNamespace::AvalancheGoBin(id) => {
                 format!("{}/bootstrap/install/avalanchego", id)
             }
-            StorageNamespace::PluginDir(id) => format!("{}/bootstrap/install/plugin", id),
 
             StorageNamespace::PkiKeyDir(id) => {
                 format!("{}/pki", id)

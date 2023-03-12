@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::HashMap,
     env,
     fs::{self, File},
     io::{self, stdout, Error, ErrorKind},
@@ -25,7 +25,6 @@ use aws_manager::{
 use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_ec2::model::Address;
 use aws_sdk_s3::model::Object;
-use aws_sdk_ssm::model::CommandInvocationStatus;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -153,23 +152,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     // just create these no matter what for simplification
-    spec.resources
-        .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm = Some(
-        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
-            spec.id.clone(),
-        )
-        .encode(),
-    );
-    spec.resources
-        .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm = Some(
-        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(spec.id.clone())
-            .encode(),
-    );
-    spec.resources
-        .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm = Some(
-        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
-            .encode(),
-    );
     spec.resources.cloudformation_ssm_install_subnet_chain =
         Some(avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode());
     spec.sync(spec_file_path)?;
@@ -329,36 +311,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             );
         }
 
-        if !v.avalanche_config_local_bin.is_empty()
-            && Path::new(&v.avalanche_config_local_bin).exists()
-        {
-            // don't compress since we need to download this in user data
-            // while instance bootstrapping
-
-            s3_manager
-                .put_object(
-                    &v.avalanche_config_local_bin,
-                    &spec.resources.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheConfigBin(
-                        spec.id.clone(),
-                    )
-                    .encode(),
-                )
-                .await
-                .expect("failed put_object upload_artifacts.avalanche_config_bin");
-        } else {
-            log::info!(
-                "skipping uploading avalanche_config_bin, will be downloaded on remote machines..."
-            );
-        }
-
         if !v.avalanchego_local_bin.is_empty() && Path::new(&v.avalanchego_local_bin).exists() {
             // upload without compression first
             s3_manager
                 .put_object(
                     &v.avalanchego_local_bin,
                     &spec.resources.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheBin(spec.id.clone())
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalancheGoBin(spec.id.clone())
                         .encode(),
                 )
                 .await
@@ -367,38 +326,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             log::info!(
                 "skipping uploading avalanchego_bin, will be downloaded on remote machines..."
             );
-        }
-
-        if !v.plugin_local_dir.is_empty() && Path::new(&v.plugin_local_dir).exists() {
-            for entry in fs::read_dir(&v.plugin_local_dir).unwrap() {
-                let entry = entry.unwrap();
-                let entry_path = entry.path();
-
-                let file_path = entry_path.to_str().unwrap();
-                let file_name = entry.file_name();
-                let file_name = file_name.as_os_str().to_str().unwrap();
-
-                log::info!(
-                    "uploading {} from plugins directory {}",
-                    file_path,
-                    v.plugin_local_dir,
-                );
-                s3_manager
-                    .put_object(
-                        &file_path,
-                        &spec.resources.s3_bucket,
-                        &format!(
-                            "{}/{}",
-                            &avalanche_ops::aws::spec::StorageNamespace::PluginDir(spec.id.clone())
-                                .encode(),
-                            file_name,
-                        ),
-                    )
-                    .await
-                    .expect("failed put_object file_path");
-            }
-        } else {
-            log::info!("skipping uploading plugin dir...");
         }
 
         execute!(
@@ -1666,54 +1593,44 @@ aws ssm start-session --region {} --target {}
         node_ids_to_instance_ids.insert(node_id, instance_id);
     }
 
-    // mainnet/fuji should not be done this automatic, must be done in a separate command
-    if !spec.avalanchego_config.is_custom_network() {
-        log::info!(
-            "skipping installing subnets for network Id {}",
-            spec.avalanchego_config.network_id
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+        ResetColor
+    )?;
+    // TODO: check "/ext/info"
+    // TODO: check "/ext/bc/C/rpc"
+    // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+    // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+    //
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+    // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
+    for host in rpc_hosts.iter() {
+        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+
+        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
+        endpoints.http_rpc = Some(http_rpc.clone());
+        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+        endpoints.health = Some(format!("{http_rpc}/ext/health"));
+        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+        spec.resources.created_endpoints = Some(endpoints.clone());
+
+        println!(
+            "{}",
+            spec.resources
+                .created_endpoints
+                .clone()
+                .unwrap()
+                .encode_yaml()
+                .unwrap()
         );
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
-            ResetColor
-        )?;
-        // TODO: check "/ext/info"
-        // TODO: check "/ext/bc/C/rpc"
-        // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
-        // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
-        //
-        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
-        // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
-        // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
-        for host in rpc_hosts.iter() {
-            let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
-
-            let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
-            endpoints.http_rpc = Some(http_rpc.clone());
-            endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
-            endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
-            endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-            endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
-            endpoints.health = Some(format!("{http_rpc}/ext/health"));
-            endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
-            endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-            endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-            spec.resources.created_endpoints = Some(endpoints.clone());
-
-            println!(
-                "{}",
-                spec.resources
-                    .created_endpoints
-                    .clone()
-                    .unwrap()
-                    .encode_yaml()
-                    .unwrap()
-            );
-        }
-
-        return Ok(());
     }
 
     println!();
@@ -1831,162 +1748,6 @@ default-spec \\
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet subnet-evm...\n\n"),
-        ResetColor
-    )?;
-    let ssm_doc_tmpl =
-        avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_subnet_evm_yaml()
-            .unwrap();
-    let ssm_doc_stack_name = spec
-        .resources
-        .cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm
-        .clone()
-        .unwrap();
-    let ssm_document_name_restart_tracked_subnet =
-        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetSubnetEvm(
-            spec.id.clone(),
-        )
-        .encode();
-    let cfn_params = Vec::from([build_param(
-        "DocumentName",
-        &ssm_document_name_restart_tracked_subnet,
-    )]);
-    cloudformation_manager
-        .create_stack(
-            ssm_doc_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            &ssm_doc_tmpl,
-            Some(Vec::from([Tag::builder()
-                .key("KIND")
-                .value("avalanche-ops")
-                .build()])),
-            Some(cfn_params),
-        )
-        .await
-        .unwrap();
-    sleep(Duration::from_secs(10)).await;
-    cloudformation_manager
-        .poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        )
-        .await
-        .unwrap();
-    log::info!("created ssm document for restarting node with tracked subnet");
-
-    //
-    //
-    //
-    //
-    //
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: creating an SSM document for restarting node to load chain config subnet-evm...\n\n"),
-        ResetColor
-    )?;
-    let ssm_doc_tmpl =
-        avalanche_ops::aws::artifacts::ssm_doc_restart_node_chain_config_subnet_evm_yaml().unwrap();
-    let ssm_doc_stack_name = spec
-        .resources
-        .cloudformation_ssm_doc_restart_node_chain_config_subnet_evm
-        .clone()
-        .unwrap();
-    let ssm_document_name_restart_node_chain_config =
-        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeChainConfigSubnetEvm(spec.id.clone())
-            .encode();
-    let cfn_params = Vec::from([build_param(
-        "DocumentName",
-        &ssm_document_name_restart_node_chain_config,
-    )]);
-    cloudformation_manager
-        .create_stack(
-            ssm_doc_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            &ssm_doc_tmpl,
-            Some(Vec::from([Tag::builder()
-                .key("KIND")
-                .value("avalanche-ops")
-                .build()])),
-            Some(cfn_params),
-        )
-        .await
-        .unwrap();
-    sleep(Duration::from_secs(10)).await;
-    cloudformation_manager
-        .poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        )
-        .await
-        .unwrap();
-    log::info!("created ssm document for restarting node to load chain config");
-
-    //
-    //
-    //
-    //
-    //
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: creating an SSM document for restarting node with tracked subnet xsvm...\n\n"),
-        ResetColor
-    )?;
-    let ssm_doc_tmpl =
-        avalanche_ops::aws::artifacts::ssm_doc_restart_node_tracked_subnet_xsvm_yaml().unwrap();
-    let ssm_doc_stack_name = spec
-        .resources
-        .cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm
-        .clone()
-        .unwrap();
-    let ssm_document_name_restart_tracked_subnet_xsvm =
-        avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
-            .encode();
-    let cfn_params = Vec::from([build_param(
-        "DocumentName",
-        &ssm_document_name_restart_tracked_subnet_xsvm,
-    )]);
-    cloudformation_manager
-        .create_stack(
-            ssm_doc_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            &ssm_doc_tmpl,
-            Some(Vec::from([Tag::builder()
-                .key("KIND")
-                .value("avalanche-ops")
-                .build()])),
-            Some(cfn_params),
-        )
-        .await
-        .unwrap();
-    sleep(Duration::from_secs(10)).await;
-    cloudformation_manager
-        .poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        )
-        .await
-        .unwrap();
-    log::info!("created ssm document for restarting node with tracked subnet");
-
-    //
-    //
-    //
-    //
-    //
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
         Print("\n\n\nSTEP: creating an SSM document for installing subnet...\n\n"),
         ResetColor
     )?;
@@ -2042,6 +1803,38 @@ default-spec \\
         )),
         ResetColor
     )?;
+
+    if spec.avalanchego_config.is_custom_network() {
+        let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
+        let priv_key =
+            key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
+
+        let wallet_to_spend = wallet::Builder::new(&priv_key)
+            .base_http_urls(http_rpcs.clone())
+            .build()
+            .await
+            .unwrap();
+
+        // add nodes as validators for the primary network
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: adding all nodes as primary network validators...\n\n"),
+            ResetColor
+        )?;
+        log::info!("adding all nodes as primary network validator");
+        for node_id in all_node_ids.iter() {
+            let (tx_id, added) = wallet_to_spend
+                .p()
+                .add_validator()
+                .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+                .check_acceptance(true)
+                .issue()
+                .await
+                .unwrap();
+            log::info!("validator tx id {}, added {}", tx_id, added);
+        }
+    }
 
     //
     //
@@ -2167,682 +1960,6 @@ default-spec \\
         )),
         ResetColor
     )?;
-
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    //
-    // TODO: remove all below
-    let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
-    let priv_key =
-        key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
-
-    let wallet_to_spend = wallet::Builder::new(&priv_key)
-        .base_http_urls(http_rpcs.clone())
-        .build()
-        .await
-        .unwrap();
-
-    //
-    //
-    //
-    //
-    //
-    // add nodes as validators for the primary network
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: adding all nodes as primary network validators...\n\n"),
-        ResetColor
-    )?;
-    log::info!("adding all nodes as primary network validator");
-    for node_id in all_node_ids.iter() {
-        let (tx_id, added) = wallet_to_spend
-            .p()
-            .add_validator()
-            .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-            .check_acceptance(true)
-            .issue()
-            .await
-            .unwrap();
-        log::info!("validator tx id {}, added {}", tx_id, added);
-    }
-
-    // maps subnet-evm blockchain id to its validator node Ids
-    let mut subnet_evm_blockchain_ids = BTreeMap::new();
-    if let Some(subnet_evms) = &spec.subnet_evms {
-        println!();
-        log::info!("non-empty subnet_evms and custom network, so install with test keys");
-        println!();
-
-        let mut tracked_subnets = Vec::new();
-        for (subnet_evm_name, subnet_evm) in subnet_evms.iter() {
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: creating a new subnet for subnet-evm {subnet_evm_name}...\n\n"
-                )),
-                ResetColor
-            )?;
-            let subnet_id = wallet_to_spend
-                .p()
-                .create_subnet()
-                .dry_mode(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("[dry mode] subnet Id '{}'", subnet_id);
-
-            let created_subnet_id = wallet_to_spend
-                .p()
-                .create_subnet()
-                .check_acceptance(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("created subnet '{}' (still need track)", created_subnet_id);
-            tracked_subnets.push(created_subnet_id.to_string());
-
-            // must upload before restarting with SSM doc
-            log::info!(
-                "uploading avalancheup spec file with subnet-evm tracked subnets {:?}",
-                tracked_subnets
-            );
-            let ss = tracked_subnets.join(",");
-            log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
-            spec.avalanchego_config.track_subnets = Some(ss);
-            spec.sync(spec_file_path)?;
-            s3_manager
-                .put_object(
-                    &spec_file_path,
-                    &spec.resources.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
-                        .encode(),
-                )
-                .await
-                .unwrap();
-            sleep(Duration::from_secs(5)).await;
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with tracked subnet subnet-evm...\n\n"),
-                ResetColor
-            )?;
-            // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = ssm_manager
-                .cli
-                .send_command()
-                .document_name(ssm_document_name_restart_tracked_subnet.clone())
-                .set_instance_ids(Some(all_instance_ids.clone()))
-                .parameters(
-                    "vmId",
-                    vec![String::from(
-                        "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy",
-                    )],
-                )
-                .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
-                .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
-                .output_s3_region(spec.resources.region.clone())
-                .output_s3_bucket_name(spec.resources.s3_bucket.clone())
-                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                .send()
-                .await
-                .unwrap();
-            let ssm_output = ssm_output.command().unwrap();
-            let ssm_command_id = ssm_output.command_id().unwrap();
-            log::info!("sent SSM command {}", ssm_command_id);
-            sleep(Duration::from_secs(30)).await;
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
-                ResetColor
-            )?;
-            for instance_id in all_instance_ids.iter() {
-                let status = ssm_manager
-                    .poll_command(
-                        ssm_command_id,
-                        instance_id,
-                        CommandInvocationStatus::Success,
-                        Duration::from_secs(300),
-                        Duration::from_secs(5),
-                    )
-                    .await
-                    .unwrap();
-                log::info!("status {:?} for instance id {}", status, instance_id);
-            }
-            sleep(Duration::from_secs(5)).await;
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: adding selected nodes as subnet validator for subnet-evm {subnet_evm_name}...\n\n"
-                )),
-                ResetColor
-            )?;
-            for node_id in all_node_ids.iter() {
-                wallet_to_spend
-                    .p()
-                    .add_subnet_validator()
-                    .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-                    .subnet_id(created_subnet_id)
-                    .check_acceptance(true)
-                    .issue()
-                    .await
-                    .unwrap();
-            }
-            log::info!("added subnet validators for {}", created_subnet_id);
-            sleep(Duration::from_secs(5)).await;
-
-            let subnet_evm_genesis_bytes = subnet_evm.genesis.to_bytes().unwrap();
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: creating a new blockchain for subnet-evm {subnet_evm_name}...\n\n"
-                )),
-                ResetColor
-            )?;
-            let blockchain_id = wallet_to_spend
-                .p()
-                .create_chain()
-                .subnet_id(created_subnet_id)
-                .genesis_data(subnet_evm_genesis_bytes.clone())
-                .vm_id(
-                    ids::Id::from_str("srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy").unwrap(),
-                )
-                .chain_name(String::from("subnetevm"))
-                .dry_mode(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("[dry mode] blockchain Id {}", blockchain_id);
-
-            let blockchain_id = wallet_to_spend
-                .p()
-                .create_chain()
-                .subnet_id(created_subnet_id)
-                .genesis_data(subnet_evm_genesis_bytes)
-                .vm_id(
-                    ids::Id::from_str("srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy").unwrap(),
-                )
-                .chain_name(String::from("subnetevm"))
-                .check_acceptance(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-
-            subnet_evm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with chain config...\n\n"),
-                ResetColor
-            )?;
-            // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = ssm_manager
-                .cli
-                .send_command()
-                .document_name(ssm_document_name_restart_node_chain_config.clone())
-                .set_instance_ids(Some(all_instance_ids.clone()))
-                .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                .parameters("subnetEvmName", vec![subnet_evm_name.clone()])
-                .parameters("newBlockchainId", vec![blockchain_id.to_string()])
-                .output_s3_region(spec.resources.region.clone())
-                .output_s3_bucket_name(spec.resources.s3_bucket.clone())
-                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                .send()
-                .await
-                .unwrap();
-            let ssm_output = ssm_output.command().unwrap();
-            let ssm_command_id = ssm_output.command_id().unwrap();
-            log::info!("sent SSM command {}", ssm_command_id);
-            sleep(Duration::from_secs(30)).await;
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
-                ResetColor
-            )?;
-            for instance_id in all_instance_ids.iter() {
-                let status = ssm_manager
-                    .poll_command(
-                        ssm_command_id,
-                        instance_id,
-                        CommandInvocationStatus::Success,
-                        Duration::from_secs(300),
-                        Duration::from_secs(5),
-                    )
-                    .await
-                    .unwrap();
-                log::info!("status {:?} for instance id {}", status, instance_id);
-            }
-        }
-    }
-
-    // maps xsvm blockchain id to its validator node Ids
-    let mut xsvm_blockchain_ids = BTreeMap::new();
-    if let Some(xsvms) = &spec.xsvms {
-        println!();
-        log::info!("non-empty xsvms and custom network, so install with test keys");
-        println!();
-
-        for (xsvm_name, xsvm) in xsvms.iter() {
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: creating a new subnet for xsvm {xsvm_name}...\n\n"
-                )),
-                ResetColor
-            )?;
-            let subnet_id = wallet_to_spend
-                .p()
-                .create_subnet()
-                .dry_mode(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("[dry mode] subnet Id '{}'", subnet_id);
-
-            let created_subnet_id = wallet_to_spend
-                .p()
-                .create_subnet()
-                .check_acceptance(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("created subnet '{}' (still need track)", created_subnet_id);
-
-            // must upload before restarting with SSM doc
-            log::info!(
-                "uploading avalancheup spec file with subnet-evm tracked subnets {:?}",
-                spec.avalanchego_config.track_subnets
-            );
-            if let Some(s) = &spec.avalanchego_config.track_subnets {
-                let ss = format!("{s},{}", created_subnet_id.to_string());
-                log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
-                spec.avalanchego_config.track_subnets = Some(ss);
-            } else {
-                let ss = created_subnet_id.to_string();
-                log::info!("updated spec.avalanchego_config.track_subnets with {ss}");
-                spec.avalanchego_config.track_subnets = Some(ss);
-            }
-            spec.sync(spec_file_path)?;
-            s3_manager
-                .put_object(
-                    &spec_file_path,
-                    &spec.resources.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
-                        .encode(),
-                )
-                .await
-                .unwrap();
-            sleep(Duration::from_secs(5)).await;
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: sending remote commands via an SSM document for restarting node with tracked subnet xsvm...\n\n"),
-                ResetColor
-            )?;
-            // ref. https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html
-            let ssm_output = ssm_manager
-                .cli
-                .send_command()
-                .document_name(ssm_document_name_restart_tracked_subnet.clone())
-                .set_instance_ids(Some(all_instance_ids.clone()))
-                .parameters(
-                    "vmId",
-                    vec![String::from(
-                        "v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH",
-                    )],
-                )
-                .parameters("specPath", vec![String::from("/data/avalancheup.yaml")])
-                .parameters("xsvmName", vec![xsvm_name.clone()])
-                .parameters("newTrackedSubnetId", vec![created_subnet_id.to_string()])
-                .output_s3_region(spec.resources.region.clone())
-                .output_s3_bucket_name(spec.resources.s3_bucket.clone())
-                .output_s3_key_prefix(format!("{}/ssm-output-logs", spec.id))
-                .send()
-                .await
-                .unwrap();
-            let ssm_output = ssm_output.command().unwrap();
-            let ssm_command_id = ssm_output.command_id().unwrap();
-            log::info!("sent SSM command {}", ssm_command_id);
-            sleep(Duration::from_secs(30)).await;
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
-                ResetColor
-            )?;
-            for instance_id in all_instance_ids.iter() {
-                let status = ssm_manager
-                    .poll_command(
-                        ssm_command_id,
-                        instance_id,
-                        CommandInvocationStatus::Success,
-                        Duration::from_secs(300),
-                        Duration::from_secs(5),
-                    )
-                    .await
-                    .unwrap();
-                log::info!("status {:?} for instance id {}", status, instance_id);
-            }
-            sleep(Duration::from_secs(5)).await;
-
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: adding selected nodes as subnet validator for xsvm {xsvm_name}...\n\n"
-                )),
-                ResetColor
-            )?;
-            for node_id in all_node_ids.iter() {
-                wallet_to_spend
-                    .p()
-                    .add_subnet_validator()
-                    .node_id(node::Id::from_str(node_id.as_str()).unwrap())
-                    .subnet_id(created_subnet_id)
-                    .check_acceptance(true)
-                    .issue()
-                    .await
-                    .unwrap();
-            }
-            log::info!("added subnet validators for {}", created_subnet_id);
-            sleep(Duration::from_secs(5)).await;
-
-            // do not use JSON bytes
-            let xsvm_genesis_bytes = xsvm.genesis.to_packer_bytes().unwrap();
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: creating a new blockchain for xsvm {xsvm_name}...\n\n"
-                )),
-                ResetColor
-            )?;
-            let blockchain_id = wallet_to_spend
-                .p()
-                .create_chain()
-                .subnet_id(created_subnet_id)
-                .genesis_data(xsvm_genesis_bytes.clone())
-                .vm_id(
-                    ids::Id::from_str("v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH").unwrap(),
-                )
-                .chain_name(String::from("xsvm"))
-                .dry_mode(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("[dry mode] blockchain Id {}", blockchain_id);
-
-            let blockchain_id = wallet_to_spend
-                .p()
-                .create_chain()
-                .subnet_id(created_subnet_id)
-                .genesis_data(xsvm_genesis_bytes)
-                .vm_id(
-                    ids::Id::from_str("v3m4wPxaHpvGr8qfMeyK6PRW3idZrPHmYcMTt7oXdK47yurVH").unwrap(),
-                )
-                .chain_name(String::from("xsvm"))
-                .check_acceptance(true)
-                .issue()
-                .await
-                .unwrap();
-            log::info!("created a blockchain {blockchain_id} for subnet {subnet_id}");
-
-            xsvm_blockchain_ids.insert(blockchain_id.to_string(), all_node_ids.clone());
-        }
-    }
-
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::DarkGreen),
-        Print("\n\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
-        ResetColor
-    )?;
-    // TODO: check "/ext/info"
-    // TODO: check "/ext/bc/C/rpc"
-    // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
-    // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
-    //
-    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
-    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
-    // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
-    for host in rpc_hosts.iter() {
-        let node_id = if let Some(node) = rpc_host_to_node.get(host) {
-            node.node_id.clone()
-        } else {
-            String::from("NLB DNS")
-        };
-        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
-
-        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
-        endpoints.http_rpc = Some(http_rpc.clone());
-        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
-        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
-        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
-        endpoints.health = Some(format!("{http_rpc}/ext/health"));
-        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
-        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-        spec.resources.created_endpoints = Some(endpoints.clone());
-        println!(
-            "\n---\n{node_id}\n{}",
-            spec.resources
-                .created_endpoints
-                .clone()
-                .unwrap()
-                .encode_yaml()
-                .unwrap()
-        );
-
-        if !subnet_evm_blockchain_ids.is_empty() {
-            println!();
-        }
-        for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
-            log::info!(
-                "subnet-evm chain {subnet_evm_blockchain_id} validators: {:?}:",
-                node_ids
-            );
-            if let Some(node) = rpc_host_to_node.get(host) {
-                println!(
-                    "\nsubnet-evm RPC for node '{}':\n{http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc\n",
-                    node.node_id
-                );
-            } else {
-                println!(
-                    "\n[NLB DNS] subnet-evm RPC for nodes '{:?}':\n{http_rpc}/ext/bc/{subnet_evm_blockchain_id}/rpc\n",
-                    node_ids
-                );
-            }
-        }
-
-        if !xsvm_blockchain_ids.is_empty() {
-            println!();
-        }
-        for (xsvm_blockchain_id, node_ids) in xsvm_blockchain_ids.iter() {
-            log::info!(
-                "xsvm chain {xsvm_blockchain_id} validators: {:?}:",
-                node_ids
-            );
-            if !node_ids.contains(&node_id) {
-                log::info!("{node_id} is not validating subnet chain {xsvm_blockchain_id}");
-                continue;
-            }
-
-            if let Some(node) = rpc_host_to_node.get(host) {
-                println!(
-                    "\nxsvm RPC for node '{}':\n{http_rpc}/ext/bc/{xsvm_blockchain_id}\n",
-                    node.node_id
-                );
-            } else {
-                println!(
-                    "\n[NLB DNS] xsvm RPC for nodes '{:?}':\n{http_rpc}/ext/bc/{xsvm_blockchain_id}\n",
-                    node_ids
-                );
-            }
-        }
-    }
-
-    for (subnet_evm_blockchain_id, node_ids) in subnet_evm_blockchain_ids.iter() {
-        log::info!(
-            "created subnet-evm with blockchain Id {subnet_evm_blockchain_id} in nodes {:?}",
-            node_ids
-        );
-        let mut chain_rpc_urls = Vec::new();
-        for http_rpc in http_rpcs.iter() {
-            chain_rpc_urls.push(format!(
-                "{http_rpc}/ext/bc/{}/rpc",
-                subnet_evm_blockchain_id
-            ));
-        }
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::DarkGreen),
-            Print(format!(
-                "
-{exec_parent_dir}/blizzardup-aws \\
-default-spec \\
---log-level=info \\
---funded-keys={funded_keys} \\
---region={region} \\
---upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
---instance-mode=spot \\
---nodes=10 \\
---blizzard-log-level=info \\
---blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
---blizzard-keys-to-generate=100 \\
---blizzard-workers=10 \\
---blizzard-load-kinds=x-transfers,evm-transfers
-",
-                exec_parent_dir = exec_parent_dir,
-                funded_keys = if let Some(keys) = &spec.prefunded_keys {
-                    keys.len()
-                } else {
-                    1
-                },
-                region = spec.resources.region,
-                blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
-            )),
-            ResetColor
-        )?;
-    }
-    println!();
-    println!();
 
     Ok(())
 }

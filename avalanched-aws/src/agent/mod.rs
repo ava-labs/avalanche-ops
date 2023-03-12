@@ -8,7 +8,6 @@ use std::{
     sync::Arc,
 };
 
-use avalanche_installer::subnet_evm::github as subnet_evm_github;
 use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
     coreth,
@@ -239,7 +238,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         metrics_rules,
         logs_auto_removal,
         metrics_fetch_interval_seconds,
-        subnet_evm_install,
     ) = if opts.use_default_config {
         let avalanchego_config =
             write_default_avalanche_config(fetched_tags.network_id, &public_ipv4)?;
@@ -253,7 +251,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             avalanche_ops::artifacts::prometheus_rules(),
             true,
             0,
-            false,
         )
     } else {
         log::info!("STEP: downloading avalancheup spec file from S3...");
@@ -339,7 +336,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             metrics_rules,
             !spec.disable_logs_auto_removal,
             spec.metrics_fetch_interval_seconds,
-            spec.subnet_evms.is_some(),
         )
     };
     create_config_dirs(&avalanchego_config, &coreth_chain_config)?;
@@ -902,12 +898,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     //
-    stop_and_restart_avalanche_systemd_service(
-        "/usr/local/bin/avalanchego",
-        &avalanchego_config,
-        subnet_evm_install,
-    )
-    .await?;
+    stop_and_restart_avalanche_systemd_service("/usr/local/bin/avalanchego", &avalanchego_config)
+        .await?;
 
     //
     //
@@ -1290,7 +1282,6 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
 async fn stop_and_restart_avalanche_systemd_service(
     avalanche_bin_path: &str,
     avalanchego_config: &avalanchego::config::Config,
-    subnet_evm_install: bool,
 ) -> io::Result<()> {
     log::info!("STEP: setting up and restarting Avalanche systemd service...");
 
@@ -1304,30 +1295,6 @@ async fn stop_and_restart_avalanche_systemd_service(
 
     // persist before starting the service
     avalanchego_config.sync(None)?;
-
-    let subnet_evm_path = Path::new(&avalanchego_config.plugin_dir)
-        .join("srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy");
-    if subnet_evm_install {
-        if subnet_evm_path.exists() {
-            log::info!(
-                "subnet-evm binary already found at {} -- skipping downloads",
-                subnet_evm_path.display()
-            );
-        } else {
-            log::warn!(
-                "subnet-evm binary not found at {} -- downloading from github as fallback",
-                subnet_evm_path.display()
-            );
-            subnet_evm_github::download_latest(
-                None,
-                None,
-                subnet_evm_path.display().to_string().as_str(),
-            )
-            .await?;
-        }
-    } else {
-        log::info!("no need to install subnet-evm")
-    }
 
     // don't use "Type=notify"
     // as "avalanchego" currently does not do anything specific to systemd
