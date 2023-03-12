@@ -277,8 +277,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     "config-file '{}' already exists -- overwriting except tracked subnet ids!",
                     config_file
                 );
-                let old_spec = avalanche_ops::aws::spec::Spec::load(&config_file)?;
-                old_spec.avalanchego_config.track_subnets
+                let old_cfg = avalanchego::config:::Config::load(&config_file)?;
+                old_cfg.track_subnets
             } else {
                 None
             }
