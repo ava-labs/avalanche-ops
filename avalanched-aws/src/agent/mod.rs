@@ -1165,19 +1165,38 @@ fn create_config_dirs(
 ) -> io::Result<()> {
     log::info!("STEP: creating config directories...");
 
+    log::info!("creating directory log-dir {}", avalanchego_config.log_dir);
     fs::create_dir_all(&avalanchego_config.log_dir)?;
+
+    log::info!(
+        "creating directory plugin-dir {}",
+        avalanchego_config.plugin_dir
+    );
     fs::create_dir_all(&avalanchego_config.plugin_dir)?;
+
+    log::info!(
+        "create_dir_all subnet-config-dir {}",
+        avalanchego_config.subnet_config_dir
+    );
     fs::create_dir_all(&avalanchego_config.subnet_config_dir)?;
+
+    log::info!(
+        "create_dir_all chain-config-dir {}",
+        avalanchego_config.chain_config_dir
+    );
     fs::create_dir_all(&avalanchego_config.chain_config_dir)?;
 
     if let Some(v) = &avalanchego_config.profile_dir {
+        log::info!("creating directory profile-dir {}", v);
         fs::create_dir_all(v)?;
     }
 
     if let Some(v) = &coreth_chain_config.continuous_profiler_dir {
+        log::info!("creating directory continuous-profiler-dir {}", v);
         fs::create_dir_all(v)?;
     }
     if let Some(v) = &coreth_chain_config.offline_pruning_data_directory {
+        log::info!("creating directory offline-pruning-data-directory {}", v);
         fs::create_dir_all(v)?;
     }
 
