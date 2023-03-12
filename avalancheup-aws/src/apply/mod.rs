@@ -186,7 +186,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
-    let ssm_manager = ssm::Manager::new(&shared_config);
 
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))
