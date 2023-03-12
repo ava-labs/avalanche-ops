@@ -292,7 +292,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         // always "only" overwrite public-ip and track-subnets flag in case of EC2 instance replacement
         spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
         spec.avalanchego_config.add_track_subnets(track_subnets);
-spec.avalanchego_config.sync(None)?;
+        spec.avalanchego_config.sync(None)?;
 
         // ALWAYS OVERWRITES in case we update and upload to s3
         // "avalanched" never updates "spec" file, runs in read-only mode
@@ -1166,8 +1166,8 @@ fn create_config_dirs(
     log::info!("STEP: creating config directories...");
 
     fs::create_dir_all(&avalanchego_config.log_dir)?;
-    fs::create_dir_all(&avalanchego_config.subnet_config_dir)?;
     fs::create_dir_all(&avalanchego_config.plugin_dir)?;
+    fs::create_dir_all(&avalanchego_config.subnet_config_dir)?;
     fs::create_dir_all(&avalanchego_config.chain_config_dir)?;
 
     if let Some(v) = &avalanchego_config.profile_dir {
