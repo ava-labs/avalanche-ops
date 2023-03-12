@@ -408,7 +408,6 @@ pub async fn execute(
             .unwrap();
     }
 
-
     if delete_cloudwatch_log_group {
         // deletes the one auto-created by nodes
         sleep(Duration::from_secs(1)).await;
