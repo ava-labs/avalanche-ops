@@ -29,24 +29,24 @@ pub struct Flags {
 
     pub skip_prompt: bool,
 
+    pub region: String,
+    pub s3_bucket: String,
+    pub ssm_doc: String,
+
     pub chain_rpc_url: String,
     pub key: String,
     pub staking_period_in_days: u64,
     pub staking_amount_in_avax: u64,
 
     pub subnet_config_path: String,
+    pub subnet_config_s3_key: String,
     pub vm_binary_path: String,
+    pub vm_binary_s3_key: String,
     pub vm_id: String,
     pub chain_name: String,
     pub chain_config_path: String,
+    pub chain_config_s3_key: String,
     pub chain_genesis_path: String,
-
-    pub region: String,
-    pub s3_bucket: String,
-    pub s3_key_vm_binary: String,
-    pub s3_key_subnet_config: String,
-    pub s3_key_chain_config: String,
-    pub ssm_doc: String,
 
     pub node_ids_to_instance_ids: HashMap<String, String>,
 }
@@ -96,6 +96,28 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("REGION")
+                .long("region")
+                .help("Sets the AWS region for API calls/endpoints")
+                .required(true)
+                .num_args(1)
+                .default_value("us-west-2"),
+        )
+        .arg(
+            Arg::new("S3_BUCKET")
+                .long("s3-bucket")
+                .help("Sets the S3 bucket")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("SSM_DOC")
+                .long("ssm-doc")
+                .help("Sets the SSM document name for subnet install")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("CHAIN_RPC_URL")
                 .long("chain-rpc-url")
                 .help("Sets the P-chain or Avalanche RPC endpoint")
@@ -137,10 +159,25 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("SUBNET_CONFIG_S3_KEY")
+                .long("subnet-config-s3-key")
+                .help("Sets the S3 key for the subnet config")
+                .required(false)
+                .default_value("subnet-config.json")
+                .num_args(1),
+        )
+        .arg(
             Arg::new("VM_BINARY_PATH")
                 .long("vm-binary-path")
                 .help("VM binary file path")
                 .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("VM_BINARY_S3_KEY")
+                .long("vm-binary-s3-key")
+                .help("Sets the S3 key for the Vm binary (if empty, default to file name)")
+                .required(false)
                 .num_args(1),
         )
         .arg(
@@ -165,54 +202,17 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("CHAIN_GENESIS_PATH")
-                .long("chain-genesis-path")
-                .help("Chain genesis file path")
-                .required(true)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("REGION")
-                .long("region")
-                .help("Sets the AWS region for API calls/endpoints")
-                .required(true)
-                .num_args(1)
-                .default_value("us-west-2"),
-        )
-        .arg(
-            Arg::new("S3_BUCKET")
-                .long("s3-bucket")
-                .help("Sets the S3 bucket")
-                .required(true)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("S3_KEY_VM_BINARY")
-                .long("s3-key-vm-binary")
-                .help("Sets the S3 key for the Vm binary (if empty, default to file name)")
-                .required(false)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("S3_KEY_SUBNET_CONFIG")
-                .long("s3-key-subnet-config")
-                .help("Sets the S3 key for the subnet config")
-                .required(false)
-                .default_value("subnet-config.json")
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("S3_KEY_CHAIN_CONFIG")
-                .long("s3-key-chain-config")
+            Arg::new("CHAIN_CONFIG_S3_KEY")
+                .long("chain-config-s3-key")
                 .help("Sets the S3 key for the subnet chain config")
                 .required(false)
                 .default_value("subnet-chain-config.json")
                 .num_args(1),
         )
         .arg(
-            Arg::new("SSM_DOC")
-                .long("ssm-doc")
-                .help("Sets the SSM document name for subnet install")
+            Arg::new("CHAIN_GENESIS_PATH")
+                .long("chain-genesis-path")
+                .help("Chain genesis file path")
                 .required(true)
                 .num_args(1),
         )
@@ -245,8 +245,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ids::Id::from_str(&opts.vm_id)?
     };
 
-    let s3_key_vm_binary = if !opts.s3_key_vm_binary.is_empty() {
-        opts.s3_key_vm_binary.clone()
+    let s3_key_vm_binary = if !opts.vm_binary_s3_key.is_empty() {
+        opts.vm_binary_s3_key.clone()
     } else {
         let file_stem = Path::new(&opts.vm_binary_path).file_stem().unwrap();
         file_stem.to_str().unwrap().to_string()
@@ -263,6 +263,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         .build()
         .await
         .unwrap();
+
     let p_chain_balance = wallet_to_spend.p().balance().await.unwrap();
     let p_chain_address = priv_key
         .to_public_key()

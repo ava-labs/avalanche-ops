@@ -42,6 +42,7 @@ async fn main() {
         )
         .subcommands(vec![
             install::command(),
+            install_subnet::command(),
             sync_subnet_evm_chain_config::command(),
             sync_subnet_evm_subnet_config::command(),
             sync_xsvm_subnet_config::command(),

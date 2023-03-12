@@ -331,6 +331,10 @@ async fn main() -> io::Result<()> {
 
                 skip_prompt: sub_matches.get_flag("SKIP_PROMPT"),
 
+                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
+                ssm_doc: sub_matches.get_one::<String>("SSM_DOC").unwrap().clone(),
+
                 chain_rpc_url: sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
                     .unwrap()
@@ -349,39 +353,40 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("SUBNET_CONFIG_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
+                subnet_config_s3_key: sub_matches
+                    .get_one::<String>("SUBNET_CONFIG_S3_KEY")
+                    .unwrap_or(&"subnet-config.json".to_string())
+                    .clone(),
+
                 vm_binary_path: sub_matches
                     .get_one::<String>("VM_BINARY_PATH")
                     .unwrap()
                     .clone(),
+                vm_binary_s3_key: sub_matches
+                    .get_one::<String>("VM_BINARY_S3_KEY")
+                    .unwrap_or(&String::new())
+                    .clone(),
+
                 vm_id: sub_matches
                     .get_one::<String>("VM_ID")
                     .unwrap_or(&String::new())
                     .clone(),
+
                 chain_name: sub_matches.get_one::<String>("CHAIN_NAME").unwrap().clone(),
+
                 chain_config_path: sub_matches
                     .get_one::<String>("CHAIN_CONFIG_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
+                chain_config_s3_key: sub_matches
+                    .get_one::<String>("CHAIN_CONFIG_S3_KEY")
+                    .unwrap_or(&"subnet-chain-config.json".to_string())
+                    .clone(),
+
                 chain_genesis_path: sub_matches
                     .get_one::<String>("CHAIN_GENESIS_PATH")
                     .unwrap()
                     .clone(),
-
-                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
-                s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
-                s3_key_vm_binary: sub_matches
-                    .get_one::<String>("S3_KEY_VM_BINARY")
-                    .unwrap_or(&String::new())
-                    .clone(),
-                s3_key_subnet_config: sub_matches
-                    .get_one::<String>("S3_KEY_SUBNET_CONFIG")
-                    .unwrap_or(&"subnet-config.json".to_string())
-                    .clone(),
-                s3_key_chain_config: sub_matches
-                    .get_one::<String>("S3_KEY_CHAIN_CONFIG")
-                    .unwrap_or(&"subnet-chain-config.json".to_string())
-                    .clone(),
-                ssm_doc: sub_matches.get_one::<String>("SSM_DOC").unwrap().clone(),
 
                 node_ids_to_instance_ids,
             })
