@@ -31,6 +31,7 @@ pub struct Flags {
 
     pub region: String,
     pub s3_bucket: String,
+    pub s3_key_prefix: String,
     pub ssm_doc: String,
 
     pub chain_rpc_url: String,
@@ -40,17 +41,16 @@ pub struct Flags {
     pub staking_amount_in_avax: u64,
 
     pub subnet_config_local_path: String,
-    pub subnet_config_s3_key: String,
+    pub subnet_config_remote_dir: String,
 
     pub vm_binary_local_path: String,
-    pub vm_binary_s3_key: String,
-
+    pub vm_binary_remote_dir: String,
     pub vm_id: String,
     pub chain_name: String,
     pub chain_genesis_path: String,
 
     pub chain_config_local_path: String,
-    pub chain_config_s3_key: String,
+    pub chain_config_remote_dir: String,
 
     pub node_ids_to_instance_ids: HashMap<String, String>,
 }
@@ -115,6 +115,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("S3_KEY_PREFIX")
+                .long("s3-key-prefix")
+                .help("Sets the S3 key prefix for all artifacts")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("SSM_DOC")
                 .long("ssm-doc")
                 .help("Sets the SSM document name for subnet and chain install (see avalanche-ops/src/aws/cfn-templates/ssm_install_subnet_chain.yaml)")
@@ -171,6 +178,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("SUBNET_CONFIG_REMOTE_PATH")
+                .long("subnet-config-remote-dir")
+                .help("Subnet configuration remote file path")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("VM_BINARY_LOCAL_PATH")
                 .long("vm-binary-local-path")
                 .help("VM binary local file path")
@@ -182,6 +196,13 @@ pub fn command() -> Command {
                 .long("vm-binary-s3-key")
                 .help("Sets the S3 key for the Vm binary (if empty, default to local file name)")
                 .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("VM_BINARY_REMOTE_DIR")
+                .long("vm-binary-remote-dir")
+                .help("Plugin dir for VM binaries")
+                .required(true)
                 .num_args(1),
         )
         .arg(
@@ -221,6 +242,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("CHAIN_CONFIG_REMOTE_PATH")
+                .long("chain-config-remote-dir")
+                .help("Chain configuration remote file path")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("NODE_IDS_TO_INSTANCE_IDS")
                 .long("node-ids-to-instance-ids")
                 .help("Sets the hash map of node Id to instance Id in JSON format")
@@ -255,13 +283,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ids::Id::from_str(&opts.vm_id)?
     };
 
-    let vm_binary_s3_key = if !opts.vm_binary_s3_key.is_empty() {
-        opts.vm_binary_s3_key.clone()
-    } else {
-        let file_stem = Path::new(&opts.vm_binary_local_path).file_stem().unwrap();
-        file_stem.to_str().unwrap().to_string()
-    };
-
     let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
         .await
         .unwrap();
@@ -288,15 +309,18 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', subnet config local '{}', VM binary local '{}', VM binary s3 key '{}', VM Id '{}', chain name '{}', chain config local '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', subnet config local '{}', subnet config remote '{}', VM binary local '{}', plugin remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
             opts.s3_bucket,
+            opts.s3_key_prefix,
             opts.subnet_config_local_path,
+            opts.subnet_config_remote_dir,
             opts.vm_binary_local_path,
-            vm_binary_s3_key,
+            opts.vm_binary_remote_dir,
             vm_id,
             opts.chain_name,
             opts.chain_config_local_path,
+            opts.chain_config_remote_dir,
             opts.chain_genesis_path,
             opts.staking_period_in_days,
             opts.staking_amount_in_avax,
@@ -362,14 +386,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             ));
         }
 
-        let subnet_config_s3_key = if !opts.subnet_config_s3_key.is_empty() {
-            opts.subnet_config_s3_key.clone()
-        } else {
-            let file_stem = Path::new(&opts.subnet_config_local_path)
-                .file_stem()
-                .unwrap();
+        let file_stem = Path::new(&opts.subnet_config_local_path)
+            .file_stem()
+            .unwrap();
+        let subnet_config_s3_key = format!(
+            "{}{}",
+            s3::append_slash(&opts.s3_key_prefix),
             file_stem.to_str().unwrap().to_string()
-        };
+        );
 
         s3_manager
             .put_object(
@@ -392,6 +416,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: uploading VM binary local file to S3\n\n"),
         ResetColor
     )?;
+    let vm_binary_s3_key = format!(
+        "{}{}",
+        s3::append_slash(&opts.s3_key_prefix),
+        vm_id.to_string()
+    );
     s3_manager
         .put_object(
             &opts.vm_binary_local_path,
@@ -424,14 +453,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             ));
         }
 
-        let chain_config_s3_key = if !opts.chain_config_s3_key.is_empty() {
-            opts.chain_config_s3_key.clone()
-        } else {
-            let file_stem = Path::new(&opts.chain_config_local_path)
-                .file_stem()
-                .unwrap();
+        let file_stem = Path::new(&opts.chain_config_local_path)
+            .file_stem()
+            .unwrap();
+        let chain_config_s3_key = format!(
+            "{}{}",
+            s3::append_slash(&opts.s3_key_prefix),
             file_stem.to_str().unwrap().to_string()
-        };
+        );
 
         s3_manager
             .put_object(
@@ -513,21 +542,33 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
         ResetColor
     )?;
-    let subcmd = format!("install-subnet --log-level info --region {region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-path TODO",
+    let subcmd = format!("install-subnet --log-level info --region {region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-local-path {vm_binary_local_path}",
         region = opts.region,
         s3_bucket = opts.s3_bucket,
-        vm_binary_s3_key = opts.vm_binary_s3_key,
+        vm_binary_s3_key = vm_binary_s3_key,
+        vm_binary_local_path = format!("{}{}", s3::append_slash(&opts.vm_binary_remote_dir), vm_id.to_string()),
     );
-    let avalanched_args = if !opts.subnet_config_s3_key.is_empty()
-        && !opts.subnet_config_local_path.is_empty()
-    {
-        format!("{subcmd} --subnet-config-s3-key {subnet_config_s3_key} --subnet-config-path {subnet_config_path}",
-            subnet_config_s3_key = opts.subnet_config_s3_key,
-            subnet_config_path = opts.region,
+    let avalanched_args = if !opts.subnet_config_local_path.is_empty() {
+        let file_stem = Path::new(&opts.subnet_config_local_path)
+            .file_stem()
+            .unwrap();
+        let subnet_config_s3_key = format!(
+            "{}{}",
+            s3::append_slash(&opts.s3_key_prefix),
+            file_stem.to_str().unwrap().to_string()
+        );
+        format!("{subcmd} --subnet-config-s3-key {subnet_config_s3_key} --subnet-config-local-path {subnet_config_local_path}",
+            subnet_config_s3_key = subnet_config_s3_key,
+            subnet_config_local_path = opts.subnet_config_remote_dir,
         )
     } else {
         subcmd
     };
+    for (node_id, instance_id) in opts.node_ids_to_instance_ids.iter() {
+        log::info!("sending SSM doc to {node_id} {instance_id}");
+
+        // TODO
+    }
 
     //
     //

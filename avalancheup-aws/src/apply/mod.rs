@@ -2135,33 +2135,19 @@ default-spec \\
 --log-level info \\
 --region {region} \\
 --s3-bucket {s3_bucket} \\
---ssm-doc {ssm_doc_name} \\
---chain-rpc-url {chain_rpc_url} \\
---key {priv_key_hex} \\
---staking-perioid-in-days 14 \\
---vm-binary-local-path REPLACE_ME \\
---chain-name subnetevm \\
---chain-genesis-path /tmp/subnet-evm-genesis.json \\
---node-ids-to-instance-ids '{nodes_to_instances}'
-
-# to customize subnet config (and others)
-{exec_path} install-subnet-chain \\
---log-level info \\
---region {region} \\
---s3-bucket {s3_bucket} \\
+--s3-key-prefix {id}/install-subnet-chain \\
 --ssm-doc {ssm_doc_name} \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
 --staking-perioid-in-days 14 \\
 --subnet-config-local-path /tmp/subnet-config.json \\
---subnet-config-s3-key {id}/subnet-config.json \\
+--subnet-config-remote-dir {subnet_config_remote_dir} \\
 --vm-binary-local-path REPLACE_ME \\
---vm-binary-s3-key {id}/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
---vm-id srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
+--vm-binary-remote-dir {vm_plugin_remote_dir} \\
 --chain-name subnetevm \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --chain-config-local-path /tmp/subnet-evm-chain-config.json \\
---chain-config-s3-key {id}/subnet-evm-chain-config.json \\
+--chain-config-remote-dir {chain_config_remote_dir} \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 ",
             exec_path = exec_path.display(),
@@ -2172,6 +2158,9 @@ default-spec \\
                 format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
             id = spec.id,
+            subnet_config_remote_dir = "", // TODO
+            vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
+            chain_config_remote_dir = "", // TODO
             nodes_to_instances = nodes_to_instances,
         )),
         ResetColor
