@@ -2155,7 +2155,7 @@ default-spec \\
 --vm-id srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
 --chain-name subnetevm \\
 --chain-config-path /tmp/subnet-evm-chain-config.json \\
---chain-config-s3-key {id}/subnet-chain-config.json \\
+--chain-config-s3-key {id}/subnet-evm-chain-config.json \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 ",

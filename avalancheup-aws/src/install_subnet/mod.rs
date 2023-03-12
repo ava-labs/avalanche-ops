@@ -166,7 +166,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_CONFIG_S3_KEY")
                 .long("subnet-config-s3-key")
-                .help("Sets the S3 key for the subnet config")
+                .help("Sets the S3 key for the subnet config (if empty, default to local file name)")
                 .required(false)
                 .default_value("subnet-config.json")
                 .num_args(1),
@@ -181,7 +181,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("VM_BINARY_S3_KEY")
                 .long("vm-binary-s3-key")
-                .help("Sets the S3 key for the Vm binary (if empty, default to file name)")
+                .help("Sets the S3 key for the Vm binary (if empty, default to local file name)")
                 .required(false)
                 .num_args(1),
         )
@@ -209,7 +209,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("CHAIN_CONFIG_S3_KEY")
                 .long("chain-config-s3-key")
-                .help("Sets the S3 key for the subnet chain config")
+                .help("Sets the S3 key for the subnet chain config (if empty, default to local file name)")
                 .required(false)
                 .default_value("subnet-chain-config.json")
                 .num_args(1),
@@ -250,10 +250,24 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ids::Id::from_str(&opts.vm_id)?
     };
 
-    let s3_key_vm_binary = if !opts.vm_binary_s3_key.is_empty() {
+    let vm_binary_s3_key = if !opts.vm_binary_s3_key.is_empty() {
         opts.vm_binary_s3_key.clone()
     } else {
         let file_stem = Path::new(&opts.vm_binary_path).file_stem().unwrap();
+        file_stem.to_str().unwrap().to_string()
+    };
+
+    let subnet_config_s3_key = if !opts.subnet_config_s3_key.is_empty() {
+        opts.subnet_config_s3_key.clone()
+    } else {
+        let file_stem = Path::new(&opts.subnet_config_path).file_stem().unwrap();
+        file_stem.to_str().unwrap().to_string()
+    };
+
+    let chain_config_s3_key = if !opts.chain_config_s3_key.is_empty() {
+        opts.chain_config_s3_key.clone()
+    } else {
+        let file_stem = Path::new(&opts.chain_config_path).file_stem().unwrap();
         file_stem.to_str().unwrap().to_string()
     };
 
@@ -283,18 +297,20 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', subnet config '{}', VM binary '{}', VM Id '{}', chain name '{}', chain config '{}', chain genesis '{}', staking period in days '{}', staking amount in avax '{}', S3 bucket '{}', S3 key vm binary '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', subnet config '{}', subnet config s3 key '{}', VM binary '{}', VM binary s3 key '{}', VM Id '{}', chain name '{}', chain config '{}', chain config s3 key '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
+            opts.s3_bucket,
             opts.subnet_config_path,
+            subnet_config_s3_key,
             opts.vm_binary_path,
+            vm_binary_s3_key,
             vm_id,
             opts.chain_name,
             opts.chain_config_path,
+            chain_config_s3_key,
             opts.chain_genesis_path,
             opts.staking_period_in_days,
             opts.staking_amount_in_avax,
-            opts.s3_bucket,
-            s3_key_vm_binary,
             opts.node_ids_to_instance_ids,
         )),
         ResetColor
@@ -346,12 +362,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ResetColor
     )?;
     log::info!(
-        "uploading vm binary '{}' to {} {s3_key_vm_binary}",
+        "uploading vm binary '{}' to {} {vm_binary_s3_key}",
         opts.vm_binary_path,
         opts.s3_bucket
     );
     s3_manager
-        .put_object(&opts.vm_binary_path, &opts.s3_bucket, &s3_key_vm_binary)
+        .put_object(&opts.vm_binary_path, &opts.s3_bucket, &vm_binary_s3_key)
         .await
         .expect("failed put_object vm_binary_path");
 
