@@ -272,19 +272,27 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
         // always overwrite since S3 is the single source of truths!
         // local updates will be gone! make sure update the S3 file!
-        if let Some(config_file) = &spec.avalanchego_config.config_file {
+        // except the tracked subnet Ids!
+        let track_subnets = if let Some(config_file) = &spec.avalanchego_config.config_file {
             // if exists, load the existing one in case manually updated
             if Path::new(&config_file).exists() {
                 log::warn!(
-                    "config-file '{}' already exists -- overwriting!",
+                    "config-file '{}' already exists -- overwriting except tracked subnet ids!",
                     config_file
                 );
+                let old_spec = avalanche_ops::aws::spec::Spec::load(&config_file)?;
+                old_spec.avalanchego_config.track_subnets
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
 
-        // always "only" overwrite public-ip flag in case of EC2 instance replacement
+        // always "only" overwrite public-ip and track-subnets flag in case of EC2 instance replacement
         spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
-        spec.avalanchego_config.sync(None)?;
+        spec.avalanchego_config.add_track_subnets(track_subnets);
+spec.avalanchego_config.sync(None)?;
 
         // ALWAYS OVERWRITES in case we update and upload to s3
         // "avalanched" never updates "spec" file, runs in read-only mode

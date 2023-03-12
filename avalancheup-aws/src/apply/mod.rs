@@ -2158,9 +2158,9 @@ default-spec \\
                 format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
             id = spec.id,
-            subnet_config_remote_dir = "", // TODO
+            subnet_config_remote_dir = spec.avalanchego_config.subnet_config_dir,
             vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
-            chain_config_remote_dir = "", // TODO
+            chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
             nodes_to_instances = nodes_to_instances,
         )),
         ResetColor

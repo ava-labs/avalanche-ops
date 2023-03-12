@@ -309,7 +309,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', subnet config local '{}', subnet config remote '{}', VM binary local '{}', plugin remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
             opts.s3_bucket,
             opts.s3_key_prefix,
@@ -557,9 +557,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             s3::append_slash(&opts.s3_key_prefix),
             file_stem.to_str().unwrap().to_string()
         );
+
+        // If a subnet id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+        // the config file for this subnet is located at {subnet-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt.json.
         format!("{subcmd} --subnet-config-s3-key {subnet_config_s3_key} --subnet-config-local-path {subnet_config_local_path}",
             subnet_config_s3_key = subnet_config_s3_key,
-            subnet_config_local_path = opts.subnet_config_remote_dir,
+            subnet_config_local_path = format!("{}{}.json", s3::append_slash(&opts.subnet_config_remote_dir), created_subnet_id.to_string()),
         )
     } else {
         subcmd
@@ -595,6 +598,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ResetColor
     )?;
     // TODO: create blockchain with genesis
+
+    // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+    // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
 
     if !opts.chain_config_local_path.is_empty() {
         //
