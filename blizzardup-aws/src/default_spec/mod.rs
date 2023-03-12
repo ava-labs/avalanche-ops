@@ -70,7 +70,7 @@ pub fn command() -> Command {
                 .help("Sets the log level for 'blizzard'")
                 .required(false)
                 .num_args(1)
-                 .value_parser(["debug", "info"])
+                .value_parser(["debug", "info"])
                 .default_value("info"),
         )
         .arg(

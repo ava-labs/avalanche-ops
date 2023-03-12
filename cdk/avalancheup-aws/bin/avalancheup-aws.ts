@@ -119,8 +119,8 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
     paramAvalanchedDownloadSource.default = 'github';
 
     // to skip s3 uploads for node discovery
-    const paramAvalanchedFlag: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedFlag');
-    paramAvalanchedFlag.default = '--use-default-config';
+    const paramAvalanchedArgs: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedArgs');
+    paramAvalanchedArgs.default = 'agent --use-default-config';
 
     // "mainnet" is 1, "fuji" is 5
     const paramNetworkId: cdk.CfnParameter = tmplAsg.getParameter('NetworkId');

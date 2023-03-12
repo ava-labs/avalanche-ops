@@ -205,7 +205,7 @@ pub async fn execute(
             SetForegroundColor(Color::Green),
             Print(format!(
                 "\ntransfering {evm_funding_amount_navax} ({} ETH/AVAX) from {} to {transferee_addr} via {evm_chain_rpc_url}\n",
-                units::cast_navax_to_avax_i64(evm_funding_amount_navax), funding_key_info.eth_address
+                units::cast_evm_navax_to_avax_i64(evm_funding_amount_navax), funding_key_info.eth_address
         )),
             ResetColor
         )?;
@@ -224,7 +224,7 @@ pub async fn execute(
             "transferrer {} current balance: {} ({} ETH/AVAX)",
             funding_key_info.eth_address,
             transferer_balance,
-            units::cast_navax_to_avax_i64(transferer_balance)
+            units::cast_evm_navax_to_avax_i64(transferer_balance)
         );
         let transferee_balance =
             json_client_evm::get_balance(evm_chain_rpc_url, transferee_addr).await?;
@@ -232,7 +232,7 @@ pub async fn execute(
             "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
             transferee_addr,
             transferee_balance,
-            units::cast_navax_to_avax_i64(transferee_balance)
+            units::cast_evm_navax_to_avax_i64(transferee_balance)
         );
 
         let tx_id = funding_evm_wallet

@@ -221,7 +221,7 @@ Parameters:
     Default: "github"
     Description: Set to "github" to download from github, or "s3" to download from S3.
 
-  AvalanchedFlag:
+  AvalanchedArgs:
     Type: String
     Default: ""
     Description: (Optional) flag for "avalanched" CLI.
@@ -708,7 +708,7 @@ Resources:
               Restart=on-failure
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched ${AvalanchedFlag}
+              ExecStart=/usr/local/bin/avalanched ${AvalanchedArgs}
               StandardOutput=append:/var/log/avalanched.log
               StandardError=append:/var/log/avalanched.log
 

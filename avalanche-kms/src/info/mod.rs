@@ -138,7 +138,7 @@ pub async fn execute(
                     "{} balance: {} ({} ETH/AVAX)",
                     cmk_info.eth_address,
                     balance,
-                    units::cast_navax_to_avax_i64(balance)
+                    units::cast_evm_navax_to_avax_i64(balance)
                 );
             }
         }
@@ -153,7 +153,7 @@ pub async fn execute(
                     "{} balance: {} ({} ETH/AVAX)",
                     k.to_public_key().to_eth_address(),
                     balance,
-                    units::cast_navax_to_avax_i64(balance)
+                    units::cast_evm_navax_to_avax_i64(balance)
                 );
             }
         }

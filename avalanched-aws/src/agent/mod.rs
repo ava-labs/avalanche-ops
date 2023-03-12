@@ -1,3 +1,5 @@
+mod cloudwatch;
+
 use std::{
     collections::HashSet,
     fs,
@@ -6,7 +8,6 @@ use std::{
     sync::Arc,
 };
 
-use crate::{cloudwatch, flags};
 use avalanche_installer::subnet_evm::github as subnet_evm_github;
 use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
@@ -21,9 +22,58 @@ use aws_manager::{
     s3,
 };
 use aws_sdk_ec2::model::{Filter, Tag};
+use clap::{Arg, Command};
+use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 
-pub async fn execute(opts: flags::Options) -> io::Result<()> {
+pub const NAME: &str = "agent";
+
+/// Defines "install-subnet" option.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct Flags {
+    pub log_level: String,
+
+    /// Set "true" to run "avalanched" without downloading any "avalancheup" spec dependencies.
+    /// Used for CDK integration.
+    pub use_default_config: bool,
+
+    /// The node information is published regardless of anchor/non-anchor.
+    /// This is set "true" iff the node wishes to publish it periodically.
+    /// Otherwise, publish only once until success!
+    /// Might be useful to publish ready heartbeats to S3 in the future.
+    pub publish_periodic_node_info: bool,
+}
+
+pub fn command() -> Command {
+    Command::new(NAME)
+        .about("Runs an Avalanche agent (daemon) on AWS")
+        .arg(
+            Arg::new("LOG_LEVEL")
+                .long("log-level")
+                .short('l')
+                .help("Sets the log level")
+                .required(false)
+                .num_args(1)
+                .value_parser(["debug", "info"])
+                .default_value("info"),
+        )
+        .arg(
+            Arg::new("USE_DEFAULT_CONFIG")
+                .long("use-default-config")
+                .help("Enables to use the default config without downloading the spec from S3 (useful for CDK integration)")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
+            Arg::new("PUBLISH_PERIODIC_NODE_INFO")
+                .long("publish-periodic-node-info")
+                .help("Enables to periodically publish ready node information to S3")
+                .required(false)
+                .num_args(0),
+        )
+}
+
+pub async fn execute(opts: Flags) -> io::Result<()> {
     println!("starting {} with {:?}", crate::APP_NAME, opts);
 
     // ref. https://github.com/env-logger-rs/env_logger/issues/47
@@ -222,21 +272,29 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
         // always overwrite since S3 is the single source of truths!
         // local updates will be gone! make sure update the S3 file!
-        if let Some(config_file) = &spec.avalanchego_config.config_file {
+        // except the tracked subnet Ids!
+        let track_subnets = if let Some(config_file) = &spec.avalanchego_config.config_file {
             // if exists, load the existing one in case manually updated
             if Path::new(&config_file).exists() {
                 log::warn!(
-                    "config-file '{}' already exists -- overwriting!",
+                    "config-file '{}' already exists -- overwriting except tracked subnet ids!",
                     config_file
                 );
+                let old_spec = avalanche_ops::aws::spec::Spec::load(&config_file)?;
+                old_spec.avalanchego_config.track_subnets
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
 
-        // always "only" overwrite public-ip flag in case of EC2 instance replacement
+        // always "only" overwrite public-ip and track-subnets flag in case of EC2 instance replacement
         spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
+        spec.avalanchego_config.add_track_subnets(track_subnets);
         spec.avalanchego_config.sync(None)?;
 
-        // always overwrites in case we update and upload to s3
+        // ALWAYS OVERWRITES in case we update and upload to s3
         // "avalanched" never updates "spec" file, runs in read-only mode
         fs::copy(&tmp_spec_file_path, &fetched_tags.avalancheup_spec_path)?;
         fs::remove_file(&tmp_spec_file_path)?;
@@ -1107,19 +1165,38 @@ fn create_config_dirs(
 ) -> io::Result<()> {
     log::info!("STEP: creating config directories...");
 
+    log::info!("creating directory log-dir {}", avalanchego_config.log_dir);
     fs::create_dir_all(&avalanchego_config.log_dir)?;
-    fs::create_dir_all(&avalanchego_config.subnet_config_dir)?;
+
+    log::info!(
+        "creating directory plugin-dir {}",
+        avalanchego_config.plugin_dir
+    );
     fs::create_dir_all(&avalanchego_config.plugin_dir)?;
+
+    log::info!(
+        "create_dir_all subnet-config-dir {}",
+        avalanchego_config.subnet_config_dir
+    );
+    fs::create_dir_all(&avalanchego_config.subnet_config_dir)?;
+
+    log::info!(
+        "create_dir_all chain-config-dir {}",
+        avalanchego_config.chain_config_dir
+    );
     fs::create_dir_all(&avalanchego_config.chain_config_dir)?;
 
     if let Some(v) = &avalanchego_config.profile_dir {
+        log::info!("creating directory profile-dir {}", v);
         fs::create_dir_all(v)?;
     }
 
     if let Some(v) = &coreth_chain_config.continuous_profiler_dir {
+        log::info!("creating directory continuous-profiler-dir {}", v);
         fs::create_dir_all(v)?;
     }
     if let Some(v) = &coreth_chain_config.offline_pruning_data_directory {
+        log::info!("creating directory offline-pruning-data-directory {}", v);
         fs::create_dir_all(v)?;
     }
 

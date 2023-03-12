@@ -1,7 +1,9 @@
 mod apply;
 mod default_spec;
 mod delete;
-mod install_subnet;
+mod install_subnet_chain;
+mod subnet_config;
+mod subnet_evm;
 
 use std::{collections::HashMap, io};
 
@@ -20,7 +22,9 @@ async fn main() -> io::Result<()> {
             default_spec::command(),
             apply::command(),
             delete::command(),
-            install_subnet::command(),
+            install_subnet_chain::command(),
+            subnet_evm::command(),
+            subnet_config::command(),
         ])
         .get_matches();
 
@@ -313,47 +317,239 @@ async fn main() -> io::Result<()> {
             .expect("failed to execute 'delete'");
         }
 
-        Some((install_subnet::NAME, sub_matches)) => {
+        Some((install_subnet_chain::NAME, sub_matches)) => {
             let node_ids_to_instance_ids = sub_matches
                 .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
                 .unwrap()
                 .clone();
-            install_subnet::execute(install_subnet::Flags {
+
+            install_subnet_chain::execute(install_subnet_chain::Flags {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .clone(),
+
+                skip_prompt: sub_matches.get_flag("SKIP_PROMPT"),
+
+                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
+                s3_key_prefix: sub_matches
+                    .get_one::<String>("S3_KEY_PREFIX")
+                    .unwrap_or(&String::new())
+                    .clone(),
+                ssm_doc: sub_matches.get_one::<String>("SSM_DOC").unwrap().clone(),
 
                 chain_rpc_url: sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
                     .unwrap()
                     .clone(),
                 key: sub_matches.get_one::<String>("KEY").unwrap().clone(),
+                staking_period_in_days: sub_matches
+                    .get_one::<u64>("STAKING_PERIOID_IN_DAYS")
+                    .unwrap_or(&15)
+                    .clone(),
+                staking_amount_in_avax: sub_matches
+                    .get_one::<u64>("STAKING_AMOUNT_IN_AVAX")
+                    .unwrap_or(&2000)
+                    .clone(),
 
-                subnet_config_path: sub_matches
-                    .get_one::<String>("SUBNET_CONFIG_PATH")
+                subnet_config_local_path: sub_matches
+                    .get_one::<String>("SUBNET_CONFIG_LOCAL_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
-                vm_binary_path: sub_matches
-                    .get_one::<String>("VM_BINARY_PATH")
+                subnet_config_remote_dir: sub_matches
+                    .get_one::<String>("SUBNET_CONFIG_REMOTE_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
+
+                vm_binary_local_path: sub_matches
+                    .get_one::<String>("VM_BINARY_LOCAL_PATH")
                     .unwrap()
                     .clone(),
+                vm_binary_remote_dir: sub_matches
+                    .get_one::<String>("VM_BINARY_REMOTE_DIR")
+                    .unwrap()
+                    .clone(),
+
+                vm_id: sub_matches
+                    .get_one::<String>("VM_ID")
+                    .unwrap_or(&String::new())
+                    .clone(),
+                chain_name: sub_matches.get_one::<String>("CHAIN_NAME").unwrap().clone(),
                 chain_genesis_path: sub_matches
                     .get_one::<String>("CHAIN_GENESIS_PATH")
                     .unwrap()
                     .clone(),
-                chain_config_path: sub_matches
-                    .get_one::<String>("CHAIN_CONFIG_PATH")
+
+                chain_config_local_path: sub_matches
+                    .get_one::<String>("CHAIN_CONFIG_LOCAL_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
+                chain_config_remote_dir: sub_matches
+                    .get_one::<String>("CHAIN_CONFIG_REMOTE_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
 
-                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
-                s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
+                avalanchego_config_remote_path: sub_matches
+                    .get_one::<String>("AVALANCHEGO_CONFIG_REMOTE_PATH")
+                    .unwrap()
+                    .clone(),
+
                 node_ids_to_instance_ids,
             })
             .await
             .expect("failed to execute 'install-subnet'");
         }
+
+        Some((subnet_config::NAME, sub_matches)) => {
+            let opt = subnet_config::Flags {
+                log_level: sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                proposer_min_block_delay: sub_matches
+                    .get_one::<u64>("PROPOSER_MIN_BLOCK_DELAY")
+                    .unwrap_or(&1000000000)
+                    .clone(),
+                file_path: sub_matches
+                    .get_one::<String>("FILE_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
+            };
+            subnet_config::execute(opt).expect("failed to execute 'subnet-evm subnet-config'");
+        }
+
+        Some((subnet_evm::NAME, sub_matches)) => match sub_matches.subcommand() {
+            Some((subnet_evm::chain_config::NAME, sub_sub_matches)) => {
+                let s = sub_sub_matches
+                    .get_one::<String>("PRIORITY_REGOSSIP_ADDRESSES")
+                    .unwrap_or(&String::new())
+                    .clone();
+                let ss: Vec<&str> = s.split(',').collect();
+                let mut priority_regossip_addresses = Vec::new();
+                for addr in ss.iter() {
+                    let trimmed = addr.trim().to_string();
+                    if !trimmed.is_empty() {
+                        priority_regossip_addresses.push(addr.trim().to_string());
+                    }
+                }
+
+                let opt = subnet_evm::chain_config::Flags {
+                    log_level: sub_sub_matches
+                        .get_one::<String>("LOG_LEVEL")
+                        .unwrap_or(&String::from("info"))
+                        .clone(),
+
+                    tx_pool_account_slots: sub_sub_matches
+                        .get_one::<u64>("TX_POOL_ACCOUNT_SLOTS")
+                        .unwrap_or(&0)
+                        .clone(),
+                    tx_pool_global_slots: sub_sub_matches
+                        .get_one::<u64>("TX_POOL_GLOBAL_SLOTS")
+                        .unwrap_or(&0)
+                        .clone(),
+                    tx_pool_account_queue: sub_sub_matches
+                        .get_one::<u64>("TX_POOL_ACCOUNT_QUEUE")
+                        .unwrap_or(&0)
+                        .clone(),
+                    tx_pool_global_queue: sub_sub_matches
+                        .get_one::<u64>("TX_POOL_GLOBAL_QUEUE")
+                        .unwrap_or(&0)
+                        .clone(),
+                    local_txs_enabled: sub_sub_matches.get_flag("LOCAL_TXS_ENABLED"),
+                    priority_regossip_frequency: sub_sub_matches
+                        .get_one::<i64>("PRIORITY_REGOSSIP_FREQUENCY")
+                        .unwrap_or(&0)
+                        .clone(),
+                    priority_regossip_max_txs: sub_sub_matches
+                        .get_one::<i32>("PRIORITY_REGOSSIP_MAX_TXS")
+                        .unwrap_or(&0)
+                        .clone(),
+                    priority_regossip_txs_per_address: sub_sub_matches
+                        .get_one::<i32>("PRIORITY_REGOSSIP_TXS_PER_ADDRESS")
+                        .unwrap_or(&0)
+                        .clone(),
+                    priority_regossip_addresses,
+
+                    file_path: sub_sub_matches
+                        .get_one::<String>("FILE_PATH")
+                        .unwrap_or(&String::new())
+                        .clone(),
+                };
+                subnet_evm::chain_config::execute(opt)
+                    .expect("failed to execute 'subnet-evm chain-config'");
+            }
+
+            Some((subnet_evm::genesis::NAME, sub_sub_matches)) => {
+                let s = sub_sub_matches
+                    .get_one::<String>("SEED_ETH_ADDRESSES")
+                    .unwrap()
+                    .clone();
+                let ss: Vec<&str> = s.split(',').collect();
+                let mut seed_eth_addresses = Vec::new();
+                for addr in ss.iter() {
+                    let trimmed = addr.trim().to_string();
+                    if !trimmed.is_empty() {
+                        seed_eth_addresses.push(addr.trim().to_string());
+                    }
+                }
+
+                let opt = subnet_evm::genesis::Flags {
+                    log_level: sub_sub_matches
+                        .get_one::<String>("LOG_LEVEL")
+                        .unwrap_or(&String::from("info"))
+                        .clone(),
+
+                    seed_eth_addresses,
+                    gas_limit: sub_sub_matches
+                        .get_one::<u64>("GAS_LIMIT")
+                        .unwrap_or(&0)
+                        .clone(),
+                    target_block_rate: sub_sub_matches
+                        .get_one::<u64>("TARGET_BLOCK_RATE")
+                        .unwrap_or(&0)
+                        .clone(),
+                    min_base_fee: sub_sub_matches
+                        .get_one::<u64>("MIN_BASE_FEE")
+                        .unwrap_or(&0)
+                        .clone(),
+                    target_gas: sub_sub_matches
+                        .get_one::<u64>("TARGET_GAS")
+                        .unwrap_or(&0)
+                        .clone(),
+                    base_fee_change_denominator: sub_sub_matches
+                        .get_one::<u64>("BASE_FEE_CHANGE_DENOMINATOR")
+                        .unwrap_or(&0)
+                        .clone(),
+                    min_block_gas_cost: sub_sub_matches
+                        .get_one::<u64>("MIN_BLOCK_GAS_COST")
+                        .unwrap_or(&0)
+                        .clone(),
+                    max_block_gas_cost: sub_sub_matches
+                        .get_one::<u64>("MAX_BLOCK_GAS_COST")
+                        .unwrap_or(&10_000_000)
+                        .clone(),
+                    block_gas_cost_step: sub_sub_matches
+                        .get_one::<u64>("BLOCK_GAS_COST_STEP")
+                        .unwrap_or(&0)
+                        .clone(),
+
+                    auto_contract_deployer_allow_list_config: sub_sub_matches
+                        .get_flag("AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
+                    auto_contract_native_minter_config: sub_sub_matches
+                        .get_flag("AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
+                    auto_fee_manager_config: sub_sub_matches.get_flag("AUTO_FEE_MANAGER_CONFIG"),
+
+                    file_path: sub_sub_matches
+                        .get_one::<String>("FILE_PATH")
+                        .unwrap_or(&String::new())
+                        .clone(),
+                };
+                subnet_evm::genesis::execute(opt).expect("failed to execute 'subnet-evm genesis'");
+            }
+
+            _ => unreachable!("unknown subcommand"),
+        },
 
         _ => unreachable!("unknown subcommand"),
     }

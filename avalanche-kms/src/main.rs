@@ -93,7 +93,7 @@ async fn main() -> io::Result<()> {
             }
 
             let evm_funding_amount_navax = if evm_funding_amount_in_navax.is_zero() {
-                units::cast_avax_to_navax(evm_funding_amount_in_avax)
+                units::cast_avax_to_evm_navax(evm_funding_amount_in_avax)
             } else {
                 evm_funding_amount_in_navax
             };
@@ -185,7 +185,7 @@ async fn main() -> io::Result<()> {
             }
 
             let transfer_amount_navax = if transfer_amount_in_navax.is_zero() {
-                units::cast_avax_to_navax(transfer_amount_in_avax)
+                units::cast_avax_to_evm_navax(transfer_amount_in_avax)
             } else {
                 transfer_amount_in_navax
             };
