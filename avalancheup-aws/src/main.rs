@@ -1,7 +1,7 @@
 mod apply;
 mod default_spec;
 mod delete;
-mod install_subnet;
+mod install_subnet_chain;
 mod subnet_config;
 mod subnet_evm;
 
@@ -22,7 +22,7 @@ async fn main() -> io::Result<()> {
             default_spec::command(),
             apply::command(),
             delete::command(),
-            install_subnet::command(),
+            install_subnet_chain::command(),
             subnet_evm::command(),
             subnet_config::command(),
         ])
@@ -317,13 +317,13 @@ async fn main() -> io::Result<()> {
             .expect("failed to execute 'delete'");
         }
 
-        Some((install_subnet::NAME, sub_matches)) => {
+        Some((install_subnet_chain::NAME, sub_matches)) => {
             let node_ids_to_instance_ids = sub_matches
                 .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
                 .unwrap()
                 .clone();
 
-            install_subnet::execute(install_subnet::Flags {
+            install_subnet_chain::execute(install_subnet_chain::Flags {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))

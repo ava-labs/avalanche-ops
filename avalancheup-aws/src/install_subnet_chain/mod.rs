@@ -20,7 +20,7 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 
-pub const NAME: &str = "install-subnet";
+pub const NAME: &str = "install-subnet-chain";
 
 /// Defines "install-subnet" option.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -80,7 +80,7 @@ impl clap::builder::TypedValueParser for HashMapParser {
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Installs a subnet to target nodes")
+        .about("Installs subnet and chain to target nodes")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")

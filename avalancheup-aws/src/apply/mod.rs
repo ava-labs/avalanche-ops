@@ -2131,7 +2131,7 @@ default-spec \\
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{exec_path} install-subnet \\
+            "{exec_path} install-subnet-chain \\
 --log-level info \\
 --region {region} \\
 --s3-bucket {s3_bucket} \\
@@ -2145,8 +2145,7 @@ default-spec \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 
 # to customize subnet config (and others)
-# use '--vm-binary-s3-key' to customize s3 key path for binary
-{exec_path} install-subnet \\
+{exec_path} install-subnet-chain \\
 --log-level info \\
 --region {region} \\
 --s3-bucket {s3_bucket} \\
