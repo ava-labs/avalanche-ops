@@ -21,10 +21,10 @@ pub struct Flags {
     pub s3_bucket: String,
 
     pub subnet_config_s3_key: String,
-    pub subnet_config_path: String,
+    pub subnet_config_local_path: String,
 
     pub vm_binary_s3_key: String,
-    pub vm_binary_path: String,
+    pub vm_binary_local_path: String,
 }
 
 pub fn command() -> Command {
@@ -64,9 +64,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("SUBNET_CONFIG_PATH")
-                .long("subnet-config-path")
-                .help("Subnet configuration file path (if empty, do not download)")
+            Arg::new("SUBNET_CONFIG_LOCAL_PATH")
+                .long("subnet-config-local-path")
+                .help("Subnet configuration local file path (if empty, do not download)")
                 .required(false)
                 .num_args(1),
         )
@@ -78,9 +78,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("VM_BINARY_PATH")
-                .long("vm-binary-path")
-                .help("VM binary file path")
+            Arg::new("VM_BINARY_LOCAL_PATH")
+                .long("vm-binary-local-path")
+                .help("VM binary local file path")
                 .required(true)
                 .num_args(1),
         )
@@ -96,11 +96,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let s3_manager = s3::Manager::new(&shared_config);
 
     if !opts.subnet_config_s3_key.is_empty() && !opts.subnet_config_s3_key.is_empty() {
-        let path = Path::new(&opts.subnet_config_path);
+        let path = Path::new(&opts.subnet_config_local_path);
         if path.exists() {
             log::warn!(
                 "about to overwrite subnet config path {}",
-                opts.subnet_config_path
+                opts.subnet_config_local_path
             );
         }
         if let Some(parent_dir) = path.parent() {
@@ -151,17 +151,20 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let f = File::open(&tmp_path)?;
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
         }
-        log::info!("copying {tmp_path} to {}", opts.subnet_config_path);
-        fs::copy(&tmp_path, &opts.subnet_config_path)?;
+        log::info!("copying {tmp_path} to {}", opts.subnet_config_local_path);
+        fs::copy(&tmp_path, &opts.subnet_config_local_path)?;
         fs::remove_file(&tmp_path)?;
     } else {
         log::info!("skipping downloading subnet config since empty");
     }
 
     {
-        let path = Path::new(&opts.vm_binary_path);
+        let path = Path::new(&opts.vm_binary_local_path);
         if path.exists() {
-            log::warn!("about to overwrite VM binary path {}", opts.vm_binary_path);
+            log::warn!(
+                "about to overwrite VM binary path {}",
+                opts.vm_binary_local_path
+            );
         }
         if let Some(parent_dir) = path.parent() {
             log::info!(
@@ -208,8 +211,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let f = File::open(&tmp_path)?;
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
         }
-        log::info!("copying {tmp_path} to {}", opts.vm_binary_path);
-        fs::copy(&tmp_path, &opts.vm_binary_path)?;
+        log::info!("copying {tmp_path} to {}", opts.vm_binary_local_path);
+        fs::copy(&tmp_path, &opts.vm_binary_local_path)?;
         fs::remove_file(&tmp_path)?;
     }
 

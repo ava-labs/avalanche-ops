@@ -123,16 +123,16 @@ async fn main() {
                     .get_one::<String>("SUBNET_CONFIG_S3_KEY")
                     .unwrap_or(&String::new())
                     .to_string(),
-                subnet_config_path: sub_matches
-                    .get_one::<String>("SUBNET_CONFIG_PATH")
+                subnet_config_local_path: sub_matches
+                    .get_one::<String>("SUBNET_CONFIG_LOCAL_PATH")
                     .unwrap_or(&String::new())
                     .to_string(),
                 vm_binary_s3_key: sub_matches
                     .get_one::<String>("VM_BINARY_S3_KEY")
                     .unwrap()
                     .to_string(),
-                vm_binary_path: sub_matches
-                    .get_one::<String>("VM_BINARY_PATH")
+                vm_binary_local_path: sub_matches
+                    .get_one::<String>("VM_BINARY_LOCAL_PATH")
                     .unwrap()
                     .to_string(),
             })
@@ -155,8 +155,8 @@ async fn main() {
                     .get_one::<String>("CHAIN_CONFIG_S3_KEY")
                     .unwrap()
                     .to_string(),
-                chain_config_path: sub_matches
-                    .get_one::<String>("CHAIN_CONFIG_PATH")
+                chain_config_local_path: sub_matches
+                    .get_one::<String>("CHAIN_CONFIG_LOCAL_PATH")
                     .unwrap()
                     .to_string(),
             })

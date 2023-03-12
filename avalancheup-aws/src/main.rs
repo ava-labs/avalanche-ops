@@ -349,8 +349,8 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&2000)
                     .clone(),
 
-                subnet_config_path: sub_matches
-                    .get_one::<String>("SUBNET_CONFIG_PATH")
+                subnet_config_local_path: sub_matches
+                    .get_one::<String>("SUBNET_CONFIG_LOCAL_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
                 subnet_config_s3_key: sub_matches
@@ -358,8 +358,8 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&"subnet-config.json".to_string())
                     .clone(),
 
-                vm_binary_path: sub_matches
-                    .get_one::<String>("VM_BINARY_PATH")
+                vm_binary_local_path: sub_matches
+                    .get_one::<String>("VM_BINARY_LOCAL_PATH")
                     .unwrap()
                     .clone(),
                 vm_binary_s3_key: sub_matches
@@ -377,8 +377,8 @@ async fn main() -> io::Result<()> {
                     .unwrap()
                     .clone(),
 
-                chain_config_path: sub_matches
-                    .get_one::<String>("CHAIN_CONFIG_PATH")
+                chain_config_local_path: sub_matches
+                    .get_one::<String>("CHAIN_CONFIG_LOCAL_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
                 chain_config_s3_key: sub_matches

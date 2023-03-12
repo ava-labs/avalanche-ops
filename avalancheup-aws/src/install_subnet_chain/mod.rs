@@ -39,17 +39,17 @@ pub struct Flags {
     pub staking_period_in_days: u64,
     pub staking_amount_in_avax: u64,
 
-    pub subnet_config_path: String,
+    pub subnet_config_local_path: String,
     pub subnet_config_s3_key: String,
 
-    pub vm_binary_path: String,
+    pub vm_binary_local_path: String,
     pub vm_binary_s3_key: String,
 
     pub vm_id: String,
     pub chain_name: String,
     pub chain_genesis_path: String,
 
-    pub chain_config_path: String,
+    pub chain_config_local_path: String,
     pub chain_config_s3_key: String,
 
     pub node_ids_to_instance_ids: HashMap<String, String>,
@@ -117,7 +117,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SSM_DOC")
                 .long("ssm-doc")
-                .help("Sets the SSM document name for subnet install")
+                .help("Sets the SSM document name for subnet and chain install (see avalanche-ops/src/aws/cfn-templates/ssm_install_subnet_chain.yaml)")
                 .required(true)
                 .num_args(1),
         )
@@ -156,9 +156,9 @@ pub fn command() -> Command {
                 .default_value("2000"),
         )
         .arg(
-            Arg::new("SUBNET_CONFIG_PATH")
-                .long("subnet-config-path")
-                .help("Subnet configuration file path")
+            Arg::new("SUBNET_CONFIG_LOCAL_PATH")
+                .long("subnet-config-local-path")
+                .help("Subnet configuration local file path")
                 .required(false)
                 .num_args(1),
         )
@@ -171,9 +171,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("VM_BINARY_PATH")
-                .long("vm-binary-path")
-                .help("VM binary file path")
+            Arg::new("VM_BINARY_LOCAL_PATH")
+                .long("vm-binary-local-path")
+                .help("VM binary local file path")
                 .required(true)
                 .num_args(1),
         )
@@ -206,9 +206,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("CHAIN_CONFIG_PATH")
-                .long("chain-config-path")
-                .help("Chain configuration file path")
+            Arg::new("CHAIN_CONFIG_LOCAL_PATH")
+                .long("chain-config-local-path")
+                .help("Chain configuration local file path")
                 .required(false)
                 .num_args(1),
         )
@@ -236,10 +236,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
-    if !Path::new(&opts.vm_binary_path).exists() {
+    if !Path::new(&opts.vm_binary_local_path).exists() {
         return Err(Error::new(
             ErrorKind::InvalidInput,
-            format!("vm binary file '{}' not found", opts.vm_binary_path),
+            format!("vm binary file '{}' not found", opts.vm_binary_local_path),
         ));
     }
     if !Path::new(&opts.chain_genesis_path).exists() {
@@ -258,21 +258,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let vm_binary_s3_key = if !opts.vm_binary_s3_key.is_empty() {
         opts.vm_binary_s3_key.clone()
     } else {
-        let file_stem = Path::new(&opts.vm_binary_path).file_stem().unwrap();
-        file_stem.to_str().unwrap().to_string()
-    };
-
-    let subnet_config_s3_key = if !opts.subnet_config_s3_key.is_empty() {
-        opts.subnet_config_s3_key.clone()
-    } else {
-        let file_stem = Path::new(&opts.subnet_config_path).file_stem().unwrap();
-        file_stem.to_str().unwrap().to_string()
-    };
-
-    let chain_config_s3_key = if !opts.chain_config_s3_key.is_empty() {
-        opts.chain_config_s3_key.clone()
-    } else {
-        let file_stem = Path::new(&opts.chain_config_path).file_stem().unwrap();
+        let file_stem = Path::new(&opts.vm_binary_local_path).file_stem().unwrap();
         file_stem.to_str().unwrap().to_string()
     };
 
@@ -302,17 +288,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', subnet config '{}', subnet config s3 key '{}', VM binary '{}', VM binary s3 key '{}', VM Id '{}', chain name '{}', chain config '{}', chain config s3 key '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', subnet config local '{}', VM binary local '{}', VM binary s3 key '{}', VM Id '{}', chain name '{}', chain config local '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
             opts.s3_bucket,
-            opts.subnet_config_path,
-            subnet_config_s3_key,
-            opts.vm_binary_path,
+            opts.subnet_config_local_path,
+            opts.vm_binary_local_path,
             vm_binary_s3_key,
             vm_id,
             opts.chain_name,
-            opts.chain_config_path,
-            chain_config_s3_key,
+            opts.chain_config_local_path,
             opts.chain_genesis_path,
             opts.staking_period_in_days,
             opts.staking_amount_in_avax,
@@ -324,7 +308,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let shared_config = aws_manager::load_config(Some(opts.region.clone())).await?;
     let sts_manager = sts::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
-    let _ssm_manager = ssm::Manager::new(&shared_config);
+    let ssm_manager = ssm::Manager::new(&shared_config);
 
     let current_identity = sts_manager.get_identity().await.unwrap();
     log::info!("current AWS identity: {:?}", current_identity);
@@ -360,21 +344,104 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     //
+    if !opts.subnet_config_local_path.is_empty() {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: uploading subnet config local file to S3\n\n"),
+            ResetColor
+        )?;
+
+        if Path::new(&opts.subnet_config_local_path).exists() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "subnet config file '{}' not found",
+                    opts.subnet_config_local_path
+                ),
+            ));
+        }
+
+        let subnet_config_s3_key = if !opts.subnet_config_s3_key.is_empty() {
+            opts.subnet_config_s3_key.clone()
+        } else {
+            let file_stem = Path::new(&opts.subnet_config_local_path)
+                .file_stem()
+                .unwrap();
+            file_stem.to_str().unwrap().to_string()
+        };
+
+        s3_manager
+            .put_object(
+                &opts.subnet_config_local_path,
+                &opts.s3_bucket,
+                &subnet_config_s3_key,
+            )
+            .await
+            .expect("failed put_object subnet_config_path");
+    }
+
+    //
+    //
+    //
+    //
+    //
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: uploading VM binary to S3\n\n"),
+        Print("\n\n\nSTEP: uploading VM binary local file to S3\n\n"),
         ResetColor
     )?;
-    log::info!(
-        "uploading vm binary '{}' to {} {vm_binary_s3_key}",
-        opts.vm_binary_path,
-        opts.s3_bucket
-    );
     s3_manager
-        .put_object(&opts.vm_binary_path, &opts.s3_bucket, &vm_binary_s3_key)
+        .put_object(
+            &opts.vm_binary_local_path,
+            &opts.s3_bucket,
+            &vm_binary_s3_key,
+        )
         .await
         .expect("failed put_object vm_binary_path");
+
+    //
+    //
+    //
+    //
+    //
+    if !opts.chain_config_local_path.is_empty() {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: uploading subnet chain config local file to S3\n\n"),
+            ResetColor
+        )?;
+
+        if Path::new(&opts.chain_config_local_path).exists() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "subnet chain config file '{}' not found",
+                    opts.chain_config_local_path
+                ),
+            ));
+        }
+
+        let chain_config_s3_key = if !opts.chain_config_s3_key.is_empty() {
+            opts.chain_config_s3_key.clone()
+        } else {
+            let file_stem = Path::new(&opts.chain_config_local_path)
+                .file_stem()
+                .unwrap();
+            file_stem.to_str().unwrap().to_string()
+        };
+
+        s3_manager
+            .put_object(
+                &opts.chain_config_local_path,
+                &opts.s3_bucket,
+                &chain_config_s3_key,
+            )
+            .await
+            .expect("failed put_object chain_config_path");
+    }
 
     //
     //
@@ -446,22 +513,21 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
         ResetColor
     )?;
-    // TODO: track subnet by restarting nodes
-
-    if !opts.subnet_config_path.is_empty() {
-        //
-        //
-        //
-        //
-        //
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: upload subnet config to S3\n\n"),
-            ResetColor
-        )?;
-        // TODO: write subnet config if not empty on remote machines
-    }
+    let subcmd = format!("install-subnet --log-level info --region {region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-path TODO",
+        region = opts.region,
+        s3_bucket = opts.s3_bucket,
+        vm_binary_s3_key = opts.vm_binary_s3_key,
+    );
+    let avalanched_args = if !opts.subnet_config_s3_key.is_empty()
+        && !opts.subnet_config_local_path.is_empty()
+    {
+        format!("{subcmd} --subnet-config-s3-key {subnet_config_s3_key} --subnet-config-path {subnet_config_path}",
+            subnet_config_s3_key = opts.subnet_config_s3_key,
+            subnet_config_path = opts.region,
+        )
+    } else {
+        subcmd
+    };
 
     //
     //
@@ -489,7 +555,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     )?;
     // TODO: create blockchain with genesis
 
-    if !opts.chain_config_path.is_empty() {
+    if !opts.chain_config_local_path.is_empty() {
         //
         //
         //

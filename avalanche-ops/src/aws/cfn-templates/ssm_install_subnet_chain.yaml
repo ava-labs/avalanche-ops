@@ -5,11 +5,11 @@ Description: "SSM document to install subnet and chain"
 Parameters:
   DocumentName:
     Type: String
-    Default: InstallSubnetV0
+    Default: InstallSubnetChainV0
     Description: SSM document Name.
 
 Resources:
-  InstallSubnet:
+  InstallSubnetChain:
     # https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_CreateDocument.html
     Type: AWS::SSM::Document
     Properties:
@@ -22,7 +22,7 @@ Resources:
           Value: "v1"
       Content:
         schemaVersion: "2.2"
-        description: installSubnet
+        description: installSubnetChain
         parameters:
           executionTimeout:
             type: String
@@ -37,7 +37,7 @@ Resources:
             description: New blockchain id to move configuration to.
         mainSteps:
           - action: aws:runShellScript
-            name: installSubnet
+            name: installSubnetChain
             inputs:
               timeoutSeconds: "{{ scriptTimeout }}"
               runCommand:

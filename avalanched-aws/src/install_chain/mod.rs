@@ -21,7 +21,7 @@ pub struct Flags {
     pub s3_bucket: String,
 
     pub chain_config_s3_key: String,
-    pub chain_config_path: String,
+    pub chain_config_local_path: String,
 }
 
 pub fn command() -> Command {
@@ -59,9 +59,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("CHAIN_CONFIG_PATH")
-                .long("chain-config-path")
-                .help("Chain configuration file path")
+            Arg::new("CHAIN_CONFIG_LOCAL_PATH")
+                .long("chain-config-local-path")
+                .help("Chain configuration local file path")
                 .required(true)
                 .num_args(1),
         )
@@ -77,11 +77,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let s3_manager = s3::Manager::new(&shared_config);
 
     {
-        let path = Path::new(&opts.chain_config_path);
+        let path = Path::new(&opts.chain_config_local_path);
         if path.exists() {
             log::warn!(
                 "about to overwrite subnet chain config path {}",
-                opts.chain_config_path
+                opts.chain_config_local_path
             );
         }
         if let Some(parent_dir) = path.parent() {
@@ -132,8 +132,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let f = File::open(&tmp_path)?;
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
         }
-        log::info!("copying {tmp_path} to {}", opts.chain_config_path);
-        fs::copy(&tmp_path, &opts.chain_config_path)?;
+        log::info!("copying {tmp_path} to {}", opts.chain_config_local_path);
+        fs::copy(&tmp_path, &opts.chain_config_local_path)?;
         fs::remove_file(&tmp_path)?;
     }
 

@@ -2139,7 +2139,7 @@ default-spec \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
 --staking-perioid-in-days 14 \\
---vm-binary-path REPLACE_ME \\
+--vm-binary-local-path REPLACE_ME \\
 --chain-name subnetevm \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
@@ -2153,14 +2153,14 @@ default-spec \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
 --staking-perioid-in-days 14 \\
---subnet-config-path /tmp/subnet-config.json \\
+--subnet-config-local-path /tmp/subnet-config.json \\
 --subnet-config-s3-key {id}/subnet-config.json \\
---vm-binary-path REPLACE_ME \\
+--vm-binary-local-path REPLACE_ME \\
 --vm-binary-s3-key {id}/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
 --vm-id srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
 --chain-name subnetevm \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
---chain-config-path /tmp/subnet-evm-chain-config.json \\
+--chain-config-local-path /tmp/subnet-evm-chain-config.json \\
 --chain-config-s3-key {id}/subnet-evm-chain-config.json \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 ",
