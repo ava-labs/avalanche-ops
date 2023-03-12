@@ -1938,6 +1938,7 @@ default-spec \\
 --chain-config-remote-dir {chain_config_remote_dir} \\
 --avalanchego-config-remote-path {avalanchego_config_remote_path} \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
+
 ",
             exec_path = exec_path.display(),
             region = spec.resources.region,
