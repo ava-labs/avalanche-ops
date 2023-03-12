@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "SSM document to install subnet"
+Description: "SSM document to install subnet and chain"
 
 Parameters:
   DocumentName:
@@ -32,13 +32,7 @@ Resources:
             type: String
             description: "timeout for script on individual instance"
             default: "3600"
-          specPath:
-            type: String
-            description: avalancheup spec path (e.g., /data/avalancheup.yaml).
-          subnetEvmName:
-            type: String
-            description: Name of subnet-evm in "Spec.subnet_evms".
-          newBlockchainId:
+          avalanchedArgs:
             type: String
             description: New blockchain id to move configuration to.
         mainSteps:
@@ -51,23 +45,15 @@ Resources:
                   #!/bin/bash
                   set -xeu
 
-                  # to not use bash/sed hacks....
-                  /usr/local/bin/avalanche-config --version
-                  # to write subnet/chain config
                   /usr/local/bin/avalanched --version
 
-                  # use "avalanched" to write chain config based on spec and new blockchain-id
-                  /usr/local/bin/avalanched \
-                  sync-subnet-evm-chain-config \
-                  --log-level info \
-                  --spec-file-path {{ specPath }} \
-                  --subnet-evm-name {{ subnetEvmName }} \
-                  --blockchain-id {{ newBlockchainId }}
+                  # to download vm binary, write/update subnet/chain config
+                  /usr/local/bin/avalanched {{ avalanchedArgs }}
 
+                  # to reload updated configs
                   sudo systemctl restart avalanche
-                  sleep 5
+                  sleep 7
                   sudo tail -50 /var/log/avalanche/avalanche.log || true
-                  # sudo tail -100 /var/log/avalanche/avalanche.log | grep {{ newBlockchainId }}
 
                   # to check the status
                   # sudo find /var/log/avalanche/

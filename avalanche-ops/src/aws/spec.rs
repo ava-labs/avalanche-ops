@@ -241,7 +241,7 @@ pub struct Resources {
     /// CloudFormation stack name for SSM document that installs subnet.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ssm_install_subnet: Option<String>,
+    pub cloudformation_ssm_install_subnet_chain: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudwatch_avalanche_metrics_namespace: Option<String>,
@@ -302,7 +302,7 @@ impl Resources {
             cloudformation_ssm_doc_restart_node_tracked_subnet_subnet_evm: None,
             cloudformation_ssm_doc_restart_node_tracked_subnet_xsvm: None,
             cloudformation_ssm_doc_restart_node_chain_config_subnet_evm: None,
-            cloudformation_ssm_install_subnet: None,
+            cloudformation_ssm_install_subnet_chain: None,
             cloudwatch_avalanche_metrics_namespace: None,
 
             created_nodes: None,
@@ -1749,7 +1749,7 @@ pub enum StackName {
     SsmDocRestartNodeTrackedSubnetSubnetEvm(String),
     SsmDocRestartNodeTrackedSubnetXsvm(String),
     SsmDocRestartNodeChainConfigSubnetEvm(String),
-    SsmInstallSubnet(String),
+    SsmInstallSubnetChain(String),
 }
 
 impl StackName {
@@ -1766,8 +1766,8 @@ impl StackName {
             StackName::SsmDocRestartNodeChainConfigSubnetEvm(id) => {
                 format!("{}-ssm-doc-restart-node-chain-config-subnet-evm", id)
             }
-            StackName::SsmInstallSubnet(id) => {
-                format!("{}-ssm-install-subnet", id)
+            StackName::SsmInstallSubnetChain(id) => {
+                format!("{}-ssm-install-subnet-chain", id)
             }
         }
     }

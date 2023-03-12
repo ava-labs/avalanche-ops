@@ -47,11 +47,10 @@ pub struct Flags {
 
     pub vm_id: String,
     pub chain_name: String,
+    pub chain_genesis_path: String,
 
     pub chain_config_path: String,
     pub chain_config_s3_key: String,
-
-    pub chain_genesis_path: String,
 
     pub node_ids_to_instance_ids: HashMap<String, String>,
 }
@@ -200,6 +199,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("CHAIN_GENESIS_PATH")
+                .long("chain-genesis-path")
+                .help("Chain genesis file path")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("CHAIN_CONFIG_PATH")
                 .long("chain-config-path")
                 .help("Chain configuration file path")
@@ -212,13 +218,6 @@ pub fn command() -> Command {
                 .help("Sets the S3 key for the subnet chain config (if empty, default to local file name)")
                 .required(false)
                 .default_value("subnet-chain-config.json")
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("CHAIN_GENESIS_PATH")
-                .long("chain-genesis-path")
-                .help("Chain genesis file path")
-                .required(true)
                 .num_args(1),
         )
         .arg(
@@ -240,7 +239,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     if !Path::new(&opts.vm_binary_path).exists() {
         return Err(Error::new(
             ErrorKind::InvalidInput,
-            format!("vm binary '{}' not found", opts.vm_binary_path),
+            format!("vm binary file '{}' not found", opts.vm_binary_path),
+        ));
+    }
+    if !Path::new(&opts.chain_genesis_path).exists() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("chain genesis file '{}' not found", opts.chain_genesis_path),
         ));
     }
 

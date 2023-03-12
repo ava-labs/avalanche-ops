@@ -170,8 +170,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         avalanche_ops::aws::spec::StackName::SsmDocRestartNodeTrackedSubnetXsvm(spec.id.clone())
             .encode(),
     );
-    spec.resources.cloudformation_ssm_install_subnet =
-        Some(avalanche_ops::aws::spec::StackName::SsmInstallSubnet(spec.id.clone()).encode());
+    spec.resources.cloudformation_ssm_install_subnet_chain =
+        Some(avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode());
     spec.sync(spec_file_path)?;
 
     execute!(
@@ -1990,15 +1990,18 @@ default-spec \\
         Print("\n\n\nSTEP: creating an SSM document for installing subnet...\n\n"),
         ResetColor
     )?;
-    let ssm_doc_tmpl = avalanche_ops::aws::artifacts::ssm_install_subnet_yaml().unwrap();
+    let ssm_doc_tmpl = avalanche_ops::aws::artifacts::ssm_install_subnet_chain_yaml().unwrap();
     let ssm_doc_stack_name = spec
         .resources
-        .cloudformation_ssm_install_subnet
+        .cloudformation_ssm_install_subnet_chain
         .clone()
         .unwrap();
-    let ssm_install_subnet_doc_name =
-        avalanche_ops::aws::spec::StackName::SsmInstallSubnet(spec.id.clone()).encode();
-    let cfn_params = Vec::from([build_param("DocumentName", &ssm_install_subnet_doc_name)]);
+    let ssm_install_subnet_chain_doc_name =
+        avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode();
+    let cfn_params = Vec::from([build_param(
+        "DocumentName",
+        &ssm_install_subnet_chain_doc_name,
+    )]);
     cloudformation_manager
         .create_stack(
             ssm_doc_stack_name.as_str(),
@@ -2157,15 +2160,15 @@ default-spec \\
 --vm-binary-s3-key {id}/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
 --vm-id srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy \\
 --chain-name subnetevm \\
+--chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --chain-config-path /tmp/subnet-evm-chain-config.json \\
 --chain-config-s3-key {id}/subnet-evm-chain-config.json \\
---chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 ",
             exec_path = exec_path.display(),
             region = spec.resources.region,
             s3_bucket = spec.resources.s3_bucket,
-            ssm_doc_name = ssm_install_subnet_doc_name,
+            ssm_doc_name = ssm_install_subnet_chain_doc_name,
             chain_rpc_url =
                 format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),

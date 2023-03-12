@@ -237,7 +237,7 @@ pub async fn execute(
             .unwrap();
     }
 
-    if let Some(ssm_doc_stack_name) = &spec.resources.cloudformation_ssm_install_subnet {
+    if let Some(ssm_doc_stack_name) = &spec.resources.cloudformation_ssm_install_subnet_chain {
         execute!(
             stdout(),
             SetForegroundColor(Color::Red),
@@ -438,7 +438,7 @@ pub async fn execute(
             .unwrap();
     }
 
-    if let Some(ssm_doc_stack_name) = &spec.resources.cloudformation_ssm_install_subnet {
+    if let Some(ssm_doc_stack_name) = &spec.resources.cloudformation_ssm_install_subnet_chain {
         sleep(Duration::from_secs(1)).await;
 
         execute!(

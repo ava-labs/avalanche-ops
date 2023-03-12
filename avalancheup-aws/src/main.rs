@@ -371,8 +371,11 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("VM_ID")
                     .unwrap_or(&String::new())
                     .clone(),
-
                 chain_name: sub_matches.get_one::<String>("CHAIN_NAME").unwrap().clone(),
+                chain_genesis_path: sub_matches
+                    .get_one::<String>("CHAIN_GENESIS_PATH")
+                    .unwrap()
+                    .clone(),
 
                 chain_config_path: sub_matches
                     .get_one::<String>("CHAIN_CONFIG_PATH")
@@ -381,11 +384,6 @@ async fn main() -> io::Result<()> {
                 chain_config_s3_key: sub_matches
                     .get_one::<String>("CHAIN_CONFIG_S3_KEY")
                     .unwrap_or(&"subnet-chain-config.json".to_string())
-                    .clone(),
-
-                chain_genesis_path: sub_matches
-                    .get_one::<String>("CHAIN_GENESIS_PATH")
-                    .unwrap()
                     .clone(),
 
                 node_ids_to_instance_ids,
