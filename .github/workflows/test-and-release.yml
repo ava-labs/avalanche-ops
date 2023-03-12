@@ -174,7 +174,7 @@ jobs:
         run: cargo install cross --locked
 
       - name: Build
-        run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanche-config --bin avalanche-kms --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader
+        run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanche-kms --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader
 
       - name: Compress binaries
         id: release_artifacts
@@ -184,11 +184,6 @@ jobs:
         shell: bash
         run: |
           if [ "$PLATFORM_NAME" == "linux" ]; then
-
-            cp ./target/${TARGET}/release/avalanche-config avalanche-config.${TARGET}
-            echo "file_name_avalanche_config=avalanche-config.${TARGET}" >> $GITHUB_OUTPUT
-            tar -czvf avalanche-config.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-config
-            echo "file_name_avalanche_config_tar_gz=avalanche-config.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/avalanche-kms avalanche-kms.${TARGET}
             echo "file_name_avalanche_kms=avalanche-kms.${TARGET}" >> $GITHUB_OUTPUT
@@ -221,11 +216,6 @@ jobs:
             echo "file_name_staking_key_cert_s3_downloader_tar_gz=staking-key-cert-s3-downloader.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
-
-            cp ./target/${TARGET}/release/avalanche-config avalanche-config.${TARGET}
-            echo "file_name_avalanche_config=avalanche-config.${TARGET}" >> $GITHUB_OUTPUT
-            gtar -czvf avalanche-config.${TARGET}.tar.gz -C ./target/${TARGET}/release avalanche-config
-            echo "file_name_avalanche_config_tar_gz=avalanche-config.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
             cp ./target/${TARGET}/release/avalanche-kms avalanche-kms.${TARGET}
             echo "file_name_avalanche_kms=avalanche-kms.${TARGET}" >> $GITHUB_OUTPUT
@@ -276,8 +266,6 @@ jobs:
           prerelease: false
           body: Latest builds from the last commit.
           files: |
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_config }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_config_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
@@ -304,8 +292,6 @@ jobs:
           prerelease: false
           body: Release builds for ${{ github.ref_name }}.
           files: |
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_config }}
-            ${{ steps.release_artifacts.outputs.file_name_avalanche_config_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}

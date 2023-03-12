@@ -131,20 +131,12 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .to_string(),
 
-                upload_artifacts_avalanche_config_local_bin: sub_matches
-                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHE_CONFIG_LOCAL_BIN")
-                    .unwrap_or(&String::new())
-                    .to_string(),
                 upload_artifacts_avalanched_local_bin: sub_matches
                     .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHED_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
-                upload_artifacts_avalanche_local_bin: sub_matches
-                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHE_LOCAL_BIN")
-                    .unwrap_or(&String::new())
-                    .to_string(),
-                upload_artifacts_plugin_local_dir: sub_matches
-                    .get_one::<String>("UPLOAD_ARTIFACTS_PLUGIN_LOCAL_DIR")
+                upload_artifacts_avalanchego_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHEGO_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
                 upload_artifacts_prometheus_metrics_rules_file_path: sub_matches
@@ -190,85 +182,6 @@ async fn main() -> io::Result<()> {
                 coreth_offline_pruning_enabled: sub_matches
                     .get_flag("CORETH_OFFLINE_PRUNING_ENABLED"),
                 coreth_state_sync_enabled: sub_matches.get_flag("CORETH_STATE_SYNC_ENABLED"),
-
-                subnet_evms: sub_matches
-                    .get_one::<usize>("SUBNET_EVMS")
-                    .unwrap_or(&0)
-                    .clone(),
-
-                subnet_evm_gas_limit: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_GAS_LIMIT")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_target_block_rate: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_TARGET_BLOCK_RATE")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_min_base_fee: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_MIN_BASE_FEE")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_target_gas: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_TARGET_GAS")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_base_fee_change_denominator: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_BASE_FEE_CHANGE_DENOMINATOR")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_min_block_gas_cost: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_MIN_BLOCK_GAS_COST")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_max_block_gas_cost: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_MAX_BLOCK_GAS_COST")
-                    .unwrap_or(&10_000_000)
-                    .clone(),
-                subnet_evm_block_gas_cost_step: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_BLOCK_GAS_COST_STEP")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_tx_pool_account_slots: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_TX_POOL_ACCOUNT_SLOTS")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_tx_pool_global_slots: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_TX_POOL_GLOBAL_SLOTS")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_tx_pool_account_queue: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_TX_POOL_ACCOUNT_QUEUE")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_tx_pool_global_queue: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_TX_POOL_GLOBAL_QUEUE")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_local_txs_enabled: sub_matches.get_flag("SUBNET_EVM_LOCAL_TXS_ENABLED"),
-                subnet_evm_priority_regossip_frequency: sub_matches
-                    .get_one::<i64>("SUBNET_EVM_PRIORITY_REGOSSIP_FREQUENCY")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_priority_regossip_max_txs: sub_matches
-                    .get_one::<i32>("SUBNET_EVM_PRIORITY_REGOSSIP_MAX_TXS")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_priority_regossip_txs_per_address: sub_matches
-                    .get_one::<i32>("SUBNET_EVM_PRIORITY_REGOSSIP_TXS_PER_ADDRESS")
-                    .unwrap_or(&0)
-                    .clone(),
-                subnet_evm_priority_regossip_addresses,
-
-                subnet_evm_auto_contract_deployer_allow_list_config: sub_matches
-                    .get_flag("SUBNET_EVM_AUTO_CONTRACT_DEPLOYER_ALLOW_LIST_CONFIG"),
-                subnet_evm_auto_contract_native_minter_config: sub_matches
-                    .get_flag("SUBNET_EVM_AUTO_CONTRACT_NATIVE_MINTER_CONFIG"),
-                subnet_evm_proposer_min_block_delay: sub_matches
-                    .get_one::<u64>("SUBNET_EVM_PROPOSER_MIN_BLOCK_DELAY")
-                    .unwrap_or(&1000000000)
-                    .clone(),
-
-                xsvms: sub_matches.get_one::<usize>("XSVMS").unwrap_or(&0).clone(),
 
                 spec_file_path: sub_matches
                     .get_one::<String>("SPEC_FILE_PATH")
