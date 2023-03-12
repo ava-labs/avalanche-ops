@@ -2,6 +2,7 @@ mod cloudwatch;
 mod command;
 mod flags;
 mod install;
+mod install_chain;
 mod install_subnet;
 mod sync_subnet_evm_chain_config;
 mod sync_subnet_evm_subnet_config;
@@ -42,6 +43,7 @@ async fn main() {
         )
         .subcommands(vec![
             install::command(),
+            install_chain::command(),
             install_subnet::command(),
             sync_subnet_evm_chain_config::command(),
             sync_subnet_evm_subnet_config::command(),
@@ -110,6 +112,62 @@ async fn main() {
 
         Some((install_subnet::NAME, sub_matches)) => {
             install_subnet::execute(
+                &sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+                &sub_matches
+                    .get_one::<String>("REGION")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("S3_BUCKET")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHEGO_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHEGO_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHEGO_PLUGIN_S3_PREFIX")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHEGO_PLUGIN_TARGET_DIR")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("RUST_OS_TYPE")
+                    .unwrap_or(&String::from("ubuntu20.04")),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_CONFIG_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_CONFIG_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_VOLUME_PROVISIONER_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_VOLUME_PROVISIONER_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_IP_PROVISIONER_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AWS_IP_PROVISIONER_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_TELEMETRY_CLOUDWATCH_S3_KEY")
+                    .unwrap_or(&String::new()),
+                &sub_matches
+                    .get_one::<String>("AVALANCHE_TELEMETRY_CLOUDWATCH_TARGET_FILE_PATH")
+                    .unwrap_or(&String::new()),
+            )
+            .await
+            .unwrap();
+        }
+
+        Some((install_chain::NAME, sub_matches)) => {
+            install_chain::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))

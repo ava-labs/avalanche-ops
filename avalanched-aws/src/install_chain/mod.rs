@@ -12,7 +12,7 @@ use clap::{Arg, Command};
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 
-pub const NAME: &str = "install-subnet";
+pub const NAME: &str = "install-chain";
 
 /// Defines "install-subnet" option.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -22,19 +22,13 @@ pub struct Flags {
     pub region: String,
     pub s3_bucket: String,
 
-    pub subnet_config_s3_key: String,
-    pub subnet_config_path: String,
-
-    pub vm_binary_s3_key: String,
-    pub vm_binary_path: String,
-
     pub chain_config_s3_key: String,
     pub chain_config_path: String,
 }
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Download Vm binary, track subnet Id, update subnet config")
+        .about("Update chain config")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -60,30 +54,16 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("SUBNET_CONFIG_S3_KEY")
-                .long("subnet-config-s3-key")
-                .help("Sets the S3 key for the subnet config")
+            Arg::new("CHAIN_CONFIG_S3_KEY")
+                .long("chain-config-s3-key")
+                .help("Sets the S3 key for the chain config")
                 .required(true)
                 .num_args(1),
         )
         .arg(
-            Arg::new("SUBNET_CONFIG_PATH")
-                .long("subnet-config-path")
-                .help("Subnet configuration file path")
-                .required(true)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("VM_BINARY_S3_KEY")
-                .long("vm-binary-s3-key")
-                .help("Download VM binary from S3")
-                .required(true)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("VM_BINARY_PATH")
-                .long("vm-binary-path")
-                .help("VM binary file path")
+            Arg::new("CHAIN_CONFIG_PATH")
+                .long("chain-config-path")
+                .help("Chain configuration file path")
                 .required(true)
                 .num_args(1),
         )
