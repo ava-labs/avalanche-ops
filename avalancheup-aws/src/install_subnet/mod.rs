@@ -35,17 +35,22 @@ pub struct Flags {
 
     pub chain_rpc_url: String,
     pub key: String,
+
     pub staking_period_in_days: u64,
     pub staking_amount_in_avax: u64,
 
     pub subnet_config_path: String,
     pub subnet_config_s3_key: String,
+
     pub vm_binary_path: String,
     pub vm_binary_s3_key: String,
+
     pub vm_id: String,
     pub chain_name: String,
+
     pub chain_config_path: String,
     pub chain_config_s3_key: String,
+
     pub chain_genesis_path: String,
 
     pub node_ids_to_instance_ids: HashMap<String, String>,
@@ -144,7 +149,7 @@ pub fn command() -> Command {
             Arg::new("STAKING_AMOUNT_IN_AVAX")
                 .long("staking-amount-in-avax")
                 .help(
-                    "Sets the staking amount in avax (not in nAVAX) for primary network validator",
+                    "Sets the staking amount in P-chain AVAX (not in nAVAX) for primary network validator",
                 )
                 .required(false)
                 .num_args(1)
