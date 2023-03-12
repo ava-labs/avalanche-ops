@@ -121,11 +121,11 @@ async fn main() {
                     .to_string(),
                 subnet_config_s3_key: sub_matches
                     .get_one::<String>("SUBNET_CONFIG_S3_KEY")
-                    .unwrap()
+                    .unwrap_or(&String::new())
                     .to_string(),
                 subnet_config_path: sub_matches
                     .get_one::<String>("SUBNET_CONFIG_PATH")
-                    .unwrap()
+                    .unwrap_or(&String::new())
                     .to_string(),
                 vm_binary_s3_key: sub_matches
                     .get_one::<String>("VM_BINARY_S3_KEY")
