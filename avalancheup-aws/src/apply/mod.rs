@@ -1588,46 +1588,6 @@ aws ssm start-session --region {} --target {}
         node_ids_to_instance_ids.insert(node_id, instance_id);
     }
 
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
-        ResetColor
-    )?;
-    // TODO: check "/ext/info"
-    // TODO: check "/ext/bc/C/rpc"
-    // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
-    // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
-    //
-    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
-    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
-    // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
-    for host in rpc_hosts.iter() {
-        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
-
-        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
-        endpoints.http_rpc = Some(http_rpc.clone());
-        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
-        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
-        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
-        endpoints.health = Some(format!("{http_rpc}/ext/health"));
-        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
-        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-        spec.resources.created_endpoints = Some(endpoints.clone());
-
-        println!(
-            "{}",
-            spec.resources
-                .created_endpoints
-                .clone()
-                .unwrap()
-                .encode_yaml()
-                .unwrap()
-        );
-    }
-
     println!();
     log::info!(
         "apply all success with node Ids {:?} and instance Ids {:?}",
@@ -1753,21 +1713,6 @@ cat /tmp/{node_id}.crt
         .unwrap();
     log::info!("created ssm document for installing subnet");
 
-    println!("\n# EXAMPLE: write subnet config");
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "{exec_path} subnet-config \\
---log-level=info \\
---proposer-min-block-delay 250000000 \\
---file-path /tmp/subnet-config.json
-",
-            exec_path = exec_path.display(),
-        )),
-        ResetColor
-    )?;
-
     if spec.avalanchego_config.is_custom_network() {
         let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
         let priv_key =
@@ -1805,6 +1750,21 @@ cat /tmp/{node_id}.crt
     //
     //
     //
+    println!("\n# EXAMPLE: write subnet config");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_path} subnet-config \\
+--log-level=info \\
+--proposer-min-block-delay 250000000 \\
+--file-path /tmp/subnet-config.json
+",
+            exec_path = exec_path.display(),
+        )),
+        ResetColor
+    )?;
+
     println!("\n# EXAMPLE: write subnet-evm chain config");
     let priority_regossip_addresses_flag = if let Some(keys) = &spec.prefunded_keys {
         let mut ss = Vec::new();
@@ -1957,6 +1917,46 @@ default-spec \\
         )),
         ResetColor
     )?;
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+        ResetColor
+    )?;
+    // TODO: check "/ext/info"
+    // TODO: check "/ext/bc/C/rpc"
+    // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
+    // ref. https://github.com/ava-labs/subnet-evm/blob/505f03904736ee9f8de7b862c06d0ae18062cc80/runner/main.go#L671
+    //
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
+    // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
+    // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
+    for host in rpc_hosts.iter() {
+        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+
+        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
+        endpoints.http_rpc = Some(http_rpc.clone());
+        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+        endpoints.health = Some(format!("{http_rpc}/ext/health"));
+        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+        spec.resources.created_endpoints = Some(endpoints.clone());
+
+        println!(
+            "{}",
+            spec.resources
+                .created_endpoints
+                .clone()
+                .unwrap()
+                .encode_yaml()
+                .unwrap()
+        );
+    }
 
     Ok(())
 }
