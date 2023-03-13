@@ -45,10 +45,10 @@ Resources:
                   #!/bin/bash
                   set -xeu
 
-                  /usr/local/bin/avalanched --version
+                  /usr/local/bin/avalanched-aws --version
 
                   # to download vm binary, write/update subnet/chain config
-                  /usr/local/bin/avalanched {{ avalanchedArgs }}
+                  /usr/local/bin/avalanched-aws {{ avalanchedArgs }}
 
                   # to reload updated configs
                   sudo systemctl restart avalanche

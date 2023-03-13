@@ -1495,7 +1495,7 @@ pub enum StorageNamespace {
     /// Only updated after anchor nodes become active.
     GenesisFile(String),
 
-    AvalanchedBin(String),
+    AvalanchedAwsBin(String),
 
     AwsVolumeProvisionerBin(String),
     AwsIpProvisionerBin(String),
@@ -1539,7 +1539,9 @@ impl StorageNamespace {
 
             StorageNamespace::GenesisFile(id) => format!("{}/genesis.json", id),
 
-            StorageNamespace::AvalanchedBin(id) => format!("{}/bootstrap/install/avalanched", id),
+            StorageNamespace::AvalanchedAwsBin(id) => {
+                format!("{}/bootstrap/install/avalanched-aws", id)
+            }
 
             StorageNamespace::AwsVolumeProvisionerBin(id) => {
                 format!("{}/bootstrap/install/aws-volume-provisioner", id)

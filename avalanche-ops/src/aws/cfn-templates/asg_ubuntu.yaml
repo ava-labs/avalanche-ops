@@ -215,16 +215,16 @@ Parameters:
     Default: ""
     Description: (Optional) Certificates for NLB HTTPs traffic.
 
-  AvalanchedDownloadSource:
+  AvalanchedAwsDownloadSource:
     Type: String
     AllowedValues: ["github", "s3"]
     Default: "github"
     Description: Set to "github" to download from github, or "s3" to download from S3.
 
-  AvalanchedArgs:
+  AvalanchedAwsArgs:
     Type: String
     Default: ""
-    Description: (Optional) flag for "avalanched" CLI.
+    Description: (Optional) flag for "avalanched-aws" CLI.
 
 Conditions:
   HasImageId:
@@ -613,28 +613,28 @@ Resources:
               # TODO: support arm64 ubuntu, "aarch64-ubuntu20.04" (graviton)
               # "aarch64-unknown-linux-gnu" may not work without cross-linker for linux
               # https://users.rust-lang.org/t/cant-cross-compile-project-with-openssl/70922
-              if [[ ${AvalanchedDownloadSource} == "github" ]]; then
+              if [[ ${AvalanchedAwsDownloadSource} == "github" ]]; then
                 sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
-                sudo rm -f /tmp/avalanched
-                sudo rm -f /usr/local/bin/avalanched
+                sudo rm -f /tmp/avalanched-aws
+                sudo rm -f /usr/local/bin/avalanched-aws
                 while [ 1 ]; do
                   sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu || true;
                   wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
                   if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                   sleep 2s;
                 done;
-                mv ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu /tmp/avalanched
-                chmod +x /tmp/avalanched
-                sudo mv /tmp/avalanched /usr/local/bin/avalanched
+                mv ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu /tmp/avalanched-aws
+                chmod +x /tmp/avalanched-aws
+                sudo mv /tmp/avalanched-aws /usr/local/bin/avalanched-aws
               else
-                sudo rm -f /tmp/avalanched
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched /tmp/avalanched
-                chmod +x /tmp/avalanched
-                sudo mv /tmp/avalanched /usr/local/bin/avalanched
+                sudo rm -f /tmp/avalanched-aws
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched-aws /tmp/avalanched-aws
+                chmod +x /tmp/avalanched-aws
+                sudo mv /tmp/avalanched-aws /usr/local/bin/avalanched-aws
               fi;
-              /usr/local/bin/avalanched --version
+              /usr/local/bin/avalanched-aws --version
 
-              /usr/local/bin/avalanched install-artifacts \
+              /usr/local/bin/avalanched-aws install-artifacts \
               --region ${AWS::Region} \
               --s3-bucket ${S3BucketName} \
               --avalanchego-s3-key ${Id}/bootstrap/install/avalanchego \
@@ -647,7 +647,7 @@ Resources:
               --avalanche-telemetry-cloudwatch-s3-key ${Id}/bootstrap/install/avalanche-telemetry-cloudwatch \
               --avalanche-telemetry-cloudwatch-local-path /usr/local/bin/avalanche-telemetry-cloudwatch
 
-              /usr/local/bin/avalanched --version
+              /usr/local/bin/avalanched-aws --version
               /usr/local/bin/avalanchego --version
               /usr/local/bin/aws-volume-provisioner --version
               /usr/local/bin/aws-ip-provisioner --version
@@ -692,9 +692,9 @@ Resources:
               mkdir -p /var/log/avalanche
               chmod 755 /var/log/avalanche
 
-              cat > /tmp/avalanched.service <<EOF
+              cat > /tmp/avalanched-aws-aws.service <<EOF
               [Unit]
-              Description=Avalanched (avalanche agent)
+              Description=Avalanched on AWS (avalanche agent)
 
               [Service]
               Type=exec
@@ -702,21 +702,21 @@ Resources:
               Restart=on-failure
               RestartSec=5s
               LimitNOFILE=40000
-              ExecStart=/usr/local/bin/avalanched ${AvalanchedArgs}
-              StandardOutput=append:/var/log/avalanched.log
-              StandardError=append:/var/log/avalanched.log
+              ExecStart=/usr/local/bin/avalanched-aws ${AvalanchedAwsArgs}
+              StandardOutput=append:/var/log/avalanched-aws.log
+              StandardError=append:/var/log/avalanched-aws.log
 
               [Install]
               WantedBy=multi-user.target
               EOF
-              sudo mv /tmp/avalanched.service /etc/systemd/system/avalanched.service
+              sudo mv /tmp/avalanched-aws-aws.service /etc/systemd/system/avalanched-aws.service
               sudo systemctl daemon-reload
-              sudo systemctl enable avalanched.service
-              sudo systemctl start --no-block avalanched.service
+              sudo systemctl enable avalanched-aws.service
+              sudo systemctl start --no-block avalanched-aws.service
 
-              # enough time for "avalanched" to initialize cloudwatch configuration
+              # enough time for "avalanched-aws" to initialize cloudwatch configuration
               sleep 10
-              echo "wait until /opt/aws/amazon-cloudwatch-agent/bin/config.json is written by avalanched"
+              echo "wait until /opt/aws/amazon-cloudwatch-agent/bin/config.json is written by avalanched-aws"
               while [[ ! -s /opt/aws/amazon-cloudwatch-agent/bin/config.json ]]
                 do
                 echo "waiting for /opt/aws/amazon-cloudwatch-agent/bin/config.json creation"

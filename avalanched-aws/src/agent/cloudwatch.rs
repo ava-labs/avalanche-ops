@@ -29,7 +29,7 @@ pub struct ConfigManager {
 /// ref. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
 impl ConfigManager {
     /// Set "log_files" to track extra log files via CloudWatch.
-    /// e.g., "/var/log/avalanched.log"
+    /// e.g., "/var/log/avalanched-aws.log"
     pub fn sync(
         &self,
         logs_auto_removal: bool,
@@ -56,7 +56,7 @@ impl ConfigManager {
 
         if let Some(v) = log_files {
             for file_path in v {
-                // e.g., "/var/log/avalanched.log" becomes "avalanched.log"
+                // e.g., "/var/log/avalanched-aws.log" becomes "avalanched-aws.log"
                 let fname = Path::new(&file_path)
                     .file_name()
                     .unwrap()

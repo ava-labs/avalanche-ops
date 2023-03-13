@@ -115,12 +115,12 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
     paramAsgName.default = process.env.ID + '-non-anchor-amd64';
 
     // since we don't use S3 to upload avalanched binary
-    const paramAvalanchedDownloadSource: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedDownloadSource');
-    paramAvalanchedDownloadSource.default = 'github';
+    const paramAvalanchedAwsDownloadSource: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedAwsDownloadSource');
+    paramAvalanchedAwsDownloadSource.default = 'github';
 
     // to skip s3 uploads for node discovery
-    const paramAvalanchedArgs: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedArgs');
-    paramAvalanchedArgs.default = 'agent --use-default-config';
+    const paramAvalanchedAwsArgs: cdk.CfnParameter = tmplAsg.getParameter('AvalanchedAwsArgs');
+    paramAvalanchedAwsArgs.default = 'agent --use-default-config';
 
     // "mainnet" is 1, "fuji" is 5
     const paramNetworkId: cdk.CfnParameter = tmplAsg.getParameter('NetworkId');

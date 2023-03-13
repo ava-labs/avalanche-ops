@@ -116,7 +116,7 @@ ssh -o "StrictHostKeyChecking no" -i test.key ubuntu@52.41.144.41
 aws ssm start-session --region us-west-2 --target i-abc
 
 # in the machine, you can run something like this
-sudo tail -f /var/log/avalanched.log
+sudo tail -f /var/log/avalanched-aws.log
 sudo tail -f /var/log/avalanche/avalanche.log
 ls -lah /data/
 
@@ -171,14 +171,14 @@ chmod +x /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 sudo systemctl stop avalanched.service
 sudo systemctl disable avalanched.service
 
-sudo mv /tmp/avalanched-aws.x86_64-unknown-linux-gnu /usr/local/bin/avalanched
-/usr/local/bin/avalanched --version
+sudo mv /tmp/avalanched-aws.x86_64-unknown-linux-gnu /usr/local/bin/avalanched-aws
+/usr/local/bin/avalanched-aws --version
 
 sudo systemctl enable avalanched.service
 sudo systemctl restart --no-block avalanched.service
 
-sudo tail /var/log/avalanched.log
-sudo tail -f /var/log/avalanched.log
+sudo tail /var/log/avalanched-aws.log
+sudo tail -f /var/log/avalanched-aws.log
 ```
 
 ```bash
@@ -1080,7 +1080,7 @@ sudo systemctl stop avalanched.service
 sudo systemctl disable avalanched.service
 sudo journalctl -f -u avalanched.service
 sudo journalctl -u avalanched.service --lines=10 --no-pager
-sudo tail -f /var/log/avalanched.log
+sudo tail -f /var/log/avalanched-aws.log
 
 sudo systemctl cat avalanche.service
 sudo systemctl status avalanche.service

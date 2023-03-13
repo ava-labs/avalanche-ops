@@ -32,7 +32,7 @@ pub const NAME: &str = "agent";
 pub struct Flags {
     pub log_level: String,
 
-    /// Set "true" to run "avalanched" without downloading any "avalancheup" spec dependencies.
+    /// Set "true" to run "avalanched-aws" without downloading any "avalancheup" spec dependencies.
     /// Used for CDK integration.
     pub use_default_config: bool,
 
@@ -1218,7 +1218,7 @@ fn create_cloudwatch_config(
         log_auto_removal,
         Some(vec![
             String::from("/var/log/cloud-init-output.log"),
-            String::from("/var/log/avalanched.log"),
+            String::from("/var/log/avalanched-aws.log"),
             String::from("/var/log/avalanche-telemetry-cloudwatch.log"),
         ]),
         metrics_fetch_interval_seconds,

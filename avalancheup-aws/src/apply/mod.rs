@@ -228,7 +228,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .put_object(
                     &v.avalanched_local_bin,
                     &spec.resources.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::AvalanchedBin(spec.id.clone())
+                    &avalanche_ops::aws::spec::StorageNamespace::AvalanchedAwsBin(spec.id.clone())
                         .encode(),
                 )
                 .await
@@ -688,7 +688,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         ),
         build_param("RustOsType", &spec.machine.rust_os_type),
         build_param(
-            "AvalanchedArgs",
+            "AvalanchedAwsArgs",
             &format!("agent {}", spec.avalanched_config.to_flags()),
         ),
         build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
@@ -704,7 +704,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     common_asg_params.push(build_param(
-        "AvalanchedDownloadSource",
+        "AvalanchedAwsDownloadSource",
         avalanched_download_source,
     ));
 
