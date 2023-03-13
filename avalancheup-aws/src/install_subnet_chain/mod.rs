@@ -779,5 +779,16 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         sleep(Duration::from_secs(5)).await;
     }
 
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "\n\n\nSUCCESS: subnet Id {created_subnet_id}, blockchain Id {blockchain_id}\n\n"
+        )),
+        ResetColor
+    )?;
+    println!();
+
     Ok(())
 }
