@@ -8,9 +8,7 @@ use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
     constants,
     coreth::chain_config as coreth_chain_config,
-    key, node, subnet,
-    subnet_evm::{chain_config as subnet_evm_chain_config, genesis as subnet_evm_genesis},
-    xsvm::genesis as xsvm_genesis,
+    key, node,
 };
 use aws_manager::{ec2, sts};
 use serde::{Deserialize, Serialize};
@@ -283,19 +281,6 @@ impl Resources {
             created_endpoints: None,
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct SubnetEvm {
-    pub genesis: subnet_evm_genesis::Genesis,
-    pub chain_config: subnet_evm_chain_config::Config,
-    pub subnet_config: subnet::config::Config,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Xsvm {
-    pub genesis: xsvm_genesis::Genesis,
-    pub subnet_config: subnet::config::Config,
 }
 
 /// Defines "default-spec" option.
