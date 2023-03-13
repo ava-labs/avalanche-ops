@@ -64,9 +64,12 @@ pub fn execute(opts: Flags) -> io::Result<()> {
         ResetColor
     )?;
     let mut subnet_config = subnet::config::Config::default();
-    if opts.proposer_min_block_delay > 0 {
-        subnet_config.proposer_min_block_delay = opts.proposer_min_block_delay;
-    }
+
+    log::info!(
+        "setting proposer_min_block_delay to {}",
+        opts.proposer_min_block_delay
+    );
+    subnet_config.proposer_min_block_delay = opts.proposer_min_block_delay;
 
     subnet_config.sync(&opts.file_path)?;
     let d = subnet_config.encode_json().expect("failed encode_json");
