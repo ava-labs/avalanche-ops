@@ -171,8 +171,8 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("UPLOAD_ARTIFACTS_AVALANCHED_LOCAL_BIN") 
-                .long("upload-artifacts-avalanched-local-bin")
+            Arg::new("UPLOAD_ARTIFACTS_AVALANCHED_AWS_LOCAL_BIN") 
+                .long("upload-artifacts-avalanched-aws-local-bin")
                 .help("Sets the avalanched binary path in the local machine to be shared with remote machines (if empty, it downloads the latest from github)")
                 .required(false)
                 .num_args(1),

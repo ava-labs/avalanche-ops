@@ -131,8 +131,8 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .to_string(),
 
-                upload_artifacts_avalanched_local_bin: sub_matches
-                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHED_LOCAL_BIN")
+                upload_artifacts_avalanched_aws_local_bin: sub_matches
+                    .get_one::<String>("UPLOAD_ARTIFACTS_AVALANCHED_AWS_LOCAL_BIN")
                     .unwrap_or(&String::new())
                     .to_string(),
                 upload_artifacts_avalanchego_local_bin: sub_matches

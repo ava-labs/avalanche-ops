@@ -55,7 +55,7 @@ AVALANCHE_PLUGIN_DIR_PATH=/home/ubuntu/go/src/github.com/ava-labs/avalanchego/bu
 cd /home/ubuntu/avalanche-ops
 avalancheup-aws default-spec \
 --region ap-northeast-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-aws-volume-provisioner-local-bin ${AWS_VOLUME_PROVISIONER_BIN_PATH} \
 --upload-artifacts-aws-ip-provisioner-local-bin ${AWS_IP_PROVISIONER_BIN_PATH} \
 --upload-artifacts-avalanche-telemetry-cloudwatch-local-bin ${AVALANCHE_TELEMETRY_CLOUDWATCH_BIN_PATH} \

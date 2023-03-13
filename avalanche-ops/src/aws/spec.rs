@@ -315,7 +315,7 @@ pub struct DefaultSpecOption {
     pub upload_artifacts_aws_volume_provisioner_local_bin: String,
     pub upload_artifacts_aws_ip_provisioner_local_bin: String,
     pub upload_artifacts_avalanche_telemetry_cloudwatch_local_bin: String,
-    pub upload_artifacts_avalanched_local_bin: String,
+    pub upload_artifacts_avalanched_aws_local_bin: String,
     pub upload_artifacts_avalanchego_local_bin: String,
     pub upload_artifacts_prometheus_metrics_rules_file_path: String,
 
@@ -541,9 +541,9 @@ impl Spec {
                 .upload_artifacts_avalanche_telemetry_cloudwatch_local_bin
                 .clone();
         }
-        if !opts.upload_artifacts_avalanched_local_bin.is_empty() {
+        if !opts.upload_artifacts_avalanched_aws_local_bin.is_empty() {
             upload_artifacts.avalanched_local_bin =
-                opts.upload_artifacts_avalanched_local_bin.clone();
+                opts.upload_artifacts_avalanched_aws_local_bin.clone();
         }
         if !opts.upload_artifacts_avalanchego_local_bin.is_empty() {
             upload_artifacts.avalanchego_local_bin =

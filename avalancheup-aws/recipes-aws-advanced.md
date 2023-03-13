@@ -81,7 +81,7 @@ Now you need to write specification of how networks/nodes are to be provisioned.
 ```bash
 avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ./avalanched-aws.x86_64-unknown-linux-gnu \
+--upload-artifacts-avalanched-aws-local-bin ./avalanched-aws.x86_64-unknown-linux-gnu \
 --upload-artifacts-avalanchego-local-bin [AVALANCHE_BUILD_DIR]/avalanchego \
 --upload-artifacts-plugin-local-dir [AVALANCHE_BUILD_DIR]/plugins \
 --network-name custom \
@@ -344,7 +344,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
@@ -440,7 +440,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --coreth-metrics-enabled \
@@ -490,7 +490,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
@@ -552,7 +552,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --nlb-acm-certificate-arn $ACM_CERT_ARN \
@@ -606,7 +606,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
@@ -657,7 +657,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --upload-artifacts-snow-machine-file-path ${HOME}/coreth.json \
@@ -748,7 +748,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name custom \
@@ -888,7 +888,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
@@ -944,7 +944,7 @@ cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
 --avalanched-use-default-config \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --network-name fuji \
 --avalanchego-log-level INFO
 
@@ -991,7 +991,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name fuji \
@@ -1043,7 +1043,7 @@ AVALANCHE_PLUGINS_DIR_PATH=/tmp/avalanchego-v${VERSION}/plugins
 cd ${HOME}/avalanche-ops
 ./target/release/avalancheup-aws default-spec \
 --region us-west-2 \
---upload-artifacts-avalanched-local-bin ${AVALANCHED_BIN_PATH} \
+--upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
 --network-name mainnet \
