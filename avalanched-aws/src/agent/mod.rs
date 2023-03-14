@@ -360,7 +360,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     // always overwrite in case we update tags
-    create_cloudwatch_config(
+    write_cloudwatch_config(
         &fetched_tags.id,
         fetched_tags.node_kind.clone(),
         logs_auto_removal,
@@ -909,7 +909,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     if metrics_fetch_interval_seconds > 0 {
-        stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
+        stop_and_restart_avalanche_telemetry_cloudwatch_systemd_service(
             "/usr/local/bin/avalanche-telemetry-cloudwatch",
             &fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path,
             &fetched_tags.id,
@@ -981,6 +981,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     } else {
         log::info!("skipped monitoring the spot instance-action...");
     }
+
+    // TODO: write notify file to notify it's done and do health check against it
 
     //
     //
@@ -1195,7 +1197,7 @@ fn create_config_dirs(
     Ok(())
 }
 
-fn create_cloudwatch_config(
+fn write_cloudwatch_config(
     id: &str,
     node_kind: node::Kind,
     log_auto_removal: bool,
@@ -1204,7 +1206,7 @@ fn create_cloudwatch_config(
     cloudwatch_config_file_path: &str,
     metrics_fetch_interval_seconds: u32,
 ) -> io::Result<()> {
-    log::info!("STEP: creating CloudWatch JSON config file...");
+    log::info!("STEP: writing CloudWatch JSON config file...");
 
     let cw_config_manager = cloudwatch::ConfigManager {
         id: id.to_string(),
@@ -1344,7 +1346,7 @@ WantedBy=multi-user.target",
     Ok(())
 }
 
-fn stop_and_start_avalanche_telemetry_cloudwatch_systemd_service(
+fn stop_and_restart_avalanche_telemetry_cloudwatch_systemd_service(
     avalanche_telemetry_cloudwatch_bin_path: &str,
     avalanche_telemetry_cloudwatch_rules_file_path: &str,
     namespace: &str,
