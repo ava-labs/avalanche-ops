@@ -14,6 +14,7 @@ use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
+use tokio::time::Duration;
 
 pub const NAME: &str = "info";
 

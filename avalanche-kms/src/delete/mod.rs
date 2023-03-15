@@ -8,6 +8,7 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
+use tokio::time::Duration;
 
 pub const NAME: &str = "delete";
 
