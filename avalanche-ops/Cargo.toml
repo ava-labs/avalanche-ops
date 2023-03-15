@@ -22,7 +22,7 @@ primitive-types = { version = "0.12.1", features = ["impl-serde"], optional = fa
 prometheus-manager = "0.0.23"
 random-manager = "0.0.5"
 rust-embed = "6.4.2"
-serde = { version = "1.0.155", features = ["derive"] }
+serde = { version = "1.0.156", features = ["derive"] }
 serde_json = "1.0.94" # https://github.com/serde-rs/json/releases
 serde_yaml = "0.9.19" # https://github.com/dtolnay/serde-yaml/releases
 
