@@ -100,9 +100,10 @@ pub async fn execute(
     };
     log::info!("network Id: {network_id}");
 
-    let shared_config = aws_manager::load_config(Some(region.to_string()))
-        .await
-        .unwrap();
+    let shared_config =
+        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30)))
+            .await
+            .unwrap();
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();

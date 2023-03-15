@@ -129,7 +129,8 @@ pub async fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let shared_config = aws_manager::load_config(Some(region.to_string())).await?;
+    let shared_config =
+        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await?;
     let s3_manager = s3::Manager::new(&shared_config);
 
     let need_github_download = if !avalanchego_s3_key.is_empty() {

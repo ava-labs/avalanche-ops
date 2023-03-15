@@ -101,9 +101,12 @@ pub async fn execute(
 
     let spec = avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
 
-    let shared_config = aws_manager::load_config(Some(spec.resources.region.clone()))
-        .await
-        .unwrap();
+    let shared_config = aws_manager::load_config(
+        Some(spec.resources.region.clone()),
+        Some(Duration::from_secs(30)),
+    )
+    .await
+    .unwrap();
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();

@@ -115,9 +115,10 @@ pub async fn execute(
         "requesting to create new {keys} KMS CMK(s) with prefix '{key_name_prefix}' (in the {region})"
     );
 
-    let shared_config = aws_manager::load_config(Some(region.to_string()))
-        .await
-        .unwrap();
+    let shared_config =
+        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30)))
+            .await
+            .unwrap();
     let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);
