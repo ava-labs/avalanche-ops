@@ -371,7 +371,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ResetColor
     )?;
 
-    let shared_config = aws_manager::load_config(Some(opts.region.clone())).await?;
+    let shared_config =
+        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await?;
     let sts_manager = sts::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
     let ssm_manager = ssm::Manager::new(&shared_config);

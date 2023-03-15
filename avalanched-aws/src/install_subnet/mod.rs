@@ -111,7 +111,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
-    let shared_config = aws_manager::load_config(Some(opts.region.clone())).await?;
+    let shared_config =
+        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await?;
     let s3_manager = s3::Manager::new(&shared_config);
 
     if !opts.subnet_config_s3_key.is_empty() && !opts.subnet_config_s3_key.is_empty() {

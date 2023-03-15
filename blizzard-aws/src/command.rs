@@ -6,6 +6,7 @@ use std::{
 
 use crate::{cloudwatch as cw, evm, flags, x};
 use aws_manager::{self, ec2, s3};
+use tokio::time::Duration;
 
 pub async fn execute(opts: flags::Options) -> io::Result<()> {
     println!("starting {} with {:?}", crate::APP_NAME, opts);
@@ -123,7 +124,8 @@ struct AwsCreds {
 async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
     log::info!("STEP: loading up AWS credential for region '{}'...", reg);
 
-    let shared_config = aws_manager::load_config(Some(reg.to_string())).await?;
+    let shared_config =
+        aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await?;
 
     let ec2_manager = ec2::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
