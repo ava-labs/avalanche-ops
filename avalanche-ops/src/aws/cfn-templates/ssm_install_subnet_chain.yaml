@@ -53,8 +53,8 @@ Resources:
                   # to reload updated configs
                   sudo systemctl restart avalanche
                   sleep 7
-                  sudo tail -50 /var/log/avalanche/avalanche.log || true
+                  sudo tail -50 /var/log/avalanchego/avalanchego.log || true
 
                   # to check the status
-                  # sudo find /var/log/avalanche/
-                  # sudo tail /var/log/avalanche/avalanche.log
+                  # sudo find /var/log/avalanchego/
+                  # sudo tail /var/log/avalanchego/avalanchego.log

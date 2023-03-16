@@ -117,7 +117,7 @@ aws ssm start-session --region us-west-2 --target i-abc
 
 # in the machine, you can run something like this
 sudo tail -f /var/log/avalanched-aws.log
-sudo tail -f /var/log/avalanche/avalanche.log
+sudo tail -f /var/log/avalanchego/avalanchego.log
 ls -lah /data/
 
 # logs are available in CloudWatch
@@ -167,7 +167,7 @@ chmod +x /tmp/avalanched-aws.x86_64-unknown-linux-gnu
 
 
 # update "avalanched"
-# it runs "sudo systemctl stop avalanche.service" and "restart"
+# it runs "sudo systemctl stop avalanchego.service" and "restart"
 sudo systemctl stop avalanched.service
 sudo systemctl disable avalanched.service
 
@@ -229,17 +229,17 @@ chmod +x /tmp/avalanchego-v${VERSION}/avalanchego
 
 
 # update "avalanchego"
-sudo systemctl stop avalanche.service
-sudo systemctl disable avalanche.service
+sudo systemctl stop avalanchego.service
+sudo systemctl disable avalanchego.service
 
 sudo mv /tmp/avalanchego-v${VERSION}/avalanchego /usr/local/bin/avalanche
 /usr/local/bin/avalanche --version
 
-sudo systemctl enable avalanche.service
-sudo systemctl restart --no-block avalanche.service
+sudo systemctl enable avalanchego.service
+sudo systemctl restart --no-block avalanchego.service
 
-sudo tail /var/log/avalanche/avalanche.log
-sudo tail -f /var/log/avalanche/avalanche.log
+sudo tail /var/log/avalanchego/avalanchego.log
+sudo tail -f /var/log/avalanchego/avalanchego.log
 ```
 
 ### Cheapest way to set up a network or validator
@@ -846,7 +846,7 @@ cat [YOUR_SPEC_PATH] | grep metamask_rpc:
 http://[PUBLIC-DNS]:9650/ext/bc/55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1/rpc
 
 # check the logs
-sudo tail /var/log/avalanche/55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1.log
+sudo tail /var/log/avalanchego/55Wgss7ie3Xo42pmt85Y2FwbHo4tgwpgxSeyLAhtD4ivXjto1.log
 ```
 
 ### Fuji network with NO initial database state
@@ -1082,11 +1082,11 @@ sudo journalctl -f -u avalanched.service
 sudo journalctl -u avalanched.service --lines=10 --no-pager
 sudo tail -f /var/log/avalanched-aws.log
 
-sudo systemctl cat avalanche.service
-sudo systemctl status avalanche.service
-sudo systemctl stop avalanche.service
-sudo systemctl disable avalanche.service
-sudo journalctl -f -u avalanche.service
-sudo journalctl -u avalanche.service --lines=10 --no-pager
-sudo tail -f /var/log/avalanche/avalanche.log
+sudo systemctl cat avalanchego.service
+sudo systemctl status avalanchego.service
+sudo systemctl stop avalanchego.service
+sudo systemctl disable avalanchego.service
+sudo journalctl -f -u avalanchego.service
+sudo journalctl -u avalanchego.service --lines=10 --no-pager
+sudo tail -f /var/log/avalanchego/avalanchego.log
 ```

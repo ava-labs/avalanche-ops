@@ -268,7 +268,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
         let mut spec = avalanche_ops::aws::spec::Spec::load(&tmp_spec_file_path)?;
 
-        // always overwrite since S3 is the single source of truths!
+        // ALWAYS OVERWRITE TO USE S3 AS THE SINGLE SOURCE OF TRUTH
         // local updates will be gone! make sure update the S3 file!
         // except the tracked subnet Ids!
         let track_subnets = if let Some(config_file) = &spec.avalanchego_config.config_file {
@@ -575,12 +575,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     //
-    // check if the file "exists" for idempotency
-    if avalanchego_config.is_custom_network()
-        && avalanchego_config.genesis.is_some()
-        && !Path::new(&avalanchego_config.clone().genesis.unwrap()).exists()
-    {
-        log::info!("STEP: running discover/genesis updates for custom network...");
+    // always overwrite in case of non-anchor node restarts
+    if avalanchego_config.is_custom_network() && avalanchego_config.genesis.is_some() {
+        let genesis_file_exists = Path::new(&avalanchego_config.clone().genesis.unwrap()).exists();
+        log::info!("STEP: running discover/genesis updates for custom network (genesis file already exists {})", genesis_file_exists);
 
         //
         //
@@ -589,13 +587,16 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         //
         //
         //
-        if matches!(fetched_tags.node_kind, node::Kind::Anchor) {
+        if matches!(fetched_tags.node_kind, node::Kind::Anchor)
+            // only need to discover and publish once
+            && !genesis_file_exists
+        {
             // To be called by each bootstrapping anchor node: Each anchor node publishes
             // the anchor node information to the S3, and waits. And each anchor node
             // lists all keys from the bootstrapping s3 directory for its peer discovery.
             // The function returns all s3 keys that contains the anchor node information.
             log::info!(
-                "STEP: publishing bootstrapping local anchor node information for discovery..."
+                "STEP: publishing bootstrapping local anchor node information for discovery and update the local avalanchego config file"
             );
             let spec = avalanche_ops::aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
             let http_scheme = {
@@ -729,7 +730,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         //
         //
         if matches!(fetched_tags.node_kind, node::Kind::NonAnchor) {
-            log::info!("STEP: downloading genesis file from S3 (updated from other anchor nodes)");
+            log::info!("STEP: downloading genesis file from S3 (updated from other anchor nodes) and update the local avalanchego config file");
 
             let spec = avalanche_ops::aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
             let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
@@ -1310,7 +1311,7 @@ async fn stop_and_restart_avalanche_systemd_service(
     // ref. https://www.freedesktop.org/software/systemd/man/systemd.service.html
     //
     // NOTE: remove "StandardOutput" and "StandardError" since we already
-    // wildcard all log files in "/var/log/avalanche" (a lot of duplicates)
+    // wildcard all log files in "/var/log/avalanchego" (a lot of duplicates)
     let service_file_contents = format!(
         "[Unit]
 Description=avalanche node
@@ -1322,8 +1323,8 @@ Restart=always
 RestartSec=5s
 LimitNOFILE=40000
 ExecStart={} --config-file={}
-StandardOutput=append:/var/log/avalanche/avalanche.log
-StandardError=append:/var/log/avalanche/avalanche.log
+StandardOutput=append:/var/log/avalanchego/avalanchego.log
+StandardError=append:/var/log/avalanchego/avalanchego.log
 
 [Install]
 WantedBy=multi-user.target",
@@ -1335,19 +1336,19 @@ WantedBy=multi-user.target",
     service_file.write_all(service_file_contents.as_bytes())?;
 
     let service_file_path = service_file.path().to_str().unwrap();
-    fs::copy(service_file_path, "/etc/systemd/system/avalanche.service")?;
+    fs::copy(service_file_path, "/etc/systemd/system/avalanchego.service")?;
 
     command_manager::run("sudo systemctl daemon-reload")?;
 
     // in case it's already running
-    match command_manager::run("sudo systemctl stop avalanche.service") {
-        Ok(_) => log::info!("successfully stopped avalanche.service"),
+    match command_manager::run("sudo systemctl stop avalanchego.service") {
+        Ok(_) => log::info!("successfully stopped avalanchego.service"),
         Err(e) => log::warn!("failed to stop {}", e),
     };
 
-    command_manager::run("sudo systemctl disable avalanche.service")?;
-    command_manager::run("sudo systemctl enable avalanche.service")?;
-    command_manager::run("sudo systemctl restart --no-block avalanche.service")?;
+    command_manager::run("sudo systemctl disable avalanchego.service")?;
+    command_manager::run("sudo systemctl enable avalanchego.service")?;
+    command_manager::run("sudo systemctl restart --no-block avalanchego.service")?;
 
     Ok(())
 }
@@ -1372,7 +1373,7 @@ fn stop_and_restart_avalanche_telemetry_cloudwatch_systemd_service(
     // ref. https://www.freedesktop.org/software/systemd/man/systemd.service.html
     //
     // NOTE: remove "StandardOutput" and "StandardError" since we already
-    // wildcard all log files in "/var/log/avalanche" (a lot of duplicates)
+    // wildcard all log files in "/var/log/avalanchego" (a lot of duplicates)
     let service_file_contents = format!(
         "[Unit]
 Description=avalanche-telemetry-cloudwatch
@@ -1423,25 +1424,31 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
     loop {
         // if cloudwatch log config sets "auto_removal" to true
         // this file might have been garbage collected!
-        match command_manager::run("sudo tail -10 /var/log/avalanche/avalanche.log") {
+        match command_manager::run("sudo tail -10 /var/log/avalanchego/avalanchego.log") {
             Ok(out) => {
                 println!(
-                    "\n'/var/log/avalanche/avalanche.log' stdout:\n\n{}\n",
+                    "\n'/var/log/avalanchego/avalanchego.log' stdout:\n\n{}\n",
                     out.0
                 );
-                println!("'/var/log/avalanche/avalanche.log' stderr:\n\n{}\n", out.1);
+                println!(
+                    "'/var/log/avalanchego/avalanchego.log' stderr:\n\n{}\n",
+                    out.1
+                );
             }
-            Err(e) => log::warn!("failed to check /var/log/avalanche/avalanche.log: {}", e),
+            Err(e) => log::warn!(
+                "failed to check /var/log/avalanchego/avalanchego.log: {}",
+                e
+            ),
         }
 
         println!();
 
-        match command_manager::run("sudo journalctl -u avalanche.service --lines=10 --no-pager") {
+        match command_manager::run("sudo journalctl -u avalanchego.service --lines=10 --no-pager") {
             Ok(out) => {
-                println!("\n'avalanche.service' stdout:\n\n{}\n", out.0);
-                println!("'avalanche.service' stderr:\n\n{}\n", out.1);
+                println!("\n'avalanchego.service' stdout:\n\n{}\n", out.0);
+                println!("'avalanchego.service' stderr:\n\n{}\n", out.1);
             }
-            Err(e) => log::warn!("failed to check journalctl avalanche.service: {}", e),
+            Err(e) => log::warn!("failed to check journalctl avalanchego.service: {}", e),
         }
 
         println!();
@@ -1631,11 +1638,11 @@ async fn monitor_spot_instance_action(
                     sleep(Duration::from_secs(8)).await;
 
                     log::warn!("stopping avalanche service before instance termination...");
-                    match command_manager::run("sudo systemctl stop avalanche.service") {
+                    match command_manager::run("sudo systemctl stop avalanchego.service") {
                         Ok(_) => log::info!("successfully stopped avalanche service"),
                         Err(e) => log::warn!("failed systemctl stop command {}", e),
                     }
-                    match command_manager::run("sudo systemctl disable avalanche.service") {
+                    match command_manager::run("sudo systemctl disable avalanchego.service") {
                         Ok(_) => log::info!("successfully disabled avalanche service"),
                         Err(e) => log::warn!("failed systemctl disable command {}", e),
                     }
