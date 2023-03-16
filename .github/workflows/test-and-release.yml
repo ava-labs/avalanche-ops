@@ -92,7 +92,7 @@ jobs:
   release:
     name: Release ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
-    needs: [static_analysis, check_cargo_unused, unit_tests]
+    needs: [static_analysis, unit_tests]
     strategy:
       matrix:
         job:
