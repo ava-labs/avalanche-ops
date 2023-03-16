@@ -292,8 +292,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         spec.avalanchego_config.add_track_subnets(track_subnets);
         spec.avalanchego_config.sync(None)?;
 
-        // ALWAYS OVERWRITES in case we update and upload to s3
-        // "avalanched" never updates "spec" file, runs in read-only mode
+        // ALWAYS OVERWRITE TO USE S3 AS THE SINGLE SOURCE OF TRUTH
+        if Path::new(&fetched_tags.avalancheup_spec_path).exists() {
+            log::warn!(
+                "overwriting avalancheup_spec_path {}",
+                fetched_tags.avalancheup_spec_path
+            );
+        }
         fs::copy(&tmp_spec_file_path, &fetched_tags.avalancheup_spec_path)?;
         fs::remove_file(&tmp_spec_file_path)?;
 
