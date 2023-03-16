@@ -51,7 +51,7 @@ Resources:
                   /usr/local/bin/avalanched-aws {{ avalanchedArgs }}
 
                   # to reload updated configs
-                  sudo systemctl restart avalanche
+                  sudo systemctl restart avalanchego
                   sleep 7
                   sudo tail -50 /var/log/avalanchego/avalanchego.log || true
 
