@@ -982,7 +982,7 @@ avalanchego_config:
   network-id: 1
   db-type: leveldb
   db-dir: /data
-  log-dir: /var/log/avalanche
+  log-dir: /var/log/avalanchego
   log-level: INFO
   log-format: json
   http-port: 9650
@@ -1004,7 +1004,7 @@ avalanchego_config:
   api-ipcs-enabled: false
   chain-config-dir: /data/avalanche-configs/chains
   subnet-config-dir: /data/avalanche-configs/subnets
-  profile-dir: /var/log/avalanche-profile/avalanche
+  profile-dir: /var/log/avalanchego-profile/avalanche
   throttler-inbound-node-max-at-large-bytes: 2097152
   throttler-inbound-at-large-alloc-size: 6291456
 
