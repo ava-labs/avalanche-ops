@@ -24,7 +24,7 @@ command-manager = "0.0.1"
 compress-manager = "0.0.6"
 env_logger = "0.10.0"
 log = "0.4.17"
-prometheus-manager = "0.0.23"
+prometheus-manager = "0.0.24"
 random-manager = "0.0.5"
 serde = { version = "1.0.156", features = ["derive"] }
 tempfile = "3.4.0"
