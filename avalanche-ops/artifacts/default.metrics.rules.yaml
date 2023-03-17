@@ -36,6 +36,7 @@ filters:
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_last_accepted_(height|timestamp)$
   - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_rpc_(failure|requests|success)$
   - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_chain_txs_(accepted|processed)$
+  - regex: ^avalanche_X_vm_(base|create_asset|operation|import|export)_txs_accepted$
 
   - regex: ^avalanche_db_(put|delete|compact|get|batch_(write|put))_(count|sum)$
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_db_(put|delete|compact|get|batch_(write|put)|write_size|read_size)_(count|sum)$
