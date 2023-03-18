@@ -12,7 +12,7 @@ use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
     coreth,
     jsonrpc::client::health as client_health,
-    key::cert::x509,
+    key::{bls, cert::x509},
     node,
 };
 use aws_manager::{
@@ -497,6 +497,42 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 Error::new(
                     ErrorKind::Other,
                     format!("failed spawn_compress_seal_put_object tls_cert_path: {}", e),
+                )
+            })?;
+    }
+
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    log::info!("STEP: setting up staking signer key file (BLS)...");
+    let local_staking_signer_key_file_path =
+        avalanchego_config.staking_signer_key_file.clone().unwrap();
+    let (_, staking_signer_key_newly_generated) =
+        bls::private_key::Key::load_or_generate(&local_staking_signer_key_file_path)?;
+    if staking_signer_key_newly_generated {
+        log::info!("STEP: backing up newly generated staking signer key...");
+
+        let s3_key = format!(
+            "{}/staking-signer-keys/{}.staking-signer-key.zstd.encrypted",
+            fetched_tags.id, node_id
+        );
+        log::info!("uploading key file {}", s3_key);
+        envelope_manager
+            .compress_seal_put_object(
+                &s3_manager,
+                &local_staking_signer_key_file_path,
+                &fetched_tags.s3_bucket,
+                &s3_key,
+            )
+            .await
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed spawn_compress_seal_put_object local_staking_signer_key_file_path: {}", e),
                 )
             })?;
     }
