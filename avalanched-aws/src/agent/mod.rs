@@ -517,7 +517,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         log::info!("STEP: backing up newly generated staking signer key...");
 
         let s3_key = format!(
-            "{}/staking-signer-keys/{}.staking-signer-key.zstd.encrypted",
+            "{}/staking-signer-keys/{}.staking-signer.bls.key.zstd.encrypted",
             fetched_tags.id, node_id
         );
         log::info!("uploading key file {}", s3_key);

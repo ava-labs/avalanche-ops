@@ -897,7 +897,7 @@ impl Spec {
     }
 }
 
-/// RUST_LOG=debug cargo test --package avalancheup-aws --lib -- spec::test_spec --exact --show-output
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- aws::spec::test_spec --exact --show-output
 #[test]
 fn test_spec() {
     use std::fs;
@@ -992,6 +992,7 @@ avalanchego_config:
   staking-port: 9651
   staking-tls-key-file: "/data/staking.key"
   staking-tls-cert-file: "/data/staking.crt"
+  staking-signer-key-file: "/data/staking-signer.bls.key"
   snow-sample-size: 20
   snow-quorum-size: 15
   index-enabled: false
