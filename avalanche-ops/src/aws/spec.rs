@@ -6,12 +6,14 @@ use std::{
 
 use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
+    codec::serde::hex_0x_bytes::Hex0xBytes,
     constants,
     coreth::chain_config as coreth_chain_config,
     key, node,
 };
 use aws_manager::{ec2, sts};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 pub const VERSION: usize = 2;
 
@@ -896,7 +898,11 @@ impl Spec {
 #[test]
 fn test_spec() {
     use std::fs;
-    let _ = env_logger::builder().is_test(true).try_init();
+
+    let _ = env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .is_test(true)
+        .try_init();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(&vec![0]);
@@ -1150,6 +1156,7 @@ coreth_chain_config:
 }
 
 /// Represents each anchor/non-anchor node.
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Node {
@@ -1162,6 +1169,11 @@ pub struct Node {
     pub public_ip: String,
 
     pub http_endpoint: String,
+
+    #[serde_as(as = "Hex0xBytes")]
+    pub public_key: Vec<u8>,
+    #[serde_as(as = "Hex0xBytes")]
+    pub proof_of_possession: Vec<u8>,
 }
 
 impl Node {
@@ -1172,6 +1184,8 @@ impl Node {
         public_ip: &str,
         http_scheme: &str,
         http_port: u32,
+        public_key: Vec<u8>,
+        proof_of_possession: Vec<u8>,
     ) -> Self {
         Self {
             kind: String::from(kind.as_str()),
@@ -1179,6 +1193,8 @@ impl Node {
             node_id: String::from(node_id),
             public_ip: String::from(public_ip),
             http_endpoint: format!("{}://{}:{}", http_scheme, public_ip, http_port),
+            public_key,
+            proof_of_possession,
         }
     }
 
@@ -1238,8 +1254,7 @@ impl Node {
     }
 
     /// Encodes the object in YAML format, compresses, and apply base58.
-    /// Used for shortening S3 file name.
-    /// TODO: include BLS pub key.
+    /// Used for shortening S3 file name (s3 supports up to 1,024-byte key name).
     pub fn compress_base58(&self) -> io::Result<String> {
         let d = serde_yaml::to_string(self).map_err(|e| {
             Error::new(
@@ -1247,28 +1262,40 @@ impl Node {
                 format!("failed serde_yaml::to_string {}", e),
             )
         })?;
+
         let compressed =
             compress_manager::pack(d.as_bytes(), compress_manager::Encoder::ZstdBase58(3))?;
         Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
     }
 
-    /// Reverse of "compress_base64".
+    /// Reverse of "compress_base58".
     pub fn decompress_base58(d: String) -> io::Result<Self> {
         let decompressed =
             compress_manager::unpack(d.as_bytes(), compress_manager::Decoder::ZstdBase58)?;
+
         serde_yaml::from_slice(&decompressed)
             .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
     }
 }
 
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- aws::spec::test_node --exact --show-output
 #[test]
 fn test_node() {
+    let _ = env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .is_test(true)
+        .try_init();
+
     let d = r#"
 kind: anchor
 machine_id: i-123123
 node_id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
 public_ip: 1.2.3.4
 http_endpoint: http://1.2.3.4:9650
+
+
+public_key: 0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15
+proof_of_possession: 0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98
 
 "#;
     let mut f = tempfile::NamedTempFile::new().unwrap();
@@ -1290,6 +1317,8 @@ http_endpoint: http://1.2.3.4:9650
         "1.2.3.4",
         "http",
         9650,
+        hex::decode("0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15".trim_start_matches("0x")).unwrap(),
+        hex::decode("0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98".trim_start_matches("0x")).unwrap(),
     );
     assert_eq!(node, orig);
 
@@ -1306,7 +1335,11 @@ http_endpoint: http://1.2.3.4:9650
     let encoded_yaml = node.encode_yaml().unwrap();
     log::info!("node.encode_yaml: {}", encoded_yaml);
     let compressed = node.compress_base58().unwrap();
-    log::info!("node.compress_base64: {}", compressed);
+    log::info!(
+        "node.compress_base58: {} ({}-byte)",
+        compressed,
+        compressed.len()
+    );
     let decompressed_node = Node::decompress_base58(compressed).unwrap();
     assert_eq!(node, decompressed_node);
 }
@@ -1657,7 +1690,7 @@ impl StorageNamespace {
             Ok(node) => Ok(node),
             Err(e) => Err(Error::new(
                 ErrorKind::Other,
-                format!("failed node::Node::decompress_base64 {}", e),
+                format!("failed node::Node::decompress_base58 {}", e),
             )),
         }
     }
@@ -1679,6 +1712,8 @@ fn test_storage_path() {
         node_ip,
         "http",
         9650,
+        hex::decode("0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15".trim_start_matches("0x")).unwrap(),
+        hex::decode("0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98".trim_start_matches("0x")).unwrap(),
     );
     let p = StorageNamespace::DiscoverReadyNonAnchorNode(
         id,
@@ -1688,6 +1723,8 @@ fn test_storage_path() {
             node_id: node_id.to_string(),
             public_ip: node_ip.to_string(),
             http_endpoint: format!("http://{}:9650", node_ip),
+            public_key: hex::decode("0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15".trim_start_matches("0x")).unwrap(),
+            proof_of_possession: hex::decode("0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98".trim_start_matches("0x")).unwrap(),
         },
     );
     let storage_path = p.encode();

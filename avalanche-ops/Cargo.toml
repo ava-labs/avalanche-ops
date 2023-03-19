@@ -10,7 +10,7 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
-avalanche-types = { version = "0.0.300", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.301", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.24.27", features = ["ec2", "sts"] } # https://github.com/gyuho/aws-manager/tags
 compress-manager = "0.0.6"
 dir-manager = "0.0.1"
@@ -24,7 +24,9 @@ random-manager = "0.0.5"
 rust-embed = "6.4.2"
 serde = { version = "1.0.157", features = ["derive"] }
 serde_json = "1.0.94" # https://github.com/serde-rs/json/releases
+serde_with = { version = "2.3.1", features = ["hex"] }
 serde_yaml = "0.9.19" # https://github.com/dtolnay/serde-yaml/releases
 
 [dev-dependencies]
+hex = "0.4.3"
 tempfile = "3.4.0"
