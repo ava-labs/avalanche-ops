@@ -225,10 +225,6 @@ pub struct Resources {
     /// May become stale.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_nodes: Option<Vec<Node>>,
-    /// Created endpoints at the start of the network.
-    /// May become stale.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_endpoints: Option<Endpoints>,
 }
 
 impl Default for Resources {
@@ -278,7 +274,6 @@ impl Resources {
             cloudwatch_avalanche_metrics_namespace: None,
 
             created_nodes: None,
-            created_endpoints: None,
         }
     }
 }
@@ -1244,6 +1239,7 @@ impl Node {
 
     /// Encodes the object in YAML format, compresses, and apply base58.
     /// Used for shortening S3 file name.
+    /// TODO: include BLS pub key.
     pub fn compress_base58(&self) -> io::Result<String> {
         let d = serde_yaml::to_string(self).map_err(|e| {
             Error::new(

@@ -12,7 +12,10 @@ use std::{
     },
 };
 
-use avalanche_types::{ids::node, jsonrpc::client::health as client_health, key, wallet};
+use avalanche_types::{
+    ids::node, jsonrpc::client::health as jsonrpc_client_health,
+    jsonrpc::client::info as jsonrpc_client_info, key, wallet,
+};
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
@@ -742,7 +745,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .clone()
         .unwrap();
 
-    // TODO: support bootstrap from existing DB for anchor nodes
     let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
 
     let mut asg_launch_template_id = String::new();
@@ -1424,6 +1426,14 @@ aws ssm start-session --region {} --target {}
 
     spec.resources.created_nodes = Some(created_nodes.clone());
     spec.sync(spec_file_path)?;
+    s3_manager
+        .put_object(
+            &spec_file_path,
+            &spec.resources.s3_bucket,
+            &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+        )
+        .await
+        .expect("failed put_object ConfigFile");
 
     execute!(
         stdout(),
@@ -1472,50 +1482,27 @@ aws ssm start-session --region {} --target {}
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/[CHAIN ID]/rpc"
     // NOTE: metamask endpoints will be "http://[NLB_DNS]:9650/ext/bc/C/rpc"
     // NOTE: metamask chain ID is "43112" as in coreth "DEFAULT_GENESIS"
-    let mut http_rpcs = Vec::new();
-    let mut chain_rpc_urls = Vec::new();
+    let mut all_nodes_http_rpcs = Vec::new();
+    let mut all_nodes_c_chain_rpc_urls = Vec::new();
     for host in rpc_hosts.iter() {
         let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
-        http_rpcs.push(http_rpc.clone());
 
-        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
-        endpoints.http_rpc = Some(http_rpc.clone());
-        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
-        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
-        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
-        endpoints.health = Some(format!("{http_rpc}/ext/health"));
-        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
-        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
-        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-        spec.resources.created_endpoints = Some(endpoints.clone());
-        println!(
-            "{}",
-            spec.resources
-                .created_endpoints
-                .clone()
-                .unwrap()
-                .encode_yaml()
-                .unwrap()
-        );
-
-        chain_rpc_urls.push(format!("{http_rpc}/ext/bc/C/rpc"));
-    }
-
-    spec.sync(spec_file_path)?;
-    s3_manager
-        .put_object(
-            &spec_file_path,
-            &spec.resources.s3_bucket,
-            &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-        )
-        .await
-        .expect("failed put_object ConfigFile");
-
-    for http_rpc in http_rpcs.iter() {
         let mut success = false;
         for _ in 0..10_u8 {
-            let ret = client_health::check(Arc::new(http_rpc.clone()), true).await;
+            let ret = jsonrpc_client_info::get_node_id(&http_rpc).await;
+            match ret {
+                Ok(res) => {
+                    log::info!(
+                        "get node id response for {http_rpc}: {}",
+                        serde_json::to_string_pretty(&res.0).unwrap()
+                    );
+                }
+                Err(e) => {
+                    log::warn!("get node id check failed for {} ({:?})", http_rpc, e);
+                }
+            };
+
+            let ret = jsonrpc_client_health::check(Arc::new(http_rpc.clone()), true).await;
             match ret {
                 Ok(res) => {
                     if res.healthy {
@@ -1538,45 +1525,23 @@ aws ssm start-session --region {} --target {}
             );
             return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
         }
-    }
 
-    let mut uris: Vec<String> = vec![];
-    for node in created_nodes.iter() {
-        let mut success = false;
-        for _ in 0..10_u8 {
-            let ret = client_health::check(Arc::new(node.http_endpoint.clone()), true).await;
-            match ret {
-                Ok(res) => {
-                    if res.healthy {
-                        success = true;
-                        log::info!("health/liveness check success for {}", node.machine_id);
-                        break;
-                    }
-                }
-                Err(e) => {
-                    log::warn!(
-                        "health/liveness check failed for {} ({:?})",
-                        node.machine_id,
-                        e
-                    );
-                }
-            };
+        let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
+        endpoints.http_rpc = Some(http_rpc.clone());
+        endpoints.http_rpc_x = Some(format!("{http_rpc}/ext/bc/X"));
+        endpoints.http_rpc_p = Some(format!("{http_rpc}/ext/bc/P"));
+        endpoints.http_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.metrics = Some(format!("{http_rpc}/ext/metrics"));
+        endpoints.health = Some(format!("{http_rpc}/ext/health"));
+        endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
+        endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
+        endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
+        println!("{}", endpoints.encode_yaml().unwrap());
 
-            sleep(Duration::from_secs(10)).await;
-        }
-        if !success {
-            log::warn!(
-                "health/liveness check failed for network id {}",
-                &spec.avalanchego_config.network_id
-            );
-            return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
-        }
-        println!("{}/ext/metrics", node.http_endpoint);
-        println!("{}/ext/health", node.http_endpoint);
-        println!("{}/ext/health/liveness", node.http_endpoint);
-        uris.push(node.http_endpoint.clone());
+        all_nodes_http_rpcs.push(http_rpc.clone());
+        all_nodes_c_chain_rpc_urls.push(format!("{http_rpc}/ext/bc/C/rpc"));
     }
-    println!("\nURIs: {}", uris.join(","));
+    println!("\nall nodes HTTP RPCs: {}", all_nodes_http_rpcs.join(","));
 
     let mut all_node_ids = Vec::new();
     let mut all_instance_ids = Vec::new();
@@ -1731,7 +1696,7 @@ cat /tmp/{node_id}.crt
             key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
 
         let wallet_to_spend = wallet::Builder::new(&priv_key)
-            .base_http_urls(http_rpcs.clone())
+            .base_http_urls(all_nodes_http_rpcs.clone())
             .build()
             .await
             .unwrap();
@@ -1925,7 +1890,7 @@ default-spec \\
                 1
             },
             region = spec.resources.region,
-            blizzard_chain_rpc_urls = chain_rpc_urls.clone().join(","),
+            blizzard_chain_rpc_urls = all_nodes_c_chain_rpc_urls.clone().join(","),
         )),
         ResetColor
     )?;
@@ -1957,17 +1922,7 @@ default-spec \\
         endpoints.liveness = Some(format!("{http_rpc}/ext/health/liveness"));
         endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
         endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
-        spec.resources.created_endpoints = Some(endpoints.clone());
-
-        println!(
-            "{}",
-            spec.resources
-                .created_endpoints
-                .clone()
-                .unwrap()
-                .encode_yaml()
-                .unwrap()
-        );
+        println!("{}", endpoints.encode_yaml().unwrap());
     }
 
     Ok(())
