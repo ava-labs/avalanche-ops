@@ -511,7 +511,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     log::info!("STEP: setting up staking signer key file (BLS)...");
     let local_staking_signer_key_file_path =
         avalanchego_config.staking_signer_key_file.clone().unwrap();
-    let (_, staking_signer_key_newly_generated) =
+    let (staking_signer_key, staking_signer_key_newly_generated) =
         bls::private_key::Key::load_or_generate(&local_staking_signer_key_file_path)?;
     if staking_signer_key_newly_generated {
         log::info!("STEP: backing up newly generated staking signer key...");
@@ -536,6 +536,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 )
             })?;
     }
+
+    let proof_of_possession = staking_signer_key.to_proof_of_possession();
 
     //
     //
@@ -659,6 +661,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 &public_ipv4,
                 http_scheme,
                 spec.avalanchego_config.http_port,
+                proof_of_possession.public_key.clone(),
+                proof_of_possession.proof_of_possession.clone(),
             );
 
             log::info!(
@@ -1006,6 +1010,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             Arc::new(public_ipv4.clone()),
             Arc::new(fetched_tags.s3_bucket.clone()),
             Arc::new(fetched_tags.avalancheup_spec_path.clone()),
+            Arc::new(proof_of_possession.clone()),
             opts.publish_periodic_node_info,
         )));
     }
@@ -1523,6 +1528,7 @@ async fn publish_node_info_ready_loop(
     public_ipv4: Arc<String>,
     s3_bucket: Arc<String>,
     avalancheup_spec_path: Arc<String>,
+    proof_of_possession: Arc<bls::ProofOfPossession>,
     publish_periodic_node_info: bool,
 ) {
     log::info!("STEP: publishing node info for its readiness...");
@@ -1549,6 +1555,8 @@ async fn publish_node_info_ready_loop(
         &public_ipv4,
         http_scheme,
         spec.avalanchego_config.http_port,
+        proof_of_possession.public_key.clone(),
+        proof_of_possession.proof_of_possession.clone(),
     );
     let node_info = avalanche_ops::aws::spec::NodeInfo::new(
         local_node.clone(),
