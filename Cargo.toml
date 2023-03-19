@@ -7,4 +7,5 @@ members = [
     "blizzard-aws",
     "blizzardup-aws",
     "staking-key-cert-s3-downloader",
+    "staking-signer-key-s3-downloader"
 ]

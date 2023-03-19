@@ -1654,6 +1654,15 @@ aws ssm start-session --region {} --target {}
 
 cat /tmp/{node_id}.crt
 
+{exec_parent_dir}/staking-signer-key-s3-downloader \\
+--log-level=info \\
+--region={region} \\
+--s3-bucket={s3_buckeet} \\
+--s3-key-tls-key={id}/staking-signer-keys/{node_id}.staking-signer.bls.key.zstd.encrypted \\
+--kms-cmk-id={kms_cmk_id} \\
+--aad-tag='{aad_tag}' \\
+--key-path=/tmp/{node_id}.key
+
 ",
                 exec_parent_dir = exec_parent_dir,
                 region = spec.resources.region,

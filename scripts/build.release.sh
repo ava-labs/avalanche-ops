@@ -14,7 +14,8 @@ cargo build \
 --bin avalancheup-aws \
 --bin blizzard-aws \
 --bin blizzardup-aws \
---bin staking-key-cert-s3-downloader
+--bin staking-key-cert-s3-downloader \
+--bin staking-signer-key-s3-downloader
 
 ./target/release/avalanche-kms --help
 

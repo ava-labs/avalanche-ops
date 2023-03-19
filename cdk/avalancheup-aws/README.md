@@ -247,6 +247,15 @@ And go to S3 bucket to see the node certificate being published from the `avalan
 --aad-tag='avalanche-ops-aad-tag' \
 --tls-key-path=/tmp/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.key \
 --tls-cert-path=/tmp/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.cr
+
+./target/release/staking-signer-key-s3-downloader \
+--log-level=info \
+--aws-region=us-west-2 \
+--s3-bucket=avalanche-ops-202207-3cq76s4cie \
+--s3-key=aops-fuji-202207-23XhJA/pki/staking-signer-keys/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.staking-signer.bls.key.zstd.encrypted \
+--kms-cmk-id=87c771e3-6166-414b-b46e-5f4845e57a3c \
+--aad-tag='avalanche-ops-aad-tag' \
+--key-path=/tmp/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.bls.key \
 ```
 
 ### (Optional) Step 9. Delete the created resources
