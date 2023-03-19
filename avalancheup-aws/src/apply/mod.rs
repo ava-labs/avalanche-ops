@@ -1494,7 +1494,7 @@ aws ssm start-session --region {} --target {}
                 Ok(res) => {
                     log::info!(
                         "get node id response for {http_rpc}: {}",
-                        serde_json::to_string_pretty(&res.0).unwrap()
+                        serde_json::to_string_pretty(&res).unwrap()
                     );
                 }
                 Err(e) => {
