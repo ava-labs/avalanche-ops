@@ -149,7 +149,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SUBNET_VALIDATE_PERIOD_IN_DAYS") // TODO: use float
                 .long("subnet-validate-period-in-days")
-                .help("Sets the number of days to validate/stake the subnet (default 14 since primary network default validate period is 15-day in avalanche-types)")
+                .help("Sets the number of days to validate/stake the subnet (default 14 since primary network default validate period is 15-day in avalanche-types), if node is not a primary validator yet, it adds it as a validator with +1 day to this flag value")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
