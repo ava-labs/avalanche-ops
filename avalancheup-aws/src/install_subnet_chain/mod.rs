@@ -154,12 +154,12 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("15"),
+                .default_value("16"),
         )
         .arg(
             Arg::new("SUBNET_VALIDATE_PERIOD_IN_DAYS") // TODO: use float
                 .long("subnet-validate-period-in-days")
-                .help("Sets the number of days to validate/stake the subnet (default 14 since primary network default validate period is 15-day in avalanche-types)")
+                .help("Sets the number of days to validate/stake the subnet (default 14 since primary network default validate period is 16-day in avalanche-types)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
@@ -552,7 +552,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .add_validator()
             .node_id(node::Id::from_str(node_id).unwrap())
             .stake_amount(stake_amount_in_navax)
-            .validate_period_in_days(60, opts.primary_network_validate_period_in_days)
+            .validate_period_in_days(opts.primary_network_validate_period_in_days, 60)
             .check_acceptance(true)
             .issue()
             .await
@@ -684,7 +684,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .add_subnet_validator()
             .node_id(node::Id::from_str(node_id).unwrap())
             .subnet_id(created_subnet_id)
-            .validate_period_in_days(60, opts.subnet_validate_period_in_days - 1)
+            .validate_period_in_days(opts.subnet_validate_period_in_days, 60)
             .check_acceptance(true)
             .issue()
             .await

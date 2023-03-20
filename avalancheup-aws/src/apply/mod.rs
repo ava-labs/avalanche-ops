@@ -1839,7 +1839,7 @@ cat /tmp/{node_id}.crt
 --ssm-doc {ssm_doc_name} \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
---primary-network-validate-period-in-days 15 \\
+--primary-network-validate-period-in-days 16 \\
 --subnet-validate-period-in-days 14 \\
 --subnet-config-local-path /tmp/subnet-config.json \\
 --subnet-config-remote-dir {subnet_config_remote_dir} \\

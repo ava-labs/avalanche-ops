@@ -109,7 +109,7 @@ async fn main() -> io::Result<()> {
                     .clone(),
                 primary_network_validate_period_in_days: sub_matches
                     .get_one::<u64>("PRIMARY_NETWORK_VALIDATE_PERIOD_IN_DAYS")
-                    .unwrap_or(&15)
+                    .unwrap_or(&16)
                     .clone(),
 
                 aad_tag: sub_matches
@@ -264,7 +264,7 @@ async fn main() -> io::Result<()> {
 
                 primary_network_validate_period_in_days: sub_matches
                     .get_one::<u64>("PRIMARY_NETWORK_VALIDATE_PERIOD_IN_DAYS")
-                    .unwrap_or(&15)
+                    .unwrap_or(&16)
                     .clone(),
                 subnet_validate_period_in_days: sub_matches
                     .get_one::<u64>("SUBNET_VALIDATE_PERIOD_IN_DAYS")

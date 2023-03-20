@@ -239,7 +239,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("15"),
+                .default_value("16"),
         )
         .arg(
             Arg::new("AVALANCHEGO_LOG_LEVEL") 
