@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.3.3" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.3.4" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
@@ -12,7 +12,7 @@ path = "src/main.rs"
 avalanche-installer = "0.0.49" # https://crates.io/crates/avalanche-installer
 avalanche-ops = { path = "../avalanche-ops" }
 avalanche-telemetry-cloudwatch-installer = "0.0.70" # https://crates.io/crates/avalanche-telemetry-cloudwatch
-avalanche-types = { version = "0.0.307", features = ["avalanchego", "cert", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.309", features = ["avalanchego", "cert", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 aws-ip-provisioner-installer = "0.0.51" # https://crates.io/crates/aws-ip-provisioner-installer
 aws-manager = { version = "0.24.27", features = ["autoscaling", "cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
