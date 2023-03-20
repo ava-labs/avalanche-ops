@@ -1709,7 +1709,7 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP: adding all nodes as primary network validators...\n\n"),
             ResetColor
         )?;
-        log::info!("adding all nodes as primary network validator");
+        log::info!("adding all nodes as primary network permissionless validator");
         for node in created_nodes.iter() {
             let (tx_id, added) = wallet_to_spend
                 .p()
