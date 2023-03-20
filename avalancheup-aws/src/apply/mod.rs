@@ -13,7 +13,7 @@ use std::{
 };
 
 use avalanche_types::{
-    ids::node, jsonrpc::client::health as jsonrpc_client_health,
+    ids, jsonrpc::client::health as jsonrpc_client_health,
     jsonrpc::client::info as jsonrpc_client_info, key, wallet,
 };
 use aws_manager::{
@@ -1710,12 +1710,13 @@ cat /tmp/{node_id}.crt
             ResetColor
         )?;
         log::info!("adding all nodes as primary network validator");
-        for node_id in all_node_ids.iter() {
+        for node in created_nodes.iter() {
             let (tx_id, added) = wallet_to_spend
                 .p()
-                .add_validator()
-                .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+                .add_permissionless_validator()
+                .node_id(ids::node::Id::from_str(&node.node_id).unwrap())
                 .check_acceptance(true)
+                .proof_of_possession(node.proof_of_possession.clone())
                 .issue()
                 .await
                 .unwrap();

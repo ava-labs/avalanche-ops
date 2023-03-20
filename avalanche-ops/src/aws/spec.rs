@@ -6,14 +6,12 @@ use std::{
 
 use avalanche_types::{
     avalanchego::{config as avalanchego_config, genesis as avalanchego_genesis},
-    codec::serde::hex_0x_bytes::Hex0xBytes,
     constants,
     coreth::chain_config as coreth_chain_config,
     key, node,
 };
 use aws_manager::{ec2, sts};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 pub const VERSION: usize = 2;
 
@@ -1156,24 +1154,18 @@ coreth_chain_config:
 }
 
 /// Represents each anchor/non-anchor node.
-#[serde_as]
+/// "camelCase" to be consistent with "ProofOfPossession".
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub struct Node {
     pub kind: String,
     pub machine_id: String,
     pub node_id: String,
-
+    pub proof_of_possession: key::bls::ProofOfPossession,
     /// Overwrites with the persistent elastic IP
     /// if provisioned and mounted via EBS.
     pub public_ip: String,
-
     pub http_endpoint: String,
-
-    #[serde_as(as = "Hex0xBytes")]
-    pub public_key: Vec<u8>,
-    #[serde_as(as = "Hex0xBytes")]
-    pub proof_of_possession: Vec<u8>,
 }
 
 impl Node {
@@ -1187,14 +1179,15 @@ impl Node {
         public_key: Vec<u8>,
         proof_of_possession: Vec<u8>,
     ) -> Self {
+        let proof_of_possession =
+            key::bls::ProofOfPossession::new(&public_key, &proof_of_possession).unwrap();
         Self {
             kind: String::from(kind.as_str()),
             machine_id: String::from(machine_id),
-            node_id: String::from(node_id),
+            node_id: node_id.to_string(),
+            proof_of_possession,
             public_ip: String::from(public_ip),
             http_endpoint: format!("{}://{}:{}", http_scheme, public_ip, http_port),
-            public_key,
-            proof_of_possession,
         }
     }
 
@@ -1249,8 +1242,13 @@ impl Node {
             )
         })?;
 
-        serde_yaml::from_reader(f)
-            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
+        let mut loaded: Self = serde_yaml::from_reader(f)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))?;
+
+        let pubkey = loaded.proof_of_possession.load_pubkey()?;
+        loaded.proof_of_possession.pubkey = Some(pubkey);
+
+        Ok(loaded)
     }
 
     /// Encodes the object in YAML format, compresses, and apply base58.
@@ -1268,13 +1266,18 @@ impl Node {
         Ok(String::from_utf8(compressed).expect("unexpected None String::from_utf8"))
     }
 
-    /// Reverse of "compress_base58".
+    /// Reverse of "compress_base58" by decoding YAML.
     pub fn decompress_base58(d: String) -> io::Result<Self> {
         let decompressed =
             compress_manager::unpack(d.as_bytes(), compress_manager::Decoder::ZstdBase58)?;
 
-        serde_yaml::from_slice(&decompressed)
-            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))
+        let mut loaded: Self = serde_yaml::from_slice(&decompressed)
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, format!("invalid YAML: {}", e)))?;
+
+        let pubkey = loaded.proof_of_possession.load_pubkey()?;
+        loaded.proof_of_possession.pubkey = Some(pubkey);
+
+        Ok(loaded)
     }
 }
 
@@ -1288,32 +1291,30 @@ fn test_node() {
 
     let d = r#"
 kind: anchor
-machine_id: i-123123
-node_id: NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg
-public_ip: 1.2.3.4
-http_endpoint: http://1.2.3.4:9650
+machineId: i-123123
 
+nodeId: NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx
 
-public_key: 0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15
-proof_of_possession: 0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98
+proofOfPossession:
+  publicKey: 0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15
+  proofOfPossession: 0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98
+
+publicIp: 1.2.3.4
+httpEndpoint: http://1.2.3.4:9650
 
 "#;
+
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(d.as_bytes());
-    assert!(ret.is_ok());
+    f.write_all(d.as_bytes()).unwrap();
     let node_path = f.path().to_str().unwrap();
 
-    let ret = Node::load(node_path);
-    assert!(ret.is_ok());
-    let node = ret.unwrap();
-
-    let ret = node.sync(node_path);
-    assert!(ret.is_ok());
+    let node = Node::load(node_path).unwrap();
+    node.sync(node_path).unwrap();
 
     let orig = Node::new(
         node::Kind::Anchor,
         "i-123123",
-        "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
+        "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx",
         "1.2.3.4",
         "http",
         9650,
@@ -1325,10 +1326,7 @@ proof_of_possession: 0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e05
     // manually check to make sure the serde deserializer works
     assert_eq!(node.kind, String::from("anchor"));
     assert_eq!(node.machine_id, String::from("i-123123"));
-    assert_eq!(
-        node.node_id,
-        String::from("NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg")
-    );
+    assert_eq!(node.node_id, "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
     assert_eq!(node.public_ip, String::from("1.2.3.4"));
     assert_eq!(node.http_endpoint, String::from("http://1.2.3.4:9650"));
 
@@ -1687,7 +1685,17 @@ impl StorageNamespace {
 
         let compressed_id = splits[1];
         match Node::decompress_base58(compressed_id.replace(".yaml", "")) {
-            Ok(node) => Ok(node),
+            Ok(node) => {
+                let pop = key::bls::ProofOfPossession::new(
+                    &node.proof_of_possession.public_key,
+                    &node.proof_of_possession.proof_of_possession,
+                )?;
+
+                let mut cloned = node.clone();
+                cloned.proof_of_possession = pop;
+
+                Ok(cloned)
+            }
             Err(e) => Err(Error::new(
                 ErrorKind::Other,
                 format!("failed node::Node::decompress_base58 {}", e),
@@ -1696,13 +1704,17 @@ impl StorageNamespace {
     }
 }
 
+/// RUST_LOG=debug cargo test --package avalanche-ops --lib -- aws::spec::test_storage_path --exact --show-output
 #[test]
 fn test_storage_path() {
-    let _ = env_logger::builder().is_test(true).try_init();
+    let _ = env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .is_test(true)
+        .try_init();
 
     let id = random_manager::secure_string(10);
     let instance_id = random_manager::secure_string(5);
-    let node_id = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg";
+    let node_id = "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx";
     let node_ip = "1.2.3.4";
 
     let node = Node::new(
@@ -1715,20 +1727,24 @@ fn test_storage_path() {
         hex::decode("0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15".trim_start_matches("0x")).unwrap(),
         hex::decode("0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98".trim_start_matches("0x")).unwrap(),
     );
+
+    let proof_of_possession = key::bls::ProofOfPossession::new(
+        &hex::decode("0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15".trim_start_matches("0x")).unwrap(),
+        &hex::decode("0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98".trim_start_matches("0x")).unwrap()
+    ).unwrap();
     let p = StorageNamespace::DiscoverReadyNonAnchorNode(
         id,
         Node {
             kind: String::from("non-anchor"),
             machine_id: instance_id.clone(),
-            node_id: node_id.to_string(),
+            node_id: "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx".to_string(),
+            proof_of_possession,
             public_ip: node_ip.to_string(),
             http_endpoint: format!("http://{}:9650", node_ip),
-            public_key: hex::decode("0x8f95423f7142d00a48e1014a3de8d28907d420dc33b3052a6dee03a3f2941a393c2351e354704ca66a3fc29870282e15".trim_start_matches("0x")).unwrap(),
-            proof_of_possession: hex::decode("0x86a3ab4c45cfe31cae34c1d06f212434ac71b1be6cfe046c80c162e057614a94a5bc9f1ded1a7029deb0ba4ca7c9b71411e293438691be79c2dbf19d1ca7c3eadb9c756246fc5de5b7b89511c7d7302ae051d9e03d7991138299b5ed6a570a98".trim_start_matches("0x")).unwrap(),
         },
     );
     let storage_path = p.encode();
-    log::info!("KeyPath: {}", storage_path);
+    log::info!("KeyPath: {storage_path} ({}-byte)", storage_path.len());
 
     let node_parsed = StorageNamespace::parse_node_from_path(&storage_path).unwrap();
     assert_eq!(node, node_parsed);

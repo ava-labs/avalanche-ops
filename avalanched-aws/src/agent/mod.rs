@@ -910,7 +910,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     machine_id
                 );
 
-                bootstrap_ids.push(ready_anchor_node.node_id);
+                bootstrap_ids.push(ready_anchor_node.node_id.to_string());
 
                 // assume all nodes in the network use the same ports
                 // ref. "avalanchego/config.StakingPortKey" default value is "9651"
@@ -1306,7 +1306,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
             avalanche_ops::aws::spec::StorageNamespace::parse_node_from_path(s3_key)?;
 
         let mut staker = avalanchego_genesis::Staker::default();
-        staker.node_id = Some(seed_anchor_node.node_id);
+        staker.node_id = Some(seed_anchor_node.node_id.to_string());
         staker.reward_address = Some(
             seed_priv_key
                 .addresses
