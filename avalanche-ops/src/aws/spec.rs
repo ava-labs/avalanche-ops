@@ -63,7 +63,7 @@ pub struct Spec {
     #[serde(default)]
     pub metrics_fetch_interval_seconds: u64,
 
-    /// NOTE: Only required for custom networks with pre-funded wallets!
+    /// Required for custom networks with pre-funded wallets!
     /// These are used for custom primary network genesis generation and will be pre-funded.
     /// The first key will have locked P-chain balance with initial stake duration in genesis.
     /// Except the first key in the list, all keys have immediately unlocked P-chain balance.

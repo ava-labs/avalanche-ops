@@ -1690,6 +1690,7 @@ cat /tmp/{node_id}.crt
         .unwrap();
     log::info!("created ssm document for installing subnet");
 
+    // TODO: support Fuji
     if spec.avalanchego_config.is_custom_network() {
         let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
         let priv_key =
