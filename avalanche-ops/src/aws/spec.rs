@@ -60,6 +60,8 @@ pub struct Spec {
     /// Set to 0 to disable metrics collection.
     #[serde(default)]
     pub metrics_fetch_interval_seconds: u64,
+    #[serde(default)]
+    pub primary_network_validate_period_in_days: u64,
 
     /// Required for custom networks with pre-funded wallets!
     /// These are used for custom primary network genesis generation and will be pre-funded.
@@ -318,6 +320,8 @@ pub struct DefaultSpecOption {
     pub avalanched_use_default_config: bool,
     pub avalanched_publish_periodic_node_info: bool,
 
+    pub primary_network_validate_period_in_days: u64,
+
     pub avalanchego_log_level: String,
     pub avalanchego_http_tls_enabled: bool,
     pub avalanchego_state_sync_ids: String,
@@ -368,6 +372,16 @@ impl Spec {
         };
         if opts.avalanched_publish_periodic_node_info {
             avalanched_config.publish_periodic_node_info = Some(true);
+        }
+
+        if opts.primary_network_validate_period_in_days < 14 {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "can't --primary-network-validate-period-in-days={} <14",
+                    opts.primary_network_validate_period_in_days
+                ),
+            ));
         }
 
         let mut avalanchego_config = match network_id {
@@ -667,6 +681,8 @@ impl Spec {
                 enable_nlb: opts.enable_nlb,
                 disable_logs_auto_removal: opts.disable_logs_auto_removal,
                 metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
+                primary_network_validate_period_in_days: opts
+                    .primary_network_validate_period_in_days,
 
                 prefunded_keys: Some(prefunded_keys_info),
 
@@ -976,6 +992,8 @@ enable_nlb: false
 disable_logs_auto_removal: false
 metrics_fetch_interval_seconds: 5000
 
+primary_network_validate_period_in_days: 25
+
 avalanchego_config:
   config-file: /data/avalanche-configs/config.json
   network-id: 1
@@ -1088,6 +1106,7 @@ coreth_chain_config:
         enable_nlb: false,
         disable_logs_auto_removal: false,
         metrics_fetch_interval_seconds: 5000,
+        primary_network_validate_period_in_days: 25,
 
         prefunded_keys: None,
 

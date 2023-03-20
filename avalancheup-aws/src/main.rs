@@ -107,6 +107,10 @@ async fn main() -> io::Result<()> {
                     .get_one::<u64>("METRICS_FETCH_INTERVAL_SECONDS")
                     .unwrap_or(&0)
                     .clone(),
+                primary_network_validate_period_in_days: sub_matches
+                    .get_one::<u64>("PRIMARY_NETWORK_VALIDATE_PERIOD_IN_DAYS")
+                    .unwrap_or(&15)
+                    .clone(),
 
                 aad_tag: sub_matches
                     .get_one::<String>("AAD_TAG")
@@ -257,8 +261,8 @@ async fn main() -> io::Result<()> {
                     .unwrap()
                     .clone(),
                 key: sub_matches.get_one::<String>("KEY").unwrap().clone(),
-                staking_period_in_days: sub_matches
-                    .get_one::<u64>("STAKING_PERIOID_IN_DAYS")
+                subnet_validate_period_in_days: sub_matches
+                    .get_one::<u64>("SUBNET_VALIDATE_PERIOD_IN_DAYS")
                     .unwrap_or(&15)
                     .clone(),
                 staking_amount_in_avax: sub_matches
