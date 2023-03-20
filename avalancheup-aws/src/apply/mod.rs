@@ -13,7 +13,7 @@ use std::{
 };
 
 use avalanche_types::{
-    ids::node, jsonrpc::client::health as jsonrpc_client_health,
+    ids, jsonrpc::client::health as jsonrpc_client_health,
     jsonrpc::client::info as jsonrpc_client_info, key, wallet,
 };
 use aws_manager::{
@@ -1494,7 +1494,7 @@ aws ssm start-session --region {} --target {}
                 Ok(res) => {
                     log::info!(
                         "get node id response for {http_rpc}: {}",
-                        serde_json::to_string_pretty(&res.0).unwrap()
+                        serde_json::to_string_pretty(&res).unwrap()
                     );
                 }
                 Err(e) => {
@@ -1623,10 +1623,10 @@ cat /tmp/{node_id}.crt
 --log-level=info \\
 --region={region} \\
 --s3-bucket={s3_buckeet} \\
---s3-key-tls-key={id}/staking-signer-keys/{node_id}.staking-signer.bls.key.zstd.encrypted \\
+--s3-key={id}/staking-signer-keys/{node_id}.staking-signer.bls.key.zstd.encrypted \\
 --kms-cmk-id={kms_cmk_id} \\
 --aad-tag='{aad_tag}' \\
---key-path=/tmp/{node_id}.key
+--key-path=/tmp/{node_id}.bls.key
 
 ",
                 exec_parent_dir = exec_parent_dir,
@@ -1690,6 +1690,7 @@ cat /tmp/{node_id}.crt
         .unwrap();
     log::info!("created ssm document for installing subnet");
 
+    // TODO: support Fuji
     if spec.avalanchego_config.is_custom_network() {
         let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
         let priv_key =
@@ -1708,13 +1709,14 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP: adding all nodes as primary network validators...\n\n"),
             ResetColor
         )?;
-        log::info!("adding all nodes as primary network validator");
-        for node_id in all_node_ids.iter() {
+        log::info!("adding all nodes as primary network permissionless validator");
+        for node in created_nodes.iter() {
             let (tx_id, added) = wallet_to_spend
                 .p()
-                .add_validator()
-                .node_id(node::Id::from_str(node_id.as_str()).unwrap())
+                .add_permissionless_validator()
+                .node_id(ids::node::Id::from_str(&node.node_id).unwrap())
                 .check_acceptance(true)
+                .proof_of_possession(node.proof_of_possession.clone())
                 .issue()
                 .await
                 .unwrap();
