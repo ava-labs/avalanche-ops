@@ -261,9 +261,14 @@ async fn main() -> io::Result<()> {
                     .unwrap()
                     .clone(),
                 key: sub_matches.get_one::<String>("KEY").unwrap().clone(),
+
+                primary_network_validate_period_in_days: sub_matches
+                    .get_one::<u64>("PRIMARY_NETWORK_VALIDATE_PERIOD_IN_DAYS")
+                    .unwrap_or(&15)
+                    .clone(),
                 subnet_validate_period_in_days: sub_matches
                     .get_one::<u64>("SUBNET_VALIDATE_PERIOD_IN_DAYS")
-                    .unwrap_or(&15)
+                    .unwrap_or(&14)
                     .clone(),
                 staking_amount_in_avax: sub_matches
                     .get_one::<u64>("STAKING_AMOUNT_IN_AVAX")
