@@ -233,6 +233,15 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("PRIMARY_NETWORK_VALIDATE_PERIOD_IN_DAYS") 
+                .long("primary-network-validate-period-in-days")
+                .help("Sets the number of days to validate primary network")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("15"),
+        )
+        .arg(
             Arg::new("AVALANCHEGO_LOG_LEVEL") 
                 .long("avalanchego-log-level")
                 .help("Sets log-level for avalanchego")

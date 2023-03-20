@@ -1715,8 +1715,12 @@ cat /tmp/{node_id}.crt
                 .p()
                 .add_permissionless_validator()
                 .node_id(ids::node::Id::from_str(&node.node_id).unwrap())
-                .check_acceptance(true)
+                .validate_period_in_days(
+                    spec.primary_network_validate_period_in_days,
+                    60, /* offset seconds */
+                )
                 .proof_of_possession(node.proof_of_possession.clone())
+                .check_acceptance(true)
                 .issue()
                 .await
                 .unwrap();
@@ -1835,7 +1839,7 @@ cat /tmp/{node_id}.crt
 --ssm-doc {ssm_doc_name} \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
---staking-perioid-in-days 15 \\
+--subnet-validate-period-in-days 14 \\
 --subnet-config-local-path /tmp/subnet-config.json \\
 --subnet-config-remote-dir {subnet_config_remote_dir} \\
 --vm-binary-local-path REPLACE_ME \\

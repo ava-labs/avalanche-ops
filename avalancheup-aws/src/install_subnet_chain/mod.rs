@@ -39,7 +39,7 @@ pub struct Flags {
     pub chain_rpc_url: String,
     pub key: String,
 
-    pub staking_period_in_days: u64,
+    pub subnet_validate_period_in_days: u64,
     pub staking_amount_in_avax: u64,
 
     pub subnet_config_local_path: String,
@@ -147,13 +147,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("STAKING_PERIOID_IN_DAYS") // TODO: use float
-                .long("staking-perioid-in-days")
-                .help("Sets the number of days to stake the node (primary network + subnet, subnet validation is one-day earlier)")
+            Arg::new("SUBNET_VALIDATE_PERIOD_IN_DAYS") // TODO: use float
+                .long("subnet-validate-period-in-days")
+                .help("Sets the number of days to validate/stake the subnet (default 14 since primary network default validate period is 15-day in avalanche-types)")
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u64))
-                .default_value("15"),
+                .default_value("14"),
         )
         .arg(
             Arg::new("STAKING_AMOUNT_IN_AVAX")
@@ -351,7 +351,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', staking period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
             opts.s3_bucket,
             opts.s3_key_prefix,
@@ -364,7 +364,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.chain_config_local_path,
             opts.chain_config_remote_dir,
             opts.chain_genesis_path,
-            opts.staking_period_in_days,
+            opts.subnet_validate_period_in_days,
             opts.staking_amount_in_avax,
             opts.node_ids_to_instance_ids,
         )),
@@ -386,13 +386,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 "No, I am not ready to install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, staking {} days",
                     units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
                     opts.staking_amount_in_avax,
-                    opts.staking_period_in_days,
+                    opts.subnet_validate_period_in_days,
             ).to_string(),
             format!(
                 "Yes, let's install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, staking {} days",
                     units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
                     opts.staking_amount_in_avax,
-                    opts.staking_period_in_days,
+                    opts.subnet_validate_period_in_days,
                 ).to_string(),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -536,7 +536,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .add_validator()
             .node_id(node::Id::from_str(node_id).unwrap())
             .stake_amount(stake_amount_in_navax)
-            .validate_period_in_days(60, opts.staking_period_in_days)
+            .validate_period_in_days(60, opts.subnet_validate_period_in_days)
             .check_acceptance(true)
             .issue()
             .await
@@ -668,7 +668,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .add_subnet_validator()
             .node_id(node::Id::from_str(node_id).unwrap())
             .subnet_id(created_subnet_id)
-            .validate_period_in_days(60, opts.staking_period_in_days - 1)
+            .validate_period_in_days(60, opts.subnet_validate_period_in_days - 1)
             .check_acceptance(true)
             .issue()
             .await
