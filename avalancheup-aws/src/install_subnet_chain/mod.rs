@@ -523,7 +523,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: adding all nodes as primary network validators if not yet\n\n"),
+        Print(format!("\n\n\nSTEP: adding all nodes as primary network validators if not yet (period {} + 1)\n\n", opts.subnet_validate_period_in_days)),
         ResetColor
     )?;
     let stake_amount_in_navax =
@@ -536,7 +536,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .add_validator()
             .node_id(node::Id::from_str(node_id).unwrap())
             .stake_amount(stake_amount_in_navax)
-            .validate_period_in_days(60, opts.subnet_validate_period_in_days)
+            .validate_period_in_days(60, opts.subnet_validate_period_in_days + 1)
             .check_acceptance(true)
             .issue()
             .await
