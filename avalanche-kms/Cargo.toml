@@ -5,13 +5,13 @@ edition = "2021"
 rust-version = "1.68"
 
 [dependencies]
-avalanche-types = { version = "0.0.310", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws", "utils"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.311", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws", "utils"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.24.27", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.1.11", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.26.1"
 dialoguer = "0.10.3"
 env_logger = "0.10.0"
-ethers-signers = "2.0.0"
+ethers-signers = "=2.0.0"
 id-manager = "0.0.3"
 log = "0.4.17"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
