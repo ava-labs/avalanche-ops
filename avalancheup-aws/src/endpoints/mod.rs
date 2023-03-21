@@ -11,7 +11,7 @@ pub const NAME: &str = "endpoints";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Writes a default configuration")
+        .about("Queries RPC endpoints")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
