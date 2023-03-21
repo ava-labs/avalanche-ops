@@ -1,6 +1,7 @@
 mod apply;
 mod default_spec;
 mod delete;
+mod endpoints;
 mod install_subnet_chain;
 mod subnet_config;
 mod subnet_evm;
@@ -468,6 +469,31 @@ async fn main() -> io::Result<()> {
                         .clone(),
                 };
                 subnet_evm::genesis::execute(opt).expect("failed to execute 'subnet-evm genesis'");
+            }
+
+            Some((endpoints::NAME, sub_matches)) => {
+                let s = sub_matches
+                    .get_one::<String>("CHAIN_RPC_URLS")
+                    .unwrap()
+                    .clone();
+                let ss: Vec<&str> = s.split(',').collect();
+                let mut chain_rpc_urls: Vec<String> = Vec::new();
+                for rpc in ss.iter() {
+                    let trimmed = rpc.trim().to_string();
+                    if !trimmed.is_empty() {
+                        chain_rpc_urls.push(trimmed);
+                    }
+                }
+
+                endpoints::execute(
+                    &sub_matches
+                        .get_one::<String>("LOG_LEVEL")
+                        .unwrap_or(&String::from("info"))
+                        .clone(),
+                    chain_rpc_urls,
+                )
+                .await
+                .expect("failed to execute 'endpoints'");
             }
 
             _ => unreachable!("unknown subcommand"),

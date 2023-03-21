@@ -323,7 +323,7 @@ pub fn command() -> Command {
 }
 
 pub async fn execute(opts: avalanche_ops::aws::spec::DefaultSpecOption) -> io::Result<()> {
-    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
         env_logger::Env::default()
             .filter_or(env_logger::DEFAULT_FILTER_ENV, opts.clone().log_level),
