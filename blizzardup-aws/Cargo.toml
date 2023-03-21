@@ -1,6 +1,6 @@
 [package]
 name = "blizzardup-aws"
-version = "0.3.5-beta.0" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.3.5" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
@@ -26,7 +26,7 @@ log = "0.4.17"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
 prometheus-manager = "0.0.24"
 random-manager = "0.0.5"
-regex = "1.7.1"
+regex = "1.7.2"
 reqwest = "0.11.15"
 rust-embed = "6.4.2"
 serde = { version = "1.0.158", features = ["derive"] }
