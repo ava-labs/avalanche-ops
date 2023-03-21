@@ -1,10 +1,14 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    io,
+    io::{self, stdout},
 };
 
 use avalanche_types::{ids, jsonrpc};
 use clap::{Arg, Command};
+use crossterm::{
+    execute,
+    style::{Color, Print, ResetColor, SetForegroundColor},
+};
 use serde::{Deserialize, Serialize};
 
 pub const NAME: &str = "endpoints";
@@ -116,24 +120,41 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
     }
 
     println!();
-    for blkc in all_blockchains.iter() {
-        println!();
-        println!("{}", serde_yaml::to_string(blkc).unwrap());
-    }
-
-    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nALL TRACKED SUBNETS\n\n"),
+        ResetColor
+    )?;
     for p in tracked_subnet_id_to_node_ids.iter() {
         println!();
-        println!("subnet id '{}' are tracked by\n", p.0);
+        println!("subnet id '{}' are tracked by", p.0);
         for node_id in p.1.iter() {
             println!("{}", node_id);
         }
     }
 
     println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nALL PEERS\n\n"),
+        ResetColor
+    )?;
     for p in node_id_to_peer.iter() {
         println!();
         println!("{}:\n{}", p.0, serde_yaml::to_string(&p.1).unwrap());
+    }
+
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nALL BLOCKCHAINS\n\n"),
+        ResetColor
+    )?;
+    for blkc in all_blockchains.iter() {
+        println!("{}", serde_yaml::to_string(blkc).unwrap());
     }
 
     Ok(())
