@@ -67,7 +67,7 @@ pub async fn execute(
     pending_windows_in_days: i32,
     unsafe_skip_prompt: bool,
 ) -> io::Result<()> {
-    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );

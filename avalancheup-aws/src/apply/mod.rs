@@ -69,7 +69,7 @@ pub fn command() -> Command {
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
 pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
-    // ref. https://github.com/env-logger-rs/env_logger/issues/47
+    // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
@@ -1870,12 +1870,12 @@ cat /tmp/{node_id}.crt
         ResetColor
     )?;
 
+    println!("\n# EXAMPLE: start distributed load generator");
     execute!(
         stdout(),
         SetForegroundColor(Color::DarkGreen),
         Print(format!(
-            "
-{exec_parent_dir}/blizzardup-aws \\
+            "{exec_parent_dir}/blizzardup-aws \\
 default-spec \\
 --log-level=info \\
 --funded-keys={funded_keys} \\
@@ -1884,7 +1884,7 @@ default-spec \\
 --instance-mode=spot \\
 --nodes=10 \\
 --blizzard-log-level=info \\
---blizzard-chain-rpc-urls={blizzard_chain_rpc_urls} \\
+--blizzard-chain-rpc-urls={chain_rpc_urls} \\
 --blizzard-keys-to-generate=100 \\
 --blizzard-workers=10 \\
 --blizzard-load-kinds=x-transfers,evm-transfers
@@ -1897,7 +1897,23 @@ default-spec \\
                 1
             },
             region = spec.resources.region,
-            blizzard_chain_rpc_urls = all_nodes_c_chain_rpc_urls.clone().join(","),
+            chain_rpc_urls = all_nodes_c_chain_rpc_urls.clone().join(","),
+        )),
+        ResetColor
+    )?;
+
+    println!("\n# EXAMPLE: query all endpoints");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::DarkGreen),
+        Print(format!(
+            "{exec_path} endpoints \\
+--log-level=info \\
+--chain-rpc-urls={chain_rpc_urls}
+
+",
+            exec_path = exec_path.display(),
+            chain_rpc_urls = all_nodes_c_chain_rpc_urls.clone().join(","),
         )),
         ResetColor
     )?;
