@@ -123,7 +123,7 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nALL TRACKED SUBNETS\n\n"),
+        Print("\n\n\nALL TRACKED SUBNETS\n"),
         ResetColor
     )?;
     for p in tracked_subnet_id_to_node_ids.iter() {
@@ -138,7 +138,7 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nALL PEERS\n\n"),
+        Print("\n\n\nALL PEERS\n"),
         ResetColor
     )?;
     for p in node_id_to_peer.iter() {
@@ -150,7 +150,7 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nALL BLOCKCHAINS\n\n"),
+        Print("\n\n\nALL BLOCKCHAINS\n"),
         ResetColor
     )?;
     for blkc in all_blockchains.iter() {
