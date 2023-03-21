@@ -26,6 +26,7 @@ async fn main() -> io::Result<()> {
             install_subnet_chain::command(),
             subnet_evm::command(),
             subnet_config::command(),
+            endpoints::command(),
         ])
         .get_matches();
 
