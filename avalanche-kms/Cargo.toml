@@ -11,7 +11,7 @@ clap = { version = "4.1.11", features = ["cargo", "derive"] } # https://github.c
 crossterm = "0.26.1"
 dialoguer = "0.10.3"
 env_logger = "0.10.0"
-ethers-signers = "=2.0.0"
+ethers-signers = "=2.0.1"
 id-manager = "0.0.3"
 log = "0.4.17"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
