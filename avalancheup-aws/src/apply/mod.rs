@@ -552,6 +552,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
 
+        let ingress_ipv4_range = if let Some(ip) = public_ip::addr().await {
+            log::info!("found public ip address {:?}", ip);
+            format!("{}/32", ip.to_string())
+        } else {
+            log::warn!("failed to get a public IP address");
+            "0.0.0.0/0".to_string()
+        };
+        log::info!("ingress IPv4 range {ingress_ipv4_range}");
+
         let vpc_tmpl = avalanche_ops::aws::artifacts::vpc_yaml().unwrap();
         let vpc_stack_name = spec.resources.cloudformation_vpc.clone().unwrap();
         let vpc_params = Vec::from([
@@ -560,9 +569,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("PublicSubnetCidr1", "10.0.64.0/19"),
             build_param("PublicSubnetCidr2", "10.0.128.0/19"),
             build_param("PublicSubnetCidr3", "10.0.192.0/19"),
-            // TODO: restrict IP
-            build_param("SshPortIngressIpv4Range", "0.0.0.0/0"),
-            build_param("HttpPortIngressIpv4Range", "0.0.0.0/0"),
+            build_param("SshPortIngressIpv4Range", &ingress_ipv4_range),
+            build_param("HttpPortIngressIpv4Range", &ingress_ipv4_range),
             build_param("StakingPortIngressIpv4Range", "0.0.0.0/0"),
             build_param(
                 "StakingPort",
