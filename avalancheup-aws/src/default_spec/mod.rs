@@ -84,6 +84,13 @@ pub fn command() -> Command {
                 .default_value("us-west-2"),
         )
         .arg(
+            Arg::new("INGRESS_IPV4_CIDR")
+                .long("ingress-ipv4-cidr")
+                .help("Sets the IPv4 CIDR range for ingress traffic HTTP/SSH (leave empty to default to public IP on the local host)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("INSTANCE_MODE")
                 .long("instance-mode")
                 .help("Sets instance mode")
