@@ -990,10 +990,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             "http"
         }
     };
-    let ep = format!(
-        "{}://{}:{}",
-        http_scheme, public_ipv4, avalanchego_config.http_port
-    );
+
+    // do not use "public_ipv4" in case we limit http port access
+    let ep = format!("{http_scheme}://localhost:{}", avalanchego_config.http_port);
     check_liveness(&ep).await?;
 
     let mut handles = Vec::new();
