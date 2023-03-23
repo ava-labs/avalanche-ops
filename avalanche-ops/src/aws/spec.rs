@@ -114,6 +114,9 @@ pub struct Resources {
     #[serde(default)]
     pub region: String,
 
+    #[serde(default)]
+    pub ingress_ipv4_cidr: String,
+
     /// Name of the bucket to store (or download from)
     /// the configuration and resources (e.g., S3).
     /// If not exists, it creates automatically.
@@ -242,6 +245,8 @@ impl Resources {
 
             region: String::from("us-west-2"),
 
+            ingress_ipv4_cidr: String::from("0.0.0.0/0"),
+
             s3_bucket: String::new(),
 
             nlb_acm_certificate_arn: None,
@@ -295,6 +300,7 @@ pub struct DefaultSpecOption {
     pub keys_to_generate: usize,
 
     pub region: String,
+    pub ingress_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
     pub volume_size_in_gb: u32,
@@ -515,6 +521,20 @@ impl Spec {
             ec2_key_path: get_ec2_key_path(&spec_file_path),
             ..Resources::default()
         };
+        if !opts.ingress_ipv4_cidr.is_empty() {
+            resources.ingress_ipv4_cidr = opts.ingress_ipv4_cidr.clone();
+        } else {
+            log::info!("empty ingress_ipv4_cidr, so default to public IP on the local host");
+            resources.ingress_ipv4_cidr = if let Some(ip) = public_ip::addr().await {
+                log::info!("found public ip address {:?}", ip);
+                format!("{}/32", ip.to_string())
+            } else {
+                log::warn!("failed to get a public IP address -- default to 0.0.0.0/0");
+                "0.0.0.0/0".to_string()
+            };
+        };
+        log::info!("ingress IPv4 range {}", resources.ingress_ipv4_cidr);
+
         if !opts.nlb_acm_certificate_arn.is_empty() {
             resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
         }

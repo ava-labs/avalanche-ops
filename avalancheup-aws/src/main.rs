@@ -83,6 +83,10 @@ async fn main() -> io::Result<()> {
                     .clone(),
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                ingress_ipv4_cidr: sub_matches
+                    .get_one::<String>("INGRESS_IPV4_CIDR")
+                    .unwrap_or(&String::new())
+                    .clone(),
 
                 instance_mode: sub_matches
                     .get_one::<String>("INSTANCE_MODE")
