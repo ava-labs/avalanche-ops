@@ -535,6 +535,9 @@ impl Spec {
         };
         log::info!("ingress IPv4 range {}", resources.ingress_ipv4_cidr);
 
+        // TODO: fix this... we need also whitelist within-VPC traffic
+        resources.ingress_ipv4_cidr = "0.0.0.0/0".to_string();
+
         if !opts.nlb_acm_certificate_arn.is_empty() {
             resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
         }
