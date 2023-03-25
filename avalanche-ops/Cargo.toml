@@ -1,6 +1,6 @@
 [package]
 name = "avalanche-ops"
-version = "0.3.6-alpha.2" # https://crates.io/crates/avalanche-ops
+version = "0.3.6" # https://crates.io/crates/avalanche-ops
 edition = "2021"
 rust-version = "1.68"
 publish = true
@@ -22,7 +22,7 @@ primitive-types = { version = "0.12.1", features = ["impl-serde"], optional = fa
 prometheus-manager = "0.0.25"
 public-ip = "0.2.2"
 random-manager = "0.0.5"
-rust-embed = "6.6.0"
+rust-embed = "6.6.1"
 serde = { version = "1.0.158", features = ["derive"] }
 serde_json = "1.0.94" # https://github.com/serde-rs/json/releases
 serde_with = { version = "2.3.1", features = ["hex"] }

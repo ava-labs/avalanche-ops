@@ -1,6 +1,6 @@
 [package]
 name = "blizzardup-aws"
-version = "0.3.6-alpha.2" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.3.6" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
@@ -28,7 +28,7 @@ prometheus-manager = "0.0.25"
 random-manager = "0.0.5"
 regex = "1.7.3"
 reqwest = "0.11.15"
-rust-embed = "6.6.0"
+rust-embed = "6.6.1"
 serde = { version = "1.0.158", features = ["derive"] }
 serde_yaml = "0.9.19" # https://github.com/dtolnay/serde-yaml/releases
 signal-hook = "0.3.15"
