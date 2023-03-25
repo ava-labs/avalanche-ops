@@ -1,6 +1,6 @@
 [package]
 name = "avalanche-ops"
-version = "0.3.6-alpha.1" # https://crates.io/crates/avalanche-ops
+version = "0.3.6-alpha.2" # https://crates.io/crates/avalanche-ops
 edition = "2021"
 rust-version = "1.68"
 publish = true
@@ -10,7 +10,7 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
-avalanche-types = { version = "0.0.320", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.323", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.24.29", features = ["ec2", "sts"] } # https://github.com/gyuho/aws-manager/tags
 compress-manager = "0.0.6"
 dir-manager = "0.0.1"
@@ -19,7 +19,7 @@ id-manager = "0.0.3"
 log = "0.4.17"
 prefix-manager = "0.0.2"
 primitive-types = { version = "0.12.1", features = ["impl-serde"], optional = false } # https://crates.io/crates/primitive-types
-prometheus-manager = "0.0.24"
+prometheus-manager = "0.0.25"
 public-ip = "0.2.2"
 random-manager = "0.0.5"
 rust-embed = "6.6.0"
