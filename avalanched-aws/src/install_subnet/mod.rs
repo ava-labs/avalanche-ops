@@ -234,11 +234,23 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let f = File::open(&tmp_path)?;
             f.set_permissions(PermissionsExt::from_mode(0o777))?;
         }
+
         log::info!(
             "copying Vm binary file {tmp_path} to {}",
             opts.vm_binary_local_path
         );
-        fs::copy(&tmp_path, &opts.vm_binary_local_path)?;
+        match fs::copy(&tmp_path, &opts.vm_binary_local_path) {
+            Ok(_) => log::info!("successfully copied file"),
+            Err(e) => {
+                log::warn!("failed to copy file {}", e);
+
+                // mask the error
+                // Os { code: 26, kind: ExecutableFileBusy, message: "Text file busy" }
+                if !e.to_string().to_lowercase().contains("text file busy") {
+                    return Err(e);
+                }
+            }
+        }
         fs::remove_file(&tmp_path)?;
     }
 
