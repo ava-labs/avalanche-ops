@@ -26,7 +26,7 @@ log = "0.4.17"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
 prometheus-manager = "0.0.25"
 random-manager = "0.0.5"
-regex = "1.7.2"
+regex = "1.7.3"
 reqwest = "0.11.15"
 rust-embed = "6.6.0"
 serde = { version = "1.0.158", features = ["derive"] }
