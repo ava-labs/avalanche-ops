@@ -12,7 +12,7 @@ path = "src/main.rs"
 avalanche-installer = "0.0.56" # https://crates.io/crates/avalanche-installer
 avalanche-ops = { path = "../avalanche-ops" }
 avalanche-telemetry-cloudwatch-installer = "0.0.73" # https://crates.io/crates/avalanche-telemetry-cloudwatch
-avalanche-types = { version = "0.0.323", features = ["avalanchego", "cert", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.324", features = ["avalanchego", "cert", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
 aws-ip-provisioner-installer = "0.0.54" # https://crates.io/crates/aws-ip-provisioner-installer
 aws-manager = { version = "0.24.29", features = ["autoscaling", "cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
