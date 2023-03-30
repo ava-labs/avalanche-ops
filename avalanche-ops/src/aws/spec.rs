@@ -1048,6 +1048,12 @@ avalanchego_config:
   profile-dir: /var/log/avalanchego-profile/avalanche
   throttler-inbound-node-max-at-large-bytes: 2097152
   throttler-inbound-at-large-alloc-size: 6291456
+  proposervm-use-current-height: true
+  throttler-inbound-node-max-processing-msgs: 100000
+  throttler-inbound-bandwidth-refill-rate: 1073741824
+  throttler-inbound-bandwidth-max-burst-size: 1073741824
+  throttler-inbound-cpu-validator-alloc: 100000
+  throttler-inbound-disk-validator-alloc: 10737418240000
 
 coreth_chain_config:
   coreth-admin-api-enabled: true
