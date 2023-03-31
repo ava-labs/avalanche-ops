@@ -1054,6 +1054,9 @@ avalanchego_config:
   throttler-inbound-bandwidth-max-burst-size: 1073741824
   throttler-inbound-cpu-validator-alloc: 100000
   throttler-inbound-disk-validator-alloc: 10737418240000
+  snow-mixed-query-num-push-vdr-uint: 10
+  consensus-on-accept-gossip-peer-size: 0
+  consensus-accepted-frontier-gossip-peer-size: 0
 
 coreth_chain_config:
   coreth-admin-api-enabled: true
