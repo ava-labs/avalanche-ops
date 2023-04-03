@@ -14,7 +14,7 @@ use std::{
 
 use avalanche_types::{
     ids, jsonrpc::client::health as jsonrpc_client_health,
-    jsonrpc::client::info as jsonrpc_client_info, key, wallet,
+    jsonrpc::client::info as jsonrpc_client_info, key, units, wallet,
 };
 use aws_manager::{
     self, cloudformation, ec2,
@@ -1703,6 +1703,13 @@ cat /tmp/{node_id}.crt
             .build()
             .await
             .unwrap();
+        let balance = wallet_to_spend.p().balance().await.unwrap();
+        log::info!(
+            "adding primary network validators with the wallet {} of balance {} nAVAX ({} AVAX)",
+            ki.eth_address,
+            balance,
+            units::cast_xp_navax_to_avax(primitive_types::U256::from(balance))
+        );
 
         // add nodes as validators for the primary network
         execute!(
