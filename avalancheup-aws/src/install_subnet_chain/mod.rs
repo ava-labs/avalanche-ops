@@ -12,7 +12,7 @@ use avalanche_types::{
     key, subnet, units, wallet,
 };
 use aws_manager::{self, s3, ssm, sts};
-use aws_sdk_ssm::model::CommandInvocationStatus;
+use aws_sdk_ssm::types::CommandInvocationStatus;
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,

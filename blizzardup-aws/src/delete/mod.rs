@@ -5,7 +5,7 @@ use std::{
 };
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, s3, sts};
-use aws_sdk_cloudformation::model::StackStatus;
+use aws_sdk_cloudformation::types::StackStatus;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
