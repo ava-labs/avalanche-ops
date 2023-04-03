@@ -303,6 +303,7 @@ pub struct DefaultSpecOption {
     pub ingress_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
+    pub instance_types: Vec<String>,
     pub volume_size_in_gb: u32,
 
     pub ip_mode: String,
@@ -671,9 +672,12 @@ impl Spec {
             }
         };
 
-        let instance_types =
-            ec2::default_instance_types(&opts.region, &opts.arch_type, &opts.instance_size)
-                .unwrap();
+        let instance_types = if !opts.instance_types.is_empty() {
+            opts.instance_types.clone()
+        } else {
+            ec2::default_instance_types(&opts.region, &opts.arch_type, &opts.instance_size).unwrap()
+        };
+
         let machine = Machine {
             anchor_nodes,
             non_anchor_nodes,

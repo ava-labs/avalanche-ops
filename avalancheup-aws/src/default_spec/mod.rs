@@ -109,6 +109,13 @@ pub fn command() -> Command {
                 .default_value("xlarge"),
         )
         .arg(
+            Arg::new("INSTANCE_TYPES")
+                .long("instance-types")
+                .help("Sets the comma-separated instance types (overwrites --instance-size)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("IP_MODE")
                 .long("ip-mode")
                 .help("Sets IP mode to provision EC2 elastic IPs for all nodes")

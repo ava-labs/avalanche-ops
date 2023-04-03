@@ -45,6 +45,19 @@ async fn main() -> io::Result<()> {
                 }
             }
 
+            let s = sub_matches
+                .get_one::<String>("INSTANCE_TYPES")
+                .unwrap_or(&String::new())
+                .clone();
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut instance_types = Vec::new();
+            for addr in ss.iter() {
+                let trimmed = addr.trim().to_string();
+                if !trimmed.is_empty() {
+                    instance_types.push(addr.trim().to_string());
+                }
+            }
+
             let opt = avalanche_ops::aws::spec::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -96,6 +109,7 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("INSTANCE_SIZE")
                     .unwrap_or(&String::from("large"))
                     .clone(),
+                instance_types,
 
                 volume_size_in_gb: sub_matches
                     .get_one::<u32>("VOLUME_SIZE_IN_GB")
