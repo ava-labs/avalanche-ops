@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.3.7-rc.1" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.3.7-rc.2" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
@@ -9,26 +9,26 @@ name = "avalanched-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-installer = "0.0.56" # https://crates.io/crates/avalanche-installer
+avalanche-installer = "0.0.57" # https://crates.io/crates/avalanche-installer
 avalanche-ops = { path = "../avalanche-ops" }
-avalanche-telemetry-cloudwatch-installer = "0.0.73" # https://crates.io/crates/avalanche-telemetry-cloudwatch
-avalanche-types = { version = "0.0.328", features = ["avalanchego", "cert", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
-aws-ip-provisioner-installer = "0.0.54" # https://crates.io/crates/aws-ip-provisioner-installer
-aws-manager = { version = "0.24.29", features = ["autoscaling", "cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
-aws-sdk-cloudwatch = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-ec2 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-s3 = "0.24.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-volume-provisioner-installer = "0.0.78" # https://crates.io/crates/aws-volume-provisioner-installer
-clap = { version = "4.1.13", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+avalanche-telemetry-cloudwatch-installer = "0.0.74" # https://crates.io/crates/avalanche-telemetry-cloudwatch
+avalanche-types = { version = "0.0.329", features = ["avalanchego", "cert", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+aws-ip-provisioner-installer = "0.0.55" # https://crates.io/crates/aws-ip-provisioner-installer
+aws-manager = { version = "0.25.0", features = ["autoscaling", "cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
+aws-sdk-cloudwatch = "0.25.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-ec2 = "0.25.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-s3 = "0.25.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-volume-provisioner-installer = "0.0.79" # https://crates.io/crates/aws-volume-provisioner-installer
+clap = { version = "4.2.1", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.6"
 env_logger = "0.10.0"
 log = "0.4.17"
 prometheus-manager = "0.0.25"
 random-manager = "0.0.5"
-serde = { version = "1.0.158", features = ["derive"] }
-tempfile = "3.4.0"
-tokio = { version = "1.26.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+serde = { version = "1.0.159", features = ["derive"] }
+tempfile = "3.5.0"
+tokio = { version = "1.27.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 # https://github.com/cross-rs/cross/wiki/Recipes#openssl
 openssl = { version = "0.10", features = ["vendored"] }

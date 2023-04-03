@@ -21,9 +21,9 @@ use aws_manager::{
     kms::{self, envelope},
     s3, sts,
 };
-use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
-use aws_sdk_ec2::model::Address;
-use aws_sdk_s3::model::Object;
+use aws_sdk_cloudformation::types::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_ec2::types::Address;
+use aws_sdk_s3::types::Object;
 use clap::{Arg, Command};
 use crossterm::{
     execute,

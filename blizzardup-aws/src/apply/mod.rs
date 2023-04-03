@@ -12,7 +12,7 @@ use std::{
 
 use avalanche_types::jsonrpc::client::{evm as client_evm, info as client_info};
 use aws_manager::{self, cloudformation, ec2, s3, sts};
-use aws_sdk_cloudformation::model::{Capability, OnFailure, Parameter, StackStatus, Tag};
+use aws_sdk_cloudformation::types::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use clap::{Arg, Command};
 use crossterm::{
     execute,

@@ -6,8 +6,8 @@ use std::{
 };
 
 use aws_manager::{self, cloudformation, cloudwatch, ec2, kms, s3, sts};
-use aws_sdk_cloudformation::model::StackStatus;
-use aws_sdk_ec2::model::Filter;
+use aws_sdk_cloudformation::types::StackStatus;
+use aws_sdk_ec2::types::Filter;
 use clap::{Arg, Command};
 use crossterm::{
     execute,

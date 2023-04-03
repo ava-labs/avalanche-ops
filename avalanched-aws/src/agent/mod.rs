@@ -20,7 +20,7 @@ use aws_manager::{
     kms::{self, envelope},
     s3,
 };
-use aws_sdk_ec2::model::{Filter, Tag};
+use aws_sdk_ec2::types::{Filter, Tag};
 use clap::{Arg, Command};
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
@@ -711,7 +711,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             );
 
             log::info!("listing s3 for other anchor nodes with the prefix {s3_key_prefix}");
-            let mut objects: Vec<aws_sdk_s3::model::Object>;
+            let mut objects: Vec<aws_sdk_s3::types::Object>;
             loop {
                 sleep(Duration::from_secs(20)).await;
 
@@ -836,7 +836,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 )
                 .encode(),
             );
-            let mut objects: Vec<aws_sdk_s3::model::Object>;
+            let mut objects: Vec<aws_sdk_s3::types::Object>;
             loop {
                 sleep(Duration::from_secs(20)).await;
 
