@@ -8,7 +8,7 @@ See https://talks.gyuho.dev/avalanche-aws-2022q3.html for slides.
 
 See ["Cheapest way to set up a network or validator"](avalancheup-aws/recipes-aws.md#cheapest-way-to-set-up-a-network-or-validator).
 
-[![asciicast](https://asciinema.org/a/oHrRU83Zfd6hApexUknm8QphG.svg)](https://asciinema.org/a/oHrRU83Zfd6hApexUknm8QphG)
+See [`hypersdk#94`](https://github.com/ava-labs/hypersdk/pull/94) for dev net testing.
 
 # Avalanche Ops
 
