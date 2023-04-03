@@ -1059,8 +1059,10 @@ avalanchego_config:
   throttler-inbound-cpu-validator-alloc: 100000
   throttler-inbound-disk-validator-alloc: 10737418240000
   snow-mixed-query-num-push-vdr-uint: 10
-  consensus-on-accept-gossip-peer-size: 0
-  consensus-accepted-frontier-gossip-peer-size: 0
+  consensus-on-accept-gossip-validator-size: 0
+  consensus-on-accept-gossip-non-validator-size: 0
+  consensus-on-accept-gossip-peer-size: 10
+  consensus-accepted-frontier-gossip-peer-size: 10
 
 coreth_chain_config:
   coreth-admin-api-enabled: true
