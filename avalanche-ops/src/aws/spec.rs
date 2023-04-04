@@ -1025,7 +1025,8 @@ avalanchego_config:
   config-file: /data/avalanche-configs/config.json
   network-id: 1
   db-type: leveldb
-  db-dir: /data
+  db-dir: /data/db
+  chain-data-dir: /data/chainData
   log-dir: /var/log/avalanchego
   log-level: INFO
   log-format: json
