@@ -1064,6 +1064,7 @@ avalanchego_config:
   consensus-on-accept-gossip-non-validator-size: 0
   consensus-on-accept-gossip-peer-size: 10
   consensus-accepted-frontier-gossip-peer-size: 10
+  network-compression-enabled: true
 
 coreth_chain_config:
   coreth-admin-api-enabled: true
