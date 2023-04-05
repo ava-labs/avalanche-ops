@@ -46,6 +46,10 @@ pub struct Spec {
     /// Upload artifacts from the local machine to share with remote machines.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upload_artifacts: Option<UploadArtifacts>,
+    /// Non-empty to specify avalanchego release tag to download.
+    /// Discarded if avalanchego binary was uploaded to S3.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avalanchego_release_tag: Option<String>,
 
     /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: crate::aws::avalanched::Flags,
@@ -322,6 +326,8 @@ pub struct DefaultSpecOption {
     pub upload_artifacts_avalanched_aws_local_bin: String,
     pub upload_artifacts_avalanchego_local_bin: String,
     pub upload_artifacts_prometheus_metrics_rules_file_path: String,
+
+    pub avalanchego_release_tag: String,
 
     pub avalanched_log_level: String,
     pub avalanched_use_default_config: bool,
@@ -623,6 +629,12 @@ impl Spec {
             Some(upload_artifacts)
         };
 
+        let avalanchego_release_tag = if opts.avalanchego_release_tag.is_empty() {
+            None
+        } else {
+            Some(opts.avalanchego_release_tag.clone())
+        };
+
         let mut coreth_chain_config = coreth_chain_config::Config::default();
         if opts.coreth_continuous_profiler_enabled {
             coreth_chain_config.continuous_profiler_dir =
@@ -702,6 +714,7 @@ impl Spec {
                 resources,
                 machine,
                 upload_artifacts,
+                avalanchego_release_tag,
 
                 avalanched_config,
 
@@ -1009,6 +1022,7 @@ upload_artifacts:
   avalanched_local_bin: {avalanched_bin}
   avalanche_config_local_bin: {avalanche_config_bin}
   avalanchego_local_bin: {avalanchego_bin}
+avalanchego_release_tag: latest
 
 avalanched_config:
   log_level: info
@@ -1136,6 +1150,7 @@ coreth_chain_config:
 
             prometheus_metrics_rules_file_path: String::new(),
         }),
+        avalanchego_release_tag: Some(String::from("latest")),
 
         avalanched_config: crate::aws::avalanched::Flags {
             log_level: String::from("info"),

@@ -702,6 +702,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
     ]);
 
+    if let Some(avalanchego_release_tag) = &spec.avalanchego_release_tag {
+        common_asg_params.push(build_param(
+            "AvalancheGoReleaseTag",
+            &avalanchego_release_tag.clone(),
+        ));
+    }
+
     if !spec.machine.instance_types.is_empty() {
         let instance_types = spec.machine.instance_types.clone();
         common_asg_params.push(build_param("InstanceTypes", &instance_types.join(",")));

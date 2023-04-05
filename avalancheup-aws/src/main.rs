@@ -168,6 +168,11 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .to_string(),
 
+                avalanchego_release_tag: sub_matches
+                    .get_one::<String>("AVALANCHEGO_RELEASE_TAG")
+                    .unwrap_or(&String::new())
+                    .clone(),
+
                 avalanched_log_level: sub_matches
                     .get_one::<String>("AVALANCHED_LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
