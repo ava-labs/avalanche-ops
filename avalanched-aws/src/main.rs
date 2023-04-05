@@ -36,6 +36,12 @@ async fn main() {
         }
 
         Some((install_artifacts::NAME, sub_matches)) => {
+            let v = sub_matches
+                .get_one::<String>("AVALANCHEGO_RELEASE_TAG")
+                .unwrap_or(&String::new())
+                .clone();
+            let avalanchego_release_tag = if v.is_empty() { None } else { Some(v.clone()) };
+
             install_artifacts::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -53,6 +59,7 @@ async fn main() {
                 &sub_matches
                     .get_one::<String>("AVALANCHEGO_LOCAL_PATH")
                     .unwrap_or(&String::new()),
+                avalanchego_release_tag,
                 &sub_matches
                     .get_one::<String>("RUST_OS_TYPE")
                     .unwrap_or(&String::from("ubuntu20.04")),

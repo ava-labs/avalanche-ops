@@ -206,6 +206,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("AVALANCHEGO_RELEASE_TAG")
+                .long("avalanchego-release-tag")
+                .help("Non-empty to specify avalanchego release tag to download (ignored if --upload-artifacts-avalanchego-local-bin is not empty)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("NETWORK_NAME") 
                 .long("network-name")
                 .help("Sets the type of network by name (e.g., mainnet, fuji, custom)")

@@ -43,7 +43,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("AVALANCHEGO_S3_KEY")
                 .long("avalanchego-s3-key")
-                .help("Non-empty to download from S3")
+                .help("Non-empty to download from S3 (overwrites --avalanchego-release-tag)")
                 .required(false)
                 .num_args(1),
         )
@@ -51,6 +51,13 @@ pub fn command() -> Command {
             Arg::new("AVALANCHEGO_LOCAL_PATH")
                 .long("avalanchego-local-path")
                 .help("Non-empty to download avalanchego")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_RELEASE_TAG")
+                .long("avalanchego-release-tag")
+                .help("Non-empty to specify avalanchego release tag to download (ignored if --avalanchego-s3-key is not empty)")
                 .required(false)
                 .num_args(1),
         )
@@ -116,6 +123,7 @@ pub async fn execute(
     s3_bucket: &str,
     avalanchego_s3_key: &str,
     avalanchego_local_path: &str,
+    avalanchego_release_tag: Option<String>,
     rust_os_type: &str,
     aws_volume_provisioner_s3_key: &str,
     aws_volume_provisioner_local_path: &str,
@@ -188,7 +196,9 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading avalanchego from github");
-        let tmp_path = avalanche_installer::avalanchego::github::download(None, None, None).await?;
+        let tmp_path =
+            avalanche_installer::avalanchego::github::download(None, None, avalanchego_release_tag)
+                .await?;
         fs::copy(&tmp_path, &avalanchego_local_path)?;
         fs::remove_file(&tmp_path)?;
     }
