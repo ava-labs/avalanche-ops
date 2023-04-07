@@ -20,9 +20,9 @@ Parameters:
     AllowedValues: ["anchor", "non-anchor"]
     Description: Node kind.
 
-  KmsCmkArn:
+  KmsKeyArn:
     Type: String
-    Description: KMS CMK ARN that de/encrypts resources.
+    Description: KMS key ARN that de/encrypts resources.
 
   AadTag:
     Type: String
@@ -810,8 +810,8 @@ Resources:
         - Key: NODE_KIND
           Value: !Ref NodeKind
           PropagateAtLaunch: true
-        - Key: KMS_CMK_ARN
-          Value: !Ref KmsCmkArn
+        - Key: KMS_KEY_ARN
+          Value: !Ref KmsKeyArn
           PropagateAtLaunch: true
         - Key: AAD_TAG
           Value: !Ref AadTag

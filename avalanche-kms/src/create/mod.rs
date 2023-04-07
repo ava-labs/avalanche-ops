@@ -22,7 +22,7 @@ pub const NAME: &str = "create";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Creates an AWS KMS CMK")
+        .about("Create and fund AWS KMS keys")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -45,7 +45,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("KEY_NAME_PREFIX")
                 .long("key-name-prefix")
-                .help("KMS CMK name prefix")
+                .help("KMS key name prefix")
                 .required(false)
                 .num_args(1),
         )
@@ -58,6 +58,17 @@ pub fn command() -> Command {
                 .value_parser(value_parser!(usize))
                 .default_value("1"),
         )
+
+        // optional for cross-account grants
+        .arg(
+            Arg::new("GRANTEE_PRINCIPAL")
+                .long("grantee-principal")
+                .help("KMS key grantee principal ARN")
+                .required(false)
+                .num_args(1),
+        )
+
+        // optional to fund keys
         .arg(
             Arg::new("EVM_CHAIN_RPC_URL")
                 .long("evm-chain-rpc-url")
@@ -86,6 +97,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1),
         )
+
         .arg(
             Arg::new("SKIP_PROMPT")
                 .long("skip-prompt")
@@ -101,6 +113,7 @@ pub async fn execute(
     region: &str,
     key_name_prefix: &str,
     keys: usize,
+    grantee_principal: &str,
     evm_chain_rpc_url: &str,
     evm_funding_hotkey: &str,
     evm_funding_amount_navax: U256,
@@ -112,7 +125,7 @@ pub async fn execute(
     );
 
     log::info!(
-        "requesting to create new {keys} KMS CMK(s) with prefix '{key_name_prefix}' (in the {region})"
+        "requesting to create new {keys} KMS key(s) with prefix '{key_name_prefix}' (in the {region}, grantee principal {grantee_principal})"
     );
 
     let shared_config =
@@ -129,10 +142,10 @@ pub async fn execute(
     if !skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to create new {keys} KMS CMK(s) with '{key_name_prefix}' in '{region}'."
+                "No, I am not ready to create new {keys} KMS key(s) with '{key_name_prefix}' in '{region}'."
             ),
             format!(
-                "Yes, let's create new {keys} KMS CMK(s) with '{key_name_prefix}' in '{region}'."
+                "Yes, let's create new {keys} KMS key(s) with '{key_name_prefix}' in '{region}'."
             ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
@@ -152,11 +165,12 @@ pub async fn execute(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nCreating new KMS CMKs with '{key_name_prefix}' in region {region}\n",
+            "\nCreating new KMS keys with '{key_name_prefix}' in region {region}\n",
         )),
         ResetColor
     )?;
-    let mut cmks = Vec::new();
+    let mut kms_keys = Vec::new();
+    let mut kms_grant_tokens = Vec::new();
     for i in 0..keys {
         // to prevent rate limit errors
         // e.g.,
@@ -164,22 +178,32 @@ pub async fn execute(
         sleep(Duration::from_secs(2)).await;
 
         println!("");
-        log::info!("[{i}] creating CMk");
+        log::info!("[{i}] creating KMS key");
         let mut tags = HashMap::new();
         tags.insert(
             String::from("Name"),
             format!("{key_name_prefix}-{:03}", i + 1),
         );
-        let cmk = key::secp256k1::kms::aws::Cmk::create(kms_manager.clone(), tags)
+        let key = key::secp256k1::kms::aws::Key::create(kms_manager.clone(), tags)
             .await
             .unwrap();
 
-        let cmk_info = cmk.to_info(1).unwrap();
-        cmks.push(cmk_info.clone());
+        let key_info = key.to_info(1).unwrap();
+        kms_keys.push(key_info.clone());
 
         println!();
-        println!("loaded CMK\n\n{}\n", cmk_info);
+        println!("loaded KMS key\n\n{}\n", key_info);
         println!();
+
+        if !grantee_principal.is_empty() {
+            log::info!("KMS granting {} to {grantee_principal}", key.id);
+            let (grant_id, grant_token) = kms_manager
+                .create_grant_for_sign_reads(&key.id, grantee_principal)
+                .await
+                .unwrap();
+            log::info!("KMS granted Id {grant_id}");
+            kms_grant_tokens.push(grant_token);
+        }
 
         if evm_funding_hotkey.is_empty() {
             log::info!("no evm-funding-hotkey given, skipping...");
@@ -200,7 +224,7 @@ pub async fn execute(
         let funding_key_info = funding_key.to_info(network_id).unwrap();
         log::info!("loaded funding key: {}", funding_key_info.eth_address);
 
-        let transferee_addr = cmk_info.h160_address;
+        let transferee_addr = key_info.h160_address;
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -247,20 +271,29 @@ pub async fn execute(
         log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
     }
 
-    for cmk in cmks.iter() {
-        println!("{},{}", cmk.id.clone().unwrap(), cmk.eth_address)
+    for (i, k) in kms_keys.iter().enumerate() {
+        if kms_grant_tokens.is_empty() {
+            println!("{},{}", k.id.clone().unwrap(), k.eth_address)
+        } else {
+            println!(
+                "{},{},{}",
+                k.id.clone().unwrap(),
+                k.eth_address,
+                kms_grant_tokens[i]
+            )
+        }
     }
 
     let exec_path = env::current_exe().expect("unexpected None current_exe");
-    println!("\n# [UNSAFE] to delete the keys");
-    for cmk in cmks.iter() {
-        println!("{} delete --region={region} --pending-windows-in-days 7 --unsafe-skip-prompt --key-arn {}", exec_path.display(), cmk.id.clone().unwrap());
+    println!("\n# [UNSAFE] schedule to delete the KMS keys");
+    for k in kms_keys.iter() {
+        println!("{} delete --region={region} --pending-windows-in-days 7 --unsafe-skip-prompt --key-arn {}", exec_path.display(), k.id.clone().unwrap());
     }
 
-    println!("\n# [UNSAFE] to fund the keys");
+    println!("\n# [UNSAFE] fund the keys from a hotkey");
     let mut addresses = Vec::new();
-    for cmk in cmks.iter() {
-        addresses.push(cmk.eth_address.clone());
+    for k in kms_keys.iter() {
+        addresses.push(k.eth_address.clone());
     }
     println!("{} evm-transfer-from-hotkey --chain-rpc-url={evm_chain_rpc_url} --transferer-key=[FUNDING_HOTKEY] --transfer-amount-in-avax \"30000000\" --transferee-addresses {}", exec_path.display(), addresses.join(","));
 

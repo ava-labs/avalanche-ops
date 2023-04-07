@@ -61,6 +61,11 @@ async fn main() -> io::Result<()> {
             };
             let keys = sub_matches.get_one::<usize>("KEYS").unwrap_or(&0).clone();
 
+            let grantee_principal = sub_matches
+                .get_one::<String>("GRANTEE_PRINCIPAL")
+                .unwrap_or(&String::new())
+                .clone();
+
             let evm_chain_rpc_url = sub_matches
                 .get_one::<String>("EVM_CHAIN_RPC_URL")
                 .unwrap_or(&String::new())
@@ -106,6 +111,7 @@ async fn main() -> io::Result<()> {
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 &key_name_prefix,
                 keys,
+                &grantee_principal,
                 &evm_chain_rpc_url,
                 &evm_funding_hotkey,
                 evm_funding_amount_navax,

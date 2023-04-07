@@ -94,13 +94,13 @@ pub struct Spec {
     pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
 }
 
-/// Represents the KMS CMK resource.
+/// Represents the KMS key resource.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct KmsCmk {
-    /// CMK Id.
+pub struct KmsKey {
+    /// Key Id.
     pub id: String,
-    /// CMK Arn.
+    /// Key Arn.
     pub arn: String,
 }
 
@@ -134,13 +134,13 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nlb_acm_certificate_arn: Option<String>,
 
-    /// KMS CMK ID to encrypt resources.
+    /// KMS key ID to encrypt resources.
     /// Only used for encrypting node certs and EC2 keys.
     /// None if not created yet.
     /// READ ONLY -- DO NOT SET.
     /// TODO: support existing key and load the ARN based on region and account number.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub kms_cmk_symmetric_default_encrypt_key: Option<KmsCmk>,
+    pub kms_symmetric_default_encrypt_key: Option<KmsKey>,
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// READ ONLY -- DO NOT SET.
@@ -255,7 +255,7 @@ impl Resources {
 
             nlb_acm_certificate_arn: None,
 
-            kms_cmk_symmetric_default_encrypt_key: None,
+            kms_symmetric_default_encrypt_key: None,
 
             ec2_key_name: String::new(),
             ec2_key_path: String::new(),

@@ -6,7 +6,7 @@ pub struct Options {
     pub s3_bucket: String,
     pub s3_key_tls_key: String,
     pub s3_key_tls_cert: String,
-    pub kms_cmk_id: String,
+    pub kms_key_id: String,
     pub aad_tag: String,
     pub tls_key_path: String,
     pub tls_cert_path: String,

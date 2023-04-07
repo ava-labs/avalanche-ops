@@ -122,7 +122,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         rust_os_type: String::new(),
         instance_mode: String::new(),
         node_kind: node::Kind::Unknown(String::new()),
-        kms_cmk_arn: String::new(),
+        kms_key_arn: String::new(),
         aad_tag: String::new(),
         s3_bucket: String::new(),
         cloudwatch_config_file_path: String::new(),
@@ -160,8 +160,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     node::Kind::NonAnchor
                 };
             }
-            "KMS_CMK_ARN" => {
-                fetched_tags.kms_cmk_arn = v.to_string();
+            "KMS_KEY_ARN" => {
+                fetched_tags.kms_key_arn = v.to_string();
             }
             "AAD_TAG" => {
                 fetched_tags.aad_tag = v.to_string();
@@ -199,7 +199,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
     assert!(!fetched_tags.arch_type.is_empty());
     assert!(!fetched_tags.rust_os_type.is_empty());
-    assert!(!fetched_tags.kms_cmk_arn.is_empty());
+    assert!(!fetched_tags.kms_key_arn.is_empty());
     assert!(!fetched_tags.aad_tag.is_empty());
     assert!(!fetched_tags.s3_bucket.is_empty());
     assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
@@ -443,7 +443,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     log::info!("STEP: setting up certificates...");
     let envelope_manager = envelope::Manager::new(
         &kms_manager,
-        fetched_tags.kms_cmk_arn.to_string(),
+        fetched_tags.kms_key_arn.to_string(),
         fetched_tags.aad_tag.to_string(),
     );
     let local_tls_key_path = avalanchego_config.staking_tls_key_file.clone().unwrap();
@@ -1108,7 +1108,7 @@ struct Tags {
     rust_os_type: String,
     instance_mode: String,
     node_kind: node::Kind,
-    kms_cmk_arn: String,
+    kms_key_arn: String,
     aad_tag: String,
     s3_bucket: String,
     cloudwatch_config_file_path: String,

@@ -51,15 +51,15 @@ aws s3 ls s3://${S3_BUCKET_NAME}/
 
 ### Step 3. Create KMS key for envelope-encrypting the node certificate
 
-*NOTE: Replace `KMS_CMK_ARN` with your own KMS key:*
+*NOTE: Replace `KMS_KEY_ARN` with your own KMS key:*
 
 ```bash
-KMS_CMK_ARN=$(aws kms --region us-west-2 create-key --query KeyMetadata.Arn --output text)
-echo ${KMS_CMK_ARN}
+KMS_KEY_ARN=$(aws kms --region us-west-2 create-key --query KeyMetadata.Arn --output text)
+echo ${KMS_KEY_ARN}
 
 # e.g.,
-KMS_CMK_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9
-aws kms describe-key --region us-west-2 --key-id ${KMS_CMK_ARN} --query KeyMetadata.Arn --output text
+KMS_KEY_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9
+aws kms describe-key --region us-west-2 --key-id ${KMS_KEY_ARN} --query KeyMetadata.Arn --output text
 
 # e.g.,
 # arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9
@@ -69,14 +69,14 @@ To delete the key later:
 
 ```bash
 # e.g.,
-KMS_CMK_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9
+KMS_KEY_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9
 
 # to delete
 aws kms schedule-key-deletion \
 --region us-west-2 \
---key-id ${KMS_CMK_ARN} \
+--key-id ${KMS_KEY_ARN} \
 --pending-window-in-days 7
-aws kms describe-key --key-id ${KMS_CMK_ARN}
+aws kms describe-key --key-id ${KMS_KEY_ARN}
 ```
 
 ### Step 4. Create EC2 key pair for SSH access to the nodes
@@ -112,7 +112,7 @@ cdk --version
 - `CDK_REGION`: AWS region to create resources
 - `CDK_ACCOUNT`: AWS account to create resources
 - `ID`: Unique identifier for the node
-- `KMS_CMK_ARN`: AWS CMK ARN for envelope-encryption of your node certificate
+- `KMS_KEY_ARN`: AWS KMS key ARN for envelope-encryption of your node certificate
 - `S3_BUCKET_NAME`: S3 bucket name to back up the node certificate
 
 For example:
@@ -123,7 +123,7 @@ cd ${HOME}/avalanche-ops/cdk/avalancheup-aws
 CDK_REGION=us-west-2 \
 CDK_ACCOUNT=931867039610 \
 ID=my-cluster-id \
-KMS_CMK_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9 \
+KMS_KEY_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9 \
 S3_BUCKET_NAME=avalancheup-aws-test-bucket-with-cdk \
 npx cdk deploy avalancheup-aws-instance-role-stack
 ```
@@ -177,7 +177,7 @@ See [`vpc.yaml`](../../avalanche-ops/src/aws/cfn-templates/vpc.yaml) for the Clo
 - `CDK_REGION`: AWS region to create resources
 - `CDK_ACCOUNT`: AWS account to create resources
 - `ID`: Unique identifier for the node
-- `KMS_CMK_ARN`: AWS CMK ARN for envelope-encryption of your node certificate
+- `KMS_KEY_ARN`: AWS KMS key ARN for envelope-encryption of your node certificate
 - `S3_BUCKET_NAME`: S3 bucket name to back up the node certificate
 - `EC2_KEY_PAIR_NAME`: EC2 key pair name for SSH access
 - `AAD_TAG`: Authentication of additional authenticated data (AAD) for envelope-encryption
@@ -196,7 +196,7 @@ PUBLIC_SUBNET_IDS='subnet-05cabd5919ddc9777,subnet-0e9cd3f506f6dab12,subnet-0c3c
 CDK_REGION=us-west-2 \
 CDK_ACCOUNT=931867039610 \
 ID=my-cluster-id \
-KMS_CMK_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9 \
+KMS_KEY_ARN=arn:aws:kms:us-west-2:931867039610:key/c5a7894a-ddd8-4b67-8c98-081d053bc4e9 \
 S3_BUCKET_NAME=avalancheup-aws-test-bucket-with-cdk \
 EC2_KEY_PAIR_NAME=avalancheup-aws-test-ec2-key-with-cdk \
 AAD_TAG=my-add-tag \
@@ -243,7 +243,7 @@ And go to S3 bucket to see the node certificate being published from the `avalan
 --s3-bucket=avalanche-ops-202207-3cq76s4cie \
 --s3-key-tls-key=aops-fuji-202207-23XhJA/pki/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.key.zstd.encrypted \
 --s3-key-tls-cert=aops-fuji-202207-23XhJA/pki/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.crt.zstd.encrypted \
---kms-cmk-id=87c771e3-6166-414b-b46e-5f4845e57a3c \
+--kms-key-id=87c771e3-6166-414b-b46e-5f4845e57a3c \
 --aad-tag='avalanche-ops-aad-tag' \
 --tls-key-path=/tmp/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.key \
 --tls-cert-path=/tmp/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.cr
@@ -253,7 +253,7 @@ And go to S3 bucket to see the node certificate being published from the `avalan
 --aws-region=us-west-2 \
 --s3-bucket=avalanche-ops-202207-3cq76s4cie \
 --s3-key=aops-fuji-202207-23XhJA/pki/staking-signer-keys/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.staking-signer.bls.key.zstd.encrypted \
---kms-cmk-id=87c771e3-6166-414b-b46e-5f4845e57a3c \
+--kms-key-id=87c771e3-6166-414b-b46e-5f4845e57a3c \
 --aad-tag='avalanche-ops-aad-tag' \
 --key-path=/tmp/NodeID-KsGs96iZYWHS9bNwA47VKPmkNBVUKRFsD.bls.key \
 ```

@@ -20,7 +20,7 @@ staking-signer-key-s3-downloader \
 --aws-region=us-west-2 \
 --s3-bucket=info \
 --s3-key=pki/NodeABCDE.key.zstd.encrypted \
---kms-cmk-id=abc-abc-abc \
+--kms-key-id=abc-abc-abc \
 --aad-tag=mytag \
 --key-path=pki/NodeABCDE.key
 
@@ -58,9 +58,9 @@ staking-signer-key-s3-downloader \
                 .num_args(1),
         )
         .arg(
-            Arg::new("KMS_CMK_ID")
-                .long("kms-cmk-id")
-                .help("Sets the KMS CMK Id to envelope-decrypt the files from S3")
+            Arg::new("KMS_KEY_ID")
+                .long("kms-key-id")
+                .help("Sets the KMS key Id to envelope-decrypt the files from S3")
                 .required(true)
                 .num_args(1),
         )
@@ -88,7 +88,7 @@ staking-signer-key-s3-downloader \
         region: matches.get_one::<String>("REGION").unwrap().clone(),
         s3_bucket: matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
         s3_key: matches.get_one::<String>("S3_KEY").unwrap().clone(),
-        kms_cmk_id: matches.get_one::<String>("KMS_CMK_ID").unwrap().clone(),
+        kms_key_id: matches.get_one::<String>("KMS_KEY_ID").unwrap().clone(),
         aad_tag: matches.get_one::<String>("AAD_TAG").unwrap().clone(),
         key_path: matches.get_one::<String>("KEY_PATH").unwrap().clone(),
     };

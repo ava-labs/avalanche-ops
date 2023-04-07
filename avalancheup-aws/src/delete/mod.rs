@@ -190,11 +190,7 @@ pub async fn execute(
 
     // delete this first since KMS key delete does not depend on ASG/VPC
     // (mainly to speed up delete operation)
-    if spec
-        .resources
-        .kms_cmk_symmetric_default_encrypt_key
-        .is_some()
-    {
+    if spec.resources.kms_symmetric_default_encrypt_key.is_some() {
         sleep(Duration::from_secs(1)).await;
 
         execute!(
@@ -204,10 +200,7 @@ pub async fn execute(
             ResetColor
         )?;
 
-        let k = spec
-            .resources
-            .kms_cmk_symmetric_default_encrypt_key
-            .unwrap();
+        let k = spec.resources.kms_symmetric_default_encrypt_key.unwrap();
         kms_manager
             .schedule_to_delete(k.id.as_str(), 7)
             .await

@@ -23,8 +23,8 @@ export class AvalancheupInstanceRoleStack extends cdk.Stack {
     const paramId: cdk.CfnParameter = tmplAsg.getParameter('Id');
     paramId.default = process.env.ID;
 
-    const paramKmsCmkArn: cdk.CfnParameter = tmplAsg.getParameter('KmsCmkArn');
-    paramKmsCmkArn.default = process.env.KMS_CMK_ARN;
+    const paramKmsKeyArn: cdk.CfnParameter = tmplAsg.getParameter('KmsKeyArn');
+    paramKmsKeyArn.default = process.env.KMS_KEY_ARN;
 
     const paramS3BucketName: cdk.CfnParameter = tmplAsg.getParameter('S3BucketName');
     paramS3BucketName.default = process.env.S3_BUCKET_NAME;
@@ -80,8 +80,8 @@ export class AvalancheupInstanceAsgStack extends cdk.Stack {
     const paramId: cdk.CfnParameter = tmplAsg.getParameter('Id');
     paramId.default = process.env.ID;
 
-    const paramKmsCmkArn: cdk.CfnParameter = tmplAsg.getParameter('KmsCmkArn');
-    paramKmsCmkArn.default = process.env.KMS_CMK_ARN;
+    const paramKmsKeyArn: cdk.CfnParameter = tmplAsg.getParameter('KmsKeyArn');
+    paramKmsKeyArn.default = process.env.KMS_KEY_ARN;
 
     const paramS3BucketName: cdk.CfnParameter = tmplAsg.getParameter('S3BucketName');
     paramS3BucketName.default = process.env.S3_BUCKET_NAME;
