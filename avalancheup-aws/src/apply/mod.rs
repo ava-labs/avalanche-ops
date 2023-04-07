@@ -1505,7 +1505,7 @@ aws ssm start-session --region {} --target {}
     let mut all_nodes_http_rpcs = Vec::new();
     let mut all_nodes_c_chain_rpc_urls = Vec::new();
     for host in rpc_hosts.iter() {
-        let http_rpc = format!("{}://{}:{}", scheme_for_dns, host, port_for_dns).to_string();
+        let http_rpc = format!("{scheme_for_dns}://{host}:{port_for_dns}").to_string();
 
         let mut success = false;
         for _ in 0..10_u8 {
