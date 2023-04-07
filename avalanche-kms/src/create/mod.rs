@@ -59,6 +59,15 @@ pub fn command() -> Command {
                 .default_value("1"),
         )
 
+        // optional for cross-account grants
+        .arg(
+            Arg::new("GRANTEE_PRINCIPAL")
+                .long("grantee-principal")
+                .help("KMS key grantee principal ARN")
+                .required(false)
+                .num_args(1),
+        )
+
         // optional to fund keys
         .arg(
             Arg::new("EVM_CHAIN_RPC_URL")
@@ -104,6 +113,7 @@ pub async fn execute(
     region: &str,
     key_name_prefix: &str,
     keys: usize,
+    grantee_principal: &str,
     evm_chain_rpc_url: &str,
     evm_funding_hotkey: &str,
     evm_funding_amount_navax: U256,
@@ -115,7 +125,7 @@ pub async fn execute(
     );
 
     log::info!(
-        "requesting to create new {keys} KMS keys(s) with prefix '{key_name_prefix}' (in the {region})"
+        "requesting to create new {keys} KMS keys(s) with prefix '{key_name_prefix}' (in the {region}, grantee principal {grantee_principal})"
     );
 
     let shared_config =
@@ -160,6 +170,7 @@ pub async fn execute(
         ResetColor
     )?;
     let mut kms_keys = Vec::new();
+    let mut kms_grant_tokens = Vec::new();
     for i in 0..keys {
         // to prevent rate limit errors
         // e.g.,
@@ -183,6 +194,16 @@ pub async fn execute(
         println!();
         println!("loaded KMS key\n\n{}\n", key_info);
         println!();
+
+        if !grantee_principal.is_empty() {
+            log::info!("KMS granting {} to {grantee_principal}", key.id);
+            let (grant_id, grant_token) = kms_manager
+                .create_grant_for_sign_reads(&key.id, grantee_principal)
+                .await
+                .unwrap();
+            log::info!("KMS granted Id {grant_id}");
+            kms_grant_tokens.push(grant_token);
+        }
 
         if evm_funding_hotkey.is_empty() {
             log::info!("no evm-funding-hotkey given, skipping...");
@@ -250,17 +271,26 @@ pub async fn execute(
         log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
     }
 
-    for k in kms_keys.iter() {
-        println!("{},{}", k.id.clone().unwrap(), k.eth_address)
+    for (i, k) in kms_keys.iter().enumerate() {
+        if kms_grant_tokens.is_empty() {
+            println!("{},{}", k.id.clone().unwrap(), k.eth_address)
+        } else {
+            println!(
+                "{},{},{}",
+                k.id.clone().unwrap(),
+                k.eth_address,
+                kms_grant_tokens[i]
+            )
+        }
     }
 
     let exec_path = env::current_exe().expect("unexpected None current_exe");
-    println!("\n# [UNSAFE] to delete the keys");
+    println!("\n# [UNSAFE] schedule to delete the KMS keys");
     for k in kms_keys.iter() {
         println!("{} delete --region={region} --pending-windows-in-days 7 --unsafe-skip-prompt --key-arn {}", exec_path.display(), k.id.clone().unwrap());
     }
 
-    println!("\n# [UNSAFE] to fund the keys");
+    println!("\n# [UNSAFE] fund the keys from a hotkey");
     let mut addresses = Vec::new();
     for k in kms_keys.iter() {
         addresses.push(k.eth_address.clone());
