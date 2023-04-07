@@ -799,13 +799,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     println!();
     execute!(
         stdout(),
-        SetForegroundColor(Color::Green),
+        SetForegroundColor(Color::Blue),
         Print(format!(
-            "\n\n\nSUCCESS: subnet Id {created_subnet_id}, blockchain Id {blockchain_id}\n\n"
+            "\n\n\nSUCCESS!\nsubnet Id: {created_subnet_id}\nblockchain Id: {blockchain_id}\n\n"
         )),
         ResetColor
     )?;
-    println!();
 
     Ok(())
 }
