@@ -26,7 +26,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     let envelope_manager = envelope::Manager::new(
         &kms_manager,
-        opts.kms_cmk_id.clone(),
+        opts.kms_key_id.clone(),
         // must've be equal for envelope encryption
         // e.g., "cfn-templates" tag "AAD_TAG"
         opts.aad_tag.clone(),

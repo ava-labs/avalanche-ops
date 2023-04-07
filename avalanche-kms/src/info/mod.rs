@@ -20,7 +20,7 @@ pub const NAME: &str = "info";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Fetches the info of an AWS KMS CMK")
+        .about("Fetches the info of an AWS KMS key")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -51,7 +51,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("KEY")
                 .long("key")
-                .help("Hex-encoded hot key or KMS CMK ARN")
+                .help("Hex-encoded hot key or KMS key ARN")
                 .required(true)
                 .num_args(1),
         )
@@ -77,7 +77,7 @@ pub async fn execute(
     );
 
     log::info!(
-        "requesting info for KMS CMK {key_type} ({region}) with chain RPC URL '{chain_rpc_url}'"
+        "requesting info for KMS key {key_type} ({region}) with chain RPC URL '{chain_rpc_url}'"
     );
     let network_id = if chain_rpc_url.is_empty() {
         1
@@ -115,7 +115,7 @@ pub async fn execute(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nLoading the hotkey or KMS CMK {} in region {}\n",
+            "\nLoading the hotkey or KMS key {} in region {}\n",
             key, region
         )),
         ResetColor
@@ -124,21 +124,24 @@ pub async fn execute(
     match converted_key_type {
         KeyType::AwsKms => {
             let kms_manager = kms::Manager::new(&shared_config);
-            let cmk = secp256k1::kms::aws::Cmk::from_arn(kms_manager.clone(), key)
+            let key = secp256k1::kms::aws::Key::from_arn(kms_manager.clone(), key)
                 .await
                 .unwrap();
-            let cmk_info = cmk.to_info(network_id).unwrap();
+            let key_info = key.to_info(network_id).unwrap();
 
             println!();
-            println!("loaded CMK\n\n{}\n(network Id {network_id})\n", cmk_info);
+            println!(
+                "loaded KMS key\n\n{}\n(network Id {network_id})\n",
+                key_info
+            );
             println!();
 
             if !chain_rpc_url.is_empty() {
                 let balance =
-                    avalanche_sdk_evm::get_balance(chain_rpc_url, cmk_info.h160_address).await?;
+                    avalanche_sdk_evm::get_balance(chain_rpc_url, key_info.h160_address).await?;
                 println!(
                     "{} balance: {} ({} ETH/AVAX)",
-                    cmk_info.eth_address,
+                    key_info.eth_address,
                     balance,
                     units::cast_evm_navax_to_avax_i64(balance)
                 );

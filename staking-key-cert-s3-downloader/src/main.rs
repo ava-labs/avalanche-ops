@@ -21,7 +21,7 @@ staking-key-cert-s3-downloader \
 --s3-bucket=info \
 --s3-key-tls-key=pki/NodeABCDE.key.zstd.encrypted \
 --s3-key-tls-cert=pki/NodeABCDE.crt.zstd.encrypted \
---kms-cmk-id=abc-abc-abc \
+--kms-key-id=abc-abc-abc \
 --aad-tag=mytag \
 --tls-key-path=pki/NodeABCDE.key \
 --tls-cert-path=pki/NodeABCDE.crt
@@ -67,9 +67,9 @@ staking-key-cert-s3-downloader \
                 .num_args(1),
         )
         .arg(
-            Arg::new("KMS_CMK_ID")
-                .long("kms-cmk-id")
-                .help("Sets the KMS CMK Id to envelope-decrypt the files from S3")
+            Arg::new("KMS_KEY_ID")
+                .long("kms-key-id")
+                .help("Sets the KMS key Id to envelope-decrypt the files from S3")
                 .required(true)
                 .num_args(1),
         )
@@ -108,7 +108,7 @@ staking-key-cert-s3-downloader \
             .get_one::<String>("S3_KEY_TLS_CERT")
             .unwrap()
             .clone(),
-        kms_cmk_id: matches.get_one::<String>("KMS_CMK_ID").unwrap().clone(),
+        kms_key_id: matches.get_one::<String>("KMS_KEY_ID").unwrap().clone(),
         aad_tag: matches.get_one::<String>("AAD_TAG").unwrap().clone(),
         tls_key_path: matches.get_one::<String>("TLS_KEY_PATH").unwrap().clone(),
         tls_cert_path: matches.get_one::<String>("TLS_CERT_PATH").unwrap().clone(),

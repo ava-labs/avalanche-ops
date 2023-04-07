@@ -14,7 +14,7 @@ pub const NAME: &str = "delete";
 
 pub fn command() -> Command {
     Command::new(NAME)
-        .about("Deletes an AWS KMS CMK")
+        .about("Deletes an AWS KMS key")
         .arg(
             Arg::new("LOG_LEVEL")
                 .long("log-level")
@@ -38,7 +38,7 @@ pub fn command() -> Command {
             Arg::new("KEY_ARN")
                 .long("key-arn")
                 .short('a')
-                .help("KMS CMK ARN")
+                .help("KMS key ARN")
                 .required(true)
                 .num_args(1),
         )
@@ -89,28 +89,28 @@ pub async fn execute(
         stdout(),
         SetForegroundColor(Color::Red),
         Print(format!(
-            "\nLoading the KMS CMK {} in region {} for deletion\n",
+            "\nLoading the KMS key {} in region {} for deletion\n",
             key_arn, region
         )),
         ResetColor
     )?;
-    let cmk = key::secp256k1::kms::aws::Cmk::from_arn(kms_manager.clone(), key_arn)
+    let key = key::secp256k1::kms::aws::Key::from_arn(kms_manager.clone(), key_arn)
         .await
         .unwrap();
-    let cmk_info = cmk.to_info(1).unwrap();
+    let key_info = key.to_info(1).unwrap();
 
     println!();
-    println!("loaded CMK\n\n{}\n(mainnet)\n", cmk_info);
+    println!("loaded KMS key\n\n{}\n(mainnet)\n", key_info);
     println!();
 
     if !unsafe_skip_prompt {
         let options = &[
             format!(
-                "No, I am not ready to delete a new KMS CMK '{}' '{}' in {} days",
+                "No, I am not ready to delete a new KMS key '{}' '{}' in {} days",
                 region, key_arn, pending_windows_in_days
             ),
             format!(
-                "Yes, let's delete a new KMS CMK '{}' '{}' in {} days",
+                "Yes, let's delete a new KMS key '{}' '{}' in {} days",
                 region, key_arn, pending_windows_in_days
             ),
         ];
@@ -125,10 +125,10 @@ pub async fn execute(
         }
     }
 
-    cmk.delete(pending_windows_in_days).await.unwrap();
+    key.delete(pending_windows_in_days).await.unwrap();
 
     println!();
-    log::info!("successfully scheduled to delete CMK signer");
+    log::info!("successfully scheduled to delete KMS key signer");
 
     Ok(())
 }

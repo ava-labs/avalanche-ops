@@ -361,11 +361,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         log::info!("skipping uploading artifacts...");
     }
 
-    if spec
-        .resources
-        .kms_cmk_symmetric_default_encrypt_key
-        .is_none()
-    {
+    if spec.resources.kms_symmetric_default_encrypt_key.is_none() {
         sleep(Duration::from_secs(1)).await;
         execute!(
             stdout(),
@@ -375,15 +371,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         )?;
 
         let key = kms_manager
-            .create_symmetric_default_key(format!("{}-cmk", spec.id).as_str())
+            .create_symmetric_default_key(format!("{}-kms-key", spec.id).as_str())
             .await
             .unwrap();
 
-        spec.resources.kms_cmk_symmetric_default_encrypt_key =
-            Some(avalanche_ops::aws::spec::KmsCmk {
-                id: key.id,
-                arn: key.arn,
-            });
+        spec.resources.kms_symmetric_default_encrypt_key = Some(avalanche_ops::aws::spec::KmsKey {
+            id: key.id,
+            arn: key.arn,
+        });
         spec.sync(spec_file_path)?;
 
         s3_manager
@@ -398,7 +393,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let envelope_manager = envelope::Manager::new(
         &kms_manager,
         spec.resources
-            .kms_cmk_symmetric_default_encrypt_key
+            .kms_symmetric_default_encrypt_key
             .clone()
             .unwrap()
             .id,
@@ -479,10 +474,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let role_params = Vec::from([
             build_param("Id", &spec.id),
             build_param(
-                "KmsCmkArn",
+                "KmsKeyArn",
                 &spec
                     .resources
-                    .kms_cmk_symmetric_default_encrypt_key
+                    .kms_symmetric_default_encrypt_key
                     .clone()
                     .unwrap()
                     .arn,
@@ -642,10 +637,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             format!("{}", &spec.avalanchego_config.network_id).as_str(),
         ),
         build_param(
-            "KmsCmkArn",
+            "KmsKeyArn",
             &spec
                 .resources
-                .kms_cmk_symmetric_default_encrypt_key
+                .kms_symmetric_default_encrypt_key
                 .clone()
                 .unwrap()
                 .arn,
@@ -1614,9 +1609,9 @@ aws ssm start-session --region {} --target {}
         )),
         ResetColor
     )?;
-    let kms_cmk_id = spec
+    let kms_key_id = spec
         .resources
-        .kms_cmk_symmetric_default_encrypt_key
+        .kms_symmetric_default_encrypt_key
         .clone()
         .unwrap()
         .id;
@@ -1632,7 +1627,7 @@ aws ssm start-session --region {} --target {}
 --s3-bucket={s3_buckeet} \\
 --s3-key-tls-key={id}/pki/{node_id}.key.zstd.encrypted \\
 --s3-key-tls-cert={id}/pki/{node_id}.crt.zstd.encrypted \\
---kms-cmk-id={kms_cmk_id} \\
+--kms-key-id={kms_key_id} \\
 --aad-tag='{aad_tag}' \\
 --tls-key-path=/tmp/{node_id}.key \\
 --tls-cert-path=/tmp/{node_id}.crt
@@ -1644,7 +1639,7 @@ cat /tmp/{node_id}.crt
 --region={region} \\
 --s3-bucket={s3_buckeet} \\
 --s3-key={id}/staking-signer-keys/{node_id}.staking-signer.bls.key.zstd.encrypted \\
---kms-cmk-id={kms_cmk_id} \\
+--kms-key-id={kms_key_id} \\
 --aad-tag='{aad_tag}' \\
 --key-path=/tmp/{node_id}.bls.key
 
@@ -1653,7 +1648,7 @@ cat /tmp/{node_id}.crt
                 region = spec.resources.region,
                 s3_buckeet = spec.resources.s3_bucket,
                 id = spec.id,
-                kms_cmk_id = kms_cmk_id,
+                kms_key_id = kms_key_id,
                 aad_tag = spec.aad_tag,
                 node_id = n.node_id,
             )),

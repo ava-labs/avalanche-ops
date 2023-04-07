@@ -10,7 +10,7 @@
 ./target/release/avalanche-kms info --help
 ```
 
-To create a new KMS CMK:
+To create a new KMS key:
 
 ```bash
 ./target/release/avalanche-kms create \
@@ -18,7 +18,7 @@ To create a new KMS CMK:
 ```
 
 ```yaml
-# loaded CMK
+# loaded key
 
 id: arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439
 key_type: aws-kms
@@ -36,7 +36,7 @@ h160_address: 0x75e3dc1926ca033ee06b0c378b0079241921e2aa
 To get the key information:
 
 ```bash
-# new CMK is successfully created
+# new KMS key is successfully created
 ./target/release/avalanche-kms info \
 --region=us-west-2 \
 --network-id=1 \
@@ -54,7 +54,7 @@ To get the key information:
 ```
 
 ```yaml
-# loaded CMK
+# loaded KMS key
 
 id: arn:aws:kms:us-west-2:931867039610:key/9ca6d1a5-bc21-4326-8562-ad106f36a439
 key_type: aws-kms
