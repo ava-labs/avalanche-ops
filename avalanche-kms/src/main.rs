@@ -103,6 +103,11 @@ async fn main() -> io::Result<()> {
                 evm_funding_amount_in_navax
             };
 
+            let keys_file_output = sub_matches
+                .get_one::<String>("KEYS_FILE_OUTPUT")
+                .unwrap_or(&random_manager::tmp_path(15, Some(".yaml"))?)
+                .clone();
+
             create::execute(
                 &sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -111,6 +116,7 @@ async fn main() -> io::Result<()> {
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 &key_name_prefix,
                 keys,
+                &keys_file_output,
                 &grantee_principal,
                 &evm_chain_rpc_url,
                 &evm_funding_hotkey,
