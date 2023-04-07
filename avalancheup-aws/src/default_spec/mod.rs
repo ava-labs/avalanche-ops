@@ -132,6 +132,13 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("NLB_ACM_CERTIFICATE_ARN") 
+                .long("nlb-acm-certificate-arn")
+                .help("Sets ACM ARN to enable NLB HTTPS")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("DISABLE_LOGS_AUTO_REMOVAL")
                 .long("disable-logs-auto-removal")
                 .help("Sets to disable CloudWatch logs auto removal")
@@ -155,13 +162,6 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .default_value("avalanche-ops-aad-tag"),
-        )
-        .arg(
-            Arg::new("NLB_ACM_CERTIFICATE_ARN") 
-                .long("nlb-acm-certificate-arn")
-                .help("Sets ACM ARN to enable NLB HTTPS")
-                .required(false)
-                .num_args(1),
         )
         .arg(
             Arg::new("UPLOAD_ARTIFACTS_AWS_VOLUME_PROVISIONER_LOCAL_BIN") 
