@@ -1,12 +1,15 @@
 use std::{
     collections::HashMap,
     env,
-    io::{self, stdout},
+    fs::{self, File},
+    io::{self, stdout, Error, ErrorKind, Write},
+    path::Path,
 };
 
 use avalanche_types::{
     jsonrpc::client::{evm as json_client_evm, info as json_client_info},
-    key, units, wallet,
+    key::secp256k1::{self, KeyType},
+    units, wallet,
 };
 use aws_manager::{self, kms, sts};
 use clap::{value_parser, Arg, Command};
@@ -16,7 +19,67 @@ use crossterm::{
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use primitive_types::U256;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use tokio::time::{sleep, Duration};
+
+#[serde_as]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Entry {
+    /// Either "hot" or "aws-kms".
+    #[serde_as(as = "DisplayFromStr")]
+    pub key_type: KeyType,
+    /// Either hex-encoded private key or AWS KMS ARN.
+    pub key: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grant_token: Option<String>,
+}
+
+impl Default for Entry {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl Entry {
+    pub fn default() -> Self {
+        Self {
+            key_type: KeyType::Hot,
+            key: String::new(),
+            grant_token: None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Keys(pub Vec<Entry>);
+
+impl Keys {
+    /// Saves the current keys to disk
+    /// and overwrites the file.
+    pub fn sync(&self, file_path: &str) -> io::Result<()> {
+        log::info!("syncing to '{}'", file_path);
+
+        let path = Path::new(file_path);
+        if let Some(parent_dir) = path.parent() {
+            log::info!("creating parent dir '{}'", parent_dir.display());
+            fs::create_dir_all(parent_dir)?;
+        }
+
+        let d = serde_yaml::to_string(self).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to serialize keys info to YAML {}", e),
+            )
+        })?;
+
+        let mut f = File::create(file_path)?;
+        f.write_all(d.as_bytes())
+    }
+}
 
 pub const NAME: &str = "create";
 
@@ -57,6 +120,13 @@ pub fn command() -> Command {
                 .num_args(1)
                 .value_parser(value_parser!(usize))
                 .default_value("1"),
+        )
+        .arg(
+            Arg::new("KEYS_FILE_OUTPUT")
+                .long("keys-file-output")
+                .help("Sets the file path of the keys file (if empty, uses random temp file path)")
+                .required(false)
+                .num_args(1),
         )
 
         // optional for cross-account grants
@@ -113,6 +183,7 @@ pub async fn execute(
     region: &str,
     key_name_prefix: &str,
     keys: usize,
+    keys_file_output: &str,
     grantee_principal: &str,
     evm_chain_rpc_url: &str,
     evm_funding_hotkey: &str,
@@ -125,7 +196,7 @@ pub async fn execute(
     );
 
     log::info!(
-        "requesting to create new {keys} KMS key(s) with prefix '{key_name_prefix}' (in the {region}, grantee principal {grantee_principal})"
+        "requesting to create new {keys} KMS key(s) with prefix '{key_name_prefix}' (in the {region}, grantee principal {grantee_principal}, keys file output {keys_file_output})"
     );
 
     let shared_config =
@@ -171,6 +242,7 @@ pub async fn execute(
     )?;
     let mut kms_keys = Vec::new();
     let mut kms_grant_tokens = Vec::new();
+    let mut entries = Vec::new();
     for i in 0..keys {
         // to prevent rate limit errors
         // e.g.,
@@ -184,7 +256,7 @@ pub async fn execute(
             String::from("Name"),
             format!("{key_name_prefix}-{:03}", i + 1),
         );
-        let key = key::secp256k1::kms::aws::Key::create(kms_manager.clone(), tags)
+        let key = secp256k1::kms::aws::Key::create(kms_manager.clone(), tags)
             .await
             .unwrap();
 
@@ -195,6 +267,11 @@ pub async fn execute(
         println!("loaded KMS key\n\n{}\n", key_info);
         println!();
 
+        let mut entry = Entry {
+            key_type: KeyType::AwsKms,
+            key: key.id.clone(),
+            ..Default::default()
+        };
         if !grantee_principal.is_empty() {
             log::info!("KMS granting {} to {grantee_principal}", key.id);
             let (grant_id, grant_token) = kms_manager
@@ -202,8 +279,10 @@ pub async fn execute(
                 .await
                 .unwrap();
             log::info!("KMS granted Id {grant_id}");
+            entry.grant_token = Some(grant_token.clone());
             kms_grant_tokens.push(grant_token);
         }
+        entries.push(entry);
 
         if evm_funding_hotkey.is_empty() {
             log::info!("no evm-funding-hotkey given, skipping...");
@@ -220,7 +299,7 @@ pub async fn execute(
             "running against {evm_chain_rpc_url}, network Id {network_id}, chain Id {chain_id}"
         );
 
-        let funding_key = key::secp256k1::private_key::Key::from_hex(evm_funding_hotkey).unwrap();
+        let funding_key = secp256k1::private_key::Key::from_hex(evm_funding_hotkey).unwrap();
         let funding_key_info = funding_key.to_info(network_id).unwrap();
         log::info!("loaded funding key: {}", funding_key_info.eth_address);
 
@@ -296,6 +375,15 @@ pub async fn execute(
         addresses.push(k.eth_address.clone());
     }
     println!("{} evm-transfer-from-hotkey --chain-rpc-url={evm_chain_rpc_url} --transferer-key=[FUNDING_HOTKEY] --transfer-amount-in-avax \"30000000\" --transferee-addresses {}", exec_path.display(), addresses.join(","));
+
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!("\nWrote keys to {keys_file_output}\n",)),
+        ResetColor
+    )?;
+    let keys = Keys(entries);
+    keys.sync(keys_file_output)?;
 
     Ok(())
 }
