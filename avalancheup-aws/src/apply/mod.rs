@@ -803,10 +803,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
-                // reuse ASG template
+                // reuse ASG template from previous run
                 asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
             }
             if !asg_launch_template_version.is_empty() {
+                // reuse ASG template from previous run
                 asg_params.push(build_param(
                     "AsgLaunchTemplateVersion",
                     &asg_launch_template_version,
@@ -880,7 +881,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             }
         }
 
+        if asg_logical_ids.is_empty() {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "resources.cloudformation_asg_anchor_nodes_logical_ids not found",
+            ));
+        }
         spec.resources.cloudformation_asg_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
+        spec.resources.cloudformation_asg_launch_template_id = Some(asg_launch_template_id.clone());
+        spec.resources.cloudformation_asg_launch_template_version =
+            Some(asg_launch_template_version.clone());
         spec.sync(spec_file_path)?;
 
         if spec.resources.cloudformation_asg_nlb_arn.is_none() {
@@ -1143,10 +1153,11 @@ aws ssm start-session --region {} --target {}
             asg_params.push(build_param("AsgName", &asg_name));
 
             if !asg_launch_template_id.is_empty() {
-                // reuse ASG template
+                // reuse ASG template from previous run
                 asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
             }
             if !asg_launch_template_version.is_empty() {
+                // reuse ASG template from previous run
                 asg_params.push(build_param(
                     "AsgLaunchTemplateVersion",
                     &asg_launch_template_version,
