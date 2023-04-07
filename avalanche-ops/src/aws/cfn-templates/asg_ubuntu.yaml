@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Avalanche node (amd64)"
+Description: "Avalanche node"
 
 # takes about 2-minute for 3 nodes (without NLB)
 # NLB takes about 3-minute
