@@ -125,7 +125,7 @@ pub async fn execute(
     );
 
     log::info!(
-        "requesting to create new {keys} KMS keys(s) with prefix '{key_name_prefix}' (in the {region}, grantee principal {grantee_principal})"
+        "requesting to create new {keys} KMS key(s) with prefix '{key_name_prefix}' (in the {region}, grantee principal {grantee_principal})"
     );
 
     let shared_config =
