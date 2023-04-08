@@ -124,7 +124,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("KEYS_FILE_OUTPUT")
                 .long("keys-file-output")
-                .help("Sets the file path of the keys file (if empty, uses random temp file path)")
+                .help("Sets the YAML file path of the keys file (if empty, uses random temp file path)")
                 .required(false)
                 .num_args(1),
         )
@@ -264,7 +264,7 @@ pub async fn execute(
         kms_keys.push(key_info.clone());
 
         println!();
-        println!("loaded KMS key\n\n{}\n", key_info);
+        println!("loaded created KMS key\n\n{}\n", key_info);
         println!();
 
         let mut entry = Entry {
