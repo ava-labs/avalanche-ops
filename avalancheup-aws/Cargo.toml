@@ -1,6 +1,6 @@
 [package]
 name = "avalancheup-aws"
-version = "0.3.8" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.3.9-beta.0" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
@@ -26,7 +26,7 @@ id-manager = "0.0.3"
 log = "0.4.17"
 prefix-manager = "0.0.2"
 primitive-types = { version = "0.12.1", features = ["impl-serde"], optional = false } # https://crates.io/crates/primitive-types
-prometheus-manager = "0.0.25"
+prometheus-manager = "0.0.26"
 random-manager = "0.0.5"
 serde = { version = "1.0.159", features = ["derive"] }
 serde_json = "1.0.95" # https://github.com/serde-rs/json/releases

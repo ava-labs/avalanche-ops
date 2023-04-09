@@ -35,6 +35,7 @@ filters:
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_handler_unprocessed_msgs_len$ # "Unprocessed Messages"
   - regex: ^avalanche_(C|P|X|(([0-9a-zA-Z]+)+){40,})_last_accepted_(height|timestamp)$
   - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_rpc_(failure|requests|success)$
+  - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_chain_block_gas_used_(accepted|processed)$ # "processedBlockGasUsedCounter" "avalanche_C_vm_eth_chain_block_gas_used_accepted"
   - regex: ^avalanche_(C|(([0-9a-zA-Z]+)+){40,})_vm_eth_chain_txs_(accepted|processed)$
   - regex: ^avalanche_X_vm_avalanche_(base|create_asset|operation|import|export)_txs_accepted$
 
