@@ -269,11 +269,11 @@ pub async fn execute(
 
         let mut entry = Entry {
             key_type: KeyType::AwsKms,
-            key: key.id.clone(),
+            key: key.arn.clone(),
             ..Default::default()
         };
         if !grantee_principal.is_empty() {
-            log::info!("KMS granting {} to {grantee_principal}", key.id);
+            log::info!("KMS granting {} to {grantee_principal}", key.arn);
             let (grant_id, grant_token) = kms_manager
                 .create_grant_for_sign_reads(&key.id, grantee_principal)
                 .await
