@@ -392,6 +392,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     log::info!("current AWS identity: {:?}", current_identity);
 
     if !opts.skip_prompt {
+        println!();
+        println!();
         let options = &[
             format!(
                 "No, I am not ready to install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, primary network staking {} days, subnet staking {} days",
