@@ -587,8 +587,6 @@ Resources:
 
               # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
               sudo snap install amazon-ssm-agent --classic
-              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
               mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
               cat > /tmp/amazon-ssm-agent-10-restart-always.conf <<EOF
               [Service]
@@ -596,7 +594,9 @@ Resources:
               RestartSec=60s
               EOF
               sudo mv /tmp/amazon-ssm-agent-10-restart-always.conf /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf
-              sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl daemon-reload
+              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl restart --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
               mkdir -p /tmp/install-cloudwatch-logs
@@ -718,7 +718,7 @@ Resources:
               sudo mv /tmp/avalanched-aws-aws.service /etc/systemd/system/avalanched-aws.service
               sudo systemctl daemon-reload
               sudo systemctl enable avalanched-aws.service
-              sudo systemctl start --no-block avalanched-aws.service
+              sudo systemctl restart --no-block avalanched-aws.service
 
               # enough time for "avalanched-aws" to initialize cloudwatch configuration
               sleep 10

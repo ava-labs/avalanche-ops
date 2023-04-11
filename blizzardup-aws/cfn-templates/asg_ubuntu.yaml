@@ -367,15 +367,15 @@ Resources:
 
               # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu.html
               sudo snap install amazon-ssm-agent --classic
-              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-              sudo systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
               mkdir -p /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d
               cat > /etc/systemd/system/snap.amazon-ssm-agent.amazon-ssm-agent.service.d/10-restart-always.conf <<EOF
               [Service]
               Restart=always
               RestartSec=60s
               EOF
-              sudo systemctl start --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl daemon-reload
+              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl restart --no-block snap.amazon-ssm-agent.amazon-ssm-agent.service
 
               # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
               mkdir -p /tmp/install-cloudwatch-logs
@@ -435,7 +435,7 @@ Resources:
               sudo mv /tmp/blizzard.service /etc/systemd/system/blizzard.service
               sudo systemctl daemon-reload
               sudo systemctl enable blizzard.service
-              sudo systemctl start --no-block blizzard.service
+              sudo systemctl restart --no-block blizzard.service
 
               # enough time for "blizzard" to initialize cloudwatch configuration
               sleep 10
