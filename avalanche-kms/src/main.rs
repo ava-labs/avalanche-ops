@@ -59,7 +59,6 @@ async fn main() -> io::Result<()> {
             } else {
                 id_manager::time::with_prefix("avalanche-kms")
             };
-            let keys = sub_matches.get_one::<usize>("KEYS").unwrap_or(&0).clone();
 
             let grantee_principal = sub_matches
                 .get_one::<String>("GRANTEE_PRINCIPAL")
@@ -115,8 +114,12 @@ async fn main() -> io::Result<()> {
                     .clone(),
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 &key_name_prefix,
-                keys,
+                sub_matches.get_one::<usize>("KEYS").unwrap_or(&1).clone(),
                 &keys_file_output,
+                sub_matches
+                    .get_one::<usize>("KEYS_FILE_CHUNKS")
+                    .unwrap_or(&1)
+                    .clone(),
                 &grantee_principal,
                 &evm_chain_rpc_url,
                 &evm_funding_hotkey,

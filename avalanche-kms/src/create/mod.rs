@@ -128,6 +128,15 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1),
         )
+        .arg(
+            Arg::new("KEYS_FILE_CHUNKS")
+                .long("keys-file-chunks")
+                .help("Sets the number of keys-file chunks")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .default_value("1"),
+        )
 
         // optional for cross-account grants
         .arg(
@@ -184,6 +193,7 @@ pub async fn execute(
     key_name_prefix: &str,
     keys: usize,
     keys_file_output: &str,
+    keys_file_chunks: usize,
     grantee_principal: &str,
     evm_chain_rpc_url: &str,
     evm_funding_hotkey: &str,
@@ -384,6 +394,20 @@ pub async fn execute(
     )?;
     let keys = Keys(entries);
     keys.sync(keys_file_output)?;
+
+    if keys_file_chunks > 1 {
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!("\nWrote keys in chunk\n",)),
+            ResetColor
+        )?;
+        for (cursor, chunk) in keys.0.chunks(keys_file_chunks).enumerate() {
+            let chunk_file_output_path = format!("{keys_file_output}.{}.yaml", cursor + 1);
+            let chunk_keys = Keys(chunk.to_vec());
+            chunk_keys.sync(&chunk_file_output_path)?;
+        }
+    }
 
     Ok(())
 }
