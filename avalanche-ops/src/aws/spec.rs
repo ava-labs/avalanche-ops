@@ -1074,6 +1074,8 @@ avalanchego_config:
   throttler-inbound-cpu-validator-alloc: 100000
   throttler-inbound-disk-validator-alloc: 10737418240000
   snow-mixed-query-num-push-vdr-uint: 10
+  consensus-gossip-frequency: 10000000000
+  consensus-app-concurrency: 2
   consensus-on-accept-gossip-validator-size: 0
   consensus-on-accept-gossip-non-validator-size: 0
   consensus-on-accept-gossip-peer-size: 10
