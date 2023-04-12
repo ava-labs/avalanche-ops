@@ -402,7 +402,13 @@ pub async fn execute(
             Print(format!("\nWrote keys in chunk\n",)),
             ResetColor
         )?;
-        for (cursor, chunk) in keys.0.chunks(keys_file_chunks).enumerate() {
+
+        let mut chunk_size = keys.0.len() / keys_file_chunks;
+        let remainder = keys.0.len() % keys_file_chunks;
+        if remainder != 0 {
+            chunk_size = chunk_size + 1;
+        }
+        for (cursor, chunk) in keys.0.chunks(chunk_size).enumerate() {
             let chunk_file_output_path = format!("{keys_file_output}.{}.yaml", cursor + 1);
             let chunk_keys = Keys(chunk.to_vec());
             chunk_keys.sync(&chunk_file_output_path)?;
