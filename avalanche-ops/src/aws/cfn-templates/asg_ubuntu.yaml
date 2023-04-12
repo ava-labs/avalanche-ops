@@ -79,7 +79,7 @@ Parameters:
 
   AvalancheGoReleaseTag:
     Type: String
-    Default: "v1.9.16"
+    Default: "v1.10.0"
     Description: The release tag name in https://github.com/ava-labs/avalanchego/releases. This is ignored if the binary is found in the S3 bucket.
 
   # use https://github.com/gyuho/aws-manager/blob/main/src/ec2/mod.rs for better defaults
