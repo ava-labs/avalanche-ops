@@ -137,19 +137,22 @@ pub async fn execute(
         let w = wallet::Builder::new(&transferer_key)
             .base_http_url(chain_rpc_url.to_string())
             .build()
-            .await?;
-        let transferer_evm_wallet =
-            w.evm(&transferer_key_signer, chain_rpc_url, U256::from(chain_id))?;
+            .await
+            .unwrap();
+        let transferer_evm_wallet = w
+            .evm(&transferer_key_signer, chain_rpc_url, U256::from(chain_id))
+            .unwrap();
 
-        let transferer_balance = transferer_evm_wallet.balance().await?;
+        let transferer_balance = transferer_evm_wallet.balance().await.unwrap();
         println!(
             "transferrer {} current balance: {} ({} ETH/AVAX)",
             transferer_key_info.eth_address,
             transferer_balance,
             units::cast_evm_navax_to_avax_i64(transferer_balance)
         );
-        let transferee_balance =
-            json_client_evm::get_balance(chain_rpc_url, *transferee_addr).await?;
+        let transferee_balance = json_client_evm::get_balance(chain_rpc_url, *transferee_addr)
+            .await
+            .unwrap();
         println!(
             "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
             transferee_addr,
@@ -164,7 +167,8 @@ pub async fn execute(
             .urgent()
             .check_acceptance(true)
             .submit()
-            .await?;
+            .await
+            .unwrap();
         log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
     }
 

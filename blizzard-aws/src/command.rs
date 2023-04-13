@@ -125,7 +125,7 @@ async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
     log::info!("STEP: loading up AWS credential for region '{}'...", reg);
 
     let shared_config =
-        aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await?;
+        aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await;
 
     let ec2_manager = ec2::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);

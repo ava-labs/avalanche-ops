@@ -82,8 +82,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         Some(spec.resources.region.clone()),
         Some(Duration::from_secs(30)),
     )
-    .await
-    .expect("failed to aws_manager::load_config");
+    .await;
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();
@@ -1709,7 +1708,8 @@ cat /tmp/{node_id}.crt
     if spec.avalanchego_config.is_custom_network() {
         let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
         let priv_key =
-            key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())?;
+            key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())
+                .unwrap();
 
         let wallet_to_spend = wallet::Builder::new(&priv_key)
             .base_http_urls(all_nodes_http_rpcs.clone())

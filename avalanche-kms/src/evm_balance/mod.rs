@@ -43,7 +43,9 @@ pub async fn execute(log_level: &str, chain_rpc_url: &str, addr: H160) -> io::Re
 
     log::info!("fetching the balance of {addr} via {chain_rpc_url}");
 
-    let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, addr).await?;
+    let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, addr)
+        .await
+        .unwrap();
     println!(
         "{} balance: {} ({} ETH/AVAX)",
         addr,

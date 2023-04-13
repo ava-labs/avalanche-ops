@@ -91,8 +91,7 @@ pub async fn execute(
         Some(resources.region.clone()),
         Some(Duration::from_secs(30)),
     )
-    .await
-    .unwrap();
+    .await;
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();

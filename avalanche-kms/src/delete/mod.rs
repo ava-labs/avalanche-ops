@@ -75,9 +75,7 @@ pub async fn execute(
     log::info!("requesting to delete {key_arn} ({region}) in {pending_windows_in_days} days");
 
     let shared_config =
-        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30)))
-            .await
-            .unwrap();
+        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await;
     let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);

@@ -97,7 +97,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     let shared_config =
-        aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await?;
+        aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await;
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
@@ -417,7 +417,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     ];
     log::info!("describing existing volume to find the attached volume Id");
     let shared_config =
-        aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await?;
+        aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await;
     let ec2_manager = ec2::Manager::new(&shared_config);
     let volumes = ec2_manager
         .describe_volumes(Some(filters))
@@ -572,7 +572,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     Some(meta.region.clone()),
                     Some(Duration::from_secs(30)),
                 )
-                .await?;
+                .await;
                 let ec2_manager = ec2::Manager::new(&shared_config);
 
                 // TODO: debug when this blocks.....
@@ -1584,9 +1584,7 @@ async fn publish_node_info_ready_loop(
 
     loop {
         let shared_config =
-            aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30)))
-                .await
-                .unwrap();
+            aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await;
         let s3_manager = s3::Manager::new(&shared_config);
 
         match s3_manager
@@ -1628,9 +1626,7 @@ async fn monitor_spot_instance_action(
         );
 
         let shared_config =
-            aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30)))
-                .await
-                .unwrap();
+            aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await;
         let ec2_manager = ec2::Manager::new(&shared_config);
         let asg_manager = autoscaling::Manager::new(&shared_config);
 

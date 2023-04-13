@@ -332,7 +332,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         .unwrap();
     let network_id = resp.result.unwrap().network_id;
 
-    let priv_key = key::secp256k1::private_key::Key::from_hex(&opts.key)?;
+    let priv_key = key::secp256k1::private_key::Key::from_hex(&opts.key).unwrap();
     let wallet_to_spend = wallet::Builder::new(&priv_key)
         .base_http_url(opts.chain_rpc_url.clone())
         .build()
@@ -383,7 +383,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     )?;
 
     let shared_config =
-        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await?;
+        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await;
     let sts_manager = sts::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
     let ssm_manager = ssm::Manager::new(&shared_config);
