@@ -112,7 +112,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let shared_config =
-        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await?;
+        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await;
     let s3_manager = s3::Manager::new(&shared_config);
 
     if !opts.subnet_config_s3_key.is_empty() && !opts.subnet_config_s3_key.is_empty() {
@@ -149,7 +149,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             }
 
             let err = res.err().unwrap();
-            if err.is_retryable() {
+            if err.retryable() {
                 log::warn!("get_object retriable error: {}", err);
                 sleep(Duration::from_secs((round + 1) * 5)).await;
                 continue;
@@ -212,7 +212,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             }
 
             let err = res.err().unwrap();
-            if err.is_retryable() {
+            if err.retryable() {
                 log::warn!("get_object retriable error: {}", err);
                 sleep(Duration::from_secs((round + 1) * 5)).await;
                 continue;

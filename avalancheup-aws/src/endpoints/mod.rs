@@ -53,14 +53,14 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
     let mut all_nodes_set = BTreeSet::new();
     let mut all_blockchains: BTreeSet<jsonrpc::platformvm::Blockchain> = BTreeSet::new();
     for u in chain_rpc_urls.iter() {
-        let resp = jsonrpc::client::info::get_node_id(u).await?;
+        let resp = jsonrpc::client::info::get_node_id(u).await.unwrap();
         log::info!(
             "chain rpc url '{u}' node id: {}",
             serde_json::to_string_pretty(&resp).unwrap()
         );
         all_nodes_set.insert(resp.result.unwrap().node_id);
 
-        let resp = jsonrpc::client::p::get_blockchains(u).await?;
+        let resp = jsonrpc::client::p::get_blockchains(u).await.unwrap();
         log::info!(
             "blockchains at '{u}': {}",
             serde_json::to_string_pretty(&resp).unwrap()
@@ -82,7 +82,9 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
     let mut tracked_subnet_id_to_node_ids: BTreeMap<ids::Id, BTreeSet<ids::node::Id>> =
         BTreeMap::new();
     for u in chain_rpc_urls.iter() {
-        let resp = jsonrpc::client::info::peers(u, Some(all_node_ids.clone())).await?;
+        let resp = jsonrpc::client::info::peers(u, Some(all_node_ids.clone()))
+            .await
+            .unwrap();
         log::info!(
             "peers at '{u}': {}",
             serde_json::to_string_pretty(&resp).unwrap()

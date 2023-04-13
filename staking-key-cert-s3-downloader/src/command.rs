@@ -21,7 +21,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
 
     let shared_config =
-        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await?;
+        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await;
     let kms_manager = kms::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
 

@@ -210,9 +210,7 @@ pub async fn execute(
     );
 
     let shared_config =
-        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30)))
-            .await
-            .unwrap();
+        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await;
     let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);
@@ -329,19 +327,22 @@ pub async fn execute(
         let w = wallet::Builder::new(&funding_key)
             .base_http_url(evm_chain_rpc_url.to_string())
             .build()
-            .await?;
-        let funding_evm_wallet =
-            w.evm(&funding_key_signer, evm_chain_rpc_url, U256::from(chain_id))?;
+            .await
+            .unwrap();
+        let funding_evm_wallet = w
+            .evm(&funding_key_signer, evm_chain_rpc_url, U256::from(chain_id))
+            .unwrap();
 
-        let transferer_balance = funding_evm_wallet.balance().await?;
+        let transferer_balance = funding_evm_wallet.balance().await.unwrap();
         println!(
             "transferrer {} current balance: {} ({} ETH/AVAX)",
             funding_key_info.eth_address,
             transferer_balance,
             units::cast_evm_navax_to_avax_i64(transferer_balance)
         );
-        let transferee_balance =
-            json_client_evm::get_balance(evm_chain_rpc_url, transferee_addr).await?;
+        let transferee_balance = json_client_evm::get_balance(evm_chain_rpc_url, transferee_addr)
+            .await
+            .unwrap();
         println!(
             "transferee 0x{:x} current balance: {} ({} ETH/AVAX)",
             transferee_addr,
@@ -356,7 +357,8 @@ pub async fn execute(
             .urgent()
             .check_acceptance(true)
             .submit()
-            .await?;
+            .await
+            .unwrap();
         log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
     }
 

@@ -102,9 +102,7 @@ pub async fn execute(
     log::info!("network Id: {network_id}");
 
     let shared_config =
-        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30)))
-            .await
-            .unwrap();
+        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await;
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();
@@ -137,8 +135,9 @@ pub async fn execute(
             println!();
 
             if !chain_rpc_url.is_empty() {
-                let balance =
-                    avalanche_sdk_evm::get_balance(chain_rpc_url, key_info.h160_address).await?;
+                let balance = avalanche_sdk_evm::get_balance(chain_rpc_url, key_info.h160_address)
+                    .await
+                    .unwrap();
                 println!(
                     "{} balance: {} ({} ETH/AVAX)",
                     key_info.eth_address,
@@ -153,7 +152,8 @@ pub async fn execute(
             if !chain_rpc_url.is_empty() {
                 let balance =
                     avalanche_sdk_evm::get_balance(chain_rpc_url, k.to_public_key().to_h160())
-                        .await?;
+                        .await
+                        .unwrap();
                 println!(
                     "{} balance: {} ({} ETH/AVAX)",
                     k.to_public_key().to_eth_address(),

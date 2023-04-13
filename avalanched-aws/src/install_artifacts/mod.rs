@@ -138,7 +138,7 @@ pub async fn execute(
     );
 
     let shared_config =
-        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await?;
+        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await;
     let s3_manager = s3::Manager::new(&shared_config);
 
     let need_github_download = if !avalanchego_s3_key.is_empty() {
@@ -157,7 +157,7 @@ pub async fn execute(
             }
 
             let err = res.err().unwrap();
-            if err.is_retryable() {
+            if err.retryable() {
                 log::warn!("s3 exists retriable error: {}", err);
                 sleep(Duration::from_secs((round + 1) * 5)).await;
                 continue;
@@ -221,7 +221,7 @@ pub async fn execute(
             }
 
             let err = res.err().unwrap();
-            if err.is_retryable() {
+            if err.retryable() {
                 log::warn!("s3 exists retriable error: {}", err);
                 sleep(Duration::from_secs((round + 1) * 5)).await;
                 continue;
@@ -292,7 +292,7 @@ pub async fn execute(
             }
 
             let err = res.err().unwrap();
-            if err.is_retryable() {
+            if err.retryable() {
                 log::warn!("s3 exists retriable error: {}", err);
                 sleep(Duration::from_secs((round + 1) * 5)).await;
                 continue;
@@ -365,7 +365,7 @@ pub async fn execute(
             }
 
             let err = res.err().unwrap();
-            if err.is_retryable() {
+            if err.retryable() {
                 log::warn!("s3 exists retriable error: {}", err);
                 sleep(Duration::from_secs((round + 1) * 5)).await;
                 continue;

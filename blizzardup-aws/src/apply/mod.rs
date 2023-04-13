@@ -77,8 +77,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         Some(resources.region.clone()),
         Some(Duration::from_secs(30)),
     )
-    .await
-    .expect("failed to aws_manager::load_config");
+    .await;
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();
@@ -124,9 +123,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     // fetch network_id, chain infos and save to spec
     for chain_rpc_url in spec.blizzard_spec.chain_rpc_urls.iter() {
         log::info!("checking chain RPC {chain_rpc_url}");
-        let resp = client_info::get_network_id(chain_rpc_url).await?;
+        let resp = client_info::get_network_id(chain_rpc_url).await.unwrap();
         let network_id = resp.result.unwrap().network_id;
-        let chain_id = client_evm::chain_id(chain_rpc_url).await?;
+        let chain_id = client_evm::chain_id(chain_rpc_url).await.unwrap();
         spec.status = Some(blizzardup_aws::status::Status {
             network_id,
             chain_id,
