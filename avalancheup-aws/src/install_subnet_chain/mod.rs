@@ -639,7 +639,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         .parameters("avalanchedArgs", vec![avalanched_args.clone()])
         .output_s3_region(opts.region.clone())
         .output_s3_bucket_name(opts.s3_bucket.clone())
-        .output_s3_key_prefix(opts.s3_key_prefix.clone())
+        .output_s3_key_prefix(format!(
+            "{}ssm-output-logs",
+            s3::append_slash(&opts.s3_key_prefix)
+        ))
         .send()
         .await
         .unwrap();
@@ -767,7 +770,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .parameters("avalanchedArgs", vec![avalanched_args.clone()])
             .output_s3_region(opts.region.clone())
             .output_s3_bucket_name(opts.s3_bucket.clone())
-            .output_s3_key_prefix(opts.s3_key_prefix.clone())
+            .output_s3_key_prefix(format!(
+                "{}ssm-output-logs",
+                s3::append_slash(&opts.s3_key_prefix)
+            ))
             .send()
             .await
             .unwrap();
