@@ -206,6 +206,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .create_bucket(&spec.resources.s3_bucket)
         .await
         .unwrap();
+    s3_manager
+        .put_bucket_object_expire_configuration(
+            &spec.resources.s3_bucket,
+            3,
+            vec![format!("{}/install-subnet-chain/ssm-output-logs", spec.id)],
+        )
+        .await
+        .unwrap();
 
     // set before we update "upload_artifacts"
     let avalanched_download_source = if let Some(v) = &spec.upload_artifacts {
