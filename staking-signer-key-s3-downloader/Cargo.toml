@@ -1,11 +1,11 @@
 [package]
 name = "staking-signer-key-s3-downloader"
-version = "0.4.1-rc.3" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.4.1-rc.4" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
 [dependencies]
-aws-manager = { version = "0.26.2", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
+aws-manager = { version = "0.26.3", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.2.2", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
 log = "0.4.17"
