@@ -550,7 +550,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .as_u64();
 
     let mut handles = Vec::new();
-    for (node_id, instance_id) in opts.node_ids_to_instance_ids.iter() {
+    for (i, (node_id, instance_id)) in opts.node_ids_to_instance_ids.iter().enumerate() {
         log::info!(
             "spawning add_primary_network_validator on '{}' (of EC2 instance '{}', staking period in days '{}')",
             node_id,
@@ -558,9 +558,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.primary_network_validate_period_in_days
         );
 
-        let random_wait = random_manager::u64() % (opts.node_ids_to_instance_ids.len() + 5) as u64;
-        let random_wait = Duration::from_secs(random_wait)
-            .checked_add(Duration::from_millis(500))
+        // randomly wait to prevent UTXO double spends from the same wallet
+        let random_wait = Duration::from_secs(1 + i as u64)
+            .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
             .unwrap();
 
         handles.push(tokio::spawn(add_primary_network_validator(
@@ -703,16 +703,16 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ResetColor
     )?;
     let mut handles = Vec::new();
-    for node_id in all_node_ids.iter() {
+    for (i, node_id) in all_node_ids.iter().enumerate() {
         log::info!(
             "spawning add_subnet_validator on '{}' (staking period in days '{}')",
             node_id,
             opts.subnet_validate_period_in_days
         );
 
-        let random_wait = random_manager::u64() % (all_node_ids.len() + 5) as u64;
-        let random_wait = Duration::from_secs(random_wait)
-            .checked_add(Duration::from_millis(500))
+        // randomly wait to prevent UTXO double spends from the same wallet
+        let random_wait = Duration::from_secs(1 + i as u64)
+            .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
             .unwrap();
 
         handles.push(tokio::spawn(add_subnet_network_validator(
@@ -883,7 +883,7 @@ async fn add_primary_network_validator(
         .await
         .unwrap();
 
-    log::info!("validator tx id {}, added {}", tx_id, added);
+    log::info!("primary network validator tx id {}, added {}", tx_id, added);
 }
 
 /// randomly wait to prevent UTXO double spends from the same wallet
