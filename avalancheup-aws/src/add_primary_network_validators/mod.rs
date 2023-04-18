@@ -153,6 +153,30 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         all_instance_ids.push(instance_id.clone());
     }
 
+
+    // if all nodes need to be staked
+    println!();
+    let estimated_required_avax =
+        units::cast_avax_to_xp_navax(primitive_types::U256::from(opts.staking_amount_in_avax))
+            .checked_mul(primitive_types::U256::from(all_node_ids.len()))
+            .unwrap();
+    log::info!(
+        "required AVAX to validate all nodes {estimated_required_avax} nAVAX ({} AVAX)",
+        units::cast_xp_navax_to_avax(estimated_required_avax)
+    );
+    if primitive_types::U256::from(p_chain_balance) < estimated_required_avax {
+        log::warn!("'{p_chain_address}' only has {p_chain_balance}, not enough to validate all nodes (needs {estimated_required_avax} nAVAX)");
+        let selected = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Should we still proceed?")
+            .items(&["Yes...?", "No!!!"])
+            .default(0)
+            .interact()
+            .unwrap();
+        if selected == 1 {
+            return Ok(());
+        }
+    }
+    
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
