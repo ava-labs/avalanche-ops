@@ -1422,7 +1422,7 @@ httpEndpoint: http://1.2.3.4:9650
 /// only required for custom networks
 pub const DEFAULT_MACHINE_ANCHOR_NODES: u32 = 1;
 pub const MIN_MACHINE_ANCHOR_NODES: u32 = 1;
-pub const MAX_MACHINE_ANCHOR_NODES: u32 = 20;
+pub const MAX_MACHINE_ANCHOR_NODES: u32 = 100;
 
 /// Default machine non-anchor nodes size.
 /// "1" is better in order to choose only one AZ for static EBS provision.
@@ -1430,7 +1430,7 @@ pub const MAX_MACHINE_ANCHOR_NODES: u32 = 20;
 /// of avalanche ops clusters.
 pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
 pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
-pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 50;
+pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 500;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
