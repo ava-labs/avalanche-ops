@@ -153,7 +153,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         all_instance_ids.push(instance_id.clone());
     }
 
-
     // if all nodes need to be staked
     println!();
     let estimated_required_avax =
@@ -176,7 +175,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             return Ok(());
         }
     }
-    
+
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
