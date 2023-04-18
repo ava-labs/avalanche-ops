@@ -209,7 +209,7 @@ async fn download_spec(
 
     let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
 
-    s3_manager
+    let exists = s3_manager
         .get_object(
             s3_bucket,
             &blizzardup_aws::StorageNamespace::ConfigFile(id.to_string()).encode(),
@@ -217,6 +217,12 @@ async fn download_spec(
         )
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+    if !exists {
+        return Err(Error::new(
+            ErrorKind::Other,
+            "blizzard spec s3 file not found",
+        ));
+    }
 
     let spec = blizzardup_aws::Spec::load(&tmp_spec_file_path)?;
     log::info!("loaded blizzardup_aws::Spec");

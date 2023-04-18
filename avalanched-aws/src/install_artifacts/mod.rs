@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    io::{self, Error, ErrorKind},
-};
+use std::{fs, io};
 
 use avalanche_installer;
 use avalanche_telemetry_cloudwatch_installer;
@@ -9,7 +6,7 @@ use aws_ip_provisioner_installer;
 use aws_manager::{self, s3};
 use aws_volume_provisioner_installer;
 use clap::{Arg, Command};
-use tokio::time::{sleep, Duration};
+use tokio::time::Duration;
 
 pub const NAME: &str = "install-artifacts";
 
@@ -143,54 +140,16 @@ pub async fn execute(
 
     let need_github_download = if !avalanchego_s3_key.is_empty() {
         log::info!("downloading avalanche from s3");
-
-        let (mut success, mut exists) = (false, false);
-        for round in 0..20 {
-            log::info!("[ROUND {round}] checking if {avalanchego_s3_key} exists");
-
-            let res = s3_manager.exists(&s3_bucket, &avalanchego_s3_key).await;
-
-            if res.is_ok() {
-                success = true;
-                exists = res.unwrap();
-                break;
-            }
-
-            let err = res.err().unwrap();
-            if err.retryable() {
-                log::warn!("s3 exists retriable error: {}", err);
-                sleep(Duration::from_secs((round + 1) * 5)).await;
-                continue;
-            }
-
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("s3 exists failed for non-retriable error {}", err),
-            ));
-        }
-        if !success {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "s3 exists check failed with retries",
-            ));
-        }
-        if !exists {
-            log::info!("{avalanchego_s3_key} does not exist, falling back to github downloads");
-            true
-        } else {
-            log::info!("{avalanchego_s3_key} exists {exists}");
-            avalanche_installer::avalanchego::s3::download_avalanche_and_plugins(
-                false, // not overwrite
-                &s3_manager,
+        let successfully_downloaded = s3_manager
+            .download_executable_with_retries(
                 s3_bucket,
                 avalanchego_s3_key,
                 avalanchego_local_path,
-                None,
-                None,
+                false,
             )
-            .await?;
-            false
-        }
+            .await
+            .unwrap();
+        !successfully_downloaded
     } else {
         true
     };
@@ -205,56 +164,16 @@ pub async fn execute(
 
     let need_github_download = if !aws_volume_provisioner_s3_key.is_empty() {
         log::info!("downloading aws-volume-provisioner from s3");
-
-        let (mut success, mut exists) = (false, false);
-        for round in 0..20 {
-            log::info!("[ROUND {round}] checking if {aws_volume_provisioner_s3_key} exists");
-
-            let res = s3_manager
-                .exists(&s3_bucket, &aws_volume_provisioner_s3_key)
-                .await;
-
-            if res.is_ok() {
-                success = true;
-                exists = res.unwrap();
-                break;
-            }
-
-            let err = res.err().unwrap();
-            if err.retryable() {
-                log::warn!("s3 exists retriable error: {}", err);
-                sleep(Duration::from_secs((round + 1) * 5)).await;
-                continue;
-            }
-
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("s3 exists failed for non-retriable error {}", err),
-            ));
-        }
-        if !success {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "s3 exists check failed with retries",
-            ));
-        }
-        if !exists {
-            log::info!(
-                "{aws_volume_provisioner_s3_key} does not exist, falling back to github downloads"
-            );
-            true
-        } else {
-            log::info!("{aws_volume_provisioner_s3_key} exists {exists}");
-            aws_volume_provisioner_installer::s3::download(
-                true, // overwrite
-                &s3_manager,
+        let successfully_downloaded = s3_manager
+            .download_executable_with_retries(
                 s3_bucket,
                 aws_volume_provisioner_s3_key,
                 aws_volume_provisioner_local_path,
+                false,
             )
-            .await?;
-            false
-        }
+            .await
+            .unwrap();
+        !successfully_downloaded
     } else {
         true
     };
@@ -276,56 +195,16 @@ pub async fn execute(
 
     let need_github_download = if !aws_ip_provisioner_s3_key.is_empty() {
         log::info!("downloading aws-ip-provisioner from s3");
-
-        let (mut success, mut exists) = (false, false);
-        for round in 0..20 {
-            log::info!("[ROUND {round}] checking if {aws_ip_provisioner_s3_key} exists");
-
-            let res = s3_manager
-                .exists(&s3_bucket, &aws_ip_provisioner_s3_key)
-                .await;
-
-            if res.is_ok() {
-                success = true;
-                exists = res.unwrap();
-                break;
-            }
-
-            let err = res.err().unwrap();
-            if err.retryable() {
-                log::warn!("s3 exists retriable error: {}", err);
-                sleep(Duration::from_secs((round + 1) * 5)).await;
-                continue;
-            }
-
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("s3 exists failed for non-retriable error {}", err),
-            ));
-        }
-        if !success {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "s3 exists check failed with retries",
-            ));
-        }
-        if !exists {
-            log::info!(
-                "{aws_ip_provisioner_s3_key} does not exist, falling back to github downloads"
-            );
-            true
-        } else {
-            log::info!("{aws_ip_provisioner_s3_key} exists {exists}");
-            aws_ip_provisioner_installer::s3::download(
-                true, // overwrite
-                &s3_manager,
+        let successfully_downloaded = s3_manager
+            .download_executable_with_retries(
                 s3_bucket,
                 aws_ip_provisioner_s3_key,
                 aws_ip_provisioner_local_path,
+                false,
             )
-            .await?;
-            false
-        }
+            .await
+            .unwrap();
+        !successfully_downloaded
     } else {
         true
     };
@@ -347,58 +226,16 @@ pub async fn execute(
 
     let need_github_download = if !avalanche_telemetry_cloudwatch_s3_key.is_empty() {
         log::info!("downloading avalanche-telemetry-cloudwatch from s3");
-
-        let (mut success, mut exists) = (false, false);
-        for round in 0..20 {
-            log::info!(
-                "[ROUND {round}] checking if {avalanche_telemetry_cloudwatch_s3_key} exists"
-            );
-
-            let res = s3_manager
-                .exists(&s3_bucket, &avalanche_telemetry_cloudwatch_s3_key)
-                .await;
-
-            if res.is_ok() {
-                success = true;
-                exists = res.unwrap();
-                break;
-            }
-
-            let err = res.err().unwrap();
-            if err.retryable() {
-                log::warn!("s3 exists retriable error: {}", err);
-                sleep(Duration::from_secs((round + 1) * 5)).await;
-                continue;
-            }
-
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("s3 exists failed for non-retriable error {}", err),
-            ));
-        }
-        if !success {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "s3 exists check failed with retries",
-            ));
-        }
-        if !exists {
-            log::info!(
-                "{avalanche_telemetry_cloudwatch_s3_key} does not exist, falling back to github downloads"
-            );
-            true
-        } else {
-            log::info!("{avalanche_telemetry_cloudwatch_s3_key} exists {exists}");
-            avalanche_telemetry_cloudwatch_installer::s3::download(
-                true, // overwrite
-                &s3_manager,
+        let successfully_downloaded = s3_manager
+            .download_executable_with_retries(
                 s3_bucket,
                 avalanche_telemetry_cloudwatch_s3_key,
                 avalanche_telemetry_cloudwatch_local_path,
+                false,
             )
-            .await?;
-            false
-        }
+            .await
+            .unwrap();
+        !successfully_downloaded
     } else {
         true
     };
