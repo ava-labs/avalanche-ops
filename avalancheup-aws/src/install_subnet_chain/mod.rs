@@ -25,7 +25,7 @@ use tokio::time::{sleep, Duration};
 
 pub const NAME: &str = "install-subnet-chain";
 
-/// Defines "install-subnet" option.
+/// Defines "install-subnet-chain" option.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Flags {
     pub log_level: String,
@@ -412,7 +412,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 ).to_string(),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select your 'install-subnet' option")
+            .with_prompt("Select your 'install-subnet-chain' option")
             .items(&options[..])
             .default(0)
             .interact()

@@ -1855,8 +1855,33 @@ cat /tmp/{node_id}.crt
         ResetColor
     )?;
 
-    println!("\n# EXAMPLE: install subnet-evm in all nodes");
+    println!(
+        "\n# EXAMPLE: ONLY add nodes as primary network validators WITHOUT subnet installation"
+    );
     let nodes_to_instances = serde_json::to_string(&node_ids_to_instance_ids).unwrap();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_path} add-primary-network-validators \\
+--log-level info \\
+--chain-rpc-url {chain_rpc_url} \\
+--key {priv_key_hex} \\
+--primary-network-validate-period-in-days 16 \\
+--staking-amount-in-avax 2000 \\
+--node-ids-to-instance-ids '{nodes_to_instances}'
+
+",
+            exec_path = exec_path.display(),
+            chain_rpc_url =
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+            priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
+            nodes_to_instances = nodes_to_instances,
+        )),
+        ResetColor
+    )?;
+
+    println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators)");
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -1880,6 +1905,7 @@ cat /tmp/{node_id}.crt
 --chain-config-local-path /tmp/subnet-evm-chain-config.json \\
 --chain-config-remote-dir {chain_config_remote_dir} \\
 --avalanchego-config-remote-path {avalanchego_config_remote_path} \\
+--staking-amount-in-avax 2000 \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 
 ",
