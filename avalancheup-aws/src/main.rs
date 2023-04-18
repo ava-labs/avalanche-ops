@@ -1,3 +1,4 @@
+mod add_primary_network_validators;
 mod apply;
 mod default_spec;
 mod delete;
@@ -23,6 +24,7 @@ async fn main() -> io::Result<()> {
             default_spec::command(),
             apply::command(),
             delete::command(),
+            add_primary_network_validators::command(),
             install_subnet_chain::command(),
             subnet_evm::command(),
             subnet_config::command(),
@@ -259,6 +261,41 @@ async fn main() -> io::Result<()> {
             .expect("failed to execute 'delete'");
         }
 
+        Some((add_primary_network_validators::NAME, sub_matches)) => {
+            let node_ids_to_instance_ids = sub_matches
+                .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
+                .unwrap()
+                .clone();
+
+            add_primary_network_validators::execute(add_primary_network_validators::Flags {
+                log_level: sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .clone(),
+
+                skip_prompt: sub_matches.get_flag("SKIP_PROMPT"),
+
+                chain_rpc_url: sub_matches
+                    .get_one::<String>("CHAIN_RPC_URL")
+                    .unwrap()
+                    .clone(),
+                key: sub_matches.get_one::<String>("KEY").unwrap().clone(),
+
+                primary_network_validate_period_in_days: sub_matches
+                    .get_one::<u64>("PRIMARY_NETWORK_VALIDATE_PERIOD_IN_DAYS")
+                    .unwrap_or(&16)
+                    .clone(),
+                staking_amount_in_avax: sub_matches
+                    .get_one::<u64>("STAKING_AMOUNT_IN_AVAX")
+                    .unwrap_or(&2000)
+                    .clone(),
+
+                node_ids_to_instance_ids,
+            })
+            .await
+            .expect("failed to execute 'add-primary-network-validators'");
+        }
+
         Some((install_subnet_chain::NAME, sub_matches)) => {
             let node_ids_to_instance_ids = sub_matches
                 .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
@@ -345,7 +382,7 @@ async fn main() -> io::Result<()> {
                 node_ids_to_instance_ids,
             })
             .await
-            .expect("failed to execute 'install-subnet'");
+            .expect("failed to execute 'install-subnet-chain'");
         }
 
         Some((subnet_config::NAME, sub_matches)) => {
