@@ -256,7 +256,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     } else {
         log::info!("STEP: downloading avalancheup spec file from S3...");
         let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
-        s3_manager
+        let exists = s3_manager
             .get_object(
                 &fetched_tags.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(fetched_tags.id.clone())
@@ -264,7 +264,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 &tmp_spec_file_path,
             )
             .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed get_object {}", e)))?;
+        if !exists {
+            return Err(Error::new(ErrorKind::Other, "spec s3 file not found"));
+        }
 
         let mut spec = avalanche_ops::aws::spec::Spec::load(&tmp_spec_file_path)?;
 
@@ -317,7 +320,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
         // download from S3
         let tmp_prometheus_metrics_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
-        s3_manager
+        let exists = s3_manager
             .get_object(
                 &fetched_tags.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(fetched_tags.id.clone())
@@ -325,7 +328,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 &tmp_prometheus_metrics_file_path,
             )
             .await
-            .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;
+            .map_err(|e| Error::new(ErrorKind::Other, format!("failed get_object {}", e)))?;
+        if !exists {
+            return Err(Error::new(ErrorKind::Other, "metrics s3 file not found"));
+        }
         let metrics_rules = prometheus_manager::Rules::load(&tmp_prometheus_metrics_file_path)?;
 
         let anchor_asg_names = if let Some(names) = &spec.resources.cloudformation_asg_anchor_nodes
@@ -780,7 +786,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let spec = avalanche_ops::aws::spec::Spec::load(&fetched_tags.avalancheup_spec_path)?;
             let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
 
-            s3_manager
+            let exists = s3_manager
                 .get_object(
                     &fetched_tags.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::GenesisFile(spec.id.clone())
@@ -788,9 +794,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     &tmp_genesis_path,
                 )
                 .await
-                .map_err(|e| {
-                    Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e))
-                })?;
+                .map_err(|e| Error::new(ErrorKind::Other, format!("failed get_object {}", e)))?;
+            if !exists {
+                return Err(Error::new(ErrorKind::Other, "genesis s3 file not found"));
+            }
 
             fs::copy(
                 &tmp_genesis_path,

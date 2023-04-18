@@ -1,7 +1,6 @@
 use std::{
-    fs::{self, File},
+    fs,
     io::{self, Error, ErrorKind},
-    os::unix::fs::PermissionsExt,
     path::Path,
     str::FromStr,
 };
@@ -10,7 +9,7 @@ use avalanche_types::{avalanchego::config as avalanchego_config, ids};
 use aws_manager::{self, s3};
 use clap::{Arg, Command};
 use serde::{Deserialize, Serialize};
-use tokio::time::{sleep, Duration};
+use tokio::time::Duration;
 
 pub const NAME: &str = "install-subnet";
 
@@ -131,52 +130,21 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             fs::create_dir_all(parent_dir)?;
         }
 
-        let tmp_path = random_manager::tmp_path(15, None)?;
-        let mut success = false;
-        for round in 0..20 {
-            log::info!(
-                "[ROUND {round}] get_object for {}",
-                opts.subnet_config_s3_key
-            );
-
-            let res = s3_manager
-                .get_object(&opts.s3_bucket, &opts.subnet_config_s3_key, &tmp_path)
-                .await;
-
-            if res.is_ok() {
-                success = true;
-                break;
-            }
-
-            let err = res.err().unwrap();
-            if err.retryable() {
-                log::warn!("get_object retriable error: {}", err);
-                sleep(Duration::from_secs((round + 1) * 5)).await;
-                continue;
-            }
-
+        let exists = s3_manager
+            .download_executable_with_retries(
+                &opts.s3_bucket,
+                &opts.subnet_config_s3_key,
+                &opts.subnet_config_local_path,
+                true,
+            )
+            .await
+            .unwrap();
+        if !exists {
             return Err(Error::new(
                 ErrorKind::Other,
-                format!("get_object failed for non-retriable error {}", err),
+                "subnet config s3 file not found",
             ));
         }
-        if !success {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "get_object failed to download with retries",
-            ));
-        }
-        log::info!("successfully downloaded to {tmp_path}");
-        {
-            let f = File::open(&tmp_path)?;
-            f.set_permissions(PermissionsExt::from_mode(0o777))?;
-        }
-        log::info!(
-            "copying subnet-config file {tmp_path} to {}",
-            opts.subnet_config_local_path
-        );
-        fs::copy(&tmp_path, &opts.subnet_config_local_path)?;
-        fs::remove_file(&tmp_path)?;
     } else {
         log::info!("skipping downloading subnet config since empty");
     }
@@ -197,61 +165,18 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             fs::create_dir_all(parent_dir)?;
         }
 
-        let tmp_path = random_manager::tmp_path(15, None)?;
-        let mut success = false;
-        for round in 0..20 {
-            log::info!("[ROUND {round}] get_object for {}", opts.vm_binary_s3_key);
-
-            let res = s3_manager
-                .get_object(&opts.s3_bucket, &opts.vm_binary_s3_key, &tmp_path)
-                .await;
-
-            if res.is_ok() {
-                success = true;
-                break;
-            }
-
-            let err = res.err().unwrap();
-            if err.retryable() {
-                log::warn!("get_object retriable error: {}", err);
-                sleep(Duration::from_secs((round + 1) * 5)).await;
-                continue;
-            }
-
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("get_object failed for non-retriable error {}", err),
-            ));
+        let exists = s3_manager
+            .download_executable_with_retries(
+                &opts.s3_bucket,
+                &opts.vm_binary_s3_key,
+                &opts.vm_binary_local_path,
+                true,
+            )
+            .await
+            .unwrap();
+        if !exists {
+            return Err(Error::new(ErrorKind::Other, "vm binary s3 file not found"));
         }
-        if !success {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "get_object failed to download with retries",
-            ));
-        }
-        log::info!("successfully downloaded to {tmp_path}");
-        {
-            let f = File::open(&tmp_path)?;
-            f.set_permissions(PermissionsExt::from_mode(0o777))?;
-        }
-
-        log::info!(
-            "copying Vm binary file {tmp_path} to {}",
-            opts.vm_binary_local_path
-        );
-        match fs::copy(&tmp_path, &opts.vm_binary_local_path) {
-            Ok(_) => log::info!("successfully copied file"),
-            Err(e) => {
-                log::warn!("failed to copy file {}", e);
-
-                // mask the error
-                // Os { code: 26, kind: ExecutableFileBusy, message: "Text file busy" }
-                if !e.to_string().to_lowercase().contains("text file busy") {
-                    return Err(e);
-                }
-            }
-        }
-        fs::remove_file(&tmp_path)?;
     }
 
     {
