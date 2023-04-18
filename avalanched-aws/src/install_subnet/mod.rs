@@ -1,7 +1,6 @@
 use std::{
-    fs::{self, File},
+    fs,
     io::{self, Error, ErrorKind},
-    os::unix::fs::PermissionsExt,
     path::Path,
     str::FromStr,
 };

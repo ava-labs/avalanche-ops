@@ -1,14 +1,13 @@
 use std::{
-    fs::{self, File},
+    fs,
     io::{self, Error, ErrorKind},
-    os::unix::fs::PermissionsExt,
     path::Path,
 };
 
 use aws_manager::{self, s3};
 use clap::{Arg, Command};
 use serde::{Deserialize, Serialize};
-use tokio::time::{sleep, Duration};
+use tokio::time::Duration;
 
 pub const NAME: &str = "install-chain";
 
