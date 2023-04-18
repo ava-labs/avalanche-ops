@@ -1881,7 +1881,7 @@ cat /tmp/{node_id}.crt
         ResetColor
     )?;
 
-    println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators)");
+    println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators, works for any VM)");
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
