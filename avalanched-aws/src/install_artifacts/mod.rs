@@ -145,7 +145,7 @@ pub async fn execute(
                 s3_bucket,
                 avalanchego_s3_key,
                 avalanchego_local_path,
-                false,
+                true,
             )
             .await
             .unwrap();
@@ -169,7 +169,7 @@ pub async fn execute(
                 s3_bucket,
                 aws_volume_provisioner_s3_key,
                 aws_volume_provisioner_local_path,
-                false,
+                true,
             )
             .await
             .unwrap();
@@ -200,7 +200,7 @@ pub async fn execute(
                 s3_bucket,
                 aws_ip_provisioner_s3_key,
                 aws_ip_provisioner_local_path,
-                false,
+                true,
             )
             .await
             .unwrap();
@@ -231,7 +231,7 @@ pub async fn execute(
                 s3_bucket,
                 avalanche_telemetry_cloudwatch_s3_key,
                 avalanche_telemetry_cloudwatch_local_path,
-                false,
+                true,
             )
             .await
             .unwrap();
