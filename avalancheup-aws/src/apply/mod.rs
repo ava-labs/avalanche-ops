@@ -1932,18 +1932,9 @@ cat /tmp/{node_id}.crt
         SetForegroundColor(Color::DarkGreen),
         Print(format!(
             "{exec_parent_dir}/blizzardup-aws \\
-default-spec \\
---log-level=info \\
---funded-keys={funded_keys} \\
---region={region} \\
---upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws \\
---instance-mode=spot \\
+default-spec --log-level=info --funded-keys={funded_keys} --region={region} --upload-artifacts-blizzard-bin={exec_parent_dir}/blizzard-aws --instance-mode=spot \\
 --nodes=10 \\
---blizzard-log-level=info \\
---blizzard-chain-rpc-urls={chain_rpc_urls} \\
---blizzard-keys-to-generate=100 \\
---blizzard-workers=10 \\
---blizzard-load-kinds=x-transfers,evm-transfers
+--blizzard-log-level=info --blizzard-chain-rpc-urls={chain_rpc_urls} --blizzard-keys-to-generate=100 --blizzard-workers=10 --blizzard-load-kinds=x-transfers,evm-transfers
 
 ",
             exec_parent_dir = exec_parent_dir,
