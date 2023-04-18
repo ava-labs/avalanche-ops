@@ -283,36 +283,3 @@ async fn add_primary_network_validator(
 
     log::info!("primary network validator tx id {}, added {}", tx_id, added);
 }
-
-/// randomly wait to prevent UTXO double spends from the same wallet
-async fn add_subnet_network_validator(
-    random_wait_dur: Arc<Duration>,
-    wallet_to_spend: Arc<wallet::Wallet<key::secp256k1::private_key::Key>>,
-    node_id: Arc<String>,
-    subnet_id: Arc<ids::Id>,
-    subnet_validate_period_in_days: Arc<u64>,
-) {
-    let random_wait_dur = random_wait_dur.as_ref();
-    log::info!(
-        "adding '{node_id}' as a subnet validator '{subnet_id}' after waiting random {:?}",
-        *random_wait_dur
-    );
-    sleep(*random_wait_dur).await;
-
-    let node_id = node::Id::from_str(&node_id).unwrap();
-    let subnet_id = subnet_id.as_ref();
-    let subnet_validate_period_in_days = subnet_validate_period_in_days.as_ref();
-
-    let (tx_id, added) = wallet_to_spend
-        .p()
-        .add_subnet_validator()
-        .node_id(node_id)
-        .subnet_id(*subnet_id)
-        .validate_period_in_days(*subnet_validate_period_in_days, 60)
-        .check_acceptance(true)
-        .issue()
-        .await
-        .unwrap();
-
-    log::info!("subnet validator tx id {}, added {}", tx_id, added);
-}

@@ -1868,6 +1868,7 @@ cat /tmp/{node_id}.crt
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
 --primary-network-validate-period-in-days 16 \\
+--staking-amount-in-avax 2000 \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 
 ",
@@ -1904,6 +1905,7 @@ cat /tmp/{node_id}.crt
 --chain-config-local-path /tmp/subnet-evm-chain-config.json \\
 --chain-config-remote-dir {chain_config_remote_dir} \\
 --avalanchego-config-remote-path {avalanchego_config_remote_path} \\
+--staking-amount-in-avax 2000 \\
 --node-ids-to-instance-ids '{nodes_to_instances}'
 
 ",
