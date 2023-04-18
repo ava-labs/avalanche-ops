@@ -5,11 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use avalanche_types::{
-    ids::{self, node},
-    jsonrpc::client::info as json_client_info,
-    key, units, wallet,
-};
+use avalanche_types::{ids::node, jsonrpc::client::info as json_client_info, key, units, wallet};
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
