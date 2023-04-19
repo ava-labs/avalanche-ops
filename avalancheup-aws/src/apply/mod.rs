@@ -1853,21 +1853,30 @@ cat /tmp/{node_id}.crt
             ResetColor
         )?;
         log::info!("adding all nodes as primary network permissionless validator");
-        for node in created_nodes.iter() {
-            let (tx_id, added) = wallet_to_spend
-                .p()
-                .add_permissionless_validator()
-                .node_id(ids::node::Id::from_str(&node.node_id).unwrap())
-                .validate_period_in_days(
-                    spec.primary_network_validate_period_in_days,
-                    60, /* offset seconds */
-                )
-                .proof_of_possession(node.proof_of_possession.clone())
-                .check_acceptance(true)
-                .issue()
-                .await
+        let mut handles = Vec::new();
+        for (i, node) in created_nodes.iter().enumerate() {
+            // randomly wait to prevent UTXO double spends from the same wallet
+            let random_wait = Duration::from_secs(1 + i as u64)
+                .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
                 .unwrap();
-            log::info!("validator tx id {}, added {}", tx_id, added);
+
+            handles.push(tokio::spawn(add_primary_network_validator(
+                Arc::new(random_wait),
+                Arc::new(wallet_to_spend.clone()),
+                Arc::new(ids::node::Id::from_str(&node.node_id).unwrap()),
+                Arc::new(node.proof_of_possession.to_owned()),
+                Arc::new(2 * units::KILO_AVAX),
+                Arc::new(spec.primary_network_validate_period_in_days),
+            )));
+        }
+        log::info!("STEP: blocking on add_validator handles via JoinHandle");
+        for handle in handles {
+            handle.await.map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed await on add_validator JoinHandle {}", e),
+                )
+            })?;
         }
     }
 
@@ -2116,4 +2125,40 @@ fn build_param(k: &str, v: &str) -> Parameter {
         .parameter_key(k)
         .parameter_value(v)
         .build()
+}
+
+/// randomly wait to prevent UTXO double spends from the same wallet
+async fn add_primary_network_validator(
+    random_wait_dur: Arc<Duration>,
+    wallet_to_spend: Arc<wallet::Wallet<key::secp256k1::private_key::Key>>,
+    node_id: Arc<ids::node::Id>,
+    pop: Arc<key::bls::ProofOfPossession>,
+    stake_amount_in_navax: Arc<u64>,
+    primary_network_validate_period_in_days: Arc<u64>,
+) {
+    let random_wait_dur = random_wait_dur.as_ref();
+    log::info!(
+        "adding '{node_id}' as a primary network validator after waiting random {:?}",
+        *random_wait_dur
+    );
+    sleep(*random_wait_dur).await;
+
+    let node_id = node_id.as_ref();
+    let pop = pop.as_ref();
+    let stake_amount_in_navax = stake_amount_in_navax.as_ref();
+    let primary_network_validate_period_in_days = primary_network_validate_period_in_days.as_ref();
+
+    let (tx_id, added) = wallet_to_spend
+        .p()
+        .add_permissionless_validator()
+        .node_id(node_id.clone())
+        .proof_of_possession(pop.clone())
+        .stake_amount(*stake_amount_in_navax)
+        .validate_period_in_days(*primary_network_validate_period_in_days, 60)
+        .check_acceptance(true)
+        .issue()
+        .await
+        .unwrap();
+
+    log::info!("primary network validator tx id {}, added {}", tx_id, added);
 }
