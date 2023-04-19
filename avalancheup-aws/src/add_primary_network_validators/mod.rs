@@ -120,7 +120,7 @@ pub fn command() -> Command {
             Arg::new("NODE_IDS_TO_INSTANCE_IDS")
                 .long("node-ids-to-instance-ids")
                 .help("Sets the hash map of node Id to instance Id in JSON format")
-                .required(true)
+                .required(false)
                 .value_parser(HashMapParser {})
                 .num_args(1),
         )
@@ -133,7 +133,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let mut node_id_to_pop = HashMap::new();
-    if opts.spec_file_path.is_empty() {
+    let mut node_ids_to_instance_ids = HashMap::new();
+    if !opts.spec_file_path.is_empty() {
         let spec = avalanche_ops::aws::spec::Spec::load(&opts.spec_file_path)
             .expect("failed to load spec");
         spec.validate()?;
@@ -141,8 +142,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             for node in created_nodes {
                 let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
                 node_id_to_pop.insert(node_id, node.proof_of_possession.clone());
+                node_ids_to_instance_ids.insert(node.node_id.clone(), node.machine_id.clone());
             }
         }
+    } else {
+        node_ids_to_instance_ids = opts.node_ids_to_instance_ids.clone();
     }
 
     let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
@@ -169,7 +173,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
     let mut all_node_ids = Vec::new();
     let mut all_instance_ids = Vec::new();
-    for (node_id, instance_id) in opts.node_ids_to_instance_ids.iter() {
+    for (node_id, instance_id) in node_ids_to_instance_ids.iter() {
         log::info!("will send SSM doc to {node_id} {instance_id}");
         all_node_ids.push(node_id.clone());
         all_instance_ids.push(instance_id.clone());
@@ -206,7 +210,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.chain_rpc_url,
             opts.primary_network_validate_period_in_days,
             opts.staking_amount_in_avax,
-            opts.node_ids_to_instance_ids,
+            node_ids_to_instance_ids,
         )),
         ResetColor
     )?;
@@ -258,7 +262,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .as_u64();
 
     let mut handles = Vec::new();
-    for (i, (node_id, instance_id)) in opts.node_ids_to_instance_ids.iter().enumerate() {
+    for (i, (node_id, instance_id)) in node_ids_to_instance_ids.iter().enumerate() {
         log::info!(
             "spawning add_primary_network_validator on '{}' (of EC2 instance '{}', staking period in days '{}')",
             node_id,
