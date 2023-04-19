@@ -1065,14 +1065,19 @@ avalanchego_config:
   chain-config-dir: /data/avalanche-configs/chains
   subnet-config-dir: /data/avalanche-configs/subnets
   profile-dir: /var/log/avalanchego-profile/avalanche
-  throttler-inbound-node-max-at-large-bytes: 2097152
-  throttler-inbound-at-large-alloc-size: 6291456
   proposervm-use-current-height: true
-  throttler-inbound-node-max-processing-msgs: 100000
-  throttler-inbound-bandwidth-refill-rate: 1073741824
+  throttler-inbound-at-large-alloc-size: 6291456
   throttler-inbound-bandwidth-max-burst-size: 1073741824
+  throttler-inbound-bandwidth-refill-rate: 1073741824
   throttler-inbound-cpu-validator-alloc: 100000
   throttler-inbound-disk-validator-alloc: 10737418240000
+  throttler-inbound-node-max-at-large-bytes: 2097152
+  throttler-inbound-node-max-processing-msgs: 100000
+
+  throttler-outbound-at-large-alloc-size: 33550000
+  throttler-outbound-validator-alloc-size: 33550000
+  throttler-outbound-node-max-at-large-bytes: 2097152
+
   snow-mixed-query-num-push-vdr-uint: 10
   consensus-gossip-frequency: 10000000000
   consensus-app-concurrency: 2
@@ -1103,14 +1108,12 @@ coreth_chain_config:
 "#
     );
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(contents.as_bytes());
-    assert!(ret.is_ok());
+    f.write_all(contents.as_bytes()).unwrap();
     let config_path = f.path().to_str().unwrap();
 
     let cfg = Spec::load(config_path).unwrap();
 
-    let ret = cfg.sync(config_path);
-    assert!(ret.is_ok());
+    cfg.sync(config_path).unwrap();
 
     let avalanchego_config = avalanchego_config::Config::default_main();
     let orig = Spec {
