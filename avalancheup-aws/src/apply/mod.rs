@@ -1345,6 +1345,9 @@ aws ssm start-session --region {} --target {}
 
         spec.resources
             .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
+        spec.resources.cloudformation_asg_launch_template_id = Some(asg_launch_template_id.clone());
+        spec.resources.cloudformation_asg_launch_template_version =
+            Some(asg_launch_template_version.clone());
         spec.sync(spec_file_path)?;
 
         if spec.resources.cloudformation_asg_nlb_arn.is_none() {
