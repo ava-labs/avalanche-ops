@@ -262,9 +262,9 @@ async fn main() -> io::Result<()> {
         }
 
         Some((add_primary_network_validators::NAME, sub_matches)) => {
-            let node_ids_to_instance_ids = sub_matches
+            let node_ids_to_instance_ids: HashMap<String, String> = sub_matches
                 .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
-                .unwrap()
+                .unwrap_or(&HashMap::new())
                 .clone();
 
             add_primary_network_validators::execute(add_primary_network_validators::Flags {
@@ -301,9 +301,9 @@ async fn main() -> io::Result<()> {
         }
 
         Some((install_subnet_chain::NAME, sub_matches)) => {
-            let node_ids_to_instance_ids = sub_matches
+            let node_ids_to_instance_ids: HashMap<String, String> = sub_matches
                 .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
-                .unwrap()
+                .unwrap_or(&HashMap::new())
                 .clone();
 
             install_subnet_chain::execute(install_subnet_chain::Flags {

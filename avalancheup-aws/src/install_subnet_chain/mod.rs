@@ -283,7 +283,7 @@ pub fn command() -> Command {
             Arg::new("NODE_IDS_TO_INSTANCE_IDS")
                 .long("node-ids-to-instance-ids")
                 .help("Sets the hash map of node Id to instance Id in JSON format")
-                .required(true)
+                .required(false)
                 .value_parser(HashMapParser {})
                 .num_args(1),
         )
