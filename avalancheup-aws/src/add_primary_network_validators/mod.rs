@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use avalanche_types::{ids::node, jsonrpc::client::info as json_client_info, key, units, wallet};
+use avalanche_types::{ids, jsonrpc::client::info as json_client_info, key, units, wallet};
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
@@ -22,6 +22,7 @@ pub const NAME: &str = "add-primary-network-validators";
 pub struct Flags {
     pub log_level: String,
     pub skip_prompt: bool,
+    pub spec_file_path: String,
     pub chain_rpc_url: String,
     pub key: String,
     pub primary_network_validate_period_in_days: u64,
@@ -74,6 +75,14 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("SPEC_FILE_PATH")
+                .long("spec-file-path")
+                .short('s')
+                .help("The spec file to load and update (used for adding permissionless validators)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("CHAIN_RPC_URL")
                 .long("chain-rpc-url")
                 .help("Sets the P-chain or Avalanche RPC endpoint")
@@ -122,6 +131,19 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
+
+    let mut node_id_to_pop = HashMap::new();
+    if opts.spec_file_path.is_empty() {
+        let spec = avalanche_ops::aws::spec::Spec::load(&opts.spec_file_path)
+            .expect("failed to load spec");
+        spec.validate()?;
+        if let Some(created_nodes) = &spec.resources.created_nodes {
+            for node in created_nodes {
+                let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
+                node_id_to_pop.insert(node_id, node.proof_of_possession.clone());
+            }
+        }
+    }
 
     let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
         .await
@@ -249,13 +271,25 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
             .unwrap();
 
-        handles.push(tokio::spawn(add_primary_network_validator(
-            Arc::new(random_wait),
-            Arc::new(wallet_to_spend.clone()),
-            Arc::new(node_id.to_owned()),
-            Arc::new(stake_amount_in_navax),
-            Arc::new(opts.primary_network_validate_period_in_days),
-        )));
+        let node_id = ids::node::Id::from_str(node_id).unwrap();
+        if let Some(pop) = node_id_to_pop.get(&node_id) {
+            handles.push(tokio::spawn(add_primary_network_permissionless_validator(
+                Arc::new(random_wait),
+                Arc::new(wallet_to_spend.clone()),
+                Arc::new(node_id),
+                Arc::new(pop.clone()),
+                Arc::new(stake_amount_in_navax),
+                Arc::new(opts.primary_network_validate_period_in_days),
+            )));
+        } else {
+            handles.push(tokio::spawn(add_primary_network_validator(
+                Arc::new(random_wait),
+                Arc::new(wallet_to_spend.clone()),
+                Arc::new(node_id),
+                Arc::new(stake_amount_in_navax),
+                Arc::new(opts.primary_network_validate_period_in_days),
+            )));
+        }
     }
     log::info!("STEP: blocking on add_validator handles via JoinHandle");
     for handle in handles {
@@ -274,7 +308,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 async fn add_primary_network_validator(
     random_wait_dur: Arc<Duration>,
     wallet_to_spend: Arc<wallet::Wallet<key::secp256k1::private_key::Key>>,
-    node_id: Arc<String>,
+    node_id: Arc<ids::node::Id>,
     stake_amount_in_navax: Arc<u64>,
     primary_network_validate_period_in_days: Arc<u64>,
 ) {
@@ -285,14 +319,50 @@ async fn add_primary_network_validator(
     );
     sleep(*random_wait_dur).await;
 
-    let node_id = node::Id::from_str(&node_id).unwrap();
+    let node_id = node_id.as_ref();
     let stake_amount_in_navax = stake_amount_in_navax.as_ref();
     let primary_network_validate_period_in_days = primary_network_validate_period_in_days.as_ref();
 
     let (tx_id, added) = wallet_to_spend
         .p()
         .add_validator()
-        .node_id(node_id)
+        .node_id(node_id.clone())
+        .stake_amount(*stake_amount_in_navax)
+        .validate_period_in_days(*primary_network_validate_period_in_days, 60)
+        .check_acceptance(true)
+        .issue()
+        .await
+        .unwrap();
+
+    log::info!("primary network validator tx id {}, added {}", tx_id, added);
+}
+
+/// randomly wait to prevent UTXO double spends from the same wallet
+async fn add_primary_network_permissionless_validator(
+    random_wait_dur: Arc<Duration>,
+    wallet_to_spend: Arc<wallet::Wallet<key::secp256k1::private_key::Key>>,
+    node_id: Arc<ids::node::Id>,
+    pop: Arc<key::bls::ProofOfPossession>,
+    stake_amount_in_navax: Arc<u64>,
+    primary_network_validate_period_in_days: Arc<u64>,
+) {
+    let random_wait_dur = random_wait_dur.as_ref();
+    log::info!(
+        "adding '{node_id}' as a primary network permissionless  validator after waiting random {:?}",
+        *random_wait_dur
+    );
+    sleep(*random_wait_dur).await;
+
+    let node_id = node_id.as_ref();
+    let pop = pop.as_ref();
+    let stake_amount_in_navax = stake_amount_in_navax.as_ref();
+    let primary_network_validate_period_in_days = primary_network_validate_period_in_days.as_ref();
+
+    let (tx_id, added) = wallet_to_spend
+        .p()
+        .add_permissionless_validator()
+        .node_id(node_id.clone())
+        .proof_of_possession(pop.clone())
         .stake_amount(*stake_amount_in_navax)
         .validate_period_in_days(*primary_network_validate_period_in_days, 60)
         .check_acceptance(true)

@@ -1860,7 +1860,7 @@ cat /tmp/{node_id}.crt
                 .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
                 .unwrap();
 
-            handles.push(tokio::spawn(add_primary_network_validator(
+            handles.push(tokio::spawn(add_primary_network_permissionless_validator(
                 Arc::new(random_wait),
                 Arc::new(wallet_to_spend.clone()),
                 Arc::new(ids::node::Id::from_str(&node.node_id).unwrap()),
@@ -2128,7 +2128,7 @@ fn build_param(k: &str, v: &str) -> Parameter {
 }
 
 /// randomly wait to prevent UTXO double spends from the same wallet
-async fn add_primary_network_validator(
+async fn add_primary_network_permissionless_validator(
     random_wait_dur: Arc<Duration>,
     wallet_to_spend: Arc<wallet::Wallet<key::secp256k1::private_key::Key>>,
     node_id: Arc<ids::node::Id>,
@@ -2138,7 +2138,7 @@ async fn add_primary_network_validator(
 ) {
     let random_wait_dur = random_wait_dur.as_ref();
     log::info!(
-        "adding '{node_id}' as a primary network validator after waiting random {:?}",
+        "adding '{node_id}' as a primary network permissionless validator after waiting random {:?}",
         *random_wait_dur
     );
     sleep(*random_wait_dur).await;

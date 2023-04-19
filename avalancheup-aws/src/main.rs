@@ -274,6 +274,10 @@ async fn main() -> io::Result<()> {
                     .clone(),
 
                 skip_prompt: sub_matches.get_flag("SKIP_PROMPT"),
+                spec_file_path: sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
 
                 chain_rpc_url: sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
@@ -309,6 +313,10 @@ async fn main() -> io::Result<()> {
                     .clone(),
 
                 skip_prompt: sub_matches.get_flag("SKIP_PROMPT"),
+                spec_file_path: sub_matches
+                    .get_one::<String>("SPEC_FILE_PATH")
+                    .unwrap_or(&String::new())
+                    .clone(),
 
                 region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
