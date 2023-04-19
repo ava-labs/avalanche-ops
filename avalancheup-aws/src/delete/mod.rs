@@ -255,6 +255,7 @@ pub async fn execute(
     )?;
     if let Some(stack_names) = &spec.resources.cloudformation_asg_non_anchor_nodes {
         for stack_name in stack_names.iter() {
+            sleep(Duration::from_millis(200)).await;
             cloudformation_manager
                 .delete_stack(stack_name)
                 .await
@@ -270,6 +271,7 @@ pub async fn execute(
     )?;
     if let Some(stack_names) = &spec.resources.cloudformation_asg_anchor_nodes {
         for stack_name in stack_names.iter() {
+            sleep(Duration::from_millis(200)).await;
             cloudformation_manager
                 .delete_stack(stack_name)
                 .await
