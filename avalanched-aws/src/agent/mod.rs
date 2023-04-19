@@ -1195,8 +1195,11 @@ fn write_coreth_chain_config_from_spec(spec: &avalanche_ops::aws::spec::Spec) ->
     // ref. https://docs.avax.network/subnets/customize-a-subnet#chain-configs
     let chain_config_c_path = Path::new(&chain_config_dir).join("C").join("config.json");
     if chain_config_c_path.exists() {
-        log::info!("C-chain config file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", chain_config_c_path.display());
-        return Ok(());
+        // overwrite, to always use S3 as a single source of truth
+        log::info!(
+            "C-chain config file '{}' already exists -- overwriting!",
+            chain_config_c_path.display()
+        );
     };
 
     let tmp_path = random_manager::tmp_path(15, Some(".json"))?;
