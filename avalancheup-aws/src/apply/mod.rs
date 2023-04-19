@@ -821,6 +821,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 asg_params.push(build_param("NlbTargetGroupArn", arn));
             }
 
+            // rate limit
+            sleep(Duration::from_secs(1)).await;
             cloudformation_manager
                 .create_stack(
                     &stack_names[i],
@@ -836,12 +838,61 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .await
                 .unwrap();
 
-            // add 5-minute for ELB creation + volume provisioner
+            if i == 0 {
+                // add 5-minute for ELB creation + volume provisioner
+                let mut wait_secs = 800;
+                if wait_secs > MAX_WAIT_SECONDS {
+                    wait_secs = MAX_WAIT_SECONDS;
+                }
+                sleep(Duration::from_secs(60)).await;
+
+                let stack = cloudformation_manager
+                    .poll_stack(
+                        &stack_names[i],
+                        StackStatus::CreateComplete,
+                        Duration::from_secs(wait_secs),
+                        Duration::from_secs(30),
+                    )
+                    .await
+                    .unwrap();
+
+                for o in stack.outputs.unwrap() {
+                    let k = o.output_key.unwrap();
+                    let v = o.output_value.unwrap();
+                    log::info!("stack output key=[{}], value=[{}]", k, v,);
+                    if k.eq("AsgLogicalId") {
+                        asg_logical_ids.push(v);
+                        continue;
+                    }
+                    if k.eq("NlbArn") {
+                        spec.resources.cloudformation_asg_nlb_arn = Some(v);
+                        continue;
+                    }
+                    if k.eq("NlbTargetGroupArn") {
+                        spec.resources.cloudformation_asg_nlb_target_group_arn = Some(v);
+                        continue;
+                    }
+                    if k.eq("NlbDnsName") {
+                        spec.resources.cloudformation_asg_nlb_dns_name = Some(v);
+                        continue;
+                    }
+                    if k.eq("AsgLaunchTemplateId") {
+                        asg_launch_template_id = v;
+                        continue;
+                    }
+                    if k.eq("AsgLaunchTemplateVersion") {
+                        asg_launch_template_version = v;
+                        continue;
+                    }
+                }
+            }
+        }
+        for i in 1..anchor_nodes as usize {
             let mut wait_secs = 800;
             if wait_secs > MAX_WAIT_SECONDS {
                 wait_secs = MAX_WAIT_SECONDS;
             }
-            sleep(Duration::from_secs(60)).await;
+
             let stack = cloudformation_manager
                 .poll_stack(
                     &stack_names[i],
@@ -882,13 +933,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
             }
         }
-
         if asg_logical_ids.is_empty() {
             return Err(Error::new(
                 ErrorKind::Other,
                 "resources.cloudformation_asg_anchor_nodes_logical_ids not found",
             ));
         }
+        asg_logical_ids.sort();
+
         spec.resources.cloudformation_asg_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
         spec.resources.cloudformation_asg_launch_template_id = Some(asg_launch_template_id.clone());
         spec.resources.cloudformation_asg_launch_template_version =
@@ -1171,6 +1223,8 @@ aws ssm start-session --region {} --target {}
                 asg_params.push(build_param("NlbTargetGroupArn", arn));
             }
 
+            // rate limit
+            sleep(Duration::from_secs(1)).await;
             cloudformation_manager
                 .create_stack(
                     &stack_names[i],
@@ -1186,12 +1240,61 @@ aws ssm start-session --region {} --target {}
                 .await
                 .unwrap();
 
-            // add 5-minute for ELB creation + volume provisioner
+            if i == 0 {
+                // add 5-minute for ELB creation + volume provisioner
+                let mut wait_secs = 800;
+                if wait_secs > MAX_WAIT_SECONDS {
+                    wait_secs = MAX_WAIT_SECONDS;
+                }
+                sleep(Duration::from_secs(60)).await;
+
+                let stack = cloudformation_manager
+                    .poll_stack(
+                        &stack_names[i],
+                        StackStatus::CreateComplete,
+                        Duration::from_secs(wait_secs),
+                        Duration::from_secs(30),
+                    )
+                    .await
+                    .unwrap();
+
+                for o in stack.outputs.unwrap() {
+                    let k = o.output_key.unwrap();
+                    let v = o.output_value.unwrap();
+                    log::info!("stack output key=[{}], value=[{}]", k, v,);
+                    if k.eq("AsgLogicalId") {
+                        asg_logical_ids.push(v);
+                        continue;
+                    }
+                    if k.eq("NlbArn") {
+                        spec.resources.cloudformation_asg_nlb_arn = Some(v);
+                        continue;
+                    }
+                    if k.eq("NlbTargetGroupArn") {
+                        spec.resources.cloudformation_asg_nlb_target_group_arn = Some(v);
+                        continue;
+                    }
+                    if k.eq("NlbDnsName") {
+                        spec.resources.cloudformation_asg_nlb_dns_name = Some(v);
+                        continue;
+                    }
+                    if k.eq("AsgLaunchTemplateId") {
+                        asg_launch_template_id = v;
+                        continue;
+                    }
+                    if k.eq("AsgLaunchTemplateVersion") {
+                        asg_launch_template_version = v;
+                        continue;
+                    }
+                }
+            }
+        }
+        for i in 1..non_anchor_nodes as usize {
             let mut wait_secs = 800;
             if wait_secs > MAX_WAIT_SECONDS {
                 wait_secs = MAX_WAIT_SECONDS;
             }
-            sleep(Duration::from_secs(60)).await;
+
             let stack = cloudformation_manager
                 .poll_stack(
                     &stack_names[i],
@@ -1232,6 +1335,13 @@ aws ssm start-session --region {} --target {}
                 }
             }
         }
+        if asg_logical_ids.is_empty() {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "resources.cloudformation_asg_anchor_nodes_logical_ids not found",
+            ));
+        }
+        asg_logical_ids.sort();
 
         spec.resources
             .cloudformation_asg_non_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
