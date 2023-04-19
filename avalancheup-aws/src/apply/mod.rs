@@ -1338,7 +1338,7 @@ aws ssm start-session --region {} --target {}
         if asg_logical_ids.is_empty() {
             return Err(Error::new(
                 ErrorKind::Other,
-                "resources.cloudformation_asg_anchor_nodes_logical_ids not found",
+                "resources.cloudformation_asg_non_anchor_nodes_logical_ids not found",
             ));
         }
         asg_logical_ids.sort();
