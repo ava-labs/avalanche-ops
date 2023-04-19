@@ -106,7 +106,7 @@ Parameters:
   VolumeSize:
     Type: Number
     Default: 300
-    MinValue: 200
+    MinValue: 40
     MaxValue: 1024
     Description: Size of the root disk for the EC2 instances, in GiB.
 
