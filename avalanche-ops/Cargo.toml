@@ -19,7 +19,7 @@ id-manager = "0.0.3"
 log = "0.4.17"
 prefix-manager = "0.0.2"
 primitive-types = { version = "0.12.1", features = ["impl-serde"], optional = false } # https://crates.io/crates/primitive-types
-prometheus-manager = "0.0.26"
+prometheus-manager = "0.0.27"
 public-ip = "0.2.2"
 random-manager = "0.0.5"
 rust-embed = "6.6.1"
