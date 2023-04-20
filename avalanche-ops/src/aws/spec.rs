@@ -1078,7 +1078,7 @@ avalanchego_config:
   throttler-outbound-validator-alloc-size: 33550000
   throttler-outbound-node-max-at-large-bytes: 2097152
 
-  snow-mixed-query-num-push-vdr-uint: 10
+  snow-mixed-query-num-push-vdr: 10
   consensus-gossip-frequency: 10000000000
   consensus-app-concurrency: 2
   consensus-on-accept-gossip-validator-size: 0
