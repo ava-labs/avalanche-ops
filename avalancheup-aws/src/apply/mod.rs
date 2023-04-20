@@ -1856,7 +1856,16 @@ cat /tmp/{node_id}.crt
         let mut handles = Vec::new();
         for (i, node) in created_nodes.iter().enumerate() {
             // randomly wait to prevent UTXO double spends from the same wallet
-            let random_wait = Duration::from_secs(1 + i as u64)
+            let initial_wait_sec = if i == 0 {
+                0
+            } else {
+                if created_nodes.len() > 50 {
+                    2 + i as u64
+                } else {
+                    1 + i as u64
+                }
+            };
+            let random_wait = Duration::from_secs(initial_wait_sec)
                 .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
                 .unwrap();
 
