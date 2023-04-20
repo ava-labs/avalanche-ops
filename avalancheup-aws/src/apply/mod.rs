@@ -1878,14 +1878,14 @@ cat /tmp/{node_id}.crt
                 Arc::new(spec.primary_network_validate_period_in_days),
             )));
         }
-        log::info!("STEP: blocking on add_validator handles via JoinHandle");
+        log::info!("STEP: blocking on add_permissionless_validator handles via JoinHandle");
         for handle in handles {
-            handle.await.map_err(|e| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("failed await on add_validator JoinHandle {}", e),
-                )
-            })?;
+            match handle.await {
+                Ok(_) => {}
+                Err(e) => {
+                    log::warn!("failed add_permissionless_validator with {} -- please try again with 'add-primary-network-validators' command",e)
+                }
+            }
         }
     }
 
