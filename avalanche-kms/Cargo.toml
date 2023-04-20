@@ -1,13 +1,13 @@
 [package]
 name = "avalanche-kms"
-version = "0.4.2-beta.5" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.4.2-beta.6" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
 [dependencies]
 avalanche-types = { version = "0.0.361", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.26.9", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
-clap = { version = "4.2.3", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.2.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.26.1"
 dialoguer = "0.10.4"
 env_logger = "0.10.0"

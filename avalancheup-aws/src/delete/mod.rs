@@ -403,6 +403,8 @@ pub async fn execute(
             )
             .await
             .unwrap();
+    } else {
+        log::warn!("spec.resources.cloudformation_ssm_install_subnet_chain not found");
     }
 
     if delete_cloudwatch_log_group {
