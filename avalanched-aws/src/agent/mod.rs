@@ -1,7 +1,7 @@
 mod cloudwatch;
 
 use std::{
-    collections::HashSet,
+    collections::{BTreeMap, HashSet},
     fs,
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -888,13 +888,18 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     droplets.len()
                 );
                 for d in droplets.iter() {
-                    log::info!("found droplet {} in anchor node ASG", d.instance_id);
-                    running_machine_ids.insert(d.instance_id.clone());
+                    log::info!(
+                        "found droplet {} in anchor node ASG with state {}",
+                        d.instance_id,
+                        d.instance_state_name
+                    );
+                    if d.instance_state_name.to_lowercase() == "running" {
+                        running_machine_ids.insert(d.instance_id.clone());
+                    }
                 }
             }
 
-            let mut bootstrap_ids: Vec<String> = vec![];
-            let mut bootstrap_ips: Vec<String> = vec![];
+            let mut bootstrap_ids_to_ips = BTreeMap::new();
             for s3_key in s3_keys.iter() {
                 // just parse the s3 key name
                 // to reduce "s3_manager.get_object" call volume
@@ -917,12 +922,17 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     machine_id
                 );
 
-                bootstrap_ids.push(ready_anchor_node.node_id.to_string());
-
                 // assume all nodes in the network use the same ports
                 // ref. "avalanchego/config.StakingPortKey" default value is "9651"
                 let staking_port = spec.avalanchego_config.staking_port;
-                bootstrap_ips.push(format!("{}:{}", ready_anchor_node.public_ip, staking_port));
+                let ip = format!("{}:{}", ready_anchor_node.public_ip, staking_port);
+                bootstrap_ids_to_ips.insert(ready_anchor_node.node_id.to_string(), ip);
+            }
+            let mut bootstrap_ids: Vec<String> = vec![];
+            let mut bootstrap_ips: Vec<String> = vec![];
+            for (k, v) in bootstrap_ids_to_ips.iter() {
+                bootstrap_ids.push(k.clone());
+                bootstrap_ips.push(v.clone());
             }
             log::info!("found {} seed nodes that are ready", bootstrap_ids.len());
 
