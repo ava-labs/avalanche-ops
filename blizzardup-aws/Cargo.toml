@@ -1,6 +1,6 @@
 [package]
 name = "blizzardup-aws"
-version = "0.4.2-beta.8" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.4.2-beta.9" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.68"
 
@@ -9,8 +9,8 @@ name = "blizzardup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.364", features = ["avalanchego", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.26.11", features = ["cloudformation", "cloudwatch", "ec2", "s3", "sts"] } # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.365", features = ["avalanchego", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.26.12", features = ["cloudformation", "cloudwatch", "ec2", "s3", "sts"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudformation = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
