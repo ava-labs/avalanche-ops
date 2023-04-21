@@ -206,12 +206,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         .create_bucket(&spec.resources.s3_bucket)
         .await
         .unwrap();
+    let mut days_to_prefixes = HashMap::new();
+    days_to_prefixes.insert(
+        3,
+        vec![format!("{}/install-subnet-chain/ssm-output-logs", spec.id)],
+    );
     s3_manager
-        .put_bucket_object_expire_configuration(
-            &spec.resources.s3_bucket,
-            3,
-            vec![format!("{}/install-subnet-chain/ssm-output-logs", spec.id)],
-        )
+        .put_bucket_object_expire_configuration(&spec.resources.s3_bucket, days_to_prefixes)
         .await
         .unwrap();
 
