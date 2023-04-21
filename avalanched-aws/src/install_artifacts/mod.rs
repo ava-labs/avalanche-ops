@@ -187,7 +187,7 @@ pub async fn execute(
         aws_volume_provisioner_installer::github::download(
             None,
             ot,
-            None,
+            Some("latest".to_string()),
             aws_volume_provisioner_local_path,
         )
         .await?;
@@ -218,7 +218,7 @@ pub async fn execute(
         aws_ip_provisioner_installer::github::download(
             None,
             ot,
-            None,
+            Some("latest".to_string()),
             aws_ip_provisioner_local_path,
         )
         .await?;
@@ -249,7 +249,7 @@ pub async fn execute(
         avalanche_telemetry_cloudwatch_installer::github::download(
             None,
             ot,
-            None,
+            Some("latest".to_string()),
             avalanche_telemetry_cloudwatch_local_path,
         )
         .await?;
