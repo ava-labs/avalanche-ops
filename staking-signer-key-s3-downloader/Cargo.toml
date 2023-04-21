@@ -1,8 +1,8 @@
 [package]
 name = "staking-signer-key-s3-downloader"
-version = "0.4.2-beta.10" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.4.2-beta.11" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.69"
 
 [dependencies]
 aws-manager = { version = "0.26.14", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags

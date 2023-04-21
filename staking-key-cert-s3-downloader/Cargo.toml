@@ -1,8 +1,8 @@
 [package]
 name = "staking-key-cert-s3-downloader"
-version = "0.4.2-beta.10" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.4.2-beta.11" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.69"
 
 [dependencies]
 avalanche-types = { version = "0.0.367", features = ["cert"] } # https://crates.io/crates/avalanche-types
