@@ -601,18 +601,17 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
     let mut handles = Vec::new();
     for (i, (node_id, instance_id)) in node_ids_to_instance_ids.iter().enumerate() {
-        log::info!(
-            "spawning add_primary_network_validator on '{}' (of EC2 instance '{}', staking period in days '{}')",
-            node_id,
-            instance_id,
-            opts.primary_network_validate_period_in_days
-        );
-
         // randomly wait to prevent UTXO double spends from the same wallet
         let random_wait = Duration::from_secs(1 + i as u64)
             .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
             .unwrap();
 
+        log::info!(
+            "spawning add_primary_network_permissionless_validator/add_primary_network_validator on '{}' (of EC2 instance '{}', staking period in days '{}')",
+            node_id,
+            instance_id,
+            opts.primary_network_validate_period_in_days,
+        );
         let node_id = ids::node::Id::from_str(node_id).unwrap();
         if let Some(pop) = node_id_to_pop.get(&node_id) {
             handles.push(tokio::spawn(add_primary_network_permissionless_validator(
