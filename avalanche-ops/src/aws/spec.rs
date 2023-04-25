@@ -572,6 +572,7 @@ impl Spec {
                 panic!("auto-regions only supported up to 5 regions!")
             }
         }
+        log::info!("generating configuration with the regions {:?}", regions);
 
         let region_to_instance_types = if !opts.instance_types.is_empty() {
             opts.instance_types.clone()
