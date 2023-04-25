@@ -337,7 +337,7 @@ pub struct DefaultSpecOption {
     pub keys_to_generate: usize,
 
     pub regions: Vec<String>,
-    pub auto_regions: usize,
+    pub auto_regions: u32,
 
     pub ingress_ipv4_cidr: String,
     pub instance_mode: String,

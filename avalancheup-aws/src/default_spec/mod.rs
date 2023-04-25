@@ -137,6 +137,7 @@ pub fn command() -> Command {
                 .help("Sets the number of regions to auto-populate (overwrites --region)")
                 .required(false)
                 .num_args(1)
+                .value_parser(value_parser!(u32))
                 .default_value("1"),
         )
         .arg(

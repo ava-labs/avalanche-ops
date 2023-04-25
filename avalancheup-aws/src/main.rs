@@ -109,7 +109,7 @@ async fn main() -> io::Result<()> {
 
                 regions,
                 auto_regions: sub_matches
-                    .get_one::<usize>("AUTO_REGIONS")
+                    .get_one::<u32>("AUTO_REGIONS")
                     .unwrap_or(&0)
                     .clone(),
                 ingress_ipv4_cidr: sub_matches
