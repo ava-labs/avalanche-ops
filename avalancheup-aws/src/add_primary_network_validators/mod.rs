@@ -138,7 +138,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         let spec = avalanche_ops::aws::spec::Spec::load(&opts.spec_file_path)
             .expect("failed to load spec");
         spec.validate()?;
-        if let Some(created_nodes) = &spec.resources.created_nodes {
+        if let Some(created_nodes) = &spec.resource.created_nodes {
             for node in created_nodes {
                 let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
                 node_id_to_pop.insert(node_id, node.proof_of_possession.clone());

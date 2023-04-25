@@ -47,18 +47,15 @@ async fn main() -> io::Result<()> {
                 }
             }
 
-            let s = sub_matches
-                .get_one::<String>("INSTANCE_TYPES")
-                .unwrap_or(&String::new())
+            let instance_types: HashMap<String, Vec<String>> = sub_matches
+                .get_one::<HashMap<String, Vec<String>>>("INSTANCE_TYPES")
+                .unwrap_or(&HashMap::new())
                 .clone();
-            let ss: Vec<&str> = s.split(',').collect();
-            let mut instance_types = Vec::new();
-            for addr in ss.iter() {
-                let trimmed = addr.trim().to_string();
-                if !trimmed.is_empty() {
-                    instance_types.push(addr.trim().to_string());
-                }
-            }
+
+            let nlb_acm_certificate_arns: HashMap<String, String> = sub_matches
+                .get_one::<HashMap<String, String>>("NLB_ACM_CERTIFICATE_ARNS")
+                .unwrap_or(&HashMap::new())
+                .clone();
 
             let s = sub_matches
                 .get_one::<String>("REGIONS")
@@ -156,10 +153,7 @@ async fn main() -> io::Result<()> {
                     .unwrap()
                     .to_string(),
 
-                nlb_acm_certificate_arn: sub_matches
-                    .get_one::<String>("NLB_ACM_CERTIFICATE_ARN")
-                    .unwrap_or(&String::new())
-                    .to_string(),
+                nlb_acm_certificate_arns,
 
                 upload_artifacts_aws_volume_provisioner_local_bin: sub_matches
                     .get_one::<String>("UPLOAD_ARTIFACTS_AWS_VOLUME_PROVISIONER_LOCAL_BIN")

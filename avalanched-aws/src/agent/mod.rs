@@ -1,7 +1,7 @@
 mod cloudwatch;
 
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -247,7 +247,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let (
         mut avalanchego_config,
         coreth_chain_config,
-        anchor_asg_names,
+        region_to_anchor_asg_names,
         metrics_rules,
         logs_auto_removal,
         metrics_fetch_interval_seconds,
@@ -260,7 +260,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         (
             avalanchego_config,
             coreth_chain_config,
-            Vec::new(),
+            HashMap::new(),
             avalanche_ops::artifacts::prometheus_rules(),
             true,
             0,
@@ -269,11 +269,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         log::info!("STEP: downloading avalancheup spec file from S3...");
         let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
         let exists = s3_manager
-            .get_object(
+            .get_object_with_retries(
                 &fetched_tags.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(fetched_tags.id.clone())
                     .encode(),
                 &tmp_spec_file_path,
+                true,
+                Duration::from_secs(30),
+                Duration::from_secs(1),
             )
             .await
             .map_err(|e| Error::new(ErrorKind::Other, format!("failed get_object {}", e)))?;
@@ -333,11 +336,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         // download from S3
         let tmp_prometheus_metrics_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
         let exists = s3_manager
-            .get_object(
+            .get_object_with_retries(
                 &fetched_tags.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(fetched_tags.id.clone())
                     .encode(),
                 &tmp_prometheus_metrics_file_path,
+                true,
+                Duration::from_secs(30),
+                Duration::from_secs(1),
             )
             .await
             .map_err(|e| Error::new(ErrorKind::Other, format!("failed get_object {}", e)))?;
@@ -346,17 +352,20 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         }
         let metrics_rules = prometheus_manager::Rules::load(&tmp_prometheus_metrics_file_path)?;
 
-        let anchor_asg_names = if let Some(names) = &spec.resources.cloudformation_asg_anchor_nodes
-        {
-            names.clone()
-        } else {
-            Vec::new()
-        };
+        let mut region_to_anchor_asg_names = HashMap::new();
+        for (reg, rsc) in spec.resource.regional_resources.iter() {
+            let anchor_asg_names = if let Some(names) = &rsc.cloudformation_asg_anchor_nodes {
+                names.clone()
+            } else {
+                Vec::new()
+            };
+            region_to_anchor_asg_names.insert(reg.clone(), anchor_asg_names);
+        }
 
         (
             spec.avalanchego_config.clone(),
             spec.coreth_chain_config.clone(),
-            anchor_asg_names,
+            region_to_anchor_asg_names,
             metrics_rules,
             !spec.disable_logs_auto_removal,
             spec.metrics_fetch_interval_seconds,
@@ -436,8 +445,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     log::info!("describing existing volume to find the attached volume Id");
     let shared_config =
         aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await;
-    let ec2_manager = ec2::Manager::new(&shared_config);
-    let volumes = ec2_manager
+    let local_ec2_manager = ec2::Manager::new(&shared_config);
+
+    let volumes = local_ec2_manager
         .describe_volumes(Some(filters))
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed describe_volumes {}", e)))?;
@@ -639,7 +649,19 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     // always overwrite in case of non-anchor node restarts
     if avalanchego_config.is_custom_network() && avalanchego_config.genesis.is_some() {
         let genesis_file_exists = Path::new(&avalanchego_config.clone().genesis.unwrap()).exists();
-        log::info!("STEP: running discover/genesis updates for custom network (genesis file already exists {})", genesis_file_exists);
+        if matches!(fetched_tags.node_kind, node::Kind::Anchor) {
+            if genesis_file_exists {
+                log::info!(
+                    "STEP: genesis file already exists -- no need to discover other anchor nodes"
+                );
+            } else {
+                log::info!(
+                    "STEP: genesis file dose not exist -- need to discover other anchor nodes"
+                );
+            }
+        } else {
+            log::info!("non-anchor nodes always discover anchor nodes using S3");
+        }
 
         //
         //
@@ -719,7 +741,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             log::info!("waiting some time for other bootstrapping anchor nodes to start...");
             sleep(Duration::from_secs(30)).await; // enough time for all anchor nodes up to be
 
-            let target_nodes = spec.machine.anchor_nodes.unwrap();
+            let target_nodes = spec.machine.total_anchor_nodes.unwrap();
             log::info!("waiting for all other seed/bootstrapping anchor nodes to publish their own (expected total {target_nodes} nodes)");
 
             let s3_key_prefix = s3::append_slash(
@@ -800,11 +822,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             let tmp_genesis_path = random_manager::tmp_path(15, Some(".json"))?;
 
             let exists = s3_manager
-                .get_object(
+                .get_object_with_retries(
                     &fetched_tags.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::GenesisFile(spec.id.clone())
                         .encode(),
                     &tmp_genesis_path,
+                    true,
+                    Duration::from_secs(30),
+                    Duration::from_secs(1),
                 )
                 .await
                 .map_err(|e| Error::new(ErrorKind::Other, format!("failed get_object {}", e)))?;
@@ -826,7 +851,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             // and publish itself with the new S3 key that has a new IP.
             log::info!(
                 "non anchor nodes discover anchor nodes from {:?}",
-                anchor_asg_names
+                region_to_anchor_asg_names
             );
 
             log::info!("STEP: listing S3 directory to discover ready anchor nodes...");
@@ -847,7 +872,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             // TODO: handle stale anchor nodes by heartbeats timestamps
             let target_nodes = spec
                 .machine
-                .anchor_nodes
+                .total_anchor_nodes
                 .expect("unexpected None machine.anchor_nodes for custom network");
 
             let s3_key_prefix = s3::append_slash(
@@ -890,24 +915,34 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
             // now delete old/terminated instances that were anchor nodes
             let mut running_machine_ids = HashSet::new();
-            for anchor_asg_name in anchor_asg_names.iter() {
-                log::info!("listing anchor node ASG {anchor_asg_name}");
-                let droplets = ec2_manager
-                    .list_asg(anchor_asg_name)
-                    .await
-                    .map_err(|e| Error::new(ErrorKind::Other, format!("failed list_asg {}", e)))?;
-                log::info!(
-                    "listed anchor node ASG {anchor_asg_name} with {} droplets",
-                    droplets.len()
-                );
-                for d in droplets.iter() {
+            for (region, anchor_asg_names) in region_to_anchor_asg_names.iter() {
+                let shared_config =
+                    aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30)))
+                        .await;
+                let regional_ec2_manager = ec2::Manager::new(&shared_config);
+
+                for anchor_asg_name in anchor_asg_names {
+                    log::info!("listing anchor node ASG '{anchor_asg_name}' in '{region}'");
+                    let droplets = regional_ec2_manager
+                        .list_asg(anchor_asg_name)
+                        .await
+                        .map_err(|e| {
+                            Error::new(ErrorKind::Other, format!("failed list_asg {}", e))
+                        })?;
                     log::info!(
-                        "found droplet {} in anchor node ASG with state {}",
-                        d.instance_id,
-                        d.instance_state_name
+                        "listed anchor node ASG {anchor_asg_name} with {} droplets in '{region}'",
+                        droplets.len()
                     );
-                    if d.instance_state_name.to_lowercase() == "running" {
-                        running_machine_ids.insert(d.instance_id.clone());
+
+                    for d in droplets.iter() {
+                        log::info!(
+                            "found droplet {} in anchor node ASG with state {}",
+                            d.instance_id,
+                            d.instance_state_name
+                        );
+                        if d.instance_state_name.to_lowercase() == "running" {
+                            running_machine_ids.insert(d.instance_id.clone());
+                        }
                     }
                 }
             }

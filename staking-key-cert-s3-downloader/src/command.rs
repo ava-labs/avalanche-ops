@@ -64,6 +64,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             &opts.s3_bucket,
             &opts.s3_key_tls_key,
             &opts.tls_key_path,
+            false,
         )
         .await
         .map_err(|e| {
@@ -80,6 +81,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             &opts.s3_bucket,
             &opts.s3_key_tls_cert,
             &opts.tls_cert_path,
+            false,
         )
         .await
         .map_err(|e| {

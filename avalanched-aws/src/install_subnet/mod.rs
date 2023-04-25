@@ -136,6 +136,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 &opts.subnet_config_s3_key,
                 &opts.subnet_config_local_path,
                 true,
+                Duration::from_secs(30),
+                Duration::from_secs(1),
             )
             .await
             .unwrap();
@@ -171,6 +173,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 &opts.vm_binary_s3_key,
                 &opts.vm_binary_local_path,
                 true,
+                Duration::from_secs(30),
+                Duration::from_secs(1),
             )
             .await
             .unwrap();

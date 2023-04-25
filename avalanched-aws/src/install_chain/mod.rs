@@ -97,6 +97,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             &opts.chain_config_s3_key,
             &opts.chain_config_local_path,
             true,
+            Duration::from_secs(30),
+            Duration::from_secs(1),
         )
         .await
         .unwrap();

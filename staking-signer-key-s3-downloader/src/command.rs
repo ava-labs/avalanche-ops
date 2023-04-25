@@ -37,7 +37,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     log::info!("downloading key file {}", opts.key_path);
     envelope_manager
-        .get_object_unseal_decompress(&s3_manager, &opts.s3_bucket, &opts.s3_key, &opts.key_path)
+        .get_object_unseal_decompress(
+            &s3_manager,
+            &opts.s3_bucket,
+            &opts.s3_key,
+            &opts.key_path,
+            false,
+        )
         .await
         .map_err(|e| {
             Error::new(
