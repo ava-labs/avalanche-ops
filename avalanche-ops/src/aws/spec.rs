@@ -587,8 +587,8 @@ impl Spec {
         };
 
         // only iterate until we used up all total* nodes
-        let mut added_anchor_nodes = 0_u32;
-        let mut added_non_anchor_nodes = 0_u32;
+        let mut current_anchor_nodes = 0_u32;
+        let mut current_non_anchor_nodes = 0_u32;
 
         let mut regional_resources = HashMap::new();
         let mut regional_machines = HashMap::new();
@@ -599,39 +599,44 @@ impl Spec {
                 non_anchor_nodes: 0,
                 instance_types: region_to_instance_types.get(reg).unwrap().clone(),
             };
+
+            // last iteration, but still remaining... use them up
+            // or even if we don't use the last regions, make sure we add the remaining
+            // e.g., 3 nodes for 1 regions ==> [3]
+            // e.g., 3 nodes for 2 regions ==> [1, 2]
+            // e.g., 3 nodes for 3 regions ==> [1, 1, 1]
+            // e.g., 3 nodes for 5 regions ==> [1, 1, 1, break]
+            // e.g., 4 nodes for 3 regions ==> [1, 1, 2, break]
             if let Some(total_anchors) = &total_anchor_nodes {
-                if added_anchor_nodes < *total_anchors {
+                if *total_anchors > current_anchor_nodes {
                     let mut per_region = *total_anchors / regions.len() as u32;
                     if per_region == 0 {
-                        // e.g., total anchors 3, regions 5
                         per_region = 1;
                     }
-                    regional_machine.anchor_nodes = Some(per_region);
-                    added_anchor_nodes = added_anchor_nodes + per_region;
-                }
-
-                // last iteration, but still remaining... use them up
-                if i == regions.len() - 1 && added_anchor_nodes < *total_anchors {
-                    regional_machine.anchor_nodes = Some(*total_anchors - added_anchor_nodes);
-                    added_anchor_nodes = *total_anchors;
+                    if i == regions.len() - 1 {
+                        regional_machine.anchor_nodes = Some(*total_anchors - current_anchor_nodes);
+                        current_anchor_nodes = *total_anchors;
+                    } else {
+                        regional_machine.anchor_nodes = Some(per_region);
+                        current_anchor_nodes = current_anchor_nodes + per_region;
+                    }
                 }
             }
-            if added_non_anchor_nodes < total_non_anchor_nodes {
+            if total_non_anchor_nodes > current_non_anchor_nodes {
                 let mut per_region = total_non_anchor_nodes / regions.len() as u32;
                 if per_region == 0 {
-                    // e.g., total non-anchors 3, regions 5
                     per_region = 1;
                 }
-                regional_machine.non_anchor_nodes = per_region;
-                added_non_anchor_nodes = added_non_anchor_nodes + per_region;
-
-                // last iteration, but still remaining... use them up
-                if i == regions.len() - 1 && added_non_anchor_nodes < total_non_anchor_nodes {
-                    regional_machine.anchor_nodes =
-                        Some(total_non_anchor_nodes - added_non_anchor_nodes);
-                    added_non_anchor_nodes = total_non_anchor_nodes;
+                if i == regions.len() - 1 {
+                    regional_machine.non_anchor_nodes =
+                        total_non_anchor_nodes - current_non_anchor_nodes;
+                    current_non_anchor_nodes = total_non_anchor_nodes;
+                } else {
+                    regional_machine.non_anchor_nodes = per_region;
+                    current_non_anchor_nodes = current_non_anchor_nodes + per_region;
                 }
             }
+
             if regional_machine.anchor_nodes.is_none() && regional_machine.non_anchor_nodes == 0 {
                 log::info!("no more node to allocate in region '{reg}' -- skipping");
                 continue;
