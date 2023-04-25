@@ -104,9 +104,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     // set defaults based on ID
-    for reg in spec.resource.regions.iter() {
-        let mut regional_resource = spec.resource.regional_resources.get(reg).clone().unwrap();
-
+    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
         if regional_resource.ec2_key_name.is_empty() {
             regional_resource.ec2_key_name = format!("{}-ec2-key", spec.id);
         }
@@ -120,7 +118,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 Some(avalanche_ops::aws::spec::StackName::Vpc(spec.id.clone()).encode());
         }
 
-        let regional_machine = spec.machine.regional_machines.get(reg).clone().unwrap();
+        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
 
         // DON'T "spec.resources.cloudformation_asg_anchor_nodes.is_none()"
         // in case we edit anchor node size after default spec generation
@@ -155,10 +153,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode(),
         );
 
-        spec.resource
-            .regional_resources
-            .insert(reg.clone(), regional_resource.clone());
-
         spec.sync(spec_file_path)?;
     }
 
@@ -192,10 +186,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let exec_parent_dir = exec_parent_dir.display().to_string();
 
     log::info!("creating resources (with spec path {})", spec_file_path);
-    let cloudformation_manager = cloudformation::Manager::new(&shared_config);
-    let ec2_manager = ec2::Manager::new(&shared_config);
-    let kms_manager = kms::Manager::new(&shared_config);
-    let s3_manager = s3::Manager::new(&shared_config);
+    let default_s3_manager = s3::Manager::new(&shared_config);
 
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))
@@ -207,7 +198,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         Print("\n\n\nSTEP: create S3 buckets\n"),
         ResetColor
     )?;
-    s3_manager
+    default_s3_manager
         .create_bucket(&spec.resource.s3_bucket)
         .await
         .unwrap();
@@ -216,7 +207,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         3,
         vec![format!("{}/install-subnet-chain/ssm-output-logs", spec.id)],
     );
-    s3_manager
+    default_s3_manager
         .put_bucket_object_expire_configuration(&spec.resource.s3_bucket, days_to_prefixes)
         .await
         .unwrap();
@@ -243,7 +234,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         if !v.avalanched_local_bin.is_empty() && Path::new(&v.avalanched_local_bin).exists() {
             // don't compress since we need to download this in user data
             // while instance bootstrapping
-            s3_manager
+            default_s3_manager
                 .put_object(
                     &v.avalanched_local_bin,
                     &spec.resource.s3_bucket,
@@ -264,7 +255,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             // don't compress since we need to download this in user data
             // while instance bootstrapping
 
-            s3_manager
+            default_s3_manager
                 .put_object(
                     &v.aws_volume_provisioner_local_bin,
                     &spec.resource.s3_bucket,
@@ -285,7 +276,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             // don't compress since we need to download this in user data
             // while instance bootstrapping
 
-            s3_manager
+            default_s3_manager
                 .put_object(
                     &v.aws_ip_provisioner_local_bin,
                     &spec.resource.s3_bucket,
@@ -308,7 +299,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             // don't compress since we need to download this in user data
             // while instance bootstrapping
 
-            s3_manager
+            default_s3_manager
                 .put_object(
                     &v.avalanche_telemetry_cloudwatch_local_bin,
                     &spec.resource.s3_bucket,
@@ -327,7 +318,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         if !v.avalanchego_local_bin.is_empty() && Path::new(&v.avalanchego_local_bin).exists() {
             // upload without compression first
-            s3_manager
+            default_s3_manager
                 .put_object(
                     &v.avalanchego_local_bin,
                     &spec.resource.s3_bucket,
@@ -348,7 +339,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             Print("\n\n\nSTEP: uploading metrics rules\n"),
             ResetColor
         )?;
-        s3_manager
+        default_s3_manager
             .put_object(
                 &v.prometheus_metrics_rules_file_path,
                 &spec.resource.s3_bucket,
@@ -362,7 +353,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.sync(spec_file_path)?;
 
         log::info!("uploading avalancheup spec file...");
-        s3_manager
+        default_s3_manager
             .put_object(
                 &spec_file_path,
                 &spec.resource.s3_bucket,
@@ -374,87 +365,36 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         log::info!("skipping uploading artifacts...");
     }
 
-    if spec.resource.kms_symmetric_default_encrypt_key.is_none() {
-        sleep(Duration::from_secs(1)).await;
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create KMS key\n"),
-            ResetColor
-        )?;
+    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
-        let key = kms_manager
-            .create_symmetric_default_key(format!("{}-kms-key", spec.id).as_str(), false)
-            .await
-            .unwrap();
-
-        spec.resource.kms_symmetric_default_encrypt_key = Some(avalanche_ops::aws::spec::KmsKey {
-            id: key.id,
-            arn: key.arn,
-        });
-        spec.sync(spec_file_path)?;
-
-        s3_manager
-            .put_object(
-                &spec_file_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .unwrap();
-    }
-    let envelope_manager = envelope::Manager::new(
-        &kms_manager,
-        spec.resource
+        let regional_kms_manager = kms::Manager::new(&regional_shared_config);
+        if regional_resource
             .kms_symmetric_default_encrypt_key
-            .clone()
-            .unwrap()
-            .id,
-        "avalanche-ops".to_string(),
-    );
+            .is_none()
+        {
+            sleep(Duration::from_secs(1)).await;
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!("\n\n\nSTEP: create KMS key in '{region}'\n")),
+                ResetColor
+            )?;
+            let key = regional_kms_manager
+                .create_symmetric_default_key(format!("{}-kms-key", spec.id).as_str(), false)
+                .await
+                .unwrap();
 
-    if !Path::new(&spec.resource.ec2_key_path).exists() {
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create EC2 key pair\n"),
-            ResetColor
-        )?;
+            regional_resource.kms_symmetric_default_encrypt_key =
+                Some(avalanche_ops::aws::spec::KmsKey {
+                    id: key.id,
+                    arn: key.arn,
+                });
+            spec.sync(spec_file_path)?;
+        }
 
-        let ec2_key_path = spec.resource.ec2_key_path.clone();
-        ec2_manager
-            .create_key_pair(&spec.resource.ec2_key_name, ec2_key_path.as_str())
-            .await
-            .unwrap();
-
-        let tmp_compressed_path =
-            random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext())).unwrap();
-        compress_manager::pack_file(
-            ec2_key_path.as_str(),
-            &tmp_compressed_path,
-            compress_manager::Encoder::Zstd(3),
-        )
-        .unwrap();
-
-        let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
-        envelope_manager
-            .seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path)
-            .await
-            .unwrap();
-
-        s3_manager
-            .put_object(
-                &tmp_encrypted_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
-                    spec.id.clone(),
-                )
-                .encode(),
-            )
-            .await
-            .unwrap();
-
-        s3_manager
+        default_s3_manager
             .put_object(
                 &spec_file_path,
                 &spec.resource.s3_bucket,
@@ -462,389 +402,514 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             )
             .await
             .unwrap();
-    }
 
-    if spec
-        .resource
-        .cloudformation_ec2_instance_profile_arn
-        .is_none()
-    {
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create EC2 instance role\n"),
-            ResetColor
-        )?;
+        let regional_envelope_manager = envelope::Manager::new(
+            &regional_kms_manager,
+            regional_resource
+                .kms_symmetric_default_encrypt_key
+                .clone()
+                .unwrap()
+                .id,
+            "avalanche-ops".to_string(),
+        );
 
-        let ec2_instance_role_tmpl =
-            avalanche_ops::aws::artifacts::ec2_instance_role_yaml().unwrap();
-        let ec2_instance_role_stack_name = spec
-            .resource
-            .cloudformation_ec2_instance_role
-            .clone()
+        if !Path::new(&regional_resource.ec2_key_path).exists() {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!("\n\n\nSTEP: create EC2 key pair in '{region}'\n")),
+                ResetColor
+            )?;
+
+            let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
+            let ec2_key_path = regional_resource.ec2_key_path.clone();
+            regional_ec2_manager
+                .create_key_pair(&regional_resource.ec2_key_name, ec2_key_path.as_str())
+                .await
+                .unwrap();
+
+            let tmp_compressed_path =
+                random_manager::tmp_path(15, Some(compress_manager::Encoder::Zstd(3).ext()))
+                    .unwrap();
+            compress_manager::pack_file(
+                ec2_key_path.as_str(),
+                &tmp_compressed_path,
+                compress_manager::Encoder::Zstd(3),
+            )
             .unwrap();
 
-        let role_params = Vec::from([
+            let tmp_encrypted_path = random_manager::tmp_path(15, Some(".zstd.encrypted")).unwrap();
+            regional_envelope_manager
+                .seal_aes_256_file(&tmp_compressed_path, &tmp_encrypted_path)
+                .await
+                .unwrap();
+
+            default_s3_manager
+                .put_object(
+                    &tmp_encrypted_path,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
+                        spec.id.clone(),
+                    )
+                    .encode(),
+                )
+                .await
+                .unwrap();
+
+            default_s3_manager
+                .put_object(
+                    &spec_file_path,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .unwrap();
+        }
+    }
+
+    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        if regional_resource
+            .cloudformation_ec2_instance_profile_arn
+            .is_none()
+        {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: create EC2 instance role\n"),
+                ResetColor
+            )?;
+
+            let ec2_instance_role_tmpl =
+                avalanche_ops::aws::artifacts::ec2_instance_role_yaml().unwrap();
+            let ec2_instance_role_stack_name = regional_resource
+                .cloudformation_ec2_instance_role
+                .clone()
+                .unwrap();
+
+            let role_params = Vec::from([
+                build_param("Id", &spec.id),
+                build_param(
+                    "KmsKeyArn",
+                    &regional_resource
+                        .kms_symmetric_default_encrypt_key
+                        .clone()
+                        .unwrap()
+                        .arn,
+                ),
+                build_param("S3BucketName", &spec.resource.s3_bucket),
+            ]);
+            regional_cloudformation_manager
+                .create_stack(
+                    ec2_instance_role_stack_name.as_str(),
+                    Some(vec![Capability::CapabilityNamedIam]),
+                    OnFailure::Delete,
+                    &ec2_instance_role_tmpl,
+                    Some(Vec::from([Tag::builder()
+                        .key("KIND")
+                        .value("avalanche-ops")
+                        .build()])),
+                    Some(role_params),
+                )
+                .await
+                .unwrap();
+
+            sleep(Duration::from_secs(10)).await;
+            let stack = regional_cloudformation_manager
+                .poll_stack(
+                    ec2_instance_role_stack_name.as_str(),
+                    StackStatus::CreateComplete,
+                    Duration::from_secs(500),
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
+
+            for o in stack.outputs.unwrap() {
+                let k = o.output_key.unwrap();
+                let v = o.output_value.unwrap();
+                log::info!("stack output key=[{}], value=[{}]", k, v,);
+                if k.eq("InstanceProfileArn") {
+                    regional_resource.cloudformation_ec2_instance_profile_arn = Some(v)
+                }
+            }
+            spec.sync(spec_file_path)?;
+
+            default_s3_manager
+                .put_object(
+                    &spec_file_path,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .unwrap();
+        }
+    }
+
+    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        if regional_resource.cloudformation_vpc_id.is_none()
+            && regional_resource
+                .cloudformation_vpc_security_group_id
+                .is_none()
+            && regional_resource
+                .cloudformation_vpc_public_subnet_ids
+                .is_none()
+        {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!("\n\n\nSTEP: create VPC in '{region}'\n")),
+                ResetColor
+            )?;
+
+            let vpc_tmpl = avalanche_ops::aws::artifacts::vpc_yaml().unwrap();
+            let vpc_stack_name = regional_resource.cloudformation_vpc.clone().unwrap();
+            let vpc_params = Vec::from([
+                build_param("Id", &spec.id),
+                build_param("VpcCidr", "10.0.0.0/16"),
+                build_param("PublicSubnetCidr1", "10.0.64.0/19"),
+                build_param("PublicSubnetCidr2", "10.0.128.0/19"),
+                build_param("PublicSubnetCidr3", "10.0.192.0/19"),
+                build_param("SshPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
+                build_param("HttpPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
+                build_param("StakingPortIngressIpv4Range", "0.0.0.0/0"),
+                build_param(
+                    "StakingPort",
+                    format!("{}", spec.avalanchego_config.staking_port).as_str(),
+                ),
+                build_param(
+                    "HttpPort",
+                    format!("{}", spec.avalanchego_config.http_port).as_str(),
+                ),
+            ]);
+            regional_cloudformation_manager
+                .create_stack(
+                    vpc_stack_name.as_str(),
+                    None,
+                    OnFailure::Delete,
+                    &vpc_tmpl,
+                    Some(Vec::from([Tag::builder()
+                        .key("KIND")
+                        .value("avalanche-ops")
+                        .build()])),
+                    Some(vpc_params),
+                )
+                .await
+                .expect("failed create_stack for VPC");
+
+            sleep(Duration::from_secs(10)).await;
+            let stack = regional_cloudformation_manager
+                .poll_stack(
+                    vpc_stack_name.as_str(),
+                    StackStatus::CreateComplete,
+                    Duration::from_secs(300),
+                    Duration::from_secs(30),
+                )
+                .await
+                .expect("failed poll_stack for VPC");
+
+            for o in stack.outputs.unwrap() {
+                let k = o.output_key.unwrap();
+                let v = o.output_value.unwrap();
+                log::info!("stack output key=[{}], value=[{}]", k, v,);
+                if k.eq("VpcId") {
+                    regional_resource.cloudformation_vpc_id = Some(v);
+                    continue;
+                }
+                if k.eq("SecurityGroupId") {
+                    regional_resource.cloudformation_vpc_security_group_id = Some(v);
+                    continue;
+                }
+                if k.eq("PublicSubnetIds") {
+                    let splits: Vec<&str> = v.split(',').collect();
+                    let mut pub_subnets: Vec<String> = vec![];
+                    for s in splits {
+                        log::info!("public subnet {}", s);
+                        pub_subnets.push(String::from(s));
+                    }
+                    regional_resource.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
+                }
+            }
+            spec.sync(spec_file_path)?;
+
+            default_s3_manager
+                .put_object(
+                    &spec_file_path,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .unwrap();
+        }
+    }
+
+    let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
+    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        let mut common_asg_params = Vec::from([
             build_param("Id", &spec.id),
             build_param(
+                "NetworkId",
+                format!("{}", &spec.avalanchego_config.network_id).as_str(),
+            ),
+            build_param(
                 "KmsKeyArn",
-                &spec
-                    .resource
+                &regional_resource
                     .kms_symmetric_default_encrypt_key
                     .clone()
                     .unwrap()
                     .arn,
             ),
+            build_param("AadTag", &spec.aad_tag),
+            build_param("S3Region", &spec.resource.regions[0]),
             build_param("S3BucketName", &spec.resource.s3_bucket),
-        ]);
-        cloudformation_manager
-            .create_stack(
-                ec2_instance_role_stack_name.as_str(),
-                Some(vec![Capability::CapabilityNamedIam]),
-                OnFailure::Delete,
-                &ec2_instance_role_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
-                Some(role_params),
-            )
-            .await
-            .unwrap();
-
-        sleep(Duration::from_secs(10)).await;
-        let stack = cloudformation_manager
-            .poll_stack(
-                ec2_instance_role_stack_name.as_str(),
-                StackStatus::CreateComplete,
-                Duration::from_secs(500),
-                Duration::from_secs(30),
-            )
-            .await
-            .unwrap();
-
-        for o in stack.outputs.unwrap() {
-            let k = o.output_key.unwrap();
-            let v = o.output_value.unwrap();
-            log::info!("stack output key=[{}], value=[{}]", k, v,);
-            if k.eq("InstanceProfileArn") {
-                spec.resource.cloudformation_ec2_instance_profile_arn = Some(v)
-            }
-        }
-        spec.sync(spec_file_path)?;
-
-        s3_manager
-            .put_object(
-                &spec_file_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .unwrap();
-    }
-
-    if spec.resource.cloudformation_vpc_id.is_none()
-        && spec.resource.cloudformation_vpc_security_group_id.is_none()
-        && spec.resource.cloudformation_vpc_public_subnet_ids.is_none()
-    {
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: create VPC\n"),
-            ResetColor
-        )?;
-
-        let vpc_tmpl = avalanche_ops::aws::artifacts::vpc_yaml().unwrap();
-        let vpc_stack_name = spec.resource.cloudformation_vpc.clone().unwrap();
-        let vpc_params = Vec::from([
-            build_param("Id", &spec.id),
-            build_param("VpcCidr", "10.0.0.0/16"),
-            build_param("PublicSubnetCidr1", "10.0.64.0/19"),
-            build_param("PublicSubnetCidr2", "10.0.128.0/19"),
-            build_param("PublicSubnetCidr3", "10.0.192.0/19"),
-            build_param("SshPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
-            build_param("HttpPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
-            build_param("StakingPortIngressIpv4Range", "0.0.0.0/0"),
+            build_param("Ec2KeyPairName", &regional_resource.ec2_key_name),
             build_param(
-                "StakingPort",
-                format!("{}", spec.avalanchego_config.staking_port).as_str(),
+                "InstanceProfileArn",
+                &regional_resource
+                    .cloudformation_ec2_instance_profile_arn
+                    .clone()
+                    .unwrap(),
             ),
             build_param(
-                "HttpPort",
+                "SecurityGroupId",
+                &regional_resource
+                    .cloudformation_vpc_security_group_id
+                    .clone()
+                    .unwrap(),
+            ),
+            build_param(
+                "NlbVpcId",
+                &regional_resource.cloudformation_vpc_id.clone().unwrap(),
+            ),
+            build_param(
+                "NlbHttpPort",
                 format!("{}", spec.avalanchego_config.http_port).as_str(),
             ),
-        ]);
-        cloudformation_manager
-            .create_stack(
-                vpc_stack_name.as_str(),
-                None,
-                OnFailure::Delete,
-                &vpc_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
-                Some(vpc_params),
-            )
-            .await
-            .expect("failed create_stack for VPC");
-
-        sleep(Duration::from_secs(10)).await;
-        let stack = cloudformation_manager
-            .poll_stack(
-                vpc_stack_name.as_str(),
-                StackStatus::CreateComplete,
-                Duration::from_secs(300),
-                Duration::from_secs(30),
-            )
-            .await
-            .expect("failed poll_stack for VPC");
-
-        for o in stack.outputs.unwrap() {
-            let k = o.output_key.unwrap();
-            let v = o.output_value.unwrap();
-            log::info!("stack output key=[{}], value=[{}]", k, v,);
-            if k.eq("VpcId") {
-                spec.resource.cloudformation_vpc_id = Some(v);
-                continue;
-            }
-            if k.eq("SecurityGroupId") {
-                spec.resource.cloudformation_vpc_security_group_id = Some(v);
-                continue;
-            }
-            if k.eq("PublicSubnetIds") {
-                let splits: Vec<&str> = v.split(',').collect();
-                let mut pub_subnets: Vec<String> = vec![];
-                for s in splits {
-                    log::info!("public subnet {}", s);
-                    pub_subnets.push(String::from(s));
-                }
-                spec.resource.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
-            }
-        }
-        spec.sync(spec_file_path)?;
-
-        s3_manager
-            .put_object(
-                &spec_file_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .unwrap();
-    }
-
-    let mut common_asg_params = Vec::from([
-        build_param("Id", &spec.id),
-        build_param(
-            "NetworkId",
-            format!("{}", &spec.avalanchego_config.network_id).as_str(),
-        ),
-        build_param(
-            "KmsKeyArn",
-            &spec
-                .resource
-                .kms_symmetric_default_encrypt_key
-                .clone()
-                .unwrap()
-                .arn,
-        ),
-        build_param("AadTag", &spec.aad_tag),
-        build_param("S3Region", &spec.resource.regions[0]),
-        build_param("S3BucketName", &spec.resource.s3_bucket),
-        build_param("Ec2KeyPairName", &spec.resource.ec2_key_name),
-        build_param(
-            "InstanceProfileArn",
-            &spec
-                .resource
-                .cloudformation_ec2_instance_profile_arn
-                .clone()
-                .unwrap(),
-        ),
-        build_param(
-            "SecurityGroupId",
-            &spec
-                .resource
-                .cloudformation_vpc_security_group_id
-                .clone()
-                .unwrap(),
-        ),
-        build_param(
-            "NlbVpcId",
-            &spec.resource.cloudformation_vpc_id.clone().unwrap(),
-        ),
-        build_param(
-            "NlbHttpPort",
-            format!("{}", spec.avalanchego_config.http_port).as_str(),
-        ),
-        build_param("AsgDesiredCapacity", "1"),
-        // for CFN template updates
-        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
-        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
-        build_param("AsgMaxSize", "2"),
-        build_param(
-            "VolumeSize",
-            format!("{}", spec.machine.volume_size_in_gb).as_str(),
-        ),
-        build_param("ArchType", &spec.machine.arch_type),
-        build_param(
-            "ImageIdSsmParameter",
-            &format!(
+            build_param("AsgDesiredCapacity", "1"),
+            // for CFN template updates
+            // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
+            // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
+            build_param("AsgMaxSize", "2"),
+            build_param(
+                "VolumeSize",
+                format!("{}", spec.machine.volume_size_in_gb).as_str(),
+            ),
+            build_param("ArchType", &spec.machine.arch_type),
+            build_param(
+                "ImageIdSsmParameter",
+                &format!(
                 "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
                 spec.machine.arch_type
             ),
-        ),
-        build_param("RustOsType", &spec.machine.rust_os_type),
-        build_param(
-            "AvalanchedAwsArgs",
-            &format!("agent {}", spec.avalanched_config.to_flags()),
-        ),
-        build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
-    ]);
+            ),
+            build_param("RustOsType", &spec.machine.rust_os_type),
+            build_param(
+                "AvalanchedAwsArgs",
+                &format!("agent {}", spec.avalanched_config.to_flags()),
+            ),
+            build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
+        ]);
 
-    if let Some(avalanchego_release_tag) = &spec.avalanchego_release_tag {
+        if let Some(avalanchego_release_tag) = &spec.avalanchego_release_tag {
+            common_asg_params.push(build_param(
+                "AvalancheGoReleaseTag",
+                &avalanchego_release_tag.clone(),
+            ));
+        }
+
+        if !spec.machine.regional_machines.is_empty() {
+            let instance_types = spec.machine.regional_machines.clone();
+            common_asg_params.push(build_param("InstanceTypes", &instance_types.join(",")));
+            common_asg_params.push(build_param(
+                "InstanceTypesCount",
+                format!("{}", instance_types.len()).as_str(),
+            ));
+        }
+
         common_asg_params.push(build_param(
-            "AvalancheGoReleaseTag",
-            &avalanchego_release_tag.clone(),
+            "AvalanchedAwsDownloadSource",
+            avalanched_download_source,
         ));
-    }
 
-    if !spec.machine.regional_machines.is_empty() {
-        let instance_types = spec.machine.regional_machines.clone();
-        common_asg_params.push(build_param("InstanceTypes", &instance_types.join(",")));
+        let is_spot_instance = spec.machine.instance_mode == String::from("spot");
+        let on_demand_pct = if is_spot_instance { 0 } else { 100 };
         common_asg_params.push(build_param(
-            "InstanceTypesCount",
-            format!("{}", instance_types.len()).as_str(),
+            "InstanceMode",
+            if is_spot_instance {
+                "spot"
+            } else {
+                "on-demand"
+            },
         ));
-    }
+        common_asg_params.push(build_param("IpMode", &spec.machine.ip_mode));
+        common_asg_params.push(build_param(
+            "OnDemandPercentageAboveBaseCapacity",
+            format!("{}", on_demand_pct).as_str(),
+        ));
 
-    common_asg_params.push(build_param(
-        "AvalanchedAwsDownloadSource",
-        avalanched_download_source,
-    ));
-
-    let is_spot_instance = spec.machine.instance_mode == String::from("spot");
-    let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-    common_asg_params.push(build_param(
-        "InstanceMode",
-        if is_spot_instance {
-            "spot"
+        if let Some(arn) = &regional_resource.nlb_acm_certificate_arn {
+            common_asg_params.push(build_param("NlbAcmCertificateArn", arn));
+        };
+        if spec.enable_nlb {
+            common_asg_params.push(build_param("NlbEnabled", "true"));
         } else {
-            "on-demand"
-        },
-    ));
-    common_asg_params.push(build_param("IpMode", &spec.machine.ip_mode));
-    common_asg_params.push(build_param(
-        "OnDemandPercentageAboveBaseCapacity",
-        format!("{}", on_demand_pct).as_str(),
-    ));
+            common_asg_params.push(build_param("NlbEnabled", "false"));
+        }
 
-    if let Some(arn) = &spec.resource.nlb_acm_certificate_arn {
-        common_asg_params.push(build_param("NlbAcmCertificateArn", arn));
-    };
-    if spec.enable_nlb {
-        common_asg_params.push(build_param("NlbEnabled", "true"));
-    } else {
-        common_asg_params.push(build_param("NlbEnabled", "false"));
-    }
-
-    let public_subnet_ids = spec
-        .resource
-        .cloudformation_vpc_public_subnet_ids
-        .clone()
-        .unwrap();
-
-    let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
-
-    let mut asg_launch_template_id = String::new();
-    let mut asg_launch_template_version = String::new();
-
-    if spec.machine.total_anchor_nodes.unwrap_or(0) > 0
-        && spec
-            .resource
-            .cloudformation_asg_anchor_nodes_logical_ids
-            .is_none()
-    {
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print(format!(
-                "\n\n\nSTEP: create ASG for anchor nodes for network Id {}\n",
-                spec.avalanchego_config.network_id
-            )),
-            ResetColor
-        )?;
-
-        let cloudformation_asg_anchor_nodes_tmpl =
-            avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
-        let stack_names = spec
-            .resource
-            .cloudformation_asg_anchor_nodes
+        let public_subnet_ids = regional_resource
+            .cloudformation_vpc_public_subnet_ids
             .clone()
             .unwrap();
 
-        let anchor_nodes = spec.machine.total_anchor_nodes.unwrap();
+        let mut asg_launch_template_id = String::new();
+        let mut asg_launch_template_version = String::new();
 
-        // must deep-copy as shared with other node kind
-        let mut common_asg_params_anchor = common_asg_params.clone();
-        common_asg_params_anchor.push(build_param("NodeKind", "anchor"));
+        if spec.machine.total_anchor_nodes.unwrap_or(0) > 0
+            && regional_resource
+                .cloudformation_asg_anchor_nodes_logical_ids
+                .is_none()
+        {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "\n\n\nSTEP: create ASG for anchor nodes for network Id {} in '{region}'\n",
+                    spec.avalanchego_config.network_id
+                )),
+                ResetColor
+            )?;
 
-        let mut asg_logical_ids = Vec::new();
-        for i in 0..anchor_nodes as usize {
-            let mut asg_params = common_asg_params_anchor.clone();
-            asg_params.push(build_param(
-                "PublicSubnetIds",
-                // since we only launch one node per ASG
-                &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
-            ));
-
-            // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
-            let asg_name = format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch_type, i + 1);
-            asg_params.push(build_param("AsgName", &asg_name));
-
-            if !asg_launch_template_id.is_empty() {
-                // reuse ASG template from previous run
-                asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
-            }
-            if !asg_launch_template_version.is_empty() {
-                // reuse ASG template from previous run
-                asg_params.push(build_param(
-                    "AsgLaunchTemplateVersion",
-                    &asg_launch_template_version,
-                ));
-            }
-
-            if let Some(arn) = &spec.resource.cloudformation_asg_nlb_target_group_arn {
-                // NLB already created
-                asg_params.push(build_param("NlbTargetGroupArn", arn));
-            }
-
-            // rate limit
-            sleep(Duration::from_secs(1)).await;
-            cloudformation_manager
-                .create_stack(
-                    &stack_names[i],
-                    None,
-                    OnFailure::Delete,
-                    &cloudformation_asg_anchor_nodes_tmpl,
-                    Some(Vec::from([Tag::builder()
-                        .key("KIND")
-                        .value("avalanche-ops")
-                        .build()])),
-                    Some(asg_params),
-                )
-                .await
+            let cloudformation_asg_anchor_nodes_tmpl =
+                avalanche_ops::aws::artifacts::asg_ubuntu_yaml().unwrap();
+            let stack_names = regional_resource
+                .cloudformation_asg_anchor_nodes
+                .clone()
                 .unwrap();
 
-            if i == 0 {
-                // add 5-minute for ELB creation + volume provisioner
+            let anchor_nodes = spec.machine.total_anchor_nodes.unwrap();
+
+            // must deep-copy as shared with other node kind
+            let mut common_asg_params_anchor = common_asg_params.clone();
+            common_asg_params_anchor.push(build_param("NodeKind", "anchor"));
+
+            let mut asg_logical_ids = Vec::new();
+            for i in 0..anchor_nodes as usize {
+                let mut asg_params = common_asg_params_anchor.clone();
+                asg_params.push(build_param(
+                    "PublicSubnetIds",
+                    // since we only launch one node per ASG
+                    &public_subnet_ids[random_manager::usize() % public_subnet_ids.len()].clone(),
+                ));
+
+                // AutoScalingGroupName: !Join ["-", [!Ref Id, !Ref NodeKind, !Ref ArchType]]
+                let asg_name =
+                    format!("{}-anchor-{}-{:02}", spec.id, spec.machine.arch_type, i + 1);
+                asg_params.push(build_param("AsgName", &asg_name));
+
+                if !asg_launch_template_id.is_empty() {
+                    // reuse ASG template from previous run
+                    asg_params.push(build_param("AsgLaunchTemplateId", &asg_launch_template_id));
+                }
+                if !asg_launch_template_version.is_empty() {
+                    // reuse ASG template from previous run
+                    asg_params.push(build_param(
+                        "AsgLaunchTemplateVersion",
+                        &asg_launch_template_version,
+                    ));
+                }
+
+                if let Some(arn) = &regional_resource.cloudformation_asg_nlb_target_group_arn {
+                    // NLB already created
+                    asg_params.push(build_param("NlbTargetGroupArn", arn));
+                }
+
+                // rate limit
+                sleep(Duration::from_secs(1)).await;
+                regional_cloudformation_manager
+                    .create_stack(
+                        &stack_names[i],
+                        None,
+                        OnFailure::Delete,
+                        &cloudformation_asg_anchor_nodes_tmpl,
+                        Some(Vec::from([Tag::builder()
+                            .key("KIND")
+                            .value("avalanche-ops")
+                            .build()])),
+                        Some(asg_params),
+                    )
+                    .await
+                    .unwrap();
+
+                if i == 0 {
+                    // add 5-minute for ELB creation + volume provisioner
+                    let mut wait_secs = 800;
+                    if wait_secs > MAX_WAIT_SECONDS {
+                        wait_secs = MAX_WAIT_SECONDS;
+                    }
+                    sleep(Duration::from_secs(60)).await;
+
+                    let stack = regional_cloudformation_manager
+                        .poll_stack(
+                            &stack_names[i],
+                            StackStatus::CreateComplete,
+                            Duration::from_secs(wait_secs),
+                            Duration::from_secs(30),
+                        )
+                        .await
+                        .unwrap();
+
+                    for o in stack.outputs.unwrap() {
+                        let k = o.output_key.unwrap();
+                        let v = o.output_value.unwrap();
+                        log::info!("stack output key=[{}], value=[{}]", k, v,);
+                        if k.eq("AsgLogicalId") {
+                            asg_logical_ids.push(v);
+                            continue;
+                        }
+                        if k.eq("NlbArn") {
+                            regional_resource.cloudformation_asg_nlb_arn = Some(v);
+                            continue;
+                        }
+                        if k.eq("NlbTargetGroupArn") {
+                            regional_resource.cloudformation_asg_nlb_target_group_arn = Some(v);
+                            continue;
+                        }
+                        if k.eq("NlbDnsName") {
+                            regional_resource.cloudformation_asg_nlb_dns_name = Some(v);
+                            continue;
+                        }
+                        if k.eq("AsgLaunchTemplateId") {
+                            asg_launch_template_id = v;
+                            continue;
+                        }
+                        if k.eq("AsgLaunchTemplateVersion") {
+                            asg_launch_template_version = v;
+                            continue;
+                        }
+                    }
+                }
+            }
+            for i in 1..anchor_nodes as usize {
                 let mut wait_secs = 800;
                 if wait_secs > MAX_WAIT_SECONDS {
                     wait_secs = MAX_WAIT_SECONDS;
                 }
-                sleep(Duration::from_secs(60)).await;
 
-                let stack = cloudformation_manager
+                let stack = regional_cloudformation_manager
                     .poll_stack(
                         &stack_names[i],
                         StackStatus::CreateComplete,
@@ -863,15 +928,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         continue;
                     }
                     if k.eq("NlbArn") {
-                        spec.resource.cloudformation_asg_nlb_arn = Some(v);
+                        regional_resource.cloudformation_asg_nlb_arn = Some(v);
                         continue;
                     }
                     if k.eq("NlbTargetGroupArn") {
-                        spec.resource.cloudformation_asg_nlb_target_group_arn = Some(v);
+                        regional_resource.cloudformation_asg_nlb_target_group_arn = Some(v);
                         continue;
                     }
                     if k.eq("NlbDnsName") {
-                        spec.resource.cloudformation_asg_nlb_dns_name = Some(v);
+                        regional_resource.cloudformation_asg_nlb_dns_name = Some(v);
                         continue;
                     }
                     if k.eq("AsgLaunchTemplateId") {
@@ -884,68 +949,24 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     }
                 }
             }
-        }
-        for i in 1..anchor_nodes as usize {
-            let mut wait_secs = 800;
-            if wait_secs > MAX_WAIT_SECONDS {
-                wait_secs = MAX_WAIT_SECONDS;
+            if asg_logical_ids.is_empty() {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "resources.cloudformation_asg_anchor_nodes_logical_ids not found",
+                ));
             }
+            asg_logical_ids.sort();
 
-            let stack = cloudformation_manager
-                .poll_stack(
-                    &stack_names[i],
-                    StackStatus::CreateComplete,
-                    Duration::from_secs(wait_secs),
-                    Duration::from_secs(30),
-                )
-                .await
-                .unwrap();
-
-            for o in stack.outputs.unwrap() {
-                let k = o.output_key.unwrap();
-                let v = o.output_value.unwrap();
-                log::info!("stack output key=[{}], value=[{}]", k, v,);
-                if k.eq("AsgLogicalId") {
-                    asg_logical_ids.push(v);
-                    continue;
-                }
-                if k.eq("NlbArn") {
-                    spec.resource.cloudformation_asg_nlb_arn = Some(v);
-                    continue;
-                }
-                if k.eq("NlbTargetGroupArn") {
-                    spec.resource.cloudformation_asg_nlb_target_group_arn = Some(v);
-                    continue;
-                }
-                if k.eq("NlbDnsName") {
-                    spec.resource.cloudformation_asg_nlb_dns_name = Some(v);
-                    continue;
-                }
-                if k.eq("AsgLaunchTemplateId") {
-                    asg_launch_template_id = v;
-                    continue;
-                }
-                if k.eq("AsgLaunchTemplateVersion") {
-                    asg_launch_template_version = v;
-                    continue;
-                }
-            }
+            regional_resource.cloudformation_asg_anchor_nodes_logical_ids =
+                Some(asg_logical_ids.clone());
+            regional_resource.cloudformation_asg_launch_template_id =
+                Some(asg_launch_template_id.clone());
+            regional_resource.cloudformation_asg_launch_template_version =
+                Some(asg_launch_template_version.clone());
+            spec.sync(spec_file_path)?;
         }
-        if asg_logical_ids.is_empty() {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "resources.cloudformation_asg_anchor_nodes_logical_ids not found",
-            ));
-        }
-        asg_logical_ids.sort();
 
-        spec.resource.cloudformation_asg_anchor_nodes_logical_ids = Some(asg_logical_ids.clone());
-        spec.resource.cloudformation_asg_launch_template_id = Some(asg_launch_template_id.clone());
-        spec.resource.cloudformation_asg_launch_template_version =
-            Some(asg_launch_template_version.clone());
-        spec.sync(spec_file_path)?;
-
-        if spec.resource.cloudformation_asg_nlb_arn.is_none() {
+        if regional_resource.cloudformation_asg_nlb_arn.is_none() {
             if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB ARN...");
             } else {
@@ -955,8 +976,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 ));
             }
         }
-        if spec
-            .resource
+        if regional_resource
             .cloudformation_asg_nlb_target_group_arn
             .is_none()
         {
@@ -969,7 +989,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 ));
             }
         }
-        if spec.resource.cloudformation_asg_nlb_dns_name.is_none() {
+        if regional_resource.cloudformation_asg_nlb_dns_name.is_none() {
             if !spec.enable_nlb {
                 log::info!("NLB is disabled so empty NLB DNS name...");
             } else {
@@ -1096,7 +1116,7 @@ aws ssm start-session --region {} --target {}
         loop {
             sleep(Duration::from_secs(30)).await;
 
-            objects = s3_manager
+            objects = default_s3_manager
                 .list_objects(
                     &spec.resource.s3_bucket,
                     Some(&s3::append_slash(
@@ -1144,7 +1164,7 @@ aws ssm start-session --region {} --target {}
 
         spec.sync(spec_file_path)?;
 
-        s3_manager
+        default_s3_manager
             .put_object(
                 &spec_file_path,
                 &spec.resource.s3_bucket,
@@ -1498,7 +1518,7 @@ aws ssm start-session --region {} --target {}
         loop {
             sleep(Duration::from_secs(30)).await;
 
-            objects = s3_manager
+            objects = default_s3_manager
                 .list_objects(
                     &spec.resource.s3_bucket,
                     Some(&s3::append_slash(
@@ -1544,7 +1564,7 @@ aws ssm start-session --region {} --target {}
             created_nodes.push(non_anchor_node.clone());
         }
 
-        s3_manager
+        default_s3_manager
             .put_object(
                 &spec_file_path,
                 &spec.resource.s3_bucket,
@@ -1559,7 +1579,7 @@ aws ssm start-session --region {} --target {}
 
     spec.resource.created_nodes = Some(created_nodes.clone());
     spec.sync(spec_file_path)?;
-    s3_manager
+    default_s3_manager
         .put_object(
             &spec_file_path,
             &spec.resource.s3_bucket,
