@@ -23,7 +23,6 @@ use aws_manager::{
 };
 use aws_sdk_cloudformation::types::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_ec2::types::Address;
-use aws_sdk_s3::types::Object;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -104,7 +103,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     // set defaults based on ID
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
+
         if regional_resource.ec2_key_name.is_empty() {
             regional_resource.ec2_key_name = format!("{}-ec2-key", spec.id);
         }
@@ -153,6 +154,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode(),
         );
 
+        spec.resource
+            .regional_resources
+            .insert(region.clone(), regional_resource);
         spec.sync(spec_file_path)?;
     }
 
@@ -365,7 +369,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         log::info!("skipping uploading artifacts...");
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
+
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
@@ -468,9 +474,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .await
                 .unwrap();
         }
+
+        spec.resource
+            .regional_resources
+            .insert(region.clone(), regional_resource);
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
+
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
@@ -553,9 +565,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .await
                 .unwrap();
         }
+
+        spec.resource
+            .regional_resources
+            .insert(region.clone(), regional_resource);
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
+
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
@@ -657,11 +675,17 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .await
                 .unwrap();
         }
+
+        spec.resource
+            .regional_resources
+            .insert(region.clone(), regional_resource);
     }
 
     let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
     let mut region_to_common_asg_params = HashMap::new();
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
+
         let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
 
         let regional_shared_config =
@@ -780,7 +804,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             common_asg_params.push(build_param("NlbEnabled", "false"));
         }
 
-        region_to_common_asg_params.insert(region.to_string(), common_asg_params);
+        region_to_common_asg_params.insert(region.to_string(), common_asg_params.clone());
 
         let public_subnet_ids = regional_resource
             .cloudformation_vpc_public_subnet_ids
@@ -1009,9 +1033,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 ));
             }
         }
+
+        spec.resource
+            .regional_resources
+            .insert(region.clone(), regional_resource);
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
 
         let regional_shared_config =
@@ -1219,7 +1247,8 @@ aws ssm start-session --region {} --target {}
         }
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
         let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
 
         let regional_shared_config =
@@ -1459,9 +1488,13 @@ aws ssm start-session --region {} --target {}
                 }
             }
         }
+
+        spec.resource
+            .regional_resources
+            .insert(region.clone(), regional_resource);
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.iter_mut() {
+    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
 
         let regional_shared_config =
@@ -1686,19 +1719,27 @@ aws ssm start-session --region {} --target {}
         println!("{}", node.encode_yaml().unwrap());
     }
 
-    let mut rpc_hosts = if let Some(dns_name) = &spec.resource.cloudformation_asg_nlb_dns_name {
-        vec![dns_name.clone()]
-    } else {
-        Vec::new()
-    };
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+        ResetColor
+    )?;
+    let mut rpc_hosts = Vec::new();
     let mut rpc_host_to_node = HashMap::new();
+    let mut nlb_https_enabled = false;
+    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+        nlb_https_enabled = regional_resource.nlb_acm_certificate_arn.is_some();
+
+        if let Some(dns_name) = &regional_resource.cloudformation_asg_nlb_dns_name {
+            rpc_hosts.push(dns_name.clone());
+        }
+    }
     for node in created_nodes.iter() {
         rpc_host_to_node.insert(node.public_ip.clone(), node.clone());
         rpc_hosts.push(node.public_ip.clone())
     }
-
-    let http_port = spec.avalanchego_config.http_port;
-    let nlb_https_enabled = spec.resource.nlb_acm_certificate_arn.is_some();
+    let http_port: u32 = spec.avalanchego_config.http_port;
     let https_enabled = spec.avalanchego_config.http_tls_enabled.is_some()
         && spec.avalanchego_config.http_tls_enabled.unwrap();
     let (scheme_for_dns, port_for_dns) = {
@@ -1708,13 +1749,6 @@ aws ssm start-session --region {} --target {}
             ("http", http_port)
         }
     };
-
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
-        ResetColor
-    )?;
     // TODO: check "/ext/info"
     // TODO: check "/ext/bc/C/rpc"
     // TODO: subnet-evm endpoint with "/ext/bc/[BLOCKCHAIN TX ID]/rpc"
@@ -1803,6 +1837,11 @@ aws ssm start-session --region {} --target {}
         );
     }
 
+    //
+    //
+    //
+    //
+    //
     println!();
     log::info!(
         "apply all success with node Ids {:?} and instance Ids {:?}",
@@ -1830,29 +1869,34 @@ aws ssm start-session --region {} --target {}
         ResetColor
     )?;
 
+    //
+    //
+    //
+    //
+    //
     println!();
     println!("# download the generated certificates");
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Magenta),
-        Print(format!(
-            "aws --region {} s3 ls s3://{}/{}/pki/ --human-readable\n",
-            spec.resource.regions[0], spec.resource.s3_bucket, spec.id
-        )),
-        ResetColor
-    )?;
-    let kms_key_id = spec
-        .resource
-        .kms_symmetric_default_encrypt_key
-        .clone()
-        .unwrap()
-        .id;
-    for n in created_nodes.iter() {
+    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         execute!(
             stdout(),
-            SetForegroundColor(Color::Green),
+            SetForegroundColor(Color::Magenta),
             Print(format!(
-                "
+                "aws --region {} s3 ls s3://{}/{}/pki/ --human-readable\n",
+                region, spec.resource.s3_bucket, spec.id
+            )),
+            ResetColor
+        )?;
+        let kms_key_id = regional_resource
+            .kms_symmetric_default_encrypt_key
+            .clone()
+            .unwrap()
+            .id;
+        for n in created_nodes.iter() {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "
 {exec_parent_dir}/staking-key-cert-s3-downloader \\
 --log-level=info \\
 --region={region} \\
@@ -1876,16 +1920,17 @@ cat /tmp/{node_id}.crt
 --key-path=/tmp/{node_id}.bls.key
 
 ",
-                exec_parent_dir = exec_parent_dir,
-                region = spec.resource.regions[0],
-                s3_buckeet = spec.resource.s3_bucket,
-                id = spec.id,
-                kms_key_id = kms_key_id,
-                aad_tag = spec.aad_tag,
-                node_id = n.node_id,
-            )),
-            ResetColor
-        )?;
+                    exec_parent_dir = exec_parent_dir,
+                    region = spec.resource.regions[0],
+                    s3_buckeet = spec.resource.s3_bucket,
+                    id = spec.id,
+                    kms_key_id = kms_key_id,
+                    aad_tag = spec.aad_tag,
+                    node_id = n.node_id,
+                )),
+                ResetColor
+            )?;
+        }
     }
 
     //
@@ -1893,49 +1938,54 @@ cat /tmp/{node_id}.crt
     //
     //
     //
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: creating an SSM document for installing subnet...\n\n"),
-        ResetColor
-    )?;
-    let ssm_doc_tmpl = avalanche_ops::aws::artifacts::ssm_install_subnet_chain_yaml().unwrap();
-    let ssm_doc_stack_name = spec
-        .resource
-        .cloudformation_ssm_install_subnet_chain
-        .clone()
-        .unwrap();
-    let ssm_install_subnet_chain_doc_name =
-        avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode();
-    let cfn_params = Vec::from([build_param(
-        "DocumentName",
-        &ssm_install_subnet_chain_doc_name,
-    )]);
-    cloudformation_manager
-        .create_stack(
-            ssm_doc_stack_name.as_str(),
-            Some(vec![Capability::CapabilityNamedIam]),
-            OnFailure::Delete,
-            &ssm_doc_tmpl,
-            Some(Vec::from([Tag::builder()
-                .key("KIND")
-                .value("avalanche-ops")
-                .build()])),
-            Some(cfn_params),
-        )
-        .await
-        .unwrap();
-    sleep(Duration::from_secs(10)).await;
-    cloudformation_manager
-        .poll_stack(
-            ssm_doc_stack_name.as_str(),
-            StackStatus::CreateComplete,
-            Duration::from_secs(500),
-            Duration::from_secs(30),
-        )
-        .await
-        .unwrap();
-    log::info!("created ssm document for installing subnet");
+    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!("\n\n\nSTEP: creating an SSM document for installing subnet in the region '{region}'\n\n")),
+            ResetColor
+        )?;
+        let ssm_doc_tmpl = avalanche_ops::aws::artifacts::ssm_install_subnet_chain_yaml().unwrap();
+        let ssm_doc_stack_name = regional_resource
+            .cloudformation_ssm_install_subnet_chain
+            .clone()
+            .unwrap();
+        let ssm_install_subnet_chain_doc_name =
+            avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode();
+        let cfn_params = Vec::from([build_param(
+            "DocumentName",
+            &ssm_install_subnet_chain_doc_name,
+        )]);
+        regional_cloudformation_manager
+            .create_stack(
+                ssm_doc_stack_name.as_str(),
+                Some(vec![Capability::CapabilityNamedIam]),
+                OnFailure::Delete,
+                &ssm_doc_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(cfn_params),
+            )
+            .await
+            .unwrap();
+        sleep(Duration::from_secs(10)).await;
+        regional_cloudformation_manager
+            .poll_stack(
+                ssm_doc_stack_name.as_str(),
+                StackStatus::CreateComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+        log::info!("created ssm document for installing subnet");
+    }
 
     // TODO: support Fuji
     if spec.avalanchego_config.is_custom_network() {
@@ -2127,14 +2177,15 @@ cat /tmp/{node_id}.crt
         ResetColor
     )?;
 
-    println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators, works for any VM)");
-    let node_id_to_region_machine_id =
-        serde_json::to_string(&node_id_to_region_machine_id).unwrap();
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "{exec_path} install-subnet-chain \\
+    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+        println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators, works for any VM)");
+        let node_id_to_region_machine_id =
+            serde_json::to_string(&node_id_to_region_machine_id).unwrap();
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "{exec_path} install-subnet-chain \\
 --log-level info \\
 --s3-region {region} \\
 --s3-bucket {s3_bucket} \\
@@ -2157,22 +2208,27 @@ cat /tmp/{node_id}.crt
 --target-nodes '{node_id_to_region_machine_id}'
 
 ",
-            exec_path = exec_path.display(),
-            region = spec.resource.regions[0],
-            s3_bucket = spec.resource.s3_bucket,
-            chain_rpc_url =
-                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
-            priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
-            id = spec.id,
-            subnet_config_remote_dir = spec.avalanchego_config.subnet_config_dir,
-            vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
-            chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
-            avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
-            region_to_ssm_doc_name = ssm_install_subnet_chain_doc_name,
-            node_id_to_region_machine_id = node_id_to_region_machine_id,
-        )),
-        ResetColor
-    )?;
+                exec_path = exec_path.display(),
+                region = region,
+                s3_bucket = spec.resource.s3_bucket,
+                chain_rpc_url =
+                    format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+                priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
+                id = spec.id,
+                subnet_config_remote_dir = spec.avalanchego_config.subnet_config_dir,
+                vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
+                chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
+                avalanchego_config_remote_path =
+                    spec.avalanchego_config.config_file.clone().unwrap(),
+                region_to_ssm_doc_name = regional_resource
+                    .cloudformation_ssm_install_subnet_chain
+                    .clone()
+                    .unwrap(),
+                node_id_to_region_machine_id = node_id_to_region_machine_id,
+            )),
+            ResetColor
+        )?;
+    }
 
     println!("\n# EXAMPLE: start distributed load generator");
     execute!(
