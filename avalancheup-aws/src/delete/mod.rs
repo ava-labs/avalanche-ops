@@ -583,7 +583,7 @@ pub async fn execute(
     }
 
     if delete_elastic_ips {
-        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+        for (region, _) in spec.resource.regional_resources.clone().iter() {
             let regional_shared_config =
                 aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
