@@ -658,6 +658,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+        let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
         let mut common_asg_params = Vec::from([
             build_param("Id", &spec.id),
@@ -731,8 +732,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ));
         }
 
-        if !spec.machine.regional_machines.is_empty() {
-            let instance_types = spec.machine.regional_machines.clone();
+        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
+        if !regional_machine.instance_types.is_empty() {
+            let instance_types = regional_machine.instance_types.clone();
             common_asg_params.push(build_param("InstanceTypes", &instance_types.join(",")));
             common_asg_params.push(build_param(
                 "InstanceTypesCount",
@@ -777,8 +779,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let mut asg_launch_template_id = String::new();
         let mut asg_launch_template_version = String::new();
+        let mut asg_logical_ids = Vec::new();
 
-        if spec.machine.total_anchor_nodes.unwrap_or(0) > 0
+        if regional_machine.anchor_nodes.unwrap_or(0) > 0
             && regional_resource
                 .cloudformation_asg_anchor_nodes_logical_ids
                 .is_none()
@@ -806,7 +809,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let mut common_asg_params_anchor = common_asg_params.clone();
             common_asg_params_anchor.push(build_param("NodeKind", "anchor"));
 
-            let mut asg_logical_ids = Vec::new();
             for i in 0..anchor_nodes as usize {
                 let mut asg_params = common_asg_params_anchor.clone();
                 asg_params.push(build_param(
@@ -1004,11 +1006,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let mut eips = Vec::new();
         let mut instance_id_to_public_ip = HashMap::new();
         for asg_name in asg_logical_ids.iter() {
-            let mut dss = Vec::new();
+            let mut dss: Vec<ec2::Droplet> = Vec::new();
             for _ in 0..20 {
                 // TODO: better retries
                 log::info!("fetching all droplets for anchor-node SSH access");
-                let ds = ec2_manager.list_asg(asg_name).await.unwrap();
+                let ds = regional_ec2_manager.list_asg(asg_name).await.unwrap();
                 if ds.len() >= 1 {
                     dss = ds;
                     break;
@@ -1022,7 +1024,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 log::info!("using elastic IPs... wait more");
                 let mut outs: Vec<Address>;
                 loop {
-                    outs = ec2_manager
+                    outs = regional_ec2_manager
                         .describe_eips_by_tags(HashMap::from([
                             (String::from("Id"), spec.id.clone()),
                             (String::from("autoscaling:groupName"), asg_name.clone()),
@@ -1054,7 +1056,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             }
         }
 
-        let f = File::open(&spec.resource.ec2_key_path).unwrap();
+        let f = File::open(&regional_resource.ec2_key_path).unwrap();
         f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
         println!();
@@ -1081,29 +1083,29 @@ scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
 # SSM session (requires SSM agent)
 aws ssm start-session --region {} --target {}
 ",
-                spec.resource.ec2_key_path,
+                regional_resource.ec2_key_path,
                 //
                 d.instance_id,
                 d.instance_state_name,
                 d.availability_zone,
                 ip_kind,
                 //
-                spec.resource.ec2_key_path,
+                regional_resource.ec2_key_path,
                 instance_ip,
                 //
-                spec.resource.ec2_key_path,
+                regional_resource.ec2_key_path,
                 instance_ip,
                 //
-                spec.resource.ec2_key_path,
+                regional_resource.ec2_key_path,
                 instance_ip,
                 //
-                spec.resource.ec2_key_path,
+                regional_resource.ec2_key_path,
                 instance_ip,
                 //
-                spec.resource.ec2_key_path,
+                regional_resource.ec2_key_path,
                 instance_ip,
                 //
-                spec.resource.regions[0],
+                region,
                 d.instance_id,
             );
         }
