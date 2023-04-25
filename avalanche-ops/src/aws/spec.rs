@@ -132,6 +132,8 @@ pub struct Resource {
     #[serde(default)]
     pub ingress_ipv4_cidr: String,
 
+    /// Only populate as many as we need to fill up anchor/non-anchor nodes.
+    /// e.g., "regions" may have 5 but we may only need 2 regions for 3 node cluster.
     pub regional_resources: HashMap<String, RegionalResource>,
 
     /// Created nodes at the start of the network.
