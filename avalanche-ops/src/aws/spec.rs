@@ -134,6 +134,7 @@ pub struct Resource {
 
     /// Only populate as many as we need to fill up anchor/non-anchor nodes.
     /// e.g., "regions" may have 5 but we may only need 2 regions for 3 node cluster.
+    #[serde(default)]
     pub regional_resources: HashMap<String, RegionalResource>,
 
     /// Created nodes at the start of the network.
@@ -1162,7 +1163,7 @@ id: {id}
 aad_tag: test
 
 resource:
-  regional_resources:
+  regions:
   - us-west-2
   s3_bucket: {bucket}
   use_spot_instance: false
