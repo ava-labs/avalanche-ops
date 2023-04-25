@@ -111,6 +111,10 @@ async fn main() -> io::Result<()> {
                     .clone(),
 
                 regions,
+                auto_regions: sub_matches
+                    .get_one::<usize>("AUTO_REGIONS")
+                    .unwrap_or(&0)
+                    .clone(),
                 ingress_ipv4_cidr: sub_matches
                     .get_one::<String>("INGRESS_IPV4_CIDR")
                     .unwrap_or(&String::new())

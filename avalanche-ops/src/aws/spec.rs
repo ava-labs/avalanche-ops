@@ -446,6 +446,8 @@ pub struct DefaultSpecOption {
     pub keys_to_generate: usize,
 
     pub regions: Vec<String>,
+    pub auto_regions: usize,
+
     pub ingress_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
@@ -656,15 +658,26 @@ impl Spec {
             }
         };
 
+        let mut regions = opts.regions.clone();
+        if opts.auto_regions > 0 {
+            // TODO
+            regions = vec!["us-west-2".to_string()]
+        }
+        let instance_types = if !opts.instance_types.is_empty() {
+            opts.instance_types.clone()
+        } else {
+            ec2::default_instance_types(&regions[0], &opts.arch_type, &opts.instance_size).unwrap()
+        };
+
         // [year][month][date]-[system host-based id]
         let s3_bucket = format!(
             "avalanche-ops-{}-{}-{}",
             id_manager::time::timestamp(6),
             id_manager::system::string(10),
-            opts.regions[0]
+            regions[0]
         );
         let mut resources = Resources {
-            regions: opts.regions.clone(),
+            regions: regions.clone(),
             s3_bucket,
             ec2_key_name: format!("{id}-ec2-key"),
             ec2_key_path: get_ec2_key_path(&spec_file_path),
@@ -824,13 +837,6 @@ impl Spec {
                     400
                 }
             }
-        };
-
-        let instance_types = if !opts.instance_types.is_empty() {
-            opts.instance_types.clone()
-        } else {
-            ec2::default_instance_types(&opts.regions[0], &opts.arch_type, &opts.instance_size)
-                .unwrap()
         };
 
         let machine = Machine {
