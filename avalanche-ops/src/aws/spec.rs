@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -135,7 +135,7 @@ pub struct Resource {
     /// Only populate as many as we need to fill up anchor/non-anchor nodes.
     /// e.g., "regions" may have 5 but we may only need 2 regions for 3 node cluster.
     #[serde(default)]
-    pub regional_resources: HashMap<String, RegionalResource>,
+    pub regional_resources: BTreeMap<String, RegionalResource>,
 
     /// Created nodes at the start of the network.
     /// May become stale.
@@ -158,7 +158,7 @@ impl Resource {
             s3_bucket: String::new(),
             ingress_ipv4_cidr: String::from("0.0.0.0/0"),
 
-            regional_resources: HashMap::new(),
+            regional_resources: BTreeMap::new(),
 
             created_nodes: None,
         }
@@ -590,8 +590,8 @@ impl Spec {
         let mut current_anchor_nodes = 0_u32;
         let mut current_non_anchor_nodes = 0_u32;
 
-        let mut regional_resources = HashMap::new();
-        let mut regional_machines = HashMap::new();
+        let mut regional_resources = BTreeMap::new();
+        let mut regional_machines = BTreeMap::new();
 
         for (i, reg) in regions.iter().enumerate() {
             let mut regional_machine = RegionalMachine {
@@ -1288,7 +1288,7 @@ coreth_chain_config:
 
     cfg.sync(config_path).unwrap();
 
-    let mut regional_machines = HashMap::new();
+    let mut regional_machines = BTreeMap::new();
     regional_machines.insert(
         "us-west-2".to_string(),
         RegionalMachine {
@@ -1713,7 +1713,7 @@ pub struct Machine {
     pub volume_size_in_gb: u32,
 
     #[serde(default)]
-    pub regional_machines: HashMap<String, RegionalMachine>,
+    pub regional_machines: BTreeMap<String, RegionalMachine>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
