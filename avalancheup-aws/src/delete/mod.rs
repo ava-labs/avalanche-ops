@@ -473,7 +473,7 @@ pub async fn execute(
     }
 
     if delete_cloudwatch_log_group {
-        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+        for (region, _) in spec.resource.regional_resources.clone().iter() {
             let regional_shared_config =
                 aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
@@ -533,7 +533,7 @@ pub async fn execute(
     }
 
     if delete_ebs_volumes {
-        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+        for (region, _) in spec.resource.regional_resources.clone().iter() {
             let regional_shared_config =
                 aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 

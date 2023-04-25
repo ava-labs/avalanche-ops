@@ -691,7 +691,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
-        let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
         let mut common_asg_params = Vec::from([
             build_param("Id", &spec.id),
@@ -1044,7 +1043,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
-        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
         let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
         if let Some(anchor_asg_logical_ids) =
@@ -1249,12 +1247,10 @@ aws ssm start-session --region {} --target {}
 
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
-        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
-        let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
         let common_asg_params = region_to_common_asg_params.get(region).unwrap();
 
@@ -1499,10 +1495,7 @@ aws ssm start-session --region {} --target {}
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
-        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
         let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
-
-        let common_asg_params = region_to_common_asg_params.get(region).unwrap();
 
         if let Some(non_anchor_asg_logical_ids) =
             &regional_resource.cloudformation_asg_non_anchor_nodes_logical_ids
@@ -1728,7 +1721,7 @@ aws ssm start-session --region {} --target {}
     let mut rpc_hosts = Vec::new();
     let mut rpc_host_to_node = HashMap::new();
     let mut nlb_https_enabled = false;
-    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+    for (_, regional_resource) in spec.resource.regional_resources.clone().iter() {
         nlb_https_enabled = regional_resource.nlb_acm_certificate_arn.is_some();
 
         if let Some(dns_name) = &regional_resource.cloudformation_asg_nlb_dns_name {
