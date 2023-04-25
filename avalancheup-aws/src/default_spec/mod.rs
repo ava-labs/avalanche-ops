@@ -75,10 +75,9 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .short('r')
-                .help("Sets the AWS region for API calls/endpoints")
+            Arg::new("REGIONS")
+                .long("regions")
+                .help("Sets the comma-separated instance types (overwrites --region)")
                 .required(false)
                 .num_args(1)
                 .default_value("us-west-2"),

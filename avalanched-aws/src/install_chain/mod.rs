@@ -16,7 +16,7 @@ pub const NAME: &str = "install-chain";
 pub struct Flags {
     pub log_level: String,
 
-    pub region: String,
+    pub s3_region: String,
     pub s3_bucket: String,
 
     pub chain_config_s3_key: String,
@@ -37,9 +37,9 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .help("Sets the AWS region")
+            Arg::new("S3_REGION")
+                .long("s3-region")
+                .help("Sets the AWS S3 region")
                 .required(true)
                 .num_args(1),
         )
@@ -73,7 +73,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let shared_config =
-        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await;
+        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
     let s3_manager = s3::Manager::new(&shared_config);
 
     let path = Path::new(&opts.chain_config_local_path);

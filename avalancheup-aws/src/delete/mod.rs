@@ -102,7 +102,7 @@ pub async fn execute(
     let spec = avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
 
     let shared_config = aws_manager::load_config(
-        Some(spec.resources.region.clone()),
+        Some(spec.resources.regions[0].clone()),
         Some(Duration::from_secs(30)),
     )
     .await;

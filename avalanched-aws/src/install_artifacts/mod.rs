@@ -24,10 +24,10 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .help("Sets the AWS region")
-                .required(false)
+            Arg::new("S3_REGION")
+                .long("s3-region")
+                .help("Sets the AWS S3 region")
+                .required(true)
                 .num_args(1),
         )
         .arg(
@@ -116,7 +116,7 @@ pub fn command() -> Command {
 /// 3. If the S3 download fails, fall back to github downloads.
 pub async fn execute(
     log_level: &str,
-    region: &str,
+    s3_region: &str,
     s3_bucket: &str,
     avalanchego_s3_key: &str,
     avalanchego_local_path: &str,
@@ -135,7 +135,7 @@ pub async fn execute(
     );
 
     let shared_config =
-        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await;
+        aws_manager::load_config(Some(s3_region.to_string()), Some(Duration::from_secs(30))).await;
     let s3_manager = s3::Manager::new(&shared_config);
 
     let need_github_download = if !avalanchego_s3_key.is_empty() {

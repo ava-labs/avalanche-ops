@@ -13,7 +13,7 @@ use avalanche_types::{
 use aws_manager::{ec2, sts};
 use serde::{Deserialize, Serialize};
 
-pub const VERSION: usize = 2;
+pub const VERSION: usize = 3;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
@@ -104,7 +104,8 @@ pub struct KmsKey {
     pub arn: String,
 }
 
-/// Represents the current AWS resource status.
+/// Represents the current AWS resource configurations and states.
+/// These states are necessary for resource cleanups.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Resources {
@@ -116,18 +117,29 @@ pub struct Resources {
     /// AWS region to create resources.
     /// MUST BE NON-EMPTY.
     #[serde(default)]
-    pub region: String,
-
-    #[serde(default)]
-    pub ingress_ipv4_cidr: String,
-
+    pub regions: Vec<String>,
     /// Name of the bucket to store (or download from)
     /// the configuration and resources (e.g., S3).
     /// If not exists, it creates automatically.
     /// If exists, it skips creation and uses the existing one.
     /// MUST BE NON-EMPTY.
+    /// ALWAYS USE THE FIRST REGION IN `regions` for S3.
+    /// AND SHARED ACROSS MULTIPLE REGIONS.
     #[serde(default)]
     pub s3_bucket: String,
+
+    #[serde(default)]
+    pub ingress_ipv4_cidr: String,
+
+    /// CloudFormation stack name for EC2 instance role.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ec2_instance_role: Option<String>,
+    /// Instance profile ARN from "cloudformation_ec2_instance_role".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ec2_instance_profile_arn: Option<String>,
 
     /// AWS region to create resources.
     /// NON-EMPTY TO ENABLE HTTPS over NLB.
@@ -148,16 +160,6 @@ pub struct Resources {
     pub ec2_key_name: String,
     #[serde(default)]
     pub ec2_key_path: String,
-
-    /// CloudFormation stack name for EC2 instance role.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ec2_instance_role: Option<String>,
-    /// Instance profile ARN from "cloudformation_ec2_instance_role".
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_ec2_instance_profile_arn: Option<String>,
 
     /// CloudFormation stack name for VPC.
     /// READ ONLY -- DO NOT SET.
@@ -227,9 +229,6 @@ pub struct Resources {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_ssm_install_subnet_chain: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudwatch_avalanche_metrics_namespace: Option<String>,
-
     /// Created nodes at the start of the network.
     /// May become stale.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -247,11 +246,13 @@ impl Resources {
         Self {
             identity: None,
 
-            region: String::from("us-west-2"),
+            regions: vec![String::from("us-west-2")],
+            s3_bucket: String::new(),
 
             ingress_ipv4_cidr: String::from("0.0.0.0/0"),
 
-            s3_bucket: String::new(),
+            cloudformation_ec2_instance_role: None,
+            cloudformation_ec2_instance_profile_arn: None,
 
             nlb_acm_certificate_arn: None,
 
@@ -259,9 +260,6 @@ impl Resources {
 
             ec2_key_name: String::new(),
             ec2_key_path: String::new(),
-
-            cloudformation_ec2_instance_role: None,
-            cloudformation_ec2_instance_profile_arn: None,
 
             cloudformation_vpc: None,
             cloudformation_vpc_id: None,
@@ -282,11 +280,155 @@ impl Resources {
             cloudformation_asg_launch_template_version: None,
 
             cloudformation_ssm_install_subnet_chain: None,
-            cloudwatch_avalanche_metrics_namespace: None,
 
             created_nodes: None,
         }
     }
+}
+
+/// Represents the AWS region-specific configuration and states.
+/// These states are necessary for resource cleanups.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct RegionalResources {
+    #[serde(default)]
+    pub region: String,
+
+    /// AWS region to create resources.
+    /// NON-EMPTY TO ENABLE HTTPS over NLB.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nlb_acm_certificate_arn: Option<String>,
+
+    /// KMS key ID to encrypt resources.
+    /// Only used for encrypting node certs and EC2 keys.
+    /// None if not created yet.
+    /// READ ONLY -- DO NOT SET.
+    /// TODO: support existing key and load the ARN based on region and account number.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kms_symmetric_default_encrypt_key: Option<KmsKey>,
+
+    /// EC2 key pair name for SSH access to EC2 instances.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(default)]
+    pub ec2_key_name: String,
+    #[serde(default)]
+    pub ec2_key_path: String,
+
+    /// CloudFormation stack name for VPC.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc: Option<String>,
+    /// VPC ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_id: Option<String>,
+    /// Security group ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_security_group_id: Option<String>,
+    /// Public subnet IDs from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
+
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
+    /// for anchor nodes.
+    /// None if mainnet.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_anchor_nodes: Option<Vec<String>>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_anchor_nodes_logical_ids: Option<Vec<String>>,
+
+    /// CloudFormation stack names of Auto Scaling Group (ASG)
+    /// for non-anchor nodes.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_non_anchor_nodes: Option<Vec<String>>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_non_anchor_nodes_logical_ids: Option<Vec<String>>,
+
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_arn: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_target_group_arn: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_nlb_dns_name: Option<String>,
+
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_id: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_launch_template_version: Option<String>,
+
+    /// CloudFormation stack name for SSM document that installs subnet.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_ssm_install_subnet_chain: Option<String>,
+}
+
+impl Default for RegionalResources {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl RegionalResources {
+    pub fn default() -> Self {
+        Self {
+            region: String::from("us-west-2"),
+
+            nlb_acm_certificate_arn: None,
+
+            kms_symmetric_default_encrypt_key: None,
+
+            ec2_key_name: String::new(),
+            ec2_key_path: String::new(),
+
+            cloudformation_vpc: None,
+            cloudformation_vpc_id: None,
+            cloudformation_vpc_security_group_id: None,
+            cloudformation_vpc_public_subnet_ids: None,
+
+            cloudformation_asg_anchor_nodes: None,
+            cloudformation_asg_anchor_nodes_logical_ids: None,
+
+            cloudformation_asg_non_anchor_nodes: None,
+            cloudformation_asg_non_anchor_nodes_logical_ids: None,
+
+            cloudformation_asg_nlb_arn: None,
+            cloudformation_asg_nlb_target_group_arn: None,
+            cloudformation_asg_nlb_dns_name: None,
+
+            cloudformation_asg_launch_template_id: None,
+            cloudformation_asg_launch_template_version: None,
+
+            cloudformation_ssm_install_subnet_chain: None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct RegionMachineId {
+    pub region: String,
+    pub machine_id: String,
 }
 
 /// Defines "default-spec" option.
@@ -303,7 +445,7 @@ pub struct DefaultSpecOption {
     pub key_files_dir: String,
     pub keys_to_generate: usize,
 
-    pub region: String,
+    pub regions: Vec<String>,
     pub ingress_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
@@ -519,10 +661,10 @@ impl Spec {
             "avalanche-ops-{}-{}-{}",
             id_manager::time::timestamp(6),
             id_manager::system::string(10),
-            opts.region
+            opts.regions[0]
         );
         let mut resources = Resources {
-            region: opts.region.clone(),
+            regions: opts.regions.clone(),
             s3_bucket,
             ec2_key_name: format!("{id}-ec2-key"),
             ec2_key_path: get_ec2_key_path(&spec_file_path),
@@ -687,7 +829,8 @@ impl Spec {
         let instance_types = if !opts.instance_types.is_empty() {
             opts.instance_types.clone()
         } else {
-            ec2::default_instance_types(&opts.region, &opts.arch_type, &opts.instance_size).unwrap()
+            ec2::default_instance_types(&opts.regions[0], &opts.arch_type, &opts.instance_size)
+                .unwrap()
         };
 
         let machine = Machine {
@@ -810,7 +953,7 @@ impl Spec {
             ));
         }
 
-        if self.resources.region.is_empty() {
+        if self.resources.regions.is_empty() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "'machine.region' cannot be empty",
@@ -993,7 +1136,7 @@ fn test_spec() {
     let contents = format!(
         r#"
 
-version: 2
+version: 3
 
 
 id: {id}
@@ -1001,9 +1144,10 @@ id: {id}
 aad_tag: test
 
 resources:
-  region: us-west-2
-  use_spot_instance: false
+  regions:
+  - us-west-2
   s3_bucket: {bucket}
+  use_spot_instance: false
 
 machine:
   non_anchor_nodes: 1
@@ -1123,7 +1267,7 @@ coreth_chain_config:
         aad_tag: String::from("test"),
 
         resources: Resources {
-            region: String::from("us-west-2"),
+            regions: vec![String::from("us-west-2")],
             s3_bucket: bucket.clone(),
             ..Resources::default()
         },
@@ -1182,7 +1326,7 @@ coreth_chain_config:
     assert_eq!(cfg.id, id);
     assert_eq!(cfg.aad_tag, "test");
 
-    assert_eq!(cfg.resources.region, "us-west-2");
+    assert_eq!(cfg.resources.regions[0], "us-west-2");
     assert_eq!(cfg.resources.s3_bucket, bucket);
 
     assert_eq!(
@@ -1237,6 +1381,7 @@ coreth_chain_config:
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Node {
+    pub region: String,
     pub kind: String,
     pub machine_id: String,
     pub node_id: String,
@@ -1249,6 +1394,7 @@ pub struct Node {
 
 impl Node {
     pub fn new(
+        region: &str,
         kind: node::Kind,
         machine_id: &str,
         node_id: &str,
@@ -1261,6 +1407,7 @@ impl Node {
         let proof_of_possession =
             key::bls::ProofOfPossession::new(&public_key, &proof_of_possession).unwrap();
         Self {
+            region: region.to_owned(),
             kind: String::from(kind.as_str()),
             machine_id: String::from(machine_id),
             node_id: node_id.to_string(),
@@ -1369,6 +1516,7 @@ fn test_node() {
         .try_init();
 
     let d = r#"
+region: ap-northeast-2
 kind: anchor
 machineId: i-123123
 
@@ -1391,6 +1539,7 @@ httpEndpoint: http://1.2.3.4:9650
     node.sync(node_path).unwrap();
 
     let orig = Node::new(
+        "ap-northeast-2",
         node::Kind::Anchor,
         "i-123123",
         "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx",
@@ -1403,6 +1552,7 @@ httpEndpoint: http://1.2.3.4:9650
     assert_eq!(node, orig);
 
     // manually check to make sure the serde deserializer works
+    assert_eq!(node.region, String::from("ap-northeast-2"));
     assert_eq!(node.kind, String::from("anchor"));
     assert_eq!(node.machine_id, String::from("i-123123"));
     assert_eq!(node.node_id, "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
@@ -1586,7 +1736,7 @@ impl StackName {
             StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
             StackName::Vpc(id) => format!("{}-vpc", id),
             StackName::SsmInstallSubnetChain(id) => {
-                format!("{}-ssm-install-subnet-chain", id)
+                format!("{id}-ssm-install-subnet-chain")
             }
         }
     }
@@ -1797,6 +1947,7 @@ fn test_storage_path() {
     let node_ip = "1.2.3.4";
 
     let node = Node::new(
+        "ap-northeast-2",
         node::Kind::NonAnchor,
         &instance_id,
         node_id,
@@ -1814,6 +1965,7 @@ fn test_storage_path() {
     let p = StorageNamespace::DiscoverReadyNonAnchorNode(
         id,
         Node {
+            region: "ap-northeast-2".to_string(),
             kind: String::from("non-anchor"),
             machine_id: instance_id.clone(),
             node_id: "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx".to_string(),

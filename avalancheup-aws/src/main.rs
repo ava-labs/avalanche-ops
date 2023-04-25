@@ -60,6 +60,19 @@ async fn main() -> io::Result<()> {
                 }
             }
 
+            let s = sub_matches
+                .get_one::<String>("REGIONS")
+                .unwrap_or(&String::new())
+                .clone();
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut regions = Vec::new();
+            for addr in ss.iter() {
+                let trimmed = addr.trim().to_string();
+                if !trimmed.is_empty() {
+                    regions.push(addr.trim().to_string());
+                }
+            }
+
             let opt = avalanche_ops::aws::spec::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -97,7 +110,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&5)
                     .clone(),
 
-                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                regions,
                 ingress_ipv4_cidr: sub_matches
                     .get_one::<String>("INGRESS_IPV4_CIDR")
                     .unwrap_or(&String::new())
@@ -262,10 +275,18 @@ async fn main() -> io::Result<()> {
         }
 
         Some((add_primary_network_validators::NAME, sub_matches)) => {
-            let node_ids_to_instance_ids: HashMap<String, String> = sub_matches
-                .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
-                .unwrap_or(&HashMap::new())
+            let s = sub_matches
+                .get_one::<String>("TARGET_NODE_IDS")
+                .unwrap_or(&String::new())
                 .clone();
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut target_node_ids = Vec::new();
+            for addr in ss.iter() {
+                let trimmed = addr.trim().to_string();
+                if !trimmed.is_empty() {
+                    target_node_ids.push(addr.trim().to_string());
+                }
+            }
 
             add_primary_network_validators::execute(add_primary_network_validators::Flags {
                 log_level: sub_matches
@@ -294,17 +315,24 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&2000)
                     .clone(),
 
-                node_ids_to_instance_ids,
+                target_node_ids,
             })
             .await
             .expect("failed to execute 'add-primary-network-validators'");
         }
 
         Some((install_subnet_chain::NAME, sub_matches)) => {
-            let node_ids_to_instance_ids: HashMap<String, String> = sub_matches
-                .get_one::<HashMap<String, String>>("NODE_IDS_TO_INSTANCE_IDS")
+            let ssm_docs: HashMap<String, String> = sub_matches
+                .get_one::<HashMap<String, String>>("SSM_DOCS")
                 .unwrap_or(&HashMap::new())
                 .clone();
+            let target_nodes: HashMap<String, avalanche_ops::aws::spec::RegionMachineId> =
+                sub_matches
+                    .get_one::<HashMap<String, avalanche_ops::aws::spec::RegionMachineId>>(
+                        "TARGET_NODES",
+                    )
+                    .unwrap_or(&HashMap::new())
+                    .clone();
 
             install_subnet_chain::execute(install_subnet_chain::Flags {
                 log_level: sub_matches
@@ -318,13 +346,12 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
 
-                region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                s3_region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
                 s3_key_prefix: sub_matches
                     .get_one::<String>("S3_KEY_PREFIX")
                     .unwrap_or(&String::new())
                     .clone(),
-                ssm_doc: sub_matches.get_one::<String>("SSM_DOC").unwrap().clone(),
 
                 chain_rpc_url: sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
@@ -387,7 +414,8 @@ async fn main() -> io::Result<()> {
                     .unwrap()
                     .clone(),
 
-                node_ids_to_instance_ids,
+                ssm_docs,
+                target_nodes,
             })
             .await
             .expect("failed to execute 'install-subnet-chain'");

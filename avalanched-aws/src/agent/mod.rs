@@ -100,7 +100,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await;
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
-    let s3_manager = s3::Manager::new(&shared_config);
 
     //
     //
@@ -124,6 +123,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         node_kind: node::Kind::Unknown(String::new()),
         kms_key_arn: String::new(),
         aad_tag: String::new(),
+        s3_region: String::new(),
         s3_bucket: String::new(),
         cloudwatch_config_file_path: String::new(),
         avalanche_telemetry_cloudwatch_rules_file_path: String::new(),
@@ -166,6 +166,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             "AAD_TAG" => {
                 fetched_tags.aad_tag = v.to_string();
             }
+            "S3_REGION" => {
+                fetched_tags.s3_region = v.to_string();
+            }
             "S3_BUCKET_NAME" => {
                 fetched_tags.s3_bucket = v.to_string();
             }
@@ -201,6 +204,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     assert!(!fetched_tags.rust_os_type.is_empty());
     assert!(!fetched_tags.kms_key_arn.is_empty());
     assert!(!fetched_tags.aad_tag.is_empty());
+    assert!(!fetched_tags.s3_region.is_empty());
     assert!(!fetched_tags.s3_bucket.is_empty());
     assert!(!fetched_tags.cloudwatch_config_file_path.is_empty());
     assert!(!fetched_tags
@@ -211,6 +215,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     assert!(!fetched_tags
         .avalanche_data_volume_ebs_device_name
         .is_empty());
+
+    let s3_manager = s3::Manager::new(
+        &aws_manager::load_config(
+            Some(fetched_tags.s3_region.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await,
+    );
 
     // if EIP is not set, just use the ephemeral IP
     let public_ipv4 = if Path::new(&fetched_tags.eip_file_path).exists() {
@@ -661,6 +673,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 }
             };
             let local_node = avalanche_ops::aws::spec::Node::new(
+                &meta.region,
                 node::Kind::Anchor,
                 &meta.ec2_instance_id,
                 &node_id.to_string(),
@@ -979,6 +992,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     if metrics_fetch_interval_seconds > 0 {
         stop_and_restart_avalanche_telemetry_cloudwatch_systemd_service(
+            &meta.region,
             "/usr/local/bin/avalanche-telemetry-cloudwatch",
             &fetched_tags.avalanche_telemetry_cloudwatch_rules_file_path,
             &fetched_tags.id,
@@ -1024,6 +1038,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             fetched_tags.node_kind.clone(),
             Arc::new(node_id.to_string()),
             Arc::new(public_ipv4.clone()),
+            Arc::new(fetched_tags.s3_region.clone()),
             Arc::new(fetched_tags.s3_bucket.clone()),
             Arc::new(fetched_tags.avalancheup_spec_path.clone()),
             Arc::new(proof_of_possession.clone()),
@@ -1127,6 +1142,7 @@ struct Tags {
     node_kind: node::Kind,
     kms_key_arn: String,
     aad_tag: String,
+    s3_region: String,
     s3_bucket: String,
     cloudwatch_config_file_path: String,
     avalanche_telemetry_cloudwatch_rules_file_path: String,
@@ -1419,6 +1435,7 @@ WantedBy=multi-user.target",
 }
 
 fn stop_and_restart_avalanche_telemetry_cloudwatch_systemd_service(
+    region: &str,
     avalanche_telemetry_cloudwatch_bin_path: &str,
     avalanche_telemetry_cloudwatch_rules_file_path: &str,
     namespace: &str,
@@ -1449,7 +1466,7 @@ TimeoutStartSec=300
 Restart=always
 RestartSec=5s
 LimitNOFILE=40000
-ExecStart={avalanche_telemetry_cloudwatch_bin_path} --log-level=info --initial-wait-seconds=10 --rules-file-path={avalanche_telemetry_cloudwatch_rules_file_path} --namespace={namespace} --rpc-endpoint=http://localhost:{http_port} --fetch-interval-seconds={metrics_fetch_interval_seconds}
+ExecStart={avalanche_telemetry_cloudwatch_bin_path} --log-level=info --region={region} --initial-wait-seconds=10 --rules-file-path={avalanche_telemetry_cloudwatch_rules_file_path} --namespace={namespace} --rpc-endpoint=http://localhost:{http_port} --fetch-interval-seconds={metrics_fetch_interval_seconds}
 StandardOutput=append:/var/log/avalanche-telemetry-cloudwatch.log
 StandardError=append:/var/log/avalanche-telemetry-cloudwatch.log
 
@@ -1540,11 +1557,12 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
 /// if run in anchor nodes, the uploaded file will be downloaded
 /// in bootstrapping non-anchor nodes for custom networks
 async fn publish_node_info_ready_loop(
-    reg: Arc<String>,
+    local_region: Arc<String>,
     ec2_instance_id: Arc<String>,
     node_kind: node::Kind,
     node_id: Arc<String>,
     public_ipv4: Arc<String>,
+    s3_region: Arc<String>,
     s3_bucket: Arc<String>,
     avalancheup_spec_path: Arc<String>,
     proof_of_possession: Arc<bls::ProofOfPossession>,
@@ -1568,6 +1586,7 @@ async fn publish_node_info_ready_loop(
         }
     };
     let local_node = avalanche_ops::aws::spec::Node::new(
+        local_region.to_string().as_str(),
         node_kind.clone(),
         &ec2_instance_id,
         &node_id,
@@ -1604,7 +1623,8 @@ async fn publish_node_info_ready_loop(
 
     loop {
         let shared_config =
-            aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await;
+            aws_manager::load_config(Some(s3_region.to_string()), Some(Duration::from_secs(30)))
+                .await;
         let s3_manager = s3::Manager::new(&shared_config);
 
         match s3_manager
@@ -1634,7 +1654,7 @@ async fn publish_node_info_ready_loop(
 }
 
 async fn monitor_spot_instance_action(
-    reg: Arc<String>,
+    local_region: Arc<String>,
     ec2_instance_id: Arc<String>,
     attached_volume_id: Arc<String>,
 ) {
@@ -1645,8 +1665,11 @@ async fn monitor_spot_instance_action(
             attached_volume_id
         );
 
-        let shared_config =
-            aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await;
+        let shared_config = aws_manager::load_config(
+            Some(local_region.to_string()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let ec2_manager = ec2::Manager::new(&shared_config);
         let asg_manager = autoscaling::Manager::new(&shared_config);
 

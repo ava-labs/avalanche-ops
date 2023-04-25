@@ -28,6 +28,11 @@ Parameters:
     Type: String
     Description: AAD tag for envelope encryption with KMS.
 
+  S3Region:
+    Type: String
+    Default: ""
+    Description: S3 region (possibly shared across multiple regions)
+
   S3BucketName:
     Type: String
     Description: S3 bucket name.
@@ -633,14 +638,14 @@ Resources:
                 sudo mv /tmp/avalanched-aws /usr/local/bin/avalanched-aws
               else
                 sudo rm -f /tmp/avalanched-aws
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched-aws /tmp/avalanched-aws
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched-aws /tmp/avalanched-aws --region ${S3Region}
                 chmod +x /tmp/avalanched-aws
                 sudo mv /tmp/avalanched-aws /usr/local/bin/avalanched-aws
               fi;
               /usr/local/bin/avalanched-aws --version
 
               /usr/local/bin/avalanched-aws install-artifacts \
-              --region ${AWS::Region} \
+              --s3-region ${S3Region} \
               --s3-bucket ${S3BucketName} \
               --avalanchego-s3-key ${Id}/bootstrap/install/avalanchego \
               --avalanchego-local-path /usr/local/bin/avalanchego \
@@ -663,6 +668,7 @@ Resources:
               # --initial-wait-random-seconds=X to prevent EBS volume provision contentions
               /usr/local/bin/aws-volume-provisioner \
               --log-level=info \
+              --region ${AWS::Region} \
               --initial-wait-random-seconds=${VolumeProvisionerInitialWaitRandomSeconds} \
               --id-tag-key=Id \
               --id-tag-value=${Id} \
@@ -683,6 +689,7 @@ Resources:
                 echo "Running /usr/local/bin/aws-ip-provisioner..."
                 /usr/local/bin/aws-ip-provisioner \
                 --log-level=info \
+                --region ${AWS::Region} \
                 --id-tag-key=Id \
                 --id-tag-value=${Id} \
                 --kind-tag-key=Kind \
@@ -815,6 +822,9 @@ Resources:
           PropagateAtLaunch: true
         - Key: AAD_TAG
           Value: !Ref AadTag
+          PropagateAtLaunch: true
+        - Key: S3_REGION
+          Value: !Ref S3Region
           PropagateAtLaunch: true
         - Key: S3_BUCKET_NAME
           Value: !Ref S3BucketName

@@ -79,7 +79,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     spec.validate()?;
 
     let shared_config = aws_manager::load_config(
-        Some(spec.resources.region.clone()),
+        Some(spec.resources.regions[0].clone()),
         Some(Duration::from_secs(30)),
     )
     .await;
@@ -142,15 +142,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         asg_names.push(asg_name);
     }
     spec.resources.cloudformation_asg_non_anchor_nodes = Some(asg_names);
-
-    if spec
-        .resources
-        .cloudwatch_avalanche_metrics_namespace
-        .is_none()
-    {
-        spec.resources.cloudwatch_avalanche_metrics_namespace =
-            Some(format!("{}-avalanche", spec.id));
-    }
 
     // just create these no matter what for simplification
     spec.resources.cloudformation_ssm_install_subnet_chain =
@@ -379,7 +370,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         )?;
 
         let key = kms_manager
-            .create_symmetric_default_key(format!("{}-kms-key", spec.id).as_str())
+            .create_symmetric_default_key(format!("{}-kms-key", spec.id).as_str(), false)
             .await
             .unwrap();
 
@@ -654,6 +645,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .arn,
         ),
         build_param("AadTag", &spec.aad_tag),
+        build_param("S3Region", &spec.resources.regions[0]),
         build_param("S3BucketName", &spec.resources.s3_bucket),
         build_param("Ec2KeyPairName", &spec.resources.ec2_key_name),
         build_param(
@@ -1086,7 +1078,7 @@ aws ssm start-session --region {} --target {}
                 spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.resources.region,
+                spec.resources.regions[0],
                 d.instance_id,
             );
         }
@@ -1488,7 +1480,7 @@ aws ssm start-session --region {} --target {}
                 spec.resources.ec2_key_path,
                 instance_ip,
                 //
-                spec.resources.region,
+                spec.resources.regions[0],
                 d.instance_id,
             );
         }
@@ -1681,7 +1673,7 @@ aws ssm start-session --region {} --target {}
 
     let mut all_node_ids = Vec::new();
     let mut all_instance_ids = Vec::new();
-    let mut node_ids_to_instance_ids = HashMap::new();
+    let mut node_id_to_region_machine_id = HashMap::new();
     for node in created_nodes.iter() {
         let node_id = node.node_id.clone();
         let instance_id = node.machine_id.clone();
@@ -1689,7 +1681,13 @@ aws ssm start-session --region {} --target {}
         all_node_ids.push(node_id.clone());
         all_instance_ids.push(instance_id.clone());
 
-        node_ids_to_instance_ids.insert(node_id, instance_id);
+        node_id_to_region_machine_id.insert(
+            node_id,
+            avalanche_ops::aws::spec::RegionMachineId {
+                region: node.region.clone(),
+                machine_id: instance_id,
+            },
+        );
     }
 
     println!();
@@ -1726,7 +1724,7 @@ aws ssm start-session --region {} --target {}
         SetForegroundColor(Color::Magenta),
         Print(format!(
             "aws --region {} s3 ls s3://{}/{}/pki/ --human-readable\n",
-            spec.resources.region, spec.resources.s3_bucket, spec.id
+            spec.resources.regions[0], spec.resources.s3_bucket, spec.id
         )),
         ResetColor
     )?;
@@ -1766,7 +1764,7 @@ cat /tmp/{node_id}.crt
 
 ",
                 exec_parent_dir = exec_parent_dir,
-                region = spec.resources.region,
+                region = spec.resources.regions[0],
                 s3_buckeet = spec.resources.s3_bucket,
                 id = spec.id,
                 kms_key_id = kms_key_id,
@@ -1990,7 +1988,6 @@ cat /tmp/{node_id}.crt
     println!(
         "\n# EXAMPLE: ONLY add nodes as primary network validators WITHOUT subnet installation"
     );
-    let nodes_to_instances = serde_json::to_string(&node_ids_to_instance_ids).unwrap();
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
@@ -2001,29 +1998,34 @@ cat /tmp/{node_id}.crt
 --key {priv_key_hex} \\
 --primary-network-validate-period-in-days 16 \\
 --staking-amount-in-avax 2000 \\
---node-ids-to-instance-ids '{nodes_to_instances}'
+--spec-file-path {spec_file_path} \\
+
+# or
+# --target-node-ids '{target_node_ids}'
 
 ",
             exec_path = exec_path.display(),
             chain_rpc_url =
                 format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
-            nodes_to_instances = nodes_to_instances,
+            spec_file_path = spec_file_path,
+            target_node_ids = all_node_ids.join(","),
         )),
         ResetColor
     )?;
 
     println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators, works for any VM)");
+    let node_id_to_region_machine_id =
+        serde_json::to_string(&node_id_to_region_machine_id).unwrap();
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
             "{exec_path} install-subnet-chain \\
 --log-level info \\
---region {region} \\
+--s3-region {region} \\
 --s3-bucket {s3_bucket} \\
 --s3-key-prefix {id}/install-subnet-chain \\
---ssm-doc {ssm_doc_name} \\
 --chain-rpc-url {chain_rpc_url} \\
 --key {priv_key_hex} \\
 --primary-network-validate-period-in-days 16 \\
@@ -2038,13 +2040,13 @@ cat /tmp/{node_id}.crt
 --chain-config-remote-dir {chain_config_remote_dir} \\
 --avalanchego-config-remote-path {avalanchego_config_remote_path} \\
 --staking-amount-in-avax 2000 \\
---node-ids-to-instance-ids '{nodes_to_instances}'
+--ssm-docs '{region_to_ssm_doc_name}' \\
+--target-nodes '{node_id_to_region_machine_id}'
 
 ",
             exec_path = exec_path.display(),
-            region = spec.resources.region,
+            region = spec.resources.regions[0],
             s3_bucket = spec.resources.s3_bucket,
-            ssm_doc_name = ssm_install_subnet_chain_doc_name,
             chain_rpc_url =
                 format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
@@ -2053,7 +2055,8 @@ cat /tmp/{node_id}.crt
             vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
             chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
             avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
-            nodes_to_instances = nodes_to_instances,
+            region_to_ssm_doc_name = ssm_install_subnet_chain_doc_name,
+            node_id_to_region_machine_id = node_id_to_region_machine_id,
         )),
         ResetColor
     )?;
@@ -2075,7 +2078,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             } else {
                 1
             },
-            region = spec.resources.region,
+            region = spec.resources.regions[0],
             chain_rpc_urls = all_nodes_c_chain_rpc_urls.clone().join(","),
         )),
         ResetColor

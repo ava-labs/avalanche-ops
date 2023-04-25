@@ -47,9 +47,7 @@ async fn main() {
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .clone(),
-                &sub_matches
-                    .get_one::<String>("REGION")
-                    .unwrap_or(&String::new()),
+                &sub_matches.get_one::<String>("S3_REGION").unwrap(),
                 &sub_matches
                     .get_one::<String>("S3_BUCKET")
                     .unwrap_or(&String::new()),
@@ -92,7 +90,10 @@ async fn main() {
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .to_string(),
-                region: sub_matches.get_one::<String>("REGION").unwrap().to_string(),
+                s3_region: sub_matches
+                    .get_one::<String>("S3_REGION")
+                    .unwrap()
+                    .to_string(),
                 s3_bucket: sub_matches
                     .get_one::<String>("S3_BUCKET")
                     .unwrap()
@@ -132,7 +133,10 @@ async fn main() {
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .to_string(),
-                region: sub_matches.get_one::<String>("REGION").unwrap().to_string(),
+                s3_region: sub_matches
+                    .get_one::<String>("S3_REGION")
+                    .unwrap()
+                    .to_string(),
                 s3_bucket: sub_matches
                     .get_one::<String>("S3_BUCKET")
                     .unwrap()
