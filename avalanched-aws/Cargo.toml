@@ -18,7 +18,7 @@ aws-manager = { version = "0.26.15", features = ["autoscaling", "cloudwatch", "e
 aws-sdk-cloudwatch = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-volume-provisioner-installer = "0.0.97" # https://crates.io/crates/aws-volume-provisioner-installer
+aws-volume-provisioner-installer = "0.0.99" # https://crates.io/crates/aws-volume-provisioner-installer
 clap = { version = "4.2.4", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.7"
