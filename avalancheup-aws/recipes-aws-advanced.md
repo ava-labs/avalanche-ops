@@ -555,7 +555,7 @@ cd ${HOME}/avalanche-ops
 --upload-artifacts-avalanched-aws-local-bin ${AVALANCHED_BIN_PATH} \
 --upload-artifacts-avalanchego-local-bin ${AVALANCHE_BIN_PATH} \
 --upload-artifacts-plugin-local-dir ${AVALANCHE_PLUGINS_DIR_PATH} \
---nlb-acm-certificate-arn $ACM_CERT_ARN \
+--nlb-acm-certificate-arns '{"us-west-2": "$ACM_CERT_ARN"}\
 --network-name custom \
 --avalanchego-log-level INFO
 

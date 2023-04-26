@@ -33,10 +33,9 @@ pub struct Flags {
     pub skip_prompt: bool,
     pub spec_file_path: String,
 
-    pub region: String,
+    pub s3_region: String,
     pub s3_bucket: String,
     pub s3_key_prefix: String,
-    pub ssm_doc: String,
 
     pub chain_rpc_url: String,
     pub key: String,
@@ -59,13 +58,14 @@ pub struct Flags {
 
     pub avalanchego_config_remote_path: String,
 
-    pub node_ids_to_instance_ids: HashMap<String, String>,
+    pub ssm_docs: HashMap<String, String>,
+    pub target_nodes: HashMap<String, avalanche_ops::aws::spec::RegionMachineId>,
 }
 
 #[derive(Clone, Debug)]
-pub struct HashMapParser;
+pub struct HashMapStringToStringParser;
 
-impl clap::builder::TypedValueParser for HashMapParser {
+impl clap::builder::TypedValueParser for HashMapStringToStringParser {
     type Value = HashMap<String, String>;
 
     fn parse_ref(
@@ -81,6 +81,30 @@ impl clap::builder::TypedValueParser for HashMapParser {
                 format!("HashMap parsing failed ({})", e),
             )
         })?;
+        Ok(m)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HashMapStringToRegionInstanceIdParser;
+
+impl clap::builder::TypedValueParser for HashMapStringToRegionInstanceIdParser {
+    type Value = HashMap<String, avalanche_ops::aws::spec::RegionMachineId>;
+
+    fn parse_ref(
+        &self,
+        _cmd: &Command,
+        _arg: Option<&Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        let str = value.to_str().unwrap_or_default();
+        let m: HashMap<String, avalanche_ops::aws::spec::RegionMachineId> =
+            serde_json::from_str(str).map_err(|e| {
+                clap::Error::raw(
+                    clap::error::ErrorKind::InvalidValue,
+                    format!("HashMap parsing failed ({})", e),
+                )
+            })?;
         Ok(m)
     }
 }
@@ -115,9 +139,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .help("Sets the AWS region for API calls/endpoints")
+            Arg::new("S3_REGION")
+                .long("s3-region")
+                .help("Sets the AWS S3 region")
                 .required(true)
                 .num_args(1)
                 .default_value("us-west-2"),
@@ -133,13 +157,6 @@ pub fn command() -> Command {
             Arg::new("S3_KEY_PREFIX")
                 .long("s3-key-prefix")
                 .help("Sets the S3 key prefix for all artifacts")
-                .required(true)
-                .num_args(1),
-        )
-        .arg(
-            Arg::new("SSM_DOC")
-                .long("ssm-doc")
-                .help("Sets the SSM document name for subnet and chain install (see avalanche-ops/src/aws/cfn-templates/ssm_install_subnet_chain.yaml)")
                 .required(true)
                 .num_args(1),
         )
@@ -280,11 +297,19 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("NODE_IDS_TO_INSTANCE_IDS")
-                .long("node-ids-to-instance-ids")
-                .help("Sets the hash map of node Id to instance Id in JSON format")
+            Arg::new("SSM_DOCS")
+                .long("ssm-docs")
+                .help("Sets the hash map of AWS region to SSM document name for subnet and chain install (see avalanche-ops/src/aws/cfn-templates/ssm_install_subnet_chain.yaml)")
                 .required(false)
-                .value_parser(HashMapParser {})
+                .value_parser(HashMapStringToStringParser {})
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("TARGET_NODES")
+                .long("target-nodes")
+                .help("Sets the hash map of node Id to the corresponding EC2 region, and instance Id in JSON format")
+                .required(false)
+                .value_parser(HashMapStringToRegionInstanceIdParser {})
                 .num_args(1),
         )
 }
@@ -296,20 +321,39 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let mut node_id_to_pop = HashMap::new();
-    let mut node_ids_to_instance_ids = HashMap::new();
+    let mut region_to_ssm_doc = HashMap::new();
+    let mut target_nodes = HashMap::new();
     if !opts.spec_file_path.is_empty() {
         let spec = avalanche_ops::aws::spec::Spec::load(&opts.spec_file_path)
             .expect("failed to load spec");
         spec.validate()?;
-        if let Some(created_nodes) = &spec.resources.created_nodes {
+
+        for (region, regional_resource) in spec.resource.regional_resources.iter() {
+            region_to_ssm_doc.insert(
+                region.to_string(),
+                regional_resource
+                    .cloudformation_ssm_install_subnet_chain
+                    .clone()
+                    .unwrap(),
+            );
+        }
+
+        if let Some(created_nodes) = &spec.resource.created_nodes {
             for node in created_nodes {
                 let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
                 node_id_to_pop.insert(node_id, node.proof_of_possession.clone());
-                node_ids_to_instance_ids.insert(node.node_id.clone(), node.machine_id.clone());
+                target_nodes.insert(
+                    node.node_id.clone(),
+                    avalanche_ops::aws::spec::RegionMachineId {
+                        region: node.region.clone(),
+                        machine_id: node.machine_id.clone(),
+                    },
+                );
             }
         }
     } else {
-        node_ids_to_instance_ids = opts.node_ids_to_instance_ids.clone();
+        target_nodes = opts.target_nodes.clone();
+        region_to_ssm_doc = opts.ssm_docs.clone();
     }
 
     if !Path::new(&opts.vm_binary_local_path).exists() {
@@ -377,11 +421,23 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let mut all_node_ids = Vec::new();
-    let mut all_instance_ids = Vec::new();
-    for (node_id, instance_id) in node_ids_to_instance_ids.iter() {
-        log::info!("will send SSM doc to {node_id} {instance_id}");
+    let mut region_to_instance_ids: HashMap<String, Vec<String>> = HashMap::new();
+    for (node_id, region_machine_id) in target_nodes.iter() {
+        log::info!(
+            "will send SSM doc to the node '{node_id}' of '{}' in the region '{}'",
+            region_machine_id.machine_id,
+            region_machine_id.region,
+        );
         all_node_ids.push(node_id.clone());
-        all_instance_ids.push(instance_id.clone());
+
+        if let Some(instance_ids) = region_to_instance_ids.get_mut(&region_machine_id.region) {
+            instance_ids.push(region_machine_id.machine_id.clone());
+        } else {
+            region_to_instance_ids.insert(
+                region_machine_id.region.clone(),
+                vec![region_machine_id.machine_id.clone()],
+            );
+        }
     }
 
     // if all nodes need to be staked
@@ -428,16 +484,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.primary_network_validate_period_in_days,
             opts.subnet_validate_period_in_days,
             opts.staking_amount_in_avax,
-            node_ids_to_instance_ids,
+            target_nodes,
         )),
         ResetColor
     )?;
 
     let shared_config =
-        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await;
+        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
     let sts_manager = sts::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
-    let ssm_manager = ssm::Manager::new(&shared_config);
 
     let current_identity = sts_manager.get_identity().await.unwrap();
     log::info!("current AWS identity: {:?}", current_identity);
@@ -600,16 +655,16 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .as_u64();
 
     let mut handles = Vec::new();
-    for (i, (node_id, instance_id)) in node_ids_to_instance_ids.iter().enumerate() {
+    for (i, (node_id, region_machine_id)) in target_nodes.iter().enumerate() {
         // randomly wait to prevent UTXO double spends from the same wallet
-        let random_wait = Duration::from_secs(1 + i as u64)
+        let random_wait = Duration::from_secs(1 + (i + 1) as u64)
             .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
             .unwrap();
 
         log::info!(
             "spawning add_primary_network_permissionless_validator/add_primary_network_validator on '{}' (of EC2 instance '{}', staking period in days '{}')",
             node_id,
-            instance_id,
+            region_machine_id.machine_id,
             opts.primary_network_validate_period_in_days,
         );
         let node_id = ids::node::Id::from_str(node_id).unwrap();
@@ -683,8 +738,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
         ResetColor
     )?;
-    let subcmd = format!("install-subnet --log-level info --region {region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-local-path {vm_binary_local_path} --subnet-id-to-track {subnet_id_to_track} --avalanchego-config-path {avalanchego_config_remote_path}",
-        region = opts.region,
+    let subcmd = format!("install-subnet --log-level info --s3-region {s3_region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-local-path {vm_binary_local_path} --subnet-id-to-track {subnet_id_to_track} --avalanchego-config-path {avalanchego_config_remote_path}",
+    s3_region = opts.s3_region,
         s3_bucket = opts.s3_bucket,
         vm_binary_s3_key = vm_binary_s3_key,
         vm_binary_local_path = format!("{}{}", s3::append_slash(&opts.vm_binary_remote_dir), vm_id.to_string()),
@@ -710,47 +765,66 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     } else {
         subcmd
     };
-    // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
-    let ssm_output = ssm_manager
-        .cli
-        .send_command()
-        .document_name(opts.ssm_doc.clone())
-        .set_instance_ids(Some(all_instance_ids.clone()))
-        .parameters("avalanchedArgs", vec![avalanched_args.clone()])
-        .output_s3_region(opts.region.clone())
-        .output_s3_bucket_name(opts.s3_bucket.clone())
-        .output_s3_key_prefix(format!(
-            "{}ssm-output-logs",
-            s3::append_slash(&opts.s3_key_prefix)
-        ))
-        .send()
-        .await
-        .unwrap();
-    let ssm_output = ssm_output.command().unwrap();
-    let ssm_command_id = ssm_output.command_id().unwrap();
-    log::info!("sent SSM command {}", ssm_command_id);
-    sleep(Duration::from_secs(30)).await;
 
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
-        ResetColor
-    )?;
-    for instance_id in all_instance_ids.iter() {
-        let status = ssm_manager
-            .poll_command(
-                ssm_command_id,
-                instance_id,
-                CommandInvocationStatus::Success,
-                Duration::from_secs(300),
-                Duration::from_secs(5),
-            )
+    for (region, instance_ids) in region_to_instance_ids.iter() {
+        if !region_to_ssm_doc.contains_key(region) {
+            panic!(
+                "--ssm-docs does not have the document name for the region '{}'",
+                region
+            );
+        }
+        let ssm_doc = region_to_ssm_doc.get(region).unwrap();
+
+        log::info!(
+            "sending SSM commands for the region '{region}' with instances {:?}",
+            instance_ids
+        );
+        let shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_ssm_manager = ssm::Manager::new(&shared_config);
+
+        // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
+        let ssm_output = regional_ssm_manager
+            .cli
+            .send_command()
+            .document_name(ssm_doc.clone())
+            .set_instance_ids(Some(instance_ids.clone()))
+            .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+            .output_s3_region(opts.s3_region.clone())
+            .output_s3_bucket_name(opts.s3_bucket.clone())
+            .output_s3_key_prefix(format!(
+                "{}ssm-output-logs",
+                s3::append_slash(&opts.s3_key_prefix)
+            ))
+            .send()
             .await
             .unwrap();
-        log::info!("status {:?} for instance id {}", status, instance_id);
+        let ssm_output = ssm_output.command().unwrap();
+        let ssm_command_id = ssm_output.command_id().unwrap();
+        log::info!("sent SSM command {}", ssm_command_id);
+        sleep(Duration::from_secs(30)).await;
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+            ResetColor
+        )?;
+        for instance_id in instance_ids.iter() {
+            let status = regional_ssm_manager
+                .poll_command(
+                    ssm_command_id,
+                    instance_id,
+                    CommandInvocationStatus::Success,
+                    Duration::from_secs(300),
+                    Duration::from_secs(5),
+                )
+                .await
+                .unwrap();
+            log::info!("status {:?} for instance id {}", status, instance_id);
+        }
+        sleep(Duration::from_secs(5)).await;
     }
-    sleep(Duration::from_secs(5)).await;
 
     //
     //
@@ -771,11 +845,19 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.subnet_validate_period_in_days
         );
 
-        // randomly wait to prevent UTXO double spends from the same wallet
-        let random_wait = Duration::from_secs(1 + i as u64)
-            .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
-            .unwrap();
+        // TODO: remove this... after fixing flaky errors of utxo not found
+        sleep(Duration::from_secs(2)).await;
 
+        // randomly wait to prevnt UTXO double spends from the same wallet
+        let random_wait = if i < 5 {
+            Duration::from_secs(2 + (i * 2) as u64)
+                .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
+                .unwrap()
+        } else {
+            Duration::from_secs(5 + (i * 2) as u64)
+                .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
+                .unwrap()
+        };
         handles.push(tokio::spawn(add_subnet_network_validator(
             Arc::new(random_wait),
             Arc::new(wallet_to_spend.clone()),
@@ -851,54 +933,72 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
         // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
         // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
-        let avalanched_args = format!("install-chain --log-level info --region {region} --s3-bucket {s3_bucket} --chain-config-s3-key {chain_config_s3_key} --chain-config-local-path {chain_config_local_path}",
-            region = opts.region,
+        let avalanched_args = format!("install-chain --log-level info --s3-region {region} --s3-bucket {s3_bucket} --chain-config-s3-key {chain_config_s3_key} --chain-config-local-path {chain_config_local_path}",
+            region = opts.s3_region,
             s3_bucket = opts.s3_bucket,
             chain_config_s3_key = chain_config_s3_key,
             chain_config_local_path = format!("{}{}/config.json", s3::append_slash(&opts.chain_config_remote_dir), blockchain_id.to_string()),
         );
 
-        // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
-        let ssm_output = ssm_manager
-            .cli
-            .send_command()
-            .document_name(opts.ssm_doc.clone())
-            .set_instance_ids(Some(all_instance_ids.clone()))
-            .parameters("avalanchedArgs", vec![avalanched_args.clone()])
-            .output_s3_region(opts.region.clone())
-            .output_s3_bucket_name(opts.s3_bucket.clone())
-            .output_s3_key_prefix(format!(
-                "{}ssm-output-logs",
-                s3::append_slash(&opts.s3_key_prefix)
-            ))
-            .send()
-            .await
-            .unwrap();
-        let ssm_output = ssm_output.command().unwrap();
-        let ssm_command_id = ssm_output.command_id().unwrap();
-        log::info!("sent SSM command {}", ssm_command_id);
-        sleep(Duration::from_secs(30)).await;
+        for (region, instance_ids) in region_to_instance_ids.iter() {
+            if !opts.ssm_docs.contains_key(region) {
+                panic!(
+                    "--ssm-docs does not have the document name for the region '{}'",
+                    region
+                );
+            }
+            let ssm_doc = opts.ssm_docs.get(region).unwrap();
 
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
-            ResetColor
-        )?;
-        for instance_id in all_instance_ids.iter() {
-            let status = ssm_manager
-                .poll_command(
-                    ssm_command_id,
-                    instance_id,
-                    CommandInvocationStatus::Success,
-                    Duration::from_secs(300),
-                    Duration::from_secs(5),
-                )
+            log::info!(
+                "sending SSM commands for the region '{region}' with instances {:?}",
+                instance_ids
+            );
+            let shared_config =
+                aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+            let regional_ssm_manager = ssm::Manager::new(&shared_config);
+
+            // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
+            let ssm_output = regional_ssm_manager
+                .cli
+                .send_command()
+                .document_name(ssm_doc.clone())
+                .set_instance_ids(Some(instance_ids.clone()))
+                .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+                .output_s3_region(opts.s3_region.clone())
+                .output_s3_bucket_name(opts.s3_bucket.clone())
+                .output_s3_key_prefix(format!(
+                    "{}ssm-output-logs",
+                    s3::append_slash(&opts.s3_key_prefix)
+                ))
+                .send()
                 .await
                 .unwrap();
-            log::info!("status {:?} for instance id {}", status, instance_id);
+            let ssm_output = ssm_output.command().unwrap();
+            let ssm_command_id = ssm_output.command_id().unwrap();
+            log::info!("sent SSM command {}", ssm_command_id);
+            sleep(Duration::from_secs(30)).await;
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+                ResetColor
+            )?;
+            for instance_id in instance_ids.iter() {
+                let status = regional_ssm_manager
+                    .poll_command(
+                        ssm_command_id,
+                        instance_id,
+                        CommandInvocationStatus::Success,
+                        Duration::from_secs(300),
+                        Duration::from_secs(5),
+                    )
+                    .await
+                    .unwrap();
+                log::info!("status {:?} for instance id {}", status, instance_id);
+            }
+            sleep(Duration::from_secs(5)).await;
         }
-        sleep(Duration::from_secs(5)).await;
     }
 
     println!();

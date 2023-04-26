@@ -27,7 +27,7 @@ pub struct Flags {
     pub key: String,
     pub primary_network_validate_period_in_days: u64,
     pub staking_amount_in_avax: u64,
-    pub node_ids_to_instance_ids: HashMap<String, String>,
+    pub target_node_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -78,7 +78,7 @@ pub fn command() -> Command {
             Arg::new("SPEC_FILE_PATH")
                 .long("spec-file-path")
                 .short('s')
-                .help("The spec file to load and update (used for adding permissionless validators)")
+                .help("The spec file to load and update (used for adding permissionless validators, overwrites --target-node-ids)")
                 .required(false)
                 .num_args(1),
         )
@@ -117,9 +117,9 @@ pub fn command() -> Command {
                 .default_value("2000"),
         )
         .arg(
-            Arg::new("NODE_IDS_TO_INSTANCE_IDS")
-                .long("node-ids-to-instance-ids")
-                .help("Sets the hash map of node Id to instance Id in JSON format")
+            Arg::new("TARGET_NODE_IDS")
+                .long("target-node-ids")
+                .help("Sets the hash map of node Id to instance Id in JSON format (discarded when non-empty --spec-file-path)")
                 .required(false)
                 .value_parser(HashMapParser {})
                 .num_args(1),
@@ -138,7 +138,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         let spec = avalanche_ops::aws::spec::Spec::load(&opts.spec_file_path)
             .expect("failed to load spec");
         spec.validate()?;
-        if let Some(created_nodes) = &spec.resources.created_nodes {
+        if let Some(created_nodes) = &spec.resource.created_nodes {
             for node in created_nodes {
                 let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
                 node_id_to_pop.insert(node_id, node.proof_of_possession.clone());
@@ -146,7 +146,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             }
         }
     } else {
-        node_ids_to_instance_ids = opts.node_ids_to_instance_ids.clone();
+        for node_id in &opts.target_node_ids {
+            node_ids_to_instance_ids.insert(node_id.clone(), "unknown".to_string());
+        }
     }
 
     let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
@@ -172,11 +174,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let mut all_node_ids = Vec::new();
-    let mut all_instance_ids = Vec::new();
     for (node_id, instance_id) in node_ids_to_instance_ids.iter() {
         log::info!("will send SSM doc to {node_id} {instance_id}");
         all_node_ids.push(node_id.clone());
-        all_instance_ids.push(instance_id.clone());
     }
 
     // if all nodes need to be staked

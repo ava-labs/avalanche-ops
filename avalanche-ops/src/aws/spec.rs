@@ -1,4 +1,5 @@
 use std::{
+    collections::{BTreeMap, HashMap},
     fs::{self, File},
     io::{self, Error, ErrorKind, Write},
     path::Path,
@@ -13,7 +14,7 @@ use avalanche_types::{
 use aws_manager::{ec2, sts};
 use serde::{Deserialize, Serialize};
 
-pub const VERSION: usize = 2;
+pub const VERSION: usize = 3;
 
 /// Represents network-level configuration shared among all nodes.
 /// The node-level configuration is generated during each
@@ -36,9 +37,9 @@ pub struct Spec {
     /// AAD tag used for envelope encryption with KMS.
     #[serde(default)]
     pub aad_tag: String,
-    /// AWS resources if run in AWS.
-    pub resources: Resources,
 
+    /// AWS resources if run in AWS.
+    pub resource: Resource,
     /// Defines how the underlying infrastructure is set up.
     /// MUST BE NON-EMPTY.
     pub machine: Machine,
@@ -104,10 +105,11 @@ pub struct KmsKey {
     pub arn: String,
 }
 
-/// Represents the current AWS resource status.
+/// Represents the current AWS resource configurations and states.
+/// These states are necessary for resource cleanups.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub struct Resources {
+pub struct Resource {
     /// AWS STS caller loaded from its local environment.
     /// READ ONLY.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -116,31 +118,60 @@ pub struct Resources {
     /// AWS region to create resources.
     /// MUST BE NON-EMPTY.
     #[serde(default)]
-    pub region: String,
-
-    #[serde(default)]
-    pub ingress_ipv4_cidr: String,
-
+    pub regions: Vec<String>,
     /// Name of the bucket to store (or download from)
     /// the configuration and resources (e.g., S3).
     /// If not exists, it creates automatically.
     /// If exists, it skips creation and uses the existing one.
     /// MUST BE NON-EMPTY.
+    /// ALWAYS USE THE FIRST REGION IN `regions` for S3.
+    /// AND SHARED ACROSS MULTIPLE REGIONS.
     #[serde(default)]
     pub s3_bucket: String,
 
-    /// AWS region to create resources.
-    /// NON-EMPTY TO ENABLE HTTPS over NLB.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub nlb_acm_certificate_arn: Option<String>,
+    #[serde(default)]
+    pub ingress_ipv4_cidr: String,
 
-    /// KMS key ID to encrypt resources.
-    /// Only used for encrypting node certs and EC2 keys.
-    /// None if not created yet.
-    /// READ ONLY -- DO NOT SET.
-    /// TODO: support existing key and load the ARN based on region and account number.
+    /// Only populate as many as we need to fill up anchor/non-anchor nodes.
+    /// e.g., "regions" may have 5 but we may only need 2 regions for 3 node cluster.
+    #[serde(default)]
+    pub regional_resources: BTreeMap<String, RegionalResource>,
+
+    /// Created nodes at the start of the network.
+    /// May become stale.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub kms_symmetric_default_encrypt_key: Option<KmsKey>,
+    pub created_nodes: Option<Vec<Node>>,
+}
+
+impl Default for Resource {
+    fn default() -> Self {
+        Self::default()
+    }
+}
+
+impl Resource {
+    pub fn default() -> Self {
+        Self {
+            identity: None,
+
+            regions: vec![String::from("us-west-2")],
+            s3_bucket: String::new(),
+            ingress_ipv4_cidr: String::from("0.0.0.0/0"),
+
+            regional_resources: BTreeMap::new(),
+
+            created_nodes: None,
+        }
+    }
+}
+
+/// Represents the AWS region-specific configuration and states.
+/// These states are necessary for resource cleanups.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct RegionalResource {
+    #[serde(default)]
+    pub region: String,
 
     /// EC2 key pair name for SSH access to EC2 instances.
     /// READ ONLY -- DO NOT SET.
@@ -158,6 +189,19 @@ pub struct Resources {
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_ec2_instance_profile_arn: Option<String>,
+
+    /// AWS region to create resources.
+    /// NON-EMPTY TO ENABLE HTTPS over NLB.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nlb_acm_certificate_arn: Option<String>,
+
+    /// KMS key ID to encrypt resources.
+    /// Only used for encrypting node certs and EC2 keys.
+    /// None if not created yet.
+    /// READ ONLY -- DO NOT SET.
+    /// TODO: support existing key and load the ARN based on region and account number.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kms_symmetric_default_encrypt_key: Option<KmsKey>,
 
     /// CloudFormation stack name for VPC.
     /// READ ONLY -- DO NOT SET.
@@ -226,42 +270,27 @@ pub struct Resources {
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_ssm_install_subnet_chain: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudwatch_avalanche_metrics_namespace: Option<String>,
-
-    /// Created nodes at the start of the network.
-    /// May become stale.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_nodes: Option<Vec<Node>>,
 }
 
-impl Default for Resources {
+impl Default for RegionalResource {
     fn default() -> Self {
         Self::default()
     }
 }
 
-impl Resources {
+impl RegionalResource {
     pub fn default() -> Self {
         Self {
-            identity: None,
-
             region: String::from("us-west-2"),
-
-            ingress_ipv4_cidr: String::from("0.0.0.0/0"),
-
-            s3_bucket: String::new(),
-
-            nlb_acm_certificate_arn: None,
-
-            kms_symmetric_default_encrypt_key: None,
-
             ec2_key_name: String::new(),
             ec2_key_path: String::new(),
 
             cloudformation_ec2_instance_role: None,
             cloudformation_ec2_instance_profile_arn: None,
+
+            nlb_acm_certificate_arn: None,
+
+            kms_symmetric_default_encrypt_key: None,
 
             cloudformation_vpc: None,
             cloudformation_vpc_id: None,
@@ -282,11 +311,15 @@ impl Resources {
             cloudformation_asg_launch_template_version: None,
 
             cloudformation_ssm_install_subnet_chain: None,
-            cloudwatch_avalanche_metrics_namespace: None,
-
-            created_nodes: None,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct RegionMachineId {
+    pub region: String,
+    pub machine_id: String,
 }
 
 /// Defines "default-spec" option.
@@ -303,11 +336,13 @@ pub struct DefaultSpecOption {
     pub key_files_dir: String,
     pub keys_to_generate: usize,
 
-    pub region: String,
+    pub regions: Vec<String>,
+    pub auto_regions: u32,
+
     pub ingress_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
-    pub instance_types: Vec<String>,
+    pub instance_types: HashMap<String, Vec<String>>,
     pub volume_size_in_gb: u32,
 
     pub ip_mode: String,
@@ -318,7 +353,7 @@ pub struct DefaultSpecOption {
 
     pub aad_tag: String,
 
-    pub nlb_acm_certificate_arn: String,
+    pub nlb_acm_certificate_arns: HashMap<String, String>,
 
     pub upload_artifacts_aws_volume_provisioner_local_bin: String,
     pub upload_artifacts_aws_ip_provisioner_local_bin: String,
@@ -448,7 +483,7 @@ impl Spec {
             }
         };
 
-        let (anchor_nodes, non_anchor_nodes) =
+        let (total_anchor_nodes, total_non_anchor_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 // non-custom network only single node to utilize single AZ
                 Some(_) => (None, 1),
@@ -514,28 +549,133 @@ impl Spec {
             }
         };
 
+        let mut regions = opts.regions.clone();
+        if opts.auto_regions > 0 {
+            regions = vec!["us-west-2".to_string()];
+            if opts.auto_regions > 1 {
+                // ICN
+                regions.push("ap-northeast-2".to_string());
+            }
+            if opts.auto_regions > 2 {
+                // DUB
+                regions.push("eu-west-1".to_string());
+            }
+            if opts.auto_regions > 3 {
+                // IAD
+                regions.push("us-east-1".to_string());
+            }
+            if opts.auto_regions > 4 {
+                // FRA
+                regions.push("eu-central-1".to_string());
+            }
+            if opts.auto_regions > 5 {
+                panic!("auto-regions only supported up to 5 regions!")
+            }
+        }
+        log::info!("generating configuration with the regions {:?}", regions);
+
+        let region_to_instance_types = if !opts.instance_types.is_empty() {
+            opts.instance_types.clone()
+        } else {
+            let mut reg_to_instance_types = HashMap::new();
+            for reg in &regions {
+                let iss =
+                    ec2::default_instance_types(reg, &opts.arch_type, &opts.instance_size).unwrap();
+                reg_to_instance_types.insert(reg.to_string(), iss);
+            }
+            reg_to_instance_types
+        };
+
+        // only iterate until we used up all total* nodes
+        let mut current_anchor_nodes = 0_u32;
+        let mut current_non_anchor_nodes = 0_u32;
+
+        let mut regional_resources = BTreeMap::new();
+        let mut regional_machines = BTreeMap::new();
+
+        for (i, reg) in regions.iter().enumerate() {
+            let mut regional_machine = RegionalMachine {
+                anchor_nodes: None,
+                non_anchor_nodes: 0,
+                instance_types: region_to_instance_types.get(reg).unwrap().clone(),
+            };
+
+            // last iteration, but still remaining... use them up
+            // or even if we don't use the last regions, make sure we add the remaining
+            // e.g., 3 nodes for 1 regions ==> [3]
+            // e.g., 3 nodes for 2 regions ==> [1, 2]
+            // e.g., 3 nodes for 3 regions ==> [1, 1, 1]
+            // e.g., 3 nodes for 5 regions ==> [1, 1, 1, break]
+            // e.g., 4 nodes for 3 regions ==> [1, 1, 2, break]
+            if let Some(total_anchors) = &total_anchor_nodes {
+                if *total_anchors > current_anchor_nodes {
+                    let mut per_region = *total_anchors / regions.len() as u32;
+                    if per_region == 0 {
+                        per_region = 1;
+                    }
+                    if i == regions.len() - 1 {
+                        regional_machine.anchor_nodes = Some(*total_anchors - current_anchor_nodes);
+                        current_anchor_nodes = *total_anchors;
+                    } else {
+                        regional_machine.anchor_nodes = Some(per_region);
+                        current_anchor_nodes = current_anchor_nodes + per_region;
+                    }
+                }
+            }
+            if total_non_anchor_nodes > current_non_anchor_nodes {
+                let mut per_region = total_non_anchor_nodes / regions.len() as u32;
+                if per_region == 0 {
+                    per_region = 1;
+                }
+                if i == regions.len() - 1 {
+                    regional_machine.non_anchor_nodes =
+                        total_non_anchor_nodes - current_non_anchor_nodes;
+                    current_non_anchor_nodes = total_non_anchor_nodes;
+                } else {
+                    regional_machine.non_anchor_nodes = per_region;
+                    current_non_anchor_nodes = current_non_anchor_nodes + per_region;
+                }
+            }
+
+            if regional_machine.anchor_nodes.is_none() && regional_machine.non_anchor_nodes == 0 {
+                log::info!("no more node to allocate in region '{reg}' -- skipping");
+                continue;
+            }
+            regional_machines.insert(reg.to_string(), regional_machine);
+
+            let mut regional_resource = RegionalResource {
+                region: reg.to_string(),
+                ec2_key_name: format!("{id}-ec2-key"),
+                ec2_key_path: get_ec2_key_path(&spec_file_path, reg.as_str()),
+                ..RegionalResource::default()
+            };
+            if let Some(nlb_acm_certificate_arn) = opts.nlb_acm_certificate_arns.get(reg) {
+                regional_resource.nlb_acm_certificate_arn = Some(nlb_acm_certificate_arn.clone());
+            }
+            regional_resources.insert(reg.to_string(), regional_resource);
+        }
+
         // [year][month][date]-[system host-based id]
         let s3_bucket = format!(
             "avalanche-ops-{}-{}-{}",
             id_manager::time::timestamp(6),
             id_manager::system::string(10),
-            opts.region
+            regions[0] // always use the first region
         );
-        let mut resources = Resources {
-            region: opts.region.clone(),
+        let mut resource = Resource {
+            regions: regions.clone(),
             s3_bucket,
-            ec2_key_name: format!("{id}-ec2-key"),
-            ec2_key_path: get_ec2_key_path(&spec_file_path),
-            ..Resources::default()
+            regional_resources,
+            ..Resource::default()
         };
 
         // TODO: we need also whitelist within-VPC traffic
         // resources.ingress_ipv4_cidr = "0.0.0.0/0".to_string();
         if !opts.ingress_ipv4_cidr.is_empty() {
-            resources.ingress_ipv4_cidr = opts.ingress_ipv4_cidr.clone();
+            resource.ingress_ipv4_cidr = opts.ingress_ipv4_cidr.clone();
         } else {
             log::info!("empty ingress_ipv4_cidr, so default to public IP on the local host");
-            resources.ingress_ipv4_cidr = if let Some(ip) = public_ip::addr().await {
+            resource.ingress_ipv4_cidr = if let Some(ip) = public_ip::addr().await {
                 log::info!("found public ip address {:?}", ip);
                 format!("{}/32", ip.to_string())
             } else {
@@ -543,11 +683,7 @@ impl Spec {
                 "0.0.0.0/0".to_string()
             };
         };
-        log::info!("ingress IPv4 range {}", resources.ingress_ipv4_cidr);
-
-        if !opts.nlb_acm_certificate_arn.is_empty() {
-            resources.nlb_acm_certificate_arn = Some(opts.nlb_acm_certificate_arn);
-        }
+        log::info!("ingress IPv4 range {}", resource.ingress_ipv4_cidr);
 
         let mut upload_artifacts = UploadArtifacts {
             avalanched_local_bin: String::new(),
@@ -684,19 +820,13 @@ impl Spec {
             }
         };
 
-        let instance_types = if !opts.instance_types.is_empty() {
-            opts.instance_types.clone()
-        } else {
-            ec2::default_instance_types(&opts.region, &opts.arch_type, &opts.instance_size).unwrap()
-        };
-
         let machine = Machine {
-            anchor_nodes,
-            non_anchor_nodes,
+            total_anchor_nodes,
+            total_non_anchor_nodes,
 
             arch_type: opts.arch_type,
             rust_os_type: opts.rust_os_type,
-            instance_types,
+            regional_machines,
 
             instance_mode: opts.instance_mode,
             ip_mode: opts.ip_mode,
@@ -711,8 +841,9 @@ impl Spec {
                 id,
                 aad_tag: opts.aad_tag,
 
-                resources,
+                resource,
                 machine,
+
                 upload_artifacts,
                 avalanchego_release_tag,
 
@@ -810,37 +941,44 @@ impl Spec {
             ));
         }
 
-        if self.resources.region.is_empty() {
+        if self.resource.regions.is_empty() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                "'machine.region' cannot be empty",
+                "'machine.regions' cannot be empty",
+            ));
+        }
+        if self.resource.regions.len() > 5 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "'machine.regions' cannot exceed 5",
             ));
         }
 
-        if self.machine.non_anchor_nodes < MIN_MACHINE_NON_ANCHOR_NODES {
+        if self.machine.total_non_anchor_nodes < MIN_MACHINE_NON_ANCHOR_NODES {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "'machine.non_anchor_nodes' {} <minimum {}",
-                    self.machine.non_anchor_nodes, MIN_MACHINE_NON_ANCHOR_NODES
+                    self.machine.total_non_anchor_nodes, MIN_MACHINE_NON_ANCHOR_NODES
                 ),
             ));
         }
-        if self.machine.non_anchor_nodes > MAX_MACHINE_NON_ANCHOR_NODES {
+        if self.machine.total_non_anchor_nodes > MAX_MACHINE_NON_ANCHOR_NODES {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "'machine.non_anchor_nodes' {} >maximum {}",
-                    self.machine.non_anchor_nodes, MAX_MACHINE_NON_ANCHOR_NODES
+                    self.machine.total_non_anchor_nodes, MAX_MACHINE_NON_ANCHOR_NODES
                 ),
             ));
         }
-        if !self.avalanchego_config.is_custom_network() && self.machine.non_anchor_nodes != 1 {
+        if !self.avalanchego_config.is_custom_network() && self.machine.total_non_anchor_nodes != 1
+        {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
                     "'machine.non_anchor_nodes' must be 1 (set to {}) in order to maximize the benefit of static EBS provision per AZ",
-                    self.machine.non_anchor_nodes
+                    self.machine.total_non_anchor_nodes
                 ),
             ));
         }
@@ -897,7 +1035,7 @@ impl Spec {
                     ),
                 ));
             }
-            if self.machine.anchor_nodes.unwrap_or(0) > 0 {
+            if self.machine.total_anchor_nodes.unwrap_or(0) > 0 {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
@@ -916,32 +1054,62 @@ impl Spec {
                     ),
                 ));
             }
-            if self.machine.anchor_nodes.unwrap_or(0) == 0 {
+            if self.machine.total_anchor_nodes.unwrap_or(0) == 0 {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     "cannot specify 0 for 'machine.anchor_nodes' for custom network",
                 ));
             }
-            if self.machine.anchor_nodes.unwrap_or(0) < MIN_MACHINE_ANCHOR_NODES {
+            if self.machine.total_anchor_nodes.unwrap_or(0) < MIN_MACHINE_ANCHOR_NODES {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
-                        "'machine.anchor_nodes' {} below min {}",
-                        self.machine.anchor_nodes.unwrap_or(0),
+                        "'machine.total_anchor_nodes' {} below min {}",
+                        self.machine.total_anchor_nodes.unwrap_or(0),
                         MIN_MACHINE_ANCHOR_NODES
                     ),
                 ));
             }
-            if self.machine.anchor_nodes.unwrap_or(0) > MAX_MACHINE_ANCHOR_NODES {
+            if self.machine.total_anchor_nodes.unwrap_or(0) > MAX_MACHINE_ANCHOR_NODES {
                 return Err(Error::new(
                     ErrorKind::InvalidInput,
                     format!(
-                        "'machine.anchor_nodes' {} exceeds limit {}",
-                        self.machine.anchor_nodes.unwrap_or(0),
+                        "'machine.total_anchor_nodes' {} exceeds limit {}",
+                        self.machine.total_anchor_nodes.unwrap_or(0),
                         MAX_MACHINE_ANCHOR_NODES
                     ),
                 ));
             }
+        }
+
+        if self.machine.total_anchor_nodes.unwrap_or(0) > 0 {
+            let mut total_anchor_nodes = 0;
+            for (_, regional_machine) in self.machine.regional_machines.iter() {
+                total_anchor_nodes =
+                    total_anchor_nodes + regional_machine.anchor_nodes.unwrap_or(0);
+            }
+            if self.machine.total_anchor_nodes.unwrap_or(0) != total_anchor_nodes {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "'machine.total_anchor_nodes' {} != {total_anchor_nodes} from regions",
+                        self.machine.total_anchor_nodes.unwrap_or(0)
+                    ),
+                ));
+            }
+        }
+        let mut total_non_anchor_nodes = 0;
+        for (_, regional_machine) in self.machine.regional_machines.iter() {
+            total_non_anchor_nodes = total_non_anchor_nodes + regional_machine.non_anchor_nodes;
+        }
+        if self.machine.total_non_anchor_nodes != total_non_anchor_nodes {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "'machine.total_non_anchor_nodes' {} != {total_non_anchor_nodes} from regions",
+                    self.machine.total_non_anchor_nodes
+                ),
+            ));
         }
 
         Ok(())
@@ -993,30 +1161,35 @@ fn test_spec() {
     let contents = format!(
         r#"
 
-version: 2
+version: 3
 
 
 id: {id}
 
 aad_tag: test
 
-resources:
-  region: us-west-2
-  use_spot_instance: false
+resource:
+  regions:
+  - us-west-2
   s3_bucket: {bucket}
+  use_spot_instance: false
 
 machine:
-  non_anchor_nodes: 1
+  total_non_anchor_nodes: 1
   arch_type: amd64
   rust_os_type: ubuntu20.04
-  instance_types:
-  - m5.large
-  - c5.large
-  - r5.large
-  - t3.large
   volume_size_in_gb: 500
   instance_mode: spot
   ip_mode: elastic
+
+  regional_machines:
+    us-west-2:
+      non_anchor_nodes: 1
+      instance_types:
+      - m5.large
+      - c5.large
+      - r5.large
+      - t3.large
 
 upload_artifacts:
   avalanched_local_bin: {avalanched_bin}
@@ -1115,6 +1288,21 @@ coreth_chain_config:
 
     cfg.sync(config_path).unwrap();
 
+    let mut regional_machines = BTreeMap::new();
+    regional_machines.insert(
+        "us-west-2".to_string(),
+        RegionalMachine {
+            anchor_nodes: None,
+            non_anchor_nodes: 1,
+            instance_types: vec![
+                String::from("m5.large"),
+                String::from("c5.large"),
+                String::from("r5.large"),
+                String::from("t3.large"),
+            ],
+        },
+    );
+
     let avalanchego_config = avalanchego_config::Config::default_main();
     let orig = Spec {
         version: VERSION,
@@ -1122,26 +1310,23 @@ coreth_chain_config:
         id: id.clone(),
         aad_tag: String::from("test"),
 
-        resources: Resources {
-            region: String::from("us-west-2"),
+        resource: Resource {
+            regions: vec![String::from("us-west-2")],
             s3_bucket: bucket.clone(),
-            ..Resources::default()
+            ..Resource::default()
         },
 
         machine: Machine {
-            anchor_nodes: None,
-            non_anchor_nodes: 1,
+            total_anchor_nodes: None,
+            total_non_anchor_nodes: 1,
+
             arch_type: "amd64".to_string(),
             rust_os_type: "ubuntu20.04".to_string(),
-            instance_types: vec![
-                String::from("m5.large"),
-                String::from("c5.large"),
-                String::from("r5.large"),
-                String::from("t3.large"),
-            ],
+
             instance_mode: String::from("spot"),
             ip_mode: String::from("elastic"),
             volume_size_in_gb: 500,
+            regional_machines,
         },
 
         upload_artifacts: Some(UploadArtifacts {
@@ -1182,8 +1367,8 @@ coreth_chain_config:
     assert_eq!(cfg.id, id);
     assert_eq!(cfg.aad_tag, "test");
 
-    assert_eq!(cfg.resources.region, "us-west-2");
-    assert_eq!(cfg.resources.s3_bucket, bucket);
+    assert_eq!(cfg.resource.regions[0], "us-west-2");
+    assert_eq!(cfg.resource.s3_bucket, bucket);
 
     assert_eq!(
         cfg.upload_artifacts.clone().unwrap().avalanched_local_bin,
@@ -1194,13 +1379,13 @@ coreth_chain_config:
         avalanchego_bin
     );
 
-    assert!(cfg.machine.anchor_nodes.is_none());
-    assert_eq!(cfg.machine.non_anchor_nodes, 1);
-    let instance_types = cfg.machine.instance_types;
-    assert_eq!(instance_types[0], "m5.large");
-    assert_eq!(instance_types[1], "c5.large");
-    assert_eq!(instance_types[2], "r5.large");
-    assert_eq!(instance_types[3], "t3.large");
+    assert!(cfg.machine.total_anchor_nodes.is_none());
+    assert_eq!(cfg.machine.total_non_anchor_nodes, 1);
+    let regional_machine = cfg.machine.regional_machines.get("us-west-2").unwrap();
+    assert_eq!(regional_machine.instance_types[0], "m5.large");
+    assert_eq!(regional_machine.instance_types[1], "c5.large");
+    assert_eq!(regional_machine.instance_types[2], "r5.large");
+    assert_eq!(regional_machine.instance_types[3], "t3.large");
 
     assert_eq!(cfg.avalanchego_config.clone().network_id, 1);
     assert_eq!(
@@ -1237,6 +1422,7 @@ coreth_chain_config:
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Node {
+    pub region: String,
     pub kind: String,
     pub machine_id: String,
     pub node_id: String,
@@ -1249,6 +1435,7 @@ pub struct Node {
 
 impl Node {
     pub fn new(
+        region: &str,
         kind: node::Kind,
         machine_id: &str,
         node_id: &str,
@@ -1261,6 +1448,7 @@ impl Node {
         let proof_of_possession =
             key::bls::ProofOfPossession::new(&public_key, &proof_of_possession).unwrap();
         Self {
+            region: region.to_owned(),
             kind: String::from(kind.as_str()),
             machine_id: String::from(machine_id),
             node_id: node_id.to_string(),
@@ -1369,6 +1557,7 @@ fn test_node() {
         .try_init();
 
     let d = r#"
+region: ap-northeast-2
 kind: anchor
 machineId: i-123123
 
@@ -1391,6 +1580,7 @@ httpEndpoint: http://1.2.3.4:9650
     node.sync(node_path).unwrap();
 
     let orig = Node::new(
+        "ap-northeast-2",
         node::Kind::Anchor,
         "i-123123",
         "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx",
@@ -1403,6 +1593,7 @@ httpEndpoint: http://1.2.3.4:9650
     assert_eq!(node, orig);
 
     // manually check to make sure the serde deserializer works
+    assert_eq!(node.region, String::from("ap-northeast-2"));
     assert_eq!(node.kind, String::from("anchor"));
     assert_eq!(node.machine_id, String::from("i-123123"));
     assert_eq!(node.node_id, "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx");
@@ -1498,15 +1689,15 @@ impl Endpoints {
 #[serde(rename_all = "snake_case")]
 pub struct Machine {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub anchor_nodes: Option<u32>,
+    pub total_anchor_nodes: Option<u32>,
     #[serde(default)]
-    pub non_anchor_nodes: u32,
+    pub total_non_anchor_nodes: u32,
+
     #[serde(default)]
     pub arch_type: String,
     #[serde(default)]
     pub rust_os_type: String,
-    #[serde(default)]
-    pub instance_types: Vec<String>,
+
     /// Either "spot" or "on-demand".
     #[serde(default)]
     pub instance_mode: String,
@@ -1520,6 +1711,20 @@ pub struct Machine {
     /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html
     #[serde(default)]
     pub volume_size_in_gb: u32,
+
+    #[serde(default)]
+    pub regional_machines: BTreeMap<String, RegionalMachine>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct RegionalMachine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anchor_nodes: Option<u32>,
+    #[serde(default)]
+    pub non_anchor_nodes: u32,
+    #[serde(default)]
+    pub instance_types: Vec<String>,
 }
 
 /// Represents artifacts for installation, to be shared with
@@ -1575,7 +1780,7 @@ impl UploadArtifacts {
 
 /// Represents the CloudFormation stack name.
 pub enum StackName {
-    Ec2InstanceRole(String),
+    Ec2InstanceRole(String, String),
     Vpc(String),
     SsmInstallSubnetChain(String),
 }
@@ -1583,10 +1788,10 @@ pub enum StackName {
 impl StackName {
     pub fn encode(&self) -> String {
         match self {
-            StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
+            StackName::Ec2InstanceRole(id, region) => format!("{id}-ec2-instance-role-{region}"),
             StackName::Vpc(id) => format!("{}-vpc", id),
             StackName::SsmInstallSubnetChain(id) => {
-                format!("{}-ssm-install-subnet-chain", id)
+                format!("{id}-ssm-install-subnet-chain")
             }
         }
     }
@@ -1797,6 +2002,7 @@ fn test_storage_path() {
     let node_ip = "1.2.3.4";
 
     let node = Node::new(
+        "ap-northeast-2",
         node::Kind::NonAnchor,
         &instance_id,
         node_id,
@@ -1814,6 +2020,7 @@ fn test_storage_path() {
     let p = StorageNamespace::DiscoverReadyNonAnchorNode(
         id,
         Node {
+            region: "ap-northeast-2".to_string(),
             kind: String::from("non-anchor"),
             machine_id: instance_id.clone(),
             node_id: "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx".to_string(),
@@ -1869,11 +2076,11 @@ impl NodeInfo {
     }
 }
 
-fn get_ec2_key_path(spec_file_path: &str) -> String {
+fn get_ec2_key_path(spec_file_path: &str, region: &str) -> String {
     let path = Path::new(spec_file_path);
     let parent_dir = path.parent().unwrap();
     let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ec2-access.key", name.to_str().unwrap(),);
+    let new_name = format!("{}-ec2-access.{region}.key", name.to_str().unwrap(),);
     String::from(
         parent_dir
             .join(Path::new(new_name.as_str()))

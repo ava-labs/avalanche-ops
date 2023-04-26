@@ -6,6 +6,14 @@ Description: "IAM instance role"
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Parameters:
+  RoleName:
+    Type: String
+    Description: Role name.
+
+  RoleProfileName:
+    Type: String
+    Description: Role profile name.
+
   Id:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
@@ -18,11 +26,6 @@ Parameters:
     Type: String
     Description: S3 bucket name to store.
 
-  S3BucketDbBackupName:
-    Type: String
-    Default: ""
-    Description: S3 bucket name to download backups from.
-
 Mappings:
   ServicePrincipals:
     aws-cn:
@@ -30,19 +33,12 @@ Mappings:
     aws:
       ec2: ec2.amazonaws.com
 
-Conditions:
-  HasS3BucketDbBackupName:
-    Fn::Not:
-      - Fn::Equals:
-          - Ref: S3BucketDbBackupName
-          - ""
-
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
   InstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ["-", [!Ref Id, "instance-role"]]
+      RoleName: !Ref RoleName
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -60,6 +56,8 @@ Resources:
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
       Path: /
       Policies:
+        # restrict this better
+        # ref. https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_ec2_ebs-owner.html
         - PolicyName: avalanched-instance-role-policy
           PolicyDocument:
             Version: "2012-10-17"
@@ -75,9 +73,8 @@ Resources:
                   - ec2:DetachVolume # to fail fast in case of spot instance-action
                   - autoscaling:SetInstanceHealth # to fail fast to mark the local instance "Unhealthy"
                   - ec2:TerminateInstances # to fail fast in case of spot instance-action
-                # restrict this better
-                # ref. https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_ec2_ebs-owner.html
                 Resource: "*"
+
               - Effect: Allow
                 Action:
                   - kms:Encrypt # to generate TLS key and encrypt
@@ -88,6 +85,7 @@ Resources:
                 Action:
                   - s3:List*
                 Resource: "*"
+
               - Effect: Allow
                 Action:
                   - s3:GetObject # to download artifacts
@@ -163,10 +161,12 @@ Resources:
                         "/ssm-output-logs/*",
                       ],
                     ]
+
               - Effect: Allow
                 Action:
                   - cloudwatch:PutMetricData
                 Resource: "*"
+
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
@@ -187,31 +187,11 @@ Resources:
                   - ec2:DescribeAddresses # https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeAddresses.html
                 Resource: "*"
 
-        - Fn::If:
-            - HasS3BucketDbBackupName
-            - PolicyName: avalanche-ops-instance-role-policy-for-db-backup
-              PolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - s3:GetObject # to download backups
-                    Resource:
-                      - !Join [
-                          "",
-                          [
-                            !Sub "arn:${AWS::Partition}:s3:::",
-                            !Ref S3BucketDbBackupName,
-                            "/*",
-                          ],
-                        ]
-            - !Ref AWS::NoValue
-
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Join ["-", [!Ref Id, "instance-profile"]]
+      InstanceProfileName: !Ref RoleProfileName
       Path: "/"
       Roles:
         - !Ref InstanceRole

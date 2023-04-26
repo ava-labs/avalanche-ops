@@ -18,7 +18,7 @@ pub const NAME: &str = "install-subnet";
 pub struct Flags {
     pub log_level: String,
 
-    pub region: String,
+    pub s3_region: String,
     pub s3_bucket: String,
 
     pub subnet_config_s3_key: String,
@@ -47,9 +47,9 @@ pub fn command() -> Command {
                 .default_value("info"),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .help("Sets the AWS region")
+            Arg::new("S3_REGION")
+                .long("s3-region")
+                .help("Sets the AWS S3 region")
                 .required(true)
                 .num_args(1),
         )
@@ -111,7 +111,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let shared_config =
-        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await;
+        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
     let s3_manager = s3::Manager::new(&shared_config);
 
     if !opts.subnet_config_s3_key.is_empty() && !opts.subnet_config_s3_key.is_empty() {
@@ -136,6 +136,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 &opts.subnet_config_s3_key,
                 &opts.subnet_config_local_path,
                 true,
+                Duration::from_secs(30),
+                Duration::from_secs(1),
             )
             .await
             .unwrap();
@@ -171,6 +173,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 &opts.vm_binary_s3_key,
                 &opts.vm_binary_local_path,
                 true,
+                Duration::from_secs(30),
+                Duration::from_secs(1),
             )
             .await
             .unwrap();

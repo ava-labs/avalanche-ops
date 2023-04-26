@@ -210,10 +210,13 @@ async fn download_spec(
     let tmp_spec_file_path = random_manager::tmp_path(15, Some(".yaml"))?;
 
     let exists = s3_manager
-        .get_object(
+        .get_object_with_retries(
             s3_bucket,
             &blizzardup_aws::StorageNamespace::ConfigFile(id.to_string()).encode(),
             &tmp_spec_file_path,
+            true,
+            Duration::from_secs(30),
+            Duration::from_secs(1),
         )
         .await
         .map_err(|e| Error::new(ErrorKind::Other, format!("failed spawn_get_object {}", e)))?;

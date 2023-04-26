@@ -39,9 +39,9 @@ staking-key-cert-s3-downloader \
                 .default_value("info"),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .help("Sets the AWS region")
+            Arg::new("S3_REGION")
+                .long("s3-region")
+                .help("Sets the AWS S3 region")
                 .required(true)
                 .num_args(1),
         )
@@ -63,6 +63,13 @@ staking-key-cert-s3-downloader \
             Arg::new("S3_KEY_TLS_CERT")
                 .long("s3-key-tls-cert")
                 .help("Sets the S3 key for TLS cert")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("KMS_REGION")
+                .long("kms-region")
+                .help("Sets the AWS KMS region")
                 .required(true)
                 .num_args(1),
         )
@@ -101,13 +108,14 @@ staking-key-cert-s3-downloader \
             .get_one::<String>("LOG_LEVEL")
             .unwrap_or(&String::from("info"))
             .clone(),
-        region: matches.get_one::<String>("REGION").unwrap().clone(),
+        s3_region: matches.get_one::<String>("S3_REGION").unwrap().clone(),
         s3_bucket: matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
         s3_key_tls_key: matches.get_one::<String>("S3_KEY_TLS_KEY").unwrap().clone(),
         s3_key_tls_cert: matches
             .get_one::<String>("S3_KEY_TLS_CERT")
             .unwrap()
             .clone(),
+        kms_region: matches.get_one::<String>("KMS_REGION").unwrap().clone(),
         kms_key_id: matches.get_one::<String>("KMS_KEY_ID").unwrap().clone(),
         aad_tag: matches.get_one::<String>("AAD_TAG").unwrap().clone(),
         tls_key_path: matches.get_one::<String>("TLS_KEY_PATH").unwrap().clone(),

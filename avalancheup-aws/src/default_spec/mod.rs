@@ -1,4 +1,7 @@
-use std::io::{self, stdout};
+use std::{
+    collections::HashMap,
+    io::{self, stdout},
+};
 
 use avalanche_types::avalanchego::config as avalanchego_config;
 use clap::{value_parser, Arg, Command};
@@ -8,6 +11,52 @@ use crossterm::{
 };
 
 pub const NAME: &str = "default-spec";
+
+#[derive(Clone, Debug)]
+pub struct HashMapStringToStringParser;
+
+impl clap::builder::TypedValueParser for HashMapStringToStringParser {
+    type Value = HashMap<String, String>;
+
+    fn parse_ref(
+        &self,
+        _cmd: &Command,
+        _arg: Option<&Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        let str = value.to_str().unwrap_or_default();
+        let m: HashMap<String, String> = serde_json::from_str(str).map_err(|e| {
+            clap::Error::raw(
+                clap::error::ErrorKind::InvalidValue,
+                format!("HashMap parsing failed ({})", e),
+            )
+        })?;
+        Ok(m)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HashMapStringToStringsParser;
+
+impl clap::builder::TypedValueParser for HashMapStringToStringsParser {
+    type Value = HashMap<String, Vec<String>>;
+
+    fn parse_ref(
+        &self,
+        _cmd: &Command,
+        _arg: Option<&Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        let str = value.to_str().unwrap_or_default();
+        let m: HashMap<String, Vec<String>> = serde_json::from_str(str).map_err(|e| {
+            clap::Error::raw(
+                clap::error::ErrorKind::InvalidValue,
+                format!("HashMap parsing failed ({})", e),
+            )
+        })?;
+        Ok(m)
+    }
+}
 
 pub fn command() -> Command {
     Command::new(NAME)
@@ -75,13 +124,21 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
-            Arg::new("REGION")
-                .long("region")
-                .short('r')
-                .help("Sets the AWS region for API calls/endpoints")
+            Arg::new("REGIONS")
+                .long("regions")
+                .help("Sets the comma-separated instance types (overwrites --region)")
                 .required(false)
                 .num_args(1)
                 .default_value("us-west-2"),
+        )
+        .arg(
+            Arg::new("AUTO_REGIONS")
+                .long("auto-regions")
+                .help("Sets the number of regions to auto-populate (overwrites --region)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u32))
+                .default_value("1"),
         )
         .arg(
             Arg::new("INGRESS_IPV4_CIDR")
@@ -111,8 +168,9 @@ pub fn command() -> Command {
         .arg(
             Arg::new("INSTANCE_TYPES")
                 .long("instance-types")
-                .help("Sets the comma-separated instance types (overwrites --instance-size)")
+                .help("Sets the hash map from a region to a comma-separated instance types (overwrites --instance-size)")
                 .required(false)
+                .value_parser(HashMapStringToStringsParser {})
                 .num_args(1),
         )
         .arg(
@@ -132,10 +190,11 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
-            Arg::new("NLB_ACM_CERTIFICATE_ARN") 
-                .long("nlb-acm-certificate-arn")
-                .help("Sets ACM ARN to enable NLB HTTPS")
+            Arg::new("NLB_ACM_CERTIFICATE_ARNS") 
+                .long("nlb-acm-certificate-arns")
+                .help("Sets the hash map from a region to an ACM ARN to enable NLB HTTPS")
                 .required(false)
+                .value_parser(HashMapStringToStringParser {})
                 .num_args(1),
         )
         .arg(

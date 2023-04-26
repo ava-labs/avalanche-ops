@@ -19,10 +19,14 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
-    let shared_config =
-        aws_manager::load_config(Some(opts.region.clone()), Some(Duration::from_secs(30))).await;
-    let kms_manager = kms::Manager::new(&shared_config);
-    let s3_manager = s3::Manager::new(&shared_config);
+    let s3_shared_config =
+        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
+    let s3_manager = s3::Manager::new(&s3_shared_config);
+
+    let kms_shared_config =
+        aws_manager::load_config(Some(opts.kms_region.clone()), Some(Duration::from_secs(30)))
+            .await;
+    let kms_manager = kms::Manager::new(&kms_shared_config);
 
     let envelope_manager = envelope::Manager::new(
         &kms_manager,
@@ -37,7 +41,13 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     log::info!("downloading key file {}", opts.key_path);
     envelope_manager
-        .get_object_unseal_decompress(&s3_manager, &opts.s3_bucket, &opts.s3_key, &opts.key_path)
+        .get_object_unseal_decompress(
+            &s3_manager,
+            &opts.s3_bucket,
+            &opts.s3_key,
+            &opts.key_path,
+            false,
+        )
         .await
         .map_err(|e| {
             Error::new(
