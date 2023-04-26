@@ -1941,7 +1941,7 @@ cat /tmp/{node_id}.crt
     //
     //
     //
-    let mut region_to_ssm_doc = HashMap::new();
+    let mut region_to_ssm_doc_name = HashMap::new();
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -1960,7 +1960,7 @@ cat /tmp/{node_id}.crt
             .unwrap();
         let ssm_install_subnet_chain_doc_name =
             avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode();
-        region_to_ssm_doc.insert(
+        region_to_ssm_doc_name.insert(
             region.to_string(),
             ssm_install_subnet_chain_doc_name.clone(),
         );
@@ -2188,8 +2188,11 @@ cat /tmp/{node_id}.crt
 
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators, works for any VM)");
+
+        let region_to_ssm_doc_name = serde_json::to_string(&region_to_ssm_doc_name).unwrap();
         let node_id_to_region_machine_id =
             serde_json::to_string(&node_id_to_region_machine_id).unwrap();
+
         execute!(
             stdout(),
             SetForegroundColor(Color::Green),
@@ -2216,6 +2219,8 @@ cat /tmp/{node_id}.crt
 --ssm-docs '{region_to_ssm_doc_name}' \\
 --target-nodes '{node_id_to_region_machine_id}'
 
+# or use to add all nodes as subnet validators
+# --spec-file-path {spec_file_path}
 ",
                 exec_path = exec_path.display(),
                 region = region,
@@ -2229,11 +2234,9 @@ cat /tmp/{node_id}.crt
                 chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
                 avalanchego_config_remote_path =
                     spec.avalanchego_config.config_file.clone().unwrap(),
-                region_to_ssm_doc_name = regional_resource
-                    .cloudformation_ssm_install_subnet_chain
-                    .clone()
-                    .unwrap(),
+                region_to_ssm_doc_name = region_to_ssm_doc_name,
                 node_id_to_region_machine_id = node_id_to_region_machine_id,
+                spec_file_path = spec_file_path,
             )),
             ResetColor
         )?;
