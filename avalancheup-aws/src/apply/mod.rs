@@ -2243,7 +2243,7 @@ cat /tmp/{node_id}.crt
 --key {priv_key_hex} \\
 --primary-network-validate-period-in-days 16 \\
 --staking-amount-in-avax 2000 \\
---spec-file-path {spec_file_path} \\
+--spec-file-path {spec_file_path}
 
 # or
 # --target-node-ids '{target_node_ids}'
