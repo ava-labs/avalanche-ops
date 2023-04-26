@@ -847,6 +847,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.subnet_validate_period_in_days
         );
 
+        // TODO: remove this... after fixing flaky errors of utxo not found
+        sleep(Duration::from_secs(2)).await;
+
         // randomly wait to prevnt UTXO double spends from the same wallet
         let random_wait = if i < 5 {
             Duration::from_secs(2 + (i * 2) as u64)
@@ -857,7 +860,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
                 .unwrap()
         };
-
         handles.push(tokio::spawn(add_subnet_network_validator(
             Arc::new(random_wait),
             Arc::new(wallet_to_spend.clone()),
