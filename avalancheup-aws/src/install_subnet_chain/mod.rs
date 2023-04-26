@@ -421,7 +421,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let mut all_node_ids = Vec::new();
-    let mut all_instance_ids = Vec::new();
     let mut region_to_instance_ids: HashMap<String, Vec<String>> = HashMap::new();
     for (node_id, region_machine_id) in target_nodes.iter() {
         log::info!(
@@ -430,7 +429,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             region_machine_id.region,
         );
         all_node_ids.push(node_id.clone());
-        all_instance_ids.push(region_machine_id.machine_id.clone());
 
         if let Some(instance_ids) = region_to_instance_ids.get_mut(&region_machine_id.region) {
             instance_ids.push(region_machine_id.machine_id.clone());
@@ -957,10 +955,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             );
             let shared_config =
                 aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
-            let ssm_manager = ssm::Manager::new(&shared_config);
+            let regional_ssm_manager = ssm::Manager::new(&shared_config);
 
             // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
-            let ssm_output = ssm_manager
+            let ssm_output = regional_ssm_manager
                 .cli
                 .send_command()
                 .document_name(ssm_doc.clone())
@@ -986,8 +984,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
                 ResetColor
             )?;
-            for instance_id in all_instance_ids.iter() {
-                let status = ssm_manager
+            for instance_id in instance_ids.iter() {
+                let status = regional_ssm_manager
                     .poll_command(
                         ssm_command_id,
                         instance_id,
