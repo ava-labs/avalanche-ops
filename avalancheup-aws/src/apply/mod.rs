@@ -1256,6 +1256,7 @@ aws ssm start-session --region {} --target {}
 
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
+        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -1284,7 +1285,7 @@ aws ssm start-session --region {} --target {}
                 .clone()
                 .unwrap();
 
-            let non_anchor_nodes = spec.machine.total_non_anchor_nodes;
+            let regional_non_anchor_nodes = regional_machine.non_anchor_nodes;
 
             // must deep-copy as shared with other node kind
             let mut common_asg_params_non_anchor = common_asg_params.clone();
@@ -1296,7 +1297,7 @@ aws ssm start-session --region {} --target {}
                 .unwrap();
 
             let mut non_anchor_asg_logical_ids = Vec::new();
-            for i in 0..non_anchor_nodes as usize {
+            for i in 0..regional_non_anchor_nodes as usize {
                 let mut non_anchor_asg_params = common_asg_params_non_anchor.clone();
                 non_anchor_asg_params.push(build_param(
                     "PublicSubnetIds",
@@ -1401,7 +1402,7 @@ aws ssm start-session --region {} --target {}
                     }
                 }
             }
-            for i in 1..non_anchor_nodes as usize {
+            for i in 1..regional_non_anchor_nodes as usize {
                 let mut wait_secs = 800;
                 if wait_secs > MAX_WAIT_SECONDS {
                     wait_secs = MAX_WAIT_SECONDS;
