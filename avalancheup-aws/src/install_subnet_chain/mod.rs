@@ -397,6 +397,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     } else {
         ids::Id::from_str(&opts.vm_id)?
     };
+    log::info!("VM ID is {}", vm_id.to_string());
 
     let resp = json_client_info::get_network_id(&opts.chain_rpc_url)
         .await
