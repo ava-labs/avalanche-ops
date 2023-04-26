@@ -659,7 +659,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let mut handles = Vec::new();
     for (i, (node_id, region_machine_id)) in target_nodes.iter().enumerate() {
         // randomly wait to prevent UTXO double spends from the same wallet
-        let random_wait = Duration::from_secs(1 + i as u64)
+        let random_wait = Duration::from_secs(1 + (i + 1) as u64)
             .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
             .unwrap();
 
@@ -847,10 +847,16 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.subnet_validate_period_in_days
         );
 
-        // randomly wait to prevent UTXO double spends from the same wallet
-        let random_wait = Duration::from_secs(1 + i as u64)
-            .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
-            .unwrap();
+        // randomly wait to prevnt UTXO double spends from the same wallet
+        let random_wait = if i < 5 {
+            Duration::from_secs(2 + (i * 2) as u64)
+                .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
+                .unwrap()
+        } else {
+            Duration::from_secs(5 + (i * 2) as u64)
+                .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
+                .unwrap()
+        };
 
         handles.push(tokio::spawn(add_subnet_network_validator(
             Arc::new(random_wait),
