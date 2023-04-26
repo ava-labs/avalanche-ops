@@ -6,6 +6,10 @@ Description: "IAM instance role"
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Parameters:
+  RoleName:
+    Type: String
+    Description: Role name.
+
   Id:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
@@ -30,7 +34,7 @@ Resources:
   InstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ["-", [!Ref Id, "instance-role"]]
+      RoleName: !Ref RoleName
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

@@ -512,6 +512,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .unwrap();
 
             let role_params = Vec::from([
+                build_param("RoleName", format!("{}-{region}", &spec.id).as_str()),
                 build_param("Id", &spec.id),
                 build_param(
                     "KmsKeyArn",
