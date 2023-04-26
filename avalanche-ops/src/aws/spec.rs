@@ -1780,7 +1780,7 @@ impl UploadArtifacts {
 
 /// Represents the CloudFormation stack name.
 pub enum StackName {
-    Ec2InstanceRole(String),
+    Ec2InstanceRole(String, String),
     Vpc(String),
     SsmInstallSubnetChain(String),
 }
@@ -1788,7 +1788,7 @@ pub enum StackName {
 impl StackName {
     pub fn encode(&self) -> String {
         match self {
-            StackName::Ec2InstanceRole(id) => format!("{}-ec2-instance-role", id),
+            StackName::Ec2InstanceRole(id, region) => format!("{id}-ec2-instance-role-{region}"),
             StackName::Vpc(id) => format!("{}-vpc", id),
             StackName::SsmInstallSubnetChain(id) => {
                 format!("{id}-ssm-install-subnet-chain")

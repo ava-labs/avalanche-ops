@@ -111,7 +111,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         }
         if regional_resource.cloudformation_ec2_instance_role.is_none() {
             regional_resource.cloudformation_ec2_instance_role = Some(
-                avalanche_ops::aws::spec::StackName::Ec2InstanceRole(spec.id.clone()).encode(),
+                avalanche_ops::aws::spec::StackName::Ec2InstanceRole(
+                    spec.id.clone(),
+                    region.clone(),
+                )
+                .encode(),
             );
         }
         if regional_resource.cloudformation_vpc.is_none() {
