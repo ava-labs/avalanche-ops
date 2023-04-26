@@ -606,7 +606,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     for (region, r) in spec.resource.regional_resources.clone().iter() {
-        let mut regional_resource = r.clone();
+        let regional_resource = r.clone();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
