@@ -344,7 +344,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
 
-                s3_region: sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                s3_region: sub_matches.get_one::<String>("S3_REGION").unwrap().clone(),
                 s3_bucket: sub_matches.get_one::<String>("S3_BUCKET").unwrap().clone(),
                 s3_key_prefix: sub_matches
                     .get_one::<String>("S3_KEY_PREFIX")
