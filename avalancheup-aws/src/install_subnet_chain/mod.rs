@@ -328,6 +328,16 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .expect("failed to load spec");
         spec.validate()?;
 
+        for (region, regional_resource) in spec.resource.regional_resources.iter() {
+            region_to_ssm_doc.insert(
+                region.to_string(),
+                regional_resource
+                    .cloudformation_ssm_install_subnet_chain
+                    .clone()
+                    .unwrap(),
+            );
+        }
+
         if let Some(created_nodes) = &spec.resource.created_nodes {
             for node in created_nodes {
                 let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
@@ -340,16 +350,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     },
                 );
             }
-        }
-
-        for (region, regional_resource) in spec.resource.regional_resources.iter() {
-            region_to_ssm_doc.insert(
-                region.to_string(),
-                regional_resource
-                    .cloudformation_ssm_install_subnet_chain
-                    .clone()
-                    .unwrap(),
-            );
         }
     } else {
         target_nodes = opts.target_nodes.clone();
@@ -425,8 +425,9 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let mut region_to_instance_ids: HashMap<String, Vec<String>> = HashMap::new();
     for (node_id, region_machine_id) in target_nodes.iter() {
         log::info!(
-            "will send SSM doc to {node_id} {}",
-            region_machine_id.machine_id
+            "will send SSM doc to the node '{node_id}' of '{}' in the region '{}'",
+            region_machine_id.machine_id,
+            region_machine_id.region,
         );
         all_node_ids.push(node_id.clone());
         all_instance_ids.push(region_machine_id.machine_id.clone());
@@ -739,8 +740,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
         ResetColor
     )?;
-    let subcmd = format!("install-subnet --log-level info --s3-region {region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-local-path {vm_binary_local_path} --subnet-id-to-track {subnet_id_to_track} --avalanchego-config-path {avalanchego_config_remote_path}",
-        region = opts.s3_region,
+    let subcmd = format!("install-subnet --log-level info --s3-region {s3_region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_binary_s3_key} --vm-binary-local-path {vm_binary_local_path} --subnet-id-to-track {subnet_id_to_track} --avalanchego-config-path {avalanchego_config_remote_path}",
+    s3_region = opts.s3_region,
         s3_bucket = opts.s3_bucket,
         vm_binary_s3_key = vm_binary_s3_key,
         vm_binary_local_path = format!("{}{}", s3::append_slash(&opts.vm_binary_remote_dir), vm_id.to_string()),

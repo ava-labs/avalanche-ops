@@ -2186,20 +2186,17 @@ cat /tmp/{node_id}.crt
         ResetColor
     )?;
 
-    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators, works for any VM)");
-
-        let region_to_ssm_doc_name = serde_json::to_string(&region_to_ssm_doc_name).unwrap();
-        let node_id_to_region_machine_id =
-            serde_json::to_string(&node_id_to_region_machine_id).unwrap();
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print(format!(
-                "{exec_path} install-subnet-chain \\
+    println!("\n# EXAMPLE: install subnet-evm in all nodes (including adding all nodes as primary network validators, works for any VM)");
+    let region_to_ssm_doc_name = serde_json::to_string(&region_to_ssm_doc_name).unwrap();
+    let node_id_to_region_machine_id =
+        serde_json::to_string(&node_id_to_region_machine_id).unwrap();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_path} install-subnet-chain \\
 --log-level info \\
---s3-region {region} \\
+--s3-region {s3_region} \\
 --s3-bucket {s3_bucket} \\
 --s3-key-prefix {id}/install-subnet-chain \\
 --chain-rpc-url {chain_rpc_url} \\
@@ -2222,25 +2219,23 @@ cat /tmp/{node_id}.crt
 # or use to add all nodes as subnet validators
 # --spec-file-path {spec_file_path}
 ",
-                exec_path = exec_path.display(),
-                region = region,
-                s3_bucket = spec.resource.s3_bucket,
-                chain_rpc_url =
-                    format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
-                priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
-                id = spec.id,
-                subnet_config_remote_dir = spec.avalanchego_config.subnet_config_dir,
-                vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
-                chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
-                avalanchego_config_remote_path =
-                    spec.avalanchego_config.config_file.clone().unwrap(),
-                region_to_ssm_doc_name = region_to_ssm_doc_name,
-                node_id_to_region_machine_id = node_id_to_region_machine_id,
-                spec_file_path = spec_file_path,
-            )),
-            ResetColor
-        )?;
-    }
+            exec_path = exec_path.display(),
+            s3_region = spec.resource.regions[0],
+            s3_bucket = spec.resource.s3_bucket,
+            chain_rpc_url =
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+            priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
+            id = spec.id,
+            subnet_config_remote_dir = spec.avalanchego_config.subnet_config_dir,
+            vm_plugin_remote_dir = spec.avalanchego_config.plugin_dir,
+            chain_config_remote_dir = spec.avalanchego_config.chain_config_dir,
+            avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
+            region_to_ssm_doc_name = region_to_ssm_doc_name,
+            node_id_to_region_machine_id = node_id_to_region_machine_id,
+            spec_file_path = spec_file_path,
+        )),
+        ResetColor
+    )?;
 
     println!("\n# EXAMPLE: start distributed load generator");
     execute!(
