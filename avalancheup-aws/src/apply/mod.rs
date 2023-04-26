@@ -1941,6 +1941,7 @@ cat /tmp/{node_id}.crt
     //
     //
     //
+    let mut region_to_ssm_doc = HashMap::new();
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -1959,6 +1960,11 @@ cat /tmp/{node_id}.crt
             .unwrap();
         let ssm_install_subnet_chain_doc_name =
             avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode();
+        region_to_ssm_doc.insert(
+            region.to_string(),
+            ssm_install_subnet_chain_doc_name.clone(),
+        );
+
         let cfn_params = Vec::from([build_param(
             "DocumentName",
             &ssm_install_subnet_chain_doc_name,

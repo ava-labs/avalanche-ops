@@ -300,7 +300,7 @@ pub fn command() -> Command {
             Arg::new("SSM_DOCS")
                 .long("ssm-docs")
                 .help("Sets the hash map of AWS region to SSM document name for subnet and chain install (see avalanche-ops/src/aws/cfn-templates/ssm_install_subnet_chain.yaml)")
-                .required(true)
+                .required(false)
                 .value_parser(HashMapStringToStringParser {})
                 .num_args(1),
         )
@@ -321,11 +321,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     );
 
     let mut node_id_to_pop = HashMap::new();
+    let mut region_to_ssm_doc = HashMap::new();
     let mut target_nodes = HashMap::new();
     if !opts.spec_file_path.is_empty() {
         let spec = avalanche_ops::aws::spec::Spec::load(&opts.spec_file_path)
             .expect("failed to load spec");
         spec.validate()?;
+
         if let Some(created_nodes) = &spec.resource.created_nodes {
             for node in created_nodes {
                 let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
@@ -339,8 +341,19 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 );
             }
         }
+
+        for (region, regional_resource) in spec.resource.regional_resources.iter() {
+            region_to_ssm_doc.insert(
+                region.to_string(),
+                regional_resource
+                    .cloudformation_ssm_install_subnet_chain
+                    .clone()
+                    .unwrap(),
+            );
+        }
     } else {
         target_nodes = opts.target_nodes.clone();
+        region_to_ssm_doc = opts.ssm_docs.clone();
     }
 
     if !Path::new(&opts.vm_binary_local_path).exists() {
@@ -755,13 +768,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     };
 
     for (region, instance_ids) in region_to_instance_ids.iter() {
-        if !opts.ssm_docs.contains_key(region) {
+        if !region_to_ssm_doc.contains_key(region) {
             panic!(
                 "--ssm-docs does not have the document name for the region '{}'",
                 region
             );
         }
-        let ssm_doc = opts.ssm_docs.get(region).unwrap();
+        let ssm_doc = region_to_ssm_doc.get(region).unwrap();
 
         log::info!(
             "sending SSM commands for the region '{region}' with instances {:?}",
@@ -769,10 +782,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         );
         let shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
-        let ssm_manager = ssm::Manager::new(&shared_config);
+        let regional_ssm_manager = ssm::Manager::new(&shared_config);
 
         // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
-        let ssm_output = ssm_manager
+        let ssm_output = regional_ssm_manager
             .cli
             .send_command()
             .document_name(ssm_doc.clone())
@@ -799,7 +812,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             ResetColor
         )?;
         for instance_id in instance_ids.iter() {
-            let status = ssm_manager
+            let status = regional_ssm_manager
                 .poll_command(
                     ssm_command_id,
                     instance_id,
