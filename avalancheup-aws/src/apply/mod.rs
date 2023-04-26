@@ -2037,7 +2037,24 @@ cat /tmp/{node_id}.crt
             )
             .await
             .unwrap();
-        sleep(Duration::from_secs(10)).await;
+    }
+    log::info!("waiting for SSM creation...");
+    sleep(Duration::from_secs(10)).await;
+    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!("\n\n\nSTEP: polling an SSM document for installing subnet in the region '{region}'\n\n")),
+            ResetColor
+        )?;
+        let ssm_doc_stack_name = regional_resource
+            .cloudformation_ssm_install_subnet_chain
+            .clone()
+            .unwrap();
         regional_cloudformation_manager
             .poll_stack(
                 ssm_doc_stack_name.as_str(),
@@ -2047,7 +2064,7 @@ cat /tmp/{node_id}.crt
             )
             .await
             .unwrap();
-        log::info!("created ssm document for installing subnet");
+        log::info!("created ssm document for installing subnet in the region '{region}'");
     }
 
     // TODO: support Fuji
