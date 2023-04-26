@@ -485,7 +485,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     for (region, r) in spec.resource.regional_resources.clone().iter() {
-        let mut regional_resource = r.clone();
+        let regional_resource = r.clone();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -542,8 +542,35 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 )
                 .await
                 .unwrap();
+        }
+    }
+    log::info!("waiting for IAM creation...");
+    sleep(Duration::from_secs(10)).await;
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
 
-            sleep(Duration::from_secs(10)).await;
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        if regional_resource
+            .cloudformation_ec2_instance_profile_arn
+            .is_none()
+        {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "\n\n\nSTEP: polling EC2 instance role in the region '{region}'\n"
+                )),
+                ResetColor
+            )?;
+
+            let ec2_instance_role_stack_name = regional_resource
+                .cloudformation_ec2_instance_role
+                .clone()
+                .unwrap();
+
             let stack = regional_cloudformation_manager
                 .poll_stack(
                     ec2_instance_role_stack_name.as_str(),
@@ -562,22 +589,20 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     regional_resource.cloudformation_ec2_instance_profile_arn = Some(v)
                 }
             }
-            spec.sync(spec_file_path)?;
-
-            default_s3_manager
-                .put_object(
-                    &spec_file_path,
-                    &spec.resource.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
-                        .encode(),
-                )
-                .await
-                .unwrap();
         }
 
         spec.resource
             .regional_resources
             .insert(region.clone(), regional_resource);
+        spec.sync(spec_file_path)?;
+        default_s3_manager
+            .put_object(
+                &spec_file_path,
+                &spec.resource.s3_bucket,
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            )
+            .await
+            .unwrap();
     }
 
     for (region, r) in spec.resource.regional_resources.clone().iter() {
@@ -638,8 +663,35 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 )
                 .await
                 .expect("failed create_stack for VPC");
+        }
+    }
+    log::info!("waiting for VPC creation...");
+    sleep(Duration::from_secs(10)).await;
+    for (region, r) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = r.clone();
 
-            sleep(Duration::from_secs(10)).await;
+        let regional_shared_config =
+            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        if regional_resource.cloudformation_vpc_id.is_none()
+            && regional_resource
+                .cloudformation_vpc_security_group_id
+                .is_none()
+            && regional_resource
+                .cloudformation_vpc_public_subnet_ids
+                .is_none()
+        {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "\n\n\nSTEP: polling a VPC in the region '{region}'\n"
+                )),
+                ResetColor
+            )?;
+
+            let vpc_stack_name = regional_resource.cloudformation_vpc.clone().unwrap();
             let stack = regional_cloudformation_manager
                 .poll_stack(
                     vpc_stack_name.as_str(),
@@ -672,22 +724,20 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     regional_resource.cloudformation_vpc_public_subnet_ids = Some(pub_subnets);
                 }
             }
-            spec.sync(spec_file_path)?;
-
-            default_s3_manager
-                .put_object(
-                    &spec_file_path,
-                    &spec.resource.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
-                        .encode(),
-                )
-                .await
-                .unwrap();
         }
 
         spec.resource
             .regional_resources
             .insert(region.clone(), regional_resource);
+        spec.sync(spec_file_path)?;
+        default_s3_manager
+            .put_object(
+                &spec_file_path,
+                &spec.resource.s3_bucket,
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            )
+            .await
+            .unwrap();
     }
 
     let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
@@ -829,7 +879,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 stdout(),
                 SetForegroundColor(Color::Green),
                 Print(format!(
-                    "\n\n\nSTEP: create ASG for anchor nodes for network Id {} in '{region}'\n",
+                    "\n\n\nSTEP: create ASG for anchor nodes for network Id {} in the region '{region}'\n",
                     spec.avalanchego_config.network_id
                 )),
                 ResetColor
@@ -1045,6 +1095,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.resource
             .regional_resources
             .insert(region.clone(), regional_resource);
+        spec.sync(spec_file_path)?;
     }
 
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
@@ -1715,7 +1766,7 @@ aws ssm start-session --region {} --target {}
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: showing all node objects based on S3 keys...\n\n"),
+        Print("\n\n\nSTEP: showing all node objects based on S3 keys for all regions...\n\n"),
         ResetColor
     )?;
     for node in created_nodes.iter() {
@@ -1725,7 +1776,7 @@ aws ssm start-session --region {} --target {}
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
-        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints!\n\n"),
+        Print("\n\n\nSTEP: nodes are ready -- check the following endpoints for all regions!\n\n"),
         ResetColor
     )?;
     let mut rpc_hosts = Vec::new();
@@ -1902,10 +1953,11 @@ aws ssm start-session --region {} --target {}
                     "
 {exec_parent_dir}/staking-key-cert-s3-downloader \\
 --log-level=info \\
---region={region} \\
+--s3-region={s3_region} \\
 --s3-bucket={s3_buckeet} \\
 --s3-key-tls-key={id}/pki/{node_id}.key.zstd.encrypted \\
 --s3-key-tls-cert={id}/pki/{node_id}.crt.zstd.encrypted \\
+--kms-region={kms_region} \\
 --kms-key-id={kms_key_id} \\
 --aad-tag='{aad_tag}' \\
 --tls-key-path=/tmp/{node_id}.key \\
@@ -1915,18 +1967,20 @@ cat /tmp/{node_id}.crt
 
 {exec_parent_dir}/staking-signer-key-s3-downloader \\
 --log-level=info \\
---region={region} \\
+--s3-region={s3_region} \\
 --s3-bucket={s3_buckeet} \\
 --s3-key={id}/staking-signer-keys/{node_id}.staking-signer.bls.key.zstd.encrypted \\
+--kms-region={kms_region} \\
 --kms-key-id={kms_key_id} \\
 --aad-tag='{aad_tag}' \\
 --key-path=/tmp/{node_id}.bls.key
 
 ",
                     exec_parent_dir = exec_parent_dir,
-                    region = spec.resource.regions[0],
+                    s3_region = spec.resource.regions[0],
                     s3_buckeet = spec.resource.s3_bucket,
                     id = spec.id,
+                    kms_region = region,
                     kms_key_id = kms_key_id,
                     aad_tag = spec.aad_tag,
                     node_id = n.node_id,
@@ -2070,9 +2124,11 @@ cat /tmp/{node_id}.crt
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "{exec_path} subnet-config \\
+            "# 250000000 ns == 0.25 s
+# 1000000000 ns == 1.00 s
+{exec_path} subnet-config \\
 --log-level=info \\
---proposer-min-block-delay 250000000 \\
+--proposer-min-block-delay 1000000000 \\
 --file-path /tmp/subnet-config.json
 ",
             exec_path = exec_path.display(),
