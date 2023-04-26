@@ -283,8 +283,14 @@ pub async fn execute(
             ResetColor
         )?;
         if let Some(stack_names) = &regional_resource.cloudformation_asg_non_anchor_nodes {
+            let interval = if stack_names.len() > 20 {
+                Duration::from_secs(1)
+            } else {
+                Duration::from_millis(200)
+            };
             for stack_name in stack_names.iter() {
-                sleep(Duration::from_millis(200)).await;
+                sleep(interval).await;
+
                 regional_cloudformation_manager
                     .delete_stack(stack_name)
                     .await
@@ -301,8 +307,14 @@ pub async fn execute(
             ResetColor
         )?;
         if let Some(stack_names) = &regional_resource.cloudformation_asg_anchor_nodes {
+            let interval = if stack_names.len() > 20 {
+                Duration::from_secs(1)
+            } else {
+                Duration::from_millis(200)
+            };
             for stack_name in stack_names.iter() {
-                sleep(Duration::from_millis(200)).await;
+                sleep(interval).await;
+
                 regional_cloudformation_manager
                     .delete_stack(stack_name)
                     .await
