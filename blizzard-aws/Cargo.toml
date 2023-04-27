@@ -1,6 +1,6 @@
 [package]
 name = "blizzard-aws"
-version = "0.5.0" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.5.1-alpha.0" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.69"
 
@@ -9,8 +9,8 @@ name = "blizzard-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.370", features = ["jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.26.17", features = ["cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.371", features = ["jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.26.18", features = ["cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.26.0" # https://github.com/awslabs/aws-sdk-rust/releases
@@ -21,4 +21,4 @@ ethers-signers = { version = "=2.0.3", optional = false }
 log = "0.4.17"
 primitive-types = { version = "0.12.1", optional = false } # https://crates.io/crates/primitive-types
 random-manager = "0.0.5"
-tokio = { version = "1.27.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.28.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
