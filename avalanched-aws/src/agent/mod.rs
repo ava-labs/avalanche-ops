@@ -10,9 +10,9 @@ use std::{
 
 use avalanche_types::{
     avalanchego::{self, genesis as avalanchego_genesis},
-    coreth,
+    coreth, ids,
     jsonrpc::client::health as client_health,
-    key::{bls, cert::x509},
+    key::bls,
     node,
 };
 use aws_manager::{
@@ -477,7 +477,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let local_tls_key_path = avalanchego_config.staking_tls_key_file.clone().unwrap();
     let local_tls_cert_path = avalanchego_config.staking_tls_cert_file.clone().unwrap();
     let (node_id, newly_generated) =
-        x509::load_or_generate_pem(&local_tls_key_path, &local_tls_cert_path)?;
+        ids::node::Id::load_or_generate_pem(&local_tls_key_path, &local_tls_cert_path)?;
     log::info!(
         "loaded node ID {} (was generated {})",
         node_id,
