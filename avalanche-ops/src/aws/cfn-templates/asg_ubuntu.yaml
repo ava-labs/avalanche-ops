@@ -638,7 +638,7 @@ Resources:
                 sudo mv /tmp/avalanched-aws /usr/local/bin/avalanched-aws
               else
                 sudo rm -f /tmp/avalanched-aws
-                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched-aws /tmp/avalanched-aws --region ${S3Region}
+                AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=7 aws s3 cp s3://${S3BucketName}/${Id}/bootstrap/install/avalanched-aws /tmp/avalanched-aws
                 chmod +x /tmp/avalanched-aws
                 sudo mv /tmp/avalanched-aws /usr/local/bin/avalanched-aws
               fi;
