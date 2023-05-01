@@ -126,7 +126,7 @@ pub fn command() -> Command {
         .arg(
             Arg::new("REGIONS")
                 .long("regions")
-                .help("Sets the comma-separated instance types (overwrites --region)")
+                .help("Sets the comma-separated instance types (to be discarded by --auto-regions)")
                 .required(false)
                 .num_args(1)
                 .default_value("us-west-2"),
@@ -138,7 +138,7 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1)
                 .value_parser(value_parser!(u32))
-                .default_value("1"),
+                .default_value("0"),
         )
         .arg(
             Arg::new("INGRESS_IPV4_CIDR")
