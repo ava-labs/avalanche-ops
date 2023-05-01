@@ -2344,7 +2344,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 
 ",
             exec_path = exec_path.display(),
-            chain_rpc_urls = all_nodes_c_chain_rpc_urls.clone().join(","),
+            chain_rpc_urls = all_nodes_http_rpcs.clone().join(","),
         )),
         ResetColor
     )?;
