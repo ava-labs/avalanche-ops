@@ -17,6 +17,6 @@ log = "0.4.17"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
 random-manager = "0.0.5"
 serde = { version = "1.0.160", features = ["derive"] } # https://github.com/serde-rs/serde/releases
-serde_with = { version = "2.3.2", features = ["hex"] }
+serde_with = { version = "3.0.0", features = ["hex"] }
 serde_yaml = "0.9.21" # https://github.com/dtolnay/serde-yaml/releases
 tokio = { version = "1.28.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases

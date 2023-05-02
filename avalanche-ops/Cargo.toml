@@ -25,7 +25,7 @@ random-manager = "0.0.5"
 rust-embed = "6.6.1"
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0.96" # https://github.com/serde-rs/json/releases
-serde_with = { version = "2.3.2", features = ["hex"] }
+serde_with = { version = "3.0.0", features = ["hex"] }
 serde_yaml = "0.9.21" # https://github.com/dtolnay/serde-yaml/releases
 
 [dev-dependencies]
