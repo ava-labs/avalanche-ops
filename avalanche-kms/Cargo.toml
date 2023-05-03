@@ -1,13 +1,13 @@
 [package]
 name = "avalanche-kms"
-version = "0.5.1" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.5.2-beta.0" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.69"
 
 [dependencies]
-avalanche-types = { version = "0.0.374", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.26.21", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
-clap = { version = "4.2.5", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+avalanche-types = { version = "0.0.375", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.27.0", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
+clap = { version = "4.2.7", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.26.1"
 dialoguer = "0.10.4"
 env_logger = "0.10.0"
@@ -17,6 +17,6 @@ log = "0.4.17"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
 random-manager = "0.0.5"
 serde = { version = "1.0.160", features = ["derive"] } # https://github.com/serde-rs/serde/releases
-serde_with = { version = "2.3.2", features = ["hex"] }
+serde_with = { version = "3.0.0", features = ["hex"] }
 serde_yaml = "0.9.21" # https://github.com/dtolnay/serde-yaml/releases
 tokio = { version = "1.28.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
