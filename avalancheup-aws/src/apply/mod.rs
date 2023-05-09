@@ -1252,6 +1252,7 @@ aws ssm start-session --region {} --target {}
                     objects.len()
                 );
 
+                regional_anchor_nodes.clear();
                 for obj in objects.iter() {
                     let s3_key = obj.key().unwrap();
                     let anchor_node =
@@ -1700,6 +1701,7 @@ aws ssm start-session --region {} --target {}
                     objects.len()
                 );
 
+                regional_non_anchor_nodes.clear();
                 for obj in objects.iter() {
                     let s3_key = obj.key().unwrap();
                     let non_anchor_node =
@@ -1817,7 +1819,7 @@ aws ssm start-session --region {} --target {}
         let http_rpc = format!("{scheme_for_dns}://{host}:{port_for_dns}").to_string();
 
         let mut success = false;
-        for _ in 0..10_u8 {
+        for _ in 0..3_u8 {
             let ret = jsonrpc_client_info::get_node_id(&http_rpc).await;
             match ret {
                 Ok(res) => {
@@ -1827,7 +1829,11 @@ aws ssm start-session --region {} --target {}
                     );
                 }
                 Err(e) => {
-                    log::warn!("get node id check failed for {} ({:?})", http_rpc, e);
+                    log::warn!(
+                        "get node id check failed for {} ({:?}, could be IP range not allowed)",
+                        http_rpc,
+                        e
+                    );
                 }
             };
 
@@ -1841,18 +1847,22 @@ aws ssm start-session --region {} --target {}
                     }
                 }
                 Err(e) => {
-                    log::warn!("health/liveness check failed for {} ({:?})", http_rpc, e);
+                    log::warn!(
+                        "health/liveness check failed for {} ({:?}, could be IP range not allowed)",
+                        http_rpc,
+                        e
+                    );
                 }
             };
-            sleep(Duration::from_secs(10)).await;
+
+            sleep(Duration::from_secs(5)).await;
         }
         if !success {
             log::warn!(
-                "health/liveness check failed on {} for network id {}",
+                "health/liveness check failed on {} for network id {} (could be IP range not allowed)",
                 http_rpc,
                 &spec.avalanchego_config.network_id
             );
-            return Err(Error::new(ErrorKind::Other, "health/liveness check failed"));
         }
 
         let mut endpoints = avalanche_ops::aws::spec::Endpoints::default();
