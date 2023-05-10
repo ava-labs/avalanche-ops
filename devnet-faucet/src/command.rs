@@ -706,7 +706,7 @@ impl Keys {
     }
 }
 
-/// RUST_LOG=debug cargo test --package aws-gas-relayer --lib -- key::test_file --exact --show-output
+/// RUST_LOG=debug cargo test --package devnet-faucet --bin devnet-faucet -- command::test_file --exact --show-output
 #[test]
 fn test_file() {
     use std::io::Write;
@@ -727,7 +727,7 @@ fn test_file() {
 
     let keys = Keys::load(key_path).unwrap();
     assert_eq!(
-        keys.0[1].key,
+        keys.0[0].key,
         String::from("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
     );
 }
