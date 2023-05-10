@@ -115,7 +115,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let users = warp::any().map(move || users.clone());
 
     let connected_chain_rpc_health_urls_arc = Arc::new(chain_rpc_health_urls);
-    let connected_chain_rpc_health_urls =
+    let connected_health_urls =
         warp::any().map(move || connected_chain_rpc_health_urls_arc.clone());
 
     let chain_id_arc = Arc::new(chain_id);
@@ -148,14 +148,17 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let chat_recv = warp::path("chat")
         .and(warp::get())
         .and(users.clone())
+        .and(connected_health_urls.clone())
         .and(chain_id.clone())
-        .and(connected_chain_rpc_health_urls.clone())
+        .and(chain_rpc_urls.clone())
         .then(
             |users: UserIds,
+             connected_health_urls: Arc<Vec<String>>,
              chain_id: Arc<U256>,
-             connected_chain_rpc_health_urls: Arc<Vec<String>>| async move {
+             chain_rpc_urls: Arc<Vec<String>>| async move {
                 // reply using server-sent events
-                let stream = handle_chat_get(users, chain_id, connected_chain_rpc_health_urls);
+                let stream =
+                    handle_chat_get(users, connected_health_urls, chain_id, chain_rpc_urls);
                 warp::sse::reply(warp::sse::keep_alive().stream(stream))
             },
         );
@@ -178,19 +181,20 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             }),
         )
         .and(users.clone())
+        .and(connected_health_urls.clone())
         .and(chain_id.clone())
-        .and(connected_chain_rpc_health_urls.clone())
         .and(chain_rpc_urls.clone())
         .and(rpc_rate_limiter.clone())
         .then(
             |user_id: usize,
              address_to_check: String,
              users: UserIds,
+             connected_health_urls: Arc<Vec<String>>,
              chain_id: Arc<U256>,
-             connected_chain_rpc_health_urls: Arc<Vec<String>>,
              chain_rpc_urls: Arc<Vec<String>>,
              rpc_rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, clock::DefaultClock, NoOpMiddleware>>| async move {
-                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
+                let connected_health_urls = connected_health_urls.as_ref();
+                let chain_rpc_urls = chain_rpc_urls.as_ref();
                 match rpc_rate_limiter.check() {
                     Ok(_) => {
                         log::info!("not throttled");
@@ -214,8 +218,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                         return   warp::reply::json(&UserInfo {
                             user_id: user_id,
                             user_address: H160::zero(),
+                            connected_health_urls: connected_health_urls.clone(),
                             connected_chain_id: *chain_id.clone(),
-                            connected_chain_rpc_health_urls: connected_chain_rpc_health_urls.clone(),
+                            connected_chain_id_u64: chain_id.as_u64(),
+                            connected_chain_rpc_urls: chain_rpc_urls.clone(),
                             error: String::new(),
                         });
                     }
@@ -259,8 +265,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 warp::reply::json(&UserInfo {
                     user_id: user_id,
                     user_address: addr,
+                    connected_health_urls: connected_health_urls.clone(),
                     connected_chain_id: *chain_id.clone(),
-                    connected_chain_rpc_health_urls: connected_chain_rpc_health_urls.clone(),
+                    connected_chain_id_u64: chain_id.as_u64(),
+                    connected_chain_rpc_urls: chain_rpc_urls.clone(),
                     error: String::new(),
                 })
             },
@@ -279,9 +287,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             }),
         )
         .and(users.clone())
+        .and(connected_health_urls.clone())
         .and(chain_id.clone())
         .and(chain_rpc_urls.clone())
-        .and(connected_chain_rpc_health_urls.clone())
         .and(chain_rpc_providers.clone())
         .and(loaded_hot_wallets.clone())
         .and(rpc_rate_limiter.clone())
@@ -289,9 +297,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             |user_id: usize,
              address_to_fund: String,
              users: UserIds,
+             connected_health_urls: Arc<Vec<String>>,
              chain_id: Arc<U256>,
              chain_rpc_urls: Arc<Vec<String>>,
-             connected_chain_rpc_health_urls: Arc<Vec<String>>,
              chain_rpc_providers: Arc<HashMap<String, Provider<RetryClient<Http>>>>,
              loaded_hot_wallets: Arc<Vec<HotWallet>>,
              rpc_rate_limiter: Arc<
@@ -299,7 +307,8 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             >| async move {
                 log::info!("{user_id} (address {address_to_fund}) requesting a fund");
 
-                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
+                let connected_health_urls = connected_health_urls.as_ref();
+                let connected_chain_rpc_urls = chain_rpc_urls.as_ref();
                 match rpc_rate_limiter.check() {
                     Ok(_) => {
                         log::info!("not throttled");
@@ -323,16 +332,18 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                         return warp::reply::json(&UserInfo {
                             user_id: user_id,
                             user_address: H160::zero(),
+                            connected_health_urls: connected_health_urls.clone(),
                             connected_chain_id: *chain_id.clone(),
-                            connected_chain_rpc_health_urls: connected_chain_rpc_health_urls
-                                .clone(),
+                            connected_chain_id_u64: chain_id.as_u64(),
+                            connected_chain_rpc_urls: connected_chain_rpc_urls.clone(),
                             error: String::new(),
                         });
                     }
                 };
 
-                let picked_rpc =
-                    chain_rpc_urls[random_manager::usize() % chain_rpc_urls.len()].clone();
+                let picked_rpc = connected_chain_rpc_urls
+                    [random_manager::usize() % connected_chain_rpc_urls.len()]
+                .clone();
                 let _chain_rpc_provider = chain_rpc_providers.get(&picked_rpc).unwrap();
 
                 let key_idx = NEXT_KEY_IDX.fetch_add(1, Ordering::Relaxed);
@@ -402,8 +413,10 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 warp::reply::json(&UserInfo {
                     user_id: user_id,
                     user_address: addr,
+                    connected_health_urls: connected_health_urls.clone(),
                     connected_chain_id: *chain_id.clone(),
-                    connected_chain_rpc_health_urls: connected_chain_rpc_health_urls.clone(),
+                    connected_chain_id_u64: chain_id.as_u64(),
+                    connected_chain_rpc_urls: connected_chain_rpc_urls.clone(),
                     error: String::new(),
                 })
             },
@@ -453,8 +466,10 @@ pub struct UserInfo {
     #[serde_as(as = "Hex0xH160")]
     pub user_address: H160,
 
+    pub connected_health_urls: Vec<String>,
     pub connected_chain_id: U256,
-    pub connected_chain_rpc_health_urls: Vec<String>,
+    pub connected_chain_id_u64: u64,
+    pub connected_chain_rpc_urls: Vec<String>,
 
     #[serde(default)]
     pub error: String,
@@ -475,8 +490,9 @@ struct NotifyEvent {
 
 fn handle_chat_get(
     users: UserIds,
+    connected_health_urls: Arc<Vec<String>>,
     chain_id: Arc<U256>,
-    connected_chain_rpc_health_urls: Arc<Vec<String>>,
+    chain_rpc_urls: Arc<Vec<String>>,
 ) -> impl Stream<Item = Result<Event, warp::Error>> + Send + 'static {
     let created_user_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
     log::info!("new user connected -- user id {created_user_id}");
@@ -486,14 +502,17 @@ fn handle_chat_get(
     let (tx, rx) = mpsc::unbounded_channel();
     let rx = UnboundedReceiverStream::new(rx);
 
-    let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
+    let chain_rpc_urls = chain_rpc_urls.as_ref();
+    let connected_health_urls = connected_health_urls.as_ref();
     tx.send(NotifyEvent {
         sender_user_id: created_user_id,
         msg: Message::UserInfo(UserInfo {
             user_id: created_user_id,
             user_address: H160::zero(),
+            connected_health_urls: connected_health_urls.clone(),
             connected_chain_id: *chain_id.clone(),
-            connected_chain_rpc_health_urls: connected_chain_rpc_health_urls.clone(),
+            connected_chain_id_u64: chain_id.as_u64(),
+            connected_chain_rpc_urls: chain_rpc_urls.clone(),
             error: String::new(),
         }),
     })
