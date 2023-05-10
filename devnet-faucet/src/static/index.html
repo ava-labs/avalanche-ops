@@ -166,7 +166,7 @@
         // allow users to specify their own user name
         check_balance_button.onclick = function () {
             var check_balance_input = check_balance_text.value;
-            user_address = obj.check_balance_input;
+            user_address = check_balance_input;
 
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
