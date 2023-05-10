@@ -1,9 +1,7 @@
-#![allow(deprecated)]
-
 use std::{
     collections::{HashMap, HashSet},
-    io,
     fs::File,
+    io,
     path::Path,
     str::FromStr,
     sync::{
@@ -25,7 +23,7 @@ use avalanche_types::{
         Wallet,
     },
 };
-use ethers_providers::{Http, Middleware, Provider, RetryClient};
+use ethers_providers::{Http, Provider, RetryClient};
 use futures_util::{Stream, StreamExt};
 use primitive_types::{H160, U256};
 use serde::{Deserialize, Serialize};
@@ -97,16 +95,12 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     let keys = Keys::load(&opts.keys_file).unwrap();
     keys.validate().unwrap();
     let loaded_hot_wallets = keys
-        .load_wallets(
-            network_id,
-            chain_id,
-            opts.chain_rpc_urls.clone(),
-        )
-        .await.unwrap();
+        .load_wallets(network_id, chain_id, opts.chain_rpc_urls.clone())
+        .await
+        .unwrap();
 
-        let loaded_hot_wallets_arc = Arc::new(loaded_hot_wallets);
-        let loaded_hot_wallets = warp::any().map(move || loaded_hot_wallets_arc.clone());
-    
+    let loaded_hot_wallets_arc = Arc::new(loaded_hot_wallets);
+    let loaded_hot_wallets = warp::any().map(move || loaded_hot_wallets_arc.clone());
 
     // Keep track of all connected users, key is usize, value
     // is an event stream sender.
@@ -183,23 +177,16 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
              chain_id: Arc<U256>,
              connected_chain_rpc_health_urls: Arc<Vec<String>>,
              chain_rpc_urls: Arc<Vec<String>>| async move {
-                let (msg, addr) = if address_to_check.is_empty() {
-                    (format!("user id {user_id} sent an empty address"), H160::zero())
-                } else {
-                    let s = address_to_check.trim_start_matches("0x");
-                    match H160::from_str(s) {
+                let picked_rpc = chain_rpc_urls[random_manager::usize() % chain_rpc_urls.len()].clone();
+                let (msg, addr) = match H160::from_str(address_to_check.trim_start_matches("0x")) {
                         Ok(addr) => {
-                            let picked_rpc = chain_rpc_urls
-                                [random_manager::usize() % chain_rpc_urls.len()]
-                            .clone();
-
                             let balance = jsonrpc_client_evm::get_balance(&picked_rpc, addr)
                                 .await
                                 .unwrap();
                             (
                                 format!(
                                     "user id {user_id} with 0x{:x} has balance {} ({} ETH/AVAX)",
-                                    addr, 
+                                    addr,
                                     balance,
                                     units::cast_evm_navax_to_avax_i64(balance)
                                 ),
@@ -210,8 +197,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                             format!("user id {user_id} failed to parse address {address_to_check} (error {:?})", e),
                             H160::zero(),
                         ),
-                    }
-                };
+                    };
 
                 users.lock().unwrap().retain(|uid, v| {
                     if user_id == *uid {
@@ -226,8 +212,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                     true
                 });
 
-                let connected_chain_rpc_health_urls =
-                connected_chain_rpc_health_urls.as_ref();
+                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
                 warp::reply::json(&UserInfo {
                     user_id: user_id,
                     user_address: addr,
@@ -251,30 +236,100 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             }),
         )
         .and(users.clone())
+        .and(chain_id.clone())
         .and(chain_rpc_urls.clone())
+        .and(connected_chain_rpc_health_urls.clone())
         .and(chain_rpc_providers.clone())
         .and(loaded_hot_wallets.clone())
-        .then(|user_id: usize,
-            address_to_fund: String,
-            users: UserIds,
-            chain_rpc_urls: Arc<Vec<String>>,
-            chain_rpc_providers: Arc<HashMap<String, Provider<RetryClient<Http>>>>,
-            loaded_hot_wallets: Arc<Vec<HotWallet>>,
-            | async move {
-            log::info!(
-                    "{user_id} (address {address_to_fund}) requesting a fund"
-            );
+        .then(
+            |user_id: usize,
+             address_to_fund: String,
+             users: UserIds,
+             chain_id: Arc<U256>,
+             chain_rpc_urls: Arc<Vec<String>>,
+             connected_chain_rpc_health_urls: Arc<Vec<String>>,
+             chain_rpc_providers: Arc<HashMap<String, Provider<RetryClient<Http>>>>,
+             loaded_hot_wallets: Arc<Vec<HotWallet>>| async move {
+                log::info!("{user_id} (address {address_to_fund}) requesting a fund");
 
-            // pick random chain/relay server provider
-            let picked_chain_rpc_url =
-            chain_rpc_urls[random_manager::usize() % chain_rpc_urls.len()].clone();
-            let chain_rpc_provider = chain_rpc_providers.get(&picked_chain_rpc_url).unwrap();
+                let picked_rpc =
+                    chain_rpc_urls[random_manager::usize() % chain_rpc_urls.len()].clone();
+                let _chain_rpc_provider = chain_rpc_providers.get(&picked_rpc).unwrap();
 
-            let picked_wallet =
-            loaded_hot_wallets[random_manager::usize() % loaded_hot_wallets.len()].clone();
-    
-            warp::reply()
-        });
+                let key_idx = NEXT_KEY_IDX.fetch_add(1, Ordering::Relaxed);
+                let picked_wallet = loaded_hot_wallets[key_idx % loaded_hot_wallets.len()].clone();
+                let transferer_evm_wallet = picked_wallet
+                    .wallet
+                    .evm(&picked_wallet.eth_signer, &picked_rpc, *chain_id)
+                    .unwrap();
+
+                let transfer_amount_in_avax = U256::from(1000);
+                let transfer_amount =
+                    units::cast_avax_to_evm_navax(U256::from(transfer_amount_in_avax));
+
+                let (msg, addr) = match H160::from_str(address_to_fund.trim_start_matches("0x")) {
+                    Ok(transferee_addr) => match transferer_evm_wallet
+                        .eip1559()
+                        .recipient(transferee_addr)
+                        .value(units::cast_avax_to_evm_navax(U256::from(1000)))
+                        .urgent()
+                        .check_acceptance(true)
+                        .submit()
+                        .await
+                    {
+                        Ok(tx_id) => {
+                            log::info!(
+                                "evm ethers wallet SUCCESS with transaction id 0x{:x}",
+                                tx_id
+                            );
+                            (
+                                format!(
+                                "user id {user_id} sent {} ({} ETH/AVAX to 0x{:x} (tx id 0x{:x})",
+                                transfer_amount, transfer_amount_in_avax, transferee_addr, tx_id
+                            ),
+                                transferee_addr,
+                            )
+                        }
+                        Err(e) => (
+                            format!(
+                                "user id {user_id} failed to sent fund to 0x{:x} ({:?})",
+                                transferee_addr, e
+                            ),
+                            transferee_addr,
+                        ),
+                    },
+                    Err(e) => (
+                        format!(
+                        "user id {user_id} failed to parse address {address_to_fund} (error {:?})",
+                        e
+                    ),
+                        H160::zero(),
+                    ),
+                };
+
+                users.lock().unwrap().retain(|uid, v| {
+                    if user_id == *uid {
+                        v.address = addr;
+                        v.notifier
+                            .send(NotifyEvent {
+                                sender_user_id: user_id,
+                                msg: Message::Reply(msg.clone()),
+                            })
+                            .unwrap();
+                    }
+                    true
+                });
+
+                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
+                warp::reply::json(&UserInfo {
+                    user_id: user_id,
+                    user_address: addr,
+                    connected_chain_id: *chain_id.clone(),
+                    connected_chain_rpc_health_urls: connected_chain_rpc_health_urls.clone(),
+                    error: String::new(),
+                })
+            },
+        );
 
     // GET / -> index html
     let index = warp::get()
@@ -295,6 +350,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 /// Our global unique user id counter.
 /// TODO(용훈): store and load in the subnet (e.g., key-value store subnet)
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
+
+/// Global counter for keys.
+static NEXT_KEY_IDX: AtomicUsize = AtomicUsize::new(0);
 
 /// Tracks the state of currently connected users.
 /// Maps each user Id to its corresponding message sender and its key.

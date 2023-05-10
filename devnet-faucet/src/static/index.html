@@ -91,8 +91,7 @@
     <hr>
     <script type="text/javascript">
         var uri_check_balance = 'http://' + location.host + '/check-balance';
-        var uri_update_key = 'http://' + location.host + '/update-key';
-        var uri_whoami = 'http://' + location.host + '/whoami';
+        var uri_request_fund = 'http://' + location.host + '/request-fund';
         var uri_chat = 'http://' + location.host + '/chat';
 
         function displayUserInfo(event_kind, user_id, user_address) {
@@ -171,6 +170,26 @@
             displayServerInfo(connected_chain_id, connected_chain_rpc_health_urls);
         };
 
+        // allow users to specify their own user name
+        request_fund_button.onclick = function () {
+            var check_balance_input = check_balance_text.value;
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == XMLHttpRequest.DONE) {
+                    const obj = JSON.parse(xhr.responseText)
+                    user_id = obj.user_id;
+                    user_address = obj.user_address;
+                    connected_chain_id = obj.connected_chain_id;
+                    connected_chain_rpc_health_urls = obj.connected_chain_rpc_health_urls;
+                }
+            }
+            xhr.open("POST", uri_request_fund + '/' + user_id, true);
+            xhr.send(check_balance_input);
+            check_balance_text.value = '';
+
+            displayUserInfo("REQUESTED FUND", user_id, user_address);
+            displayServerInfo(connected_chain_id, connected_chain_rpc_health_urls);
+        };
 
         send_msg_button.onclick = function () {
             var msg = send_msg_text.value;

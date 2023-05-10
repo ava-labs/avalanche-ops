@@ -169,7 +169,10 @@ pub async fn execute(
             .submit()
             .await
             .unwrap();
-        log::info!("evm ethers wallet SUCCESS with transaction id {}", tx_id);
+        log::info!(
+            "evm ethers wallet SUCCESS with transaction id 0x{:x}",
+            tx_id
+        );
     }
 
     Ok(())
