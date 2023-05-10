@@ -77,13 +77,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
-    let shared_config = aws_manager::load_config(
+    let default_shared_config = aws_manager::load_config(
         Some(spec.resource.regions[0].clone()),
         Some(Duration::from_secs(30)),
     )
     .await;
 
-    let sts_manager = sts::Manager::new(&shared_config);
+    let sts_manager = sts::Manager::new(&default_shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
@@ -194,7 +194,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let exec_parent_dir = exec_parent_dir.display().to_string();
 
     log::info!("creating resources (with spec path {})", spec_file_path);
-    let default_s3_manager = s3::Manager::new(&shared_config);
+    let default_s3_manager = s3::Manager::new(&default_shared_config);
 
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))
@@ -742,6 +742,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
     let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
     let mut region_to_common_asg_params = HashMap::new();
+    let mut _region_to_dev_machine_asg_params = HashMap::new();
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
@@ -1898,6 +1899,85 @@ aws ssm start-session --region {} --target {}
                 region: node.region.clone(),
                 machine_id: instance_id,
             },
+        );
+    }
+
+    if spec.create_dev_machine {
+        //
+        //
+        //
+        //
+        //
+        println!();
+        log::info!("creating a dev machine");
+
+        let mut regional_resource = spec
+            .resource
+            .regional_resources
+            .get(&spec.resource.regions[0])
+            .unwrap()
+            .clone();
+        let stack_name = if let Some(v) = &regional_resource.cloudformation_dev_machine {
+            v.clone()
+        } else {
+            let s = avalanche_ops::aws::spec::StackName::DevMachine(spec.id.clone()).encode();
+            regional_resource.cloudformation_dev_machine = Some(s.clone());
+            s
+        };
+
+        spec.resource
+            .regional_resources
+            .insert(spec.resource.regions[0].clone(), regional_resource);
+        spec.sync(spec_file_path)?;
+
+        let regional_shared_config = aws_manager::load_config(
+            Some(spec.resource.regions[0].clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\n\n\nSTEP: creating dev machine ASG in '{}'\n\n",
+                spec.resource.regions[0]
+            )),
+            ResetColor
+        )?;
+        let asg_tmpl = avalanche_ops::aws::artifacts::asg_ubuntu_dev_machine_yaml().unwrap();
+
+        // TODO
+        let cfn_params = Vec::from([build_param("DocumentName", &"")]);
+
+        regional_cloudformation_manager
+            .create_stack(
+                &stack_name,
+                None,
+                OnFailure::Delete,
+                &asg_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(cfn_params),
+            )
+            .await
+            .unwrap();
+
+        regional_cloudformation_manager
+            .poll_stack(
+                &stack_name,
+                StackStatus::CreateComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+        log::info!(
+            "created a dev machine in the region '{}'",
+            spec.resource.regions[0]
         );
     }
 

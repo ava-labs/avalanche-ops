@@ -112,6 +112,9 @@ async fn main() -> io::Result<()> {
                     .get_one::<u32>("AUTO_REGIONS")
                     .unwrap_or(&0)
                     .clone(),
+
+                create_dev_machine: sub_matches.get_flag("CREATE_DEV_MACHINE"),
+
                 ingress_ipv4_cidr: sub_matches
                     .get_one::<String>("INGRESS_IPV4_CIDR")
                     .unwrap_or(&String::new())
