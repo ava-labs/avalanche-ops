@@ -25,6 +25,12 @@ use avalanche_types::{
 };
 use ethers_providers::{Http, Provider, RetryClient};
 use futures_util::{Stream, StreamExt};
+use governor::{
+    clock,
+    middleware::NoOpMiddleware,
+    state::{InMemoryState, NotKeyed},
+    Quota, RateLimiter,
+};
 use primitive_types::{H160, U256};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -154,6 +160,11 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             },
         );
 
+    let rpc_rate_limiter_arc = Arc::new(RateLimiter::direct(
+        Quota::with_period(Duration::from_secs(5)).unwrap(),
+    ));
+    let rpc_rate_limiter = warp::any().map(move || rpc_rate_limiter_arc.clone());
+
     // POST /check-balance -> send message
     let check_balance_send = warp::path("check-balance")
         .and(warp::post())
@@ -170,13 +181,46 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         .and(chain_id.clone())
         .and(connected_chain_rpc_health_urls.clone())
         .and(chain_rpc_urls.clone())
+        .and(rpc_rate_limiter.clone())
         .then(
             |user_id: usize,
              address_to_check: String,
              users: UserIds,
              chain_id: Arc<U256>,
              connected_chain_rpc_health_urls: Arc<Vec<String>>,
-             chain_rpc_urls: Arc<Vec<String>>| async move {
+             chain_rpc_urls: Arc<Vec<String>>,
+             rpc_rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, clock::DefaultClock, NoOpMiddleware>>| async move {
+                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
+                match rpc_rate_limiter.check() {
+                    Ok(_) => {
+                        log::info!("not throttled");
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "throttled with rate limiter (error '{}')",
+                            e,
+                        );
+                        users.lock().unwrap().retain(|uid, v| {
+                            if user_id == *uid {
+                                v.notifier
+                                    .send(NotifyEvent {
+                                        sender_user_id: user_id,
+                                        msg: Message::Reply(format!("throttled with rate limiter (error '{}')", e)),
+                                    })
+                                    .unwrap();
+                            }
+                            true
+                        });
+                        return   warp::reply::json(&UserInfo {
+                            user_id: user_id,
+                            user_address: H160::zero(),
+                            connected_chain_id: *chain_id.clone(),
+                            connected_chain_rpc_health_urls: connected_chain_rpc_health_urls.clone(),
+                            error: String::new(),
+                        });
+                    }
+                };
+
                 let picked_rpc = chain_rpc_urls[random_manager::usize() % chain_rpc_urls.len()].clone();
                 let (msg, addr) = match H160::from_str(address_to_check.trim_start_matches("0x")) {
                         Ok(addr) => {
@@ -212,7 +256,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                     true
                 });
 
-                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
                 warp::reply::json(&UserInfo {
                     user_id: user_id,
                     user_address: addr,
@@ -241,6 +284,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
         .and(connected_chain_rpc_health_urls.clone())
         .and(chain_rpc_providers.clone())
         .and(loaded_hot_wallets.clone())
+        .and(rpc_rate_limiter.clone())
         .then(
             |user_id: usize,
              address_to_fund: String,
@@ -249,8 +293,43 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
              chain_rpc_urls: Arc<Vec<String>>,
              connected_chain_rpc_health_urls: Arc<Vec<String>>,
              chain_rpc_providers: Arc<HashMap<String, Provider<RetryClient<Http>>>>,
-             loaded_hot_wallets: Arc<Vec<HotWallet>>| async move {
+             loaded_hot_wallets: Arc<Vec<HotWallet>>,
+             rpc_rate_limiter: Arc<
+                RateLimiter<NotKeyed, InMemoryState, clock::DefaultClock, NoOpMiddleware>,
+            >| async move {
                 log::info!("{user_id} (address {address_to_fund}) requesting a fund");
+
+                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
+                match rpc_rate_limiter.check() {
+                    Ok(_) => {
+                        log::info!("not throttled");
+                    }
+                    Err(e) => {
+                        log::warn!("throttled with rate limiter (error '{}')", e,);
+                        users.lock().unwrap().retain(|uid, v| {
+                            if user_id == *uid {
+                                v.notifier
+                                    .send(NotifyEvent {
+                                        sender_user_id: user_id,
+                                        msg: Message::Reply(format!(
+                                            "throttled with rate limiter (error '{}')",
+                                            e
+                                        )),
+                                    })
+                                    .unwrap();
+                            }
+                            true
+                        });
+                        return warp::reply::json(&UserInfo {
+                            user_id: user_id,
+                            user_address: H160::zero(),
+                            connected_chain_id: *chain_id.clone(),
+                            connected_chain_rpc_health_urls: connected_chain_rpc_health_urls
+                                .clone(),
+                            error: String::new(),
+                        });
+                    }
+                };
 
                 let picked_rpc =
                     chain_rpc_urls[random_manager::usize() % chain_rpc_urls.len()].clone();
@@ -320,7 +399,6 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                     true
                 });
 
-                let connected_chain_rpc_health_urls = connected_chain_rpc_health_urls.as_ref();
                 warp::reply::json(&UserInfo {
                     user_id: user_id,
                     user_address: addr,
