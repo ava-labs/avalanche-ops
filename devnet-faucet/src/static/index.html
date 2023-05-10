@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>DEVNET faucet</title>
+    <link rel="stylesheet" href="https://unpkg.com/@sakun/system.css" />
+    <style>
+        html {
+            font-family: "Inconsolata", Menlo, Chicago, Geneva;
+            font-size: 18px;
+            letter-spacing: -0.025em;
+            min-height: 100vh;
+        }
+
+        p {
+            font-family: Geneva;
+            font-size: 0.9em;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="window">
+        <div class="title-bar">
+            <button aria-label="Close" class="close"></button>
+            <h1 class="title">Avalanche DEVNET faucet</h1>
+            <button aria-label="Resize" disabled class="hidden"></button>
+        </div>
+    </div>
+    <ul role="menu-bar">
+        <li role="menu-item" tabindex="0" aria-haspopup="true">
+            Source code
+            <ul role="menu">
+                <li role="menu-item"><a href="https://github.com/ava-labs/avalanche-ops/tree/main/devnet-faucet"
+                        target="_blank">DEVNET faucet</a></li>
+            </ul>
+        </li>
+    </ul>
+    <div class="details-bar" id="server_info_chain_id"><em>Chain Id information</em></div>
+    <div class="details-bar" id="server_info_chain_rpc_urls"><em>Connected chain RPC URLs</em></div>
+    <div class="details-bar" id="server_info_health_urls"><em>Connected server health URLs</em></div>
+
+    <br>
+    <hr>
+    <div class="window">
+        <div class="title-bar">
+            <button aria-label="Close" class="close"></button>
+            <h1 class="title">Account information</h1>
+            <button aria-label="Resize" class="resize"></button>
+        </div>
+        <div class="details-bar">
+            <p>
+                Paste your EVM address, and click "Check balance" to check the balance, and "Request fund" to deposit
+                some balance.
+            </p>
+        </div>
+
+        <div class="window-pane">
+            <p id="user_info"><em>Your account information</em></p>
+
+            <input type="text" id="check_balance_text" />
+            <button class="btn" type="button" id="check_balance_button">Check balance</button>
+            <button class="btn" type="button" id="request_fund_button">Request fund</button>
+        </div>
+    </div>
+
+    <br>
+    <hr>
+    <div class="window">
+        <div class="title-bar">
+            <button aria-label="Close" class="close"></button>
+            <h1 class="title">Chat & event logs!</h1>
+            <button aria-label="Resize" class="resize"></button>
+        </div>
+        <div class="details-bar">
+            <p>
+                All events and chat messages are logged here.
+            </p>
+        </div>
+
+        <div class="window-pane">
+            <input type="text" id="send_msg_text" />
+            <button class="btn" type="button" id="send_msg_button">Send</button>
+            <button class="btn" type="button" onclick="clearChatMsg()">Clear chat</button>
+            <div id="chats_logs_window">
+                <p><em>Hello world...</em></p>
+            </div>
+        </div>
+    </div>
+
+    <br>
+    <hr>
+    <script type="text/javascript">
+        var uri_check_balance = 'http://' + location.host + '/check-balance';
+        var uri_request_fund = 'http://' + location.host + '/request-fund';
+        var uri_chat = 'http://' + location.host + '/chat';
+
+        function displayUserInfo(event_kind, user_id, user_address) {
+            var data = '[' + event_kind + ']' + ' user Id ' + user_id + ', user address ' + user_address;
+            document.getElementById("user_info").innerHTML = data;
+        }
+
+        function displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls) {
+            var data = "<p><b>Connected chain Id:</b> " + connected_chain_id_u64 + "(" + connected_chain_id + ")" + "</p>\n";
+            document.getElementById("server_info_chain_id").innerHTML = data;
+
+            var data = "<p><b>Connected chain URLs:</b></p>\n";
+            data = data + "<ul>\n"
+            for (var i = 0; i < connected_chain_rpc_urls.length; i++) {
+                data = data + "  <li><a href='" + connected_chain_rpc_urls[i] + "' target=\"_blank\">" + connected_chain_rpc_urls[i] + "</a></li>\n";
+            }
+            data = data + "</ul>\n"
+            document.getElementById("server_info_chain_rpc_urls").innerHTML = data;
+
+            var data = "<p><b>Connected /health URLs:</b></p>\n";
+            data = data + "<ul>\n"
+            for (var i = 0; i < connected_health_urls.length; i++) {
+                data = data + "  <li><a href='" + connected_health_urls[i] + "' target=\"_blank\">" + connected_health_urls[i] + "</a></li>\n";
+            }
+            data = data + "</ul>\n"
+            document.getElementById("server_info_health_urls").innerHTML = data;
+        }
+
+        function addChatLog(data) {
+            var line = document.createElement('p');
+            line.innerText = data;
+            chats_logs_window.appendChild(line);
+        }
+
+        function clearChatMsg() {
+            chats_logs_window.innerHTML = "<p><em>Just cleared!</em></p>";
+        }
+
+        var sse_chat = new EventSource(uri_chat);
+        sse_chat.onopen = function () {
+            chats_logs_window.innerHTML = "<p><em>Just connected! Hello world!</em></p>";
+        }
+
+        var user_id;
+        var user_address;
+        var connected_health_urls;
+        var connected_chain_id;
+        var connected_chain_id_u64;
+        var connected_chain_rpc_urls;
+
+        sse_chat.addEventListener("userConnectedEvent", function (msg) {
+            console.log("server created a user: " + msg.data);
+
+            const obj = JSON.parse(msg.data)
+            user_id = obj.user_id;
+            user_address = obj.user_address;
+            connected_health_urls = obj.connected_health_urls;
+            connected_chain_id = obj.connected_chain_id;
+            connected_chain_id_u64 = obj.connected_chain_id_u64;
+            connected_chain_rpc_urls = obj.connected_chain_rpc_urls;
+
+            displayUserInfo("CONNECTED", user_id, user_address);
+            displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls);
+        });
+
+        sse_chat.onmessage = function (msg) {
+            addChatLog(msg.data);
+        };
+
+        // allow users to specify their own user name
+        check_balance_button.onclick = function () {
+            var check_balance_input = check_balance_text.value;
+            user_address = check_balance_input;
+
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == XMLHttpRequest.DONE) {
+                    const obj = JSON.parse(xhr.responseText)
+                    user_id = obj.user_id;
+                    user_address = obj.user_address;
+                    connected_health_urls = obj.connected_health_urls;
+                    connected_chain_id = obj.connected_chain_id;
+                    connected_chain_id_u64 = obj.connected_chain_id_u64;
+                    connected_chain_rpc_urls = obj.connected_chain_rpc_urls;
+                }
+            }
+            xhr.open("POST", uri_check_balance + '/' + user_id, true);
+            xhr.send(check_balance_input);
+
+            displayUserInfo("CHECKED BALANCE", user_id, user_address);
+            displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls);
+        };
+
+        // allow users to specify their own user name
+        request_fund_button.onclick = function () {
+            var check_balance_input = check_balance_text.value;
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == XMLHttpRequest.DONE) {
+                    const obj = JSON.parse(xhr.responseText)
+                    user_id = obj.user_id;
+                    user_address = obj.user_address;
+                    connected_health_urls = obj.connected_health_urls;
+                    connected_chain_id = obj.connected_chain_id;
+                    connected_chain_id_u64 = obj.connected_chain_id_u64;
+                    connected_chain_rpc_urls = obj.connected_chain_rpc_urls;
+                }
+            }
+            xhr.open("POST", uri_request_fund + '/' + user_id, true);
+            xhr.send(check_balance_input);
+
+            displayUserInfo("REQUESTED FUND", user_id, user_address);
+            displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls);
+        };
+
+        send_msg_button.onclick = function () {
+            var msg = send_msg_text.value;
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", uri_chat + '/' + user_id, true);
+            xhr.send(msg);
+
+            send_msg_text.value = '';
+
+            addChatLog('sender/your user name ' + user_name + ', sender/your user id ' + user_id + ', sender/your address ' + user_address + '] ' + msg);
+        };
+    </script>
+</body>
+
+</html>

@@ -6,6 +6,7 @@ members = [
     "avalancheup-aws",
     "blizzard-aws",
     "blizzardup-aws",
+    "devnet-faucet",
     "staking-key-cert-s3-downloader",
-    "staking-signer-key-s3-downloader"
+    "staking-signer-key-s3-downloader",
 ]
