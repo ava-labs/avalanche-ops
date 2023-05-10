@@ -163,8 +163,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             },
         );
 
+    // only 1 request per 10-second
     let rpc_rate_limiter_arc = Arc::new(RateLimiter::direct(
-        Quota::with_period(Duration::from_secs(5)).unwrap(),
+        Quota::with_period(Duration::from_secs(10)).unwrap(),
     ));
     let rpc_rate_limiter = warp::any().map(move || rpc_rate_limiter_arc.clone());
 
