@@ -15,7 +15,8 @@ cargo build \
 --bin blizzard-aws \
 --bin blizzardup-aws \
 --bin staking-key-cert-s3-downloader \
---bin staking-signer-key-s3-downloader
+--bin staking-signer-key-s3-downloader \
+--bin devnet-faucet
 
 ./target/release/avalanche-kms --help
 
@@ -34,3 +35,5 @@ cargo build \
 ./target/release/blizzardup-aws delete --help
 
 ./target/release/staking-key-cert-s3-downloader --help
+
+./target/release/devnet-faucet --help

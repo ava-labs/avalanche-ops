@@ -178,7 +178,7 @@ jobs:
         run: cargo install cross --locked
 
       - name: Build
-        run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanche-kms --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader --bin staking-signer-key-s3-downloader
+        run: ${{ env.CARGO_CMD }} build --release --target=${{ matrix.job.target }} --bin avalanche-kms --bin avalanched-aws --bin avalancheup-aws --bin blizzard-aws --bin blizzardup-aws --bin staking-key-cert-s3-downloader --bin staking-signer-key-s3-downloader --bin devnet-faucet
 
       - name: Compress binaries
         id: release_artifacts
@@ -224,6 +224,11 @@ jobs:
             tar -czvf staking-signer-key-s3-downloader.${TARGET}.tar.gz -C ./target/${TARGET}/release staking-signer-key-s3-downloader
             echo "file_name_staking_signer_key_s3_downloader_tar_gz=staking-signer-key-s3-downloader.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
+            cp ./target/${TARGET}/release/devnet-faucet devnet-faucet.${TARGET}
+            echo "file_name_devnet_faucet=devnet-faucet.${TARGET}" >> $GITHUB_OUTPUT
+            tar -czvf devnet-faucet.${TARGET}.tar.gz -C ./target/${TARGET}/release devnet-faucet
+            echo "file_name_devnet_faucet_tar_gz=devnet-faucet.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+
           elif [ "$PLATFORM_NAME" == "darwin" ]; then
 
             cp ./target/${TARGET}/release/avalanche-kms avalanche-kms.${TARGET}
@@ -261,6 +266,11 @@ jobs:
             gtar -czvf staking-signer-key-s3-downloader.${TARGET}.tar.gz -C ./target/${TARGET}/release staking-signer-key-s3-downloader
             echo "file_name_staking_signer_key_s3_downloader_tar_gz=staking-signer-key-s3-downloader.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
 
+            cp ./target/${TARGET}/release/devnet-faucet devnet-faucet.${TARGET}
+            echo "file_name_devnet_faucet=devnet-faucet.${TARGET}" >> $GITHUB_OUTPUT
+            gtar -czvf devnet-faucet.${TARGET}.tar.gz -C ./target/${TARGET}/release devnet-faucet
+            echo "file_name_devnet_faucet_tar_gz=devnet-faucet.${TARGET}.tar.gz" >> $GITHUB_OUTPUT
+
           else
 
             echo "skipping $PLATFORM_NAME"
@@ -294,6 +304,8 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_staking_signer_key_s3_downloader }}
             ${{ steps.release_artifacts.outputs.file_name_staking_signer_key_s3_downloader_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_devnet_faucet }}
+            ${{ steps.release_artifacts.outputs.file_name_devnet_faucet_tar_gz }}
 
       # release only for tags
       # https://github.com/softprops/action-gh-release
@@ -322,3 +334,5 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_staking_key_cert_s3_downloader_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_staking_signer_key_s3_downloader }}
             ${{ steps.release_artifacts.outputs.file_name_staking_signer_key_s3_downloader_tar_gz }}
+            ${{ steps.release_artifacts.outputs.file_name_devnet_faucet }}
+            ${{ steps.release_artifacts.outputs.file_name_devnet_faucet_tar_gz }}
