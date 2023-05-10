@@ -101,7 +101,7 @@
             document.getElementById("user_info").innerHTML = data;
         }
 
-        function displayServerInfo(connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls, connected_health_urls) {
+        function displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls) {
             var data = "<p><b>Connected chain Id:</b> " + connected_chain_id_u64 + "(" + connected_chain_id + ")" + "</p>\n";
             document.getElementById("server_info_chain_id").innerHTML = data;
 
@@ -139,9 +139,10 @@
 
         var user_id;
         var user_address;
+        var connected_health_urls;
         var connected_chain_id;
         var connected_chain_id_u64;
-        var connected_health_urls;
+        var connected_chain_rpc_urls;
 
         sse_chat.addEventListener("userConnectedEvent", function (msg) {
             console.log("server created a user: " + msg.data);
@@ -149,12 +150,13 @@
             const obj = JSON.parse(msg.data)
             user_id = obj.user_id;
             user_address = obj.user_address;
+            connected_health_urls = obj.connected_health_urls;
             connected_chain_id = obj.connected_chain_id;
             connected_chain_id_u64 = obj.connected_chain_id_u64;
-            connected_health_urls = obj.connected_health_urls;
+            connected_chain_rpc_urls = obj.connected_chain_rpc_urls;
 
             displayUserInfo("CONNECTED", user_id, user_address);
-            displayServerInfo(connected_chain_id, connected_chain_id_u64, connected_health_urls);
+            displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls);
         });
 
         sse_chat.onmessage = function (msg) {
@@ -170,15 +172,17 @@
                     const obj = JSON.parse(xhr.responseText)
                     user_id = obj.user_id;
                     user_address = obj.user_address;
-                    connected_chain_id = obj.connected_chain_id;
                     connected_health_urls = obj.connected_health_urls;
+                    connected_chain_id = obj.connected_chain_id;
+                    connected_chain_id_u64 = obj.connected_chain_id_u64;
+                    connected_chain_rpc_urls = obj.connected_chain_rpc_urls;
                 }
             }
             xhr.open("POST", uri_check_balance + '/' + user_id, true);
             xhr.send(check_balance_input);
 
             displayUserInfo("CHECKED BALANCE", user_id, user_address);
-            displayServerInfo(connected_chain_id, connected_health_urls);
+            displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls);
         };
 
         // allow users to specify their own user name
@@ -190,15 +194,17 @@
                     const obj = JSON.parse(xhr.responseText)
                     user_id = obj.user_id;
                     user_address = obj.user_address;
-                    connected_chain_id = obj.connected_chain_id;
                     connected_health_urls = obj.connected_health_urls;
+                    connected_chain_id = obj.connected_chain_id;
+                    connected_chain_id_u64 = obj.connected_chain_id_u64;
+                    connected_chain_rpc_urls = obj.connected_chain_rpc_urls;
                 }
             }
             xhr.open("POST", uri_request_fund + '/' + user_id, true);
             xhr.send(check_balance_input);
 
             displayUserInfo("REQUESTED FUND", user_id, user_address);
-            displayServerInfo(connected_chain_id, connected_health_urls);
+            displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls);
         };
 
         send_msg_button.onclick = function () {
