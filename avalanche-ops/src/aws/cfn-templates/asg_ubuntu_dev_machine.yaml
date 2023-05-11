@@ -409,7 +409,7 @@ Resources:
               while [ 1 ]; do
                 sudo apt-get update -y && sudo apt-get upgrade -y \
                 && sudo apt-get install -yq \
-                tmux zsh git \
+                build-essential tmux zsh git \
                 jq curl wget \
                 unzip zip gzip tar \
                 libssl-dev \
@@ -419,6 +419,8 @@ Resources:
                 if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                 sleep 2s;
               done;
+
+              gcc --version
 
               cat<<EOF >> /home/ubuntu/.bashrc
               export GOPATH=/home/ubuntu/go
