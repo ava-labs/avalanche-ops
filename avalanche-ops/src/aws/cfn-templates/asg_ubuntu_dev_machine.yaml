@@ -9,7 +9,7 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
-  KmsCmkArn:
+  KmsKeyArn:
     Type: String
     Description: KMS CMK ARN that de/encrypts resources.
 
@@ -615,8 +615,8 @@ Resources:
         - Key: INSTANCE_MODE
           Value: !Ref InstanceMode
           PropagateAtLaunch: true
-        - Key: KMS_CMK_ARN
-          Value: !Ref KmsCmkArn
+        - Key: KMS_KEY_ARN
+          Value: !Ref KmsKeyArn
           PropagateAtLaunch: true
         - Key: AAD_TAG
           Value: !Ref AadTag
