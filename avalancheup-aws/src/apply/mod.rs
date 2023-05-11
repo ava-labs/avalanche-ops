@@ -820,6 +820,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
         let mut common_dev_machine_params = BTreeMap::new();
         common_dev_machine_params.insert("Id".to_string(), format!("{}-dev-machine", spec.id));
+        common_dev_machine_params.insert("AsgName".to_string(), format!("{}-dev-machine", spec.id));
         common_dev_machine_params.insert(
             "KmsKeyArn".to_string(),
             regional_resource
@@ -941,14 +942,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             common_asg_params.push(build_param("NlbEnabled", "false"));
         }
 
-        region_to_common_asg_params.insert(region.to_string(), common_asg_params.clone());
-        region_to_common_dev_machine_asg_params
-            .insert(region.to_string(), common_dev_machine_params);
-
         let public_subnet_ids = regional_resource
             .cloudformation_vpc_public_subnet_ids
             .clone()
             .unwrap();
+        common_dev_machine_params
+            .insert("PublicSubnetIds".to_string(), public_subnet_ids.join(","));
+
+        region_to_common_asg_params.insert(region.to_string(), common_asg_params.clone());
+        region_to_common_dev_machine_asg_params
+            .insert(region.to_string(), common_dev_machine_params);
 
         let mut anchor_asg_logical_ids = Vec::new();
         if regional_machine.anchor_nodes.unwrap_or(0) > 0
