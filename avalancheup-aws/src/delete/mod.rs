@@ -272,6 +272,30 @@ pub async fn execute(
 
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
+        if regional_resource
+            .cloudformation_asg_dev_machine_logical_id
+            .is_some()
+        {
+            sleep(Duration::from_secs(2)).await;
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Red),
+                Print(format!(
+                    "\n\n\nSTEP: triggering delete dev-machine ASG in the region '{region}'\n"
+                )),
+                ResetColor
+            )?;
+
+            let asg_stack_name = regional_resource
+                .cloudformation_asg_dev_machine_logical_id
+                .clone()
+                .unwrap();
+            regional_cloudformation_manager
+                .delete_stack(&asg_stack_name)
+                .await
+                .unwrap();
+        }
+
         // delete no matter what, in case node provision failed
         sleep(Duration::from_secs(1)).await;
         execute!(
@@ -460,6 +484,33 @@ pub async fn execute(
 
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
+        if regional_resource
+            .cloudformation_asg_dev_machine_logical_id
+            .is_some()
+        {
+            sleep(Duration::from_secs(2)).await;
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Red),
+                Print("\n\n\nSTEP: confirming delete dev-machine ASG\n"),
+                ResetColor
+            )?;
+
+            let asg_stack_name = regional_resource
+                .cloudformation_asg_dev_machine_logical_id
+                .clone()
+                .unwrap();
+            regional_cloudformation_manager
+                .poll_stack(
+                    asg_stack_name.as_str(),
+                    StackStatus::DeleteComplete,
+                    Duration::from_secs(300),
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
+        }
+
         if let Some(ssm_doc_stack_name) = &regional_resource.cloudformation_ssm_install_subnet_chain
         {
             sleep(Duration::from_secs(1)).await;
@@ -545,11 +596,57 @@ pub async fn execute(
     }
 
     if delete_ebs_volumes {
-        for (region, _) in spec.resource.regional_resources.clone().iter() {
+        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
             let regional_shared_config =
                 aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
             let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
+
+            if regional_resource
+                .cloudformation_asg_dev_machine_logical_id
+                .is_some()
+            {
+                sleep(Duration::from_secs(1)).await;
+                execute!(
+                stdout(),
+                SetForegroundColor(Color::Red),
+                Print(format!(
+                    "\n\n\nSTEP: deleting orphaned dev-machine EBS volumes in the region '{region}'\n"
+                )),
+                ResetColor
+            )?;
+                // ref. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumes.html
+                let filters: Vec<Filter> = vec![
+                    Filter::builder()
+                        .set_name(Some(String::from("tag:Kind")))
+                        .set_values(Some(vec![String::from("aws-volume-provisioner")]))
+                        .build(),
+                    Filter::builder()
+                        .set_name(Some(String::from("tag:Id")))
+                        .set_values(Some(vec![format!("{}-dev-machine", spec.id)]))
+                        .build(),
+                ];
+                let volumes = regional_ec2_manager
+                    .describe_volumes(Some(filters))
+                    .await
+                    .unwrap();
+                log::info!("found {} volumes for dev-machine", volumes.len());
+                if !volumes.is_empty() {
+                    log::info!("deleting {} volumes for dev-machine", volumes.len());
+                    for v in volumes {
+                        let volume_id = v.volume_id().unwrap().to_string();
+                        log::info!("deleting EBS volume '{}'", volume_id);
+                        regional_ec2_manager
+                            .cli
+                            .delete_volume()
+                            .volume_id(volume_id)
+                            .send()
+                            .await
+                            .unwrap();
+                        sleep(Duration::from_secs(1)).await;
+                    }
+                }
+            }
 
             sleep(Duration::from_secs(1)).await;
             execute!(
@@ -595,11 +692,48 @@ pub async fn execute(
     }
 
     if delete_elastic_ips {
-        for (region, _) in spec.resource.regional_resources.clone().iter() {
+        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
             let regional_shared_config =
                 aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
             let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
+
+            if regional_resource
+                .cloudformation_asg_dev_machine_logical_id
+                .is_some()
+            {
+                sleep(Duration::from_secs(1)).await;
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Red),
+                    Print(format!(
+                        "\n\n\nSTEP: releasing orphaned dev-machine elastic IPs in the region '{region}'\n"
+                    )),
+                    ResetColor
+                )?;
+                let eips = regional_ec2_manager
+                    .describe_eips_by_tags(HashMap::from([(
+                        String::from("Id"),
+                        format!("{}-dev-machine", spec.id),
+                    )]))
+                    .await
+                    .unwrap();
+                log::info!("found {} elastic IP addresses for dev machine", eips.len());
+                for eip_addr in eips.iter() {
+                    let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
+
+                    log::info!("releasing elastic IP via allocation Id {}", allocation_id);
+
+                    regional_ec2_manager
+                        .cli
+                        .release_address()
+                        .allocation_id(allocation_id)
+                        .send()
+                        .await
+                        .unwrap();
+                    sleep(Duration::from_secs(2)).await;
+                }
+            }
 
             sleep(Duration::from_secs(1)).await;
             execute!(
