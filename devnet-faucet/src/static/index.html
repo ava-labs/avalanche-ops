@@ -3,7 +3,7 @@
 
 <head>
     <title>DEVNET faucet</title>
-    <link rel="stylesheet" href="https://unpkg.com/@sakun/system.css" />
+    <link rel="stylesheet" href="https://unpkg.com/7.css">
     <style>
         html {
             font-family: "Inconsolata", Menlo, Chicago, Geneva;
@@ -21,76 +21,98 @@
 </head>
 
 <body>
-    <div class="window">
-        <div class="title-bar">
-            <button aria-label="Close" class="close"></button>
-            <h1 class="title">Avalanche DEVNET faucet</h1>
-            <button aria-label="Resize" disabled class="hidden"></button>
+    <div class="title-bar">
+        <div class="title-bar-text">Avalanche DEVNET faucet</div>
+        <div class="title-bar-controls">
+            <button aria-label="Close"></button>
         </div>
     </div>
-    <ul role="menu-bar">
-        <li role="menu-item" tabindex="0" aria-haspopup="true">
-            Source code
+
+    <ul role="menubar" class="can-hover">
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+            Links
             <ul role="menu">
-                <li role="menu-item"><a href="https://github.com/ava-labs/avalanche-ops/tree/main/devnet-faucet"
-                        target="_blank">DEVNET faucet</a></li>
+                <li role="menuitem">
+                    <img src="https://img.icons8.com/color/18/000000/virtual-machine2.png" />
+                    <a href="https://github.com/ava-labs/avalanche-ops/tree/main/devnet-faucet" target="_blank">DEVNET
+                        faucet source code</a>
+                </li>
+            </ul>
+        </li>
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+            Help
+            <ul role="menu">
+                <img src="https://img.icons8.com/color/18/000000/remote-desktop.png" />
+                <li role="menuitem"><a href="https://github.com/gyuho" target="_blank">gyuho</a></li>
             </ul>
         </li>
     </ul>
-    <div class="details-bar" id="server_info_chain_id"><em>Chain Id information</em></div>
-    <div class="details-bar" id="server_info_chain_rpc_urls"><em>Connected chain RPC URLs</em></div>
-    <div class="details-bar" id="server_info_health_urls"><em>Connected server health URLs</em></div>
 
     <br>
-    <hr>
-    <div class="window">
+    <div class="window active" style="max-width: 500px">
         <div class="title-bar">
-            <button aria-label="Close" class="close"></button>
-            <h1 class="title">Account information</h1>
-            <button aria-label="Resize" class="resize"></button>
+            <div class="title-bar-text">Network information</div>
+            <div class="title-bar-controls">
+                <button aria-label="Close"></button>
+            </div>
         </div>
-        <div class="details-bar">
+        <div class="window-body has-space">
+            <div class="details-bar" id="server_info_chain_id"><em>Chain Id information: TBD</em></div>
+            <br>
+            <div class="details-bar" id="server_info_chain_rpc_urls"><em>Connected chain RPC URLs: TBD</em></div>
+            <br>
+            <div class="details-bar" id="server_info_health_urls"><em>Connected server health URLs: TBD</em></div>
+        </div>
+    </div>
+
+    <br>
+    <div class="window active" style="max-width: 500px">
+        <div class="title-bar">
+            <div class="title-bar-text">Account information</div>
+            <div class="title-bar-controls">
+                <button aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="window-body has-space">
             <p>
                 Paste your EVM address, and click "Check balance" to check the balance, and "Request fund" to deposit
                 some balance.
             </p>
-        </div>
 
-        <div class="window-pane">
             <p id="user_info"><em>Your account information</em></p>
 
             <input type="text" id="check_balance_text" />
+
+            <br>
             <button class="btn" type="button" id="check_balance_button">Check balance</button>
             <button class="btn" type="button" id="request_fund_button">Request fund</button>
         </div>
     </div>
 
+
     <br>
-    <hr>
-    <div class="window">
+    <div class="window active" style="max-width: 650px">
         <div class="title-bar">
-            <button aria-label="Close" class="close"></button>
-            <h1 class="title">Chat & event logs!</h1>
-            <button aria-label="Resize" class="resize"></button>
+            <div class="title-bar-text">Chat & event logs!</div>
+            <div class="title-bar-controls">
+                <button aria-label="Close"></button>
+            </div>
         </div>
-        <div class="details-bar">
+        <div class="window-body has-space">
             <p>
                 All events and chat messages are logged here.
             </p>
-        </div>
 
-        <div class="window-pane">
             <input type="text" id="send_msg_text" />
-            <button class="btn" type="button" id="send_msg_button">Send</button>
-            <button class="btn" type="button" onclick="clearChatMsg()">Clear chat</button>
+
+            <button id="send_msg_button">Send</button>
+            <button onclick="clearChatMsg()">Clear chat</button>
             <div id="chats_logs_window">
                 <p><em>Hello world...</em></p>
             </div>
         </div>
     </div>
 
-    <br>
-    <hr>
     <script type="text/javascript">
         var uri_check_balance = 'http://' + location.host + '/check-balance';
         var uri_request_fund = 'http://' + location.host + '/request-fund';
