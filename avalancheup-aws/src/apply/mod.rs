@@ -742,7 +742,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
     let mut created_nodes: Vec<avalanche_ops::aws::spec::Node> = Vec::new();
     let mut region_to_common_asg_params = HashMap::new();
-    let mut _region_to_dev_machine_asg_params = HashMap::new();
+    let mut region_to_common_dev_machine_asg_params = HashMap::new();
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
@@ -752,7 +752,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
-        let mut common_asg_params = Vec::from([
+        let mut common_asg_params = vec![
             build_param("Id", &spec.id),
             build_param(
                 "NetworkId",
@@ -815,7 +815,63 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 &format!("agent {}", spec.avalanched_config.to_flags()),
             ),
             build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
-        ]);
+        ];
+
+        let mut common_dev_machine_params = HashMap::new();
+        common_dev_machine_params.insert("Id".to_string(), format!("{}-dev-machine", spec.id));
+        common_dev_machine_params.insert(
+            "KmsKeyArn".to_string(),
+            regional_resource
+                .kms_symmetric_default_encrypt_key
+                .clone()
+                .unwrap()
+                .arn
+                .clone(),
+        );
+        common_dev_machine_params.insert("AadTag".to_string(), spec.aad_tag.clone());
+        common_dev_machine_params
+            .insert("S3BucketName".to_string(), spec.resource.s3_bucket.clone());
+        common_dev_machine_params.insert(
+            "Ec2KeyPairName".to_string(),
+            regional_resource.ec2_key_name.clone(),
+        );
+        common_dev_machine_params.insert(
+            "InstanceProfileArn".to_string(),
+            regional_resource
+                .cloudformation_ec2_instance_profile_arn
+                .clone()
+                .unwrap(),
+        );
+        common_dev_machine_params.insert(
+            "SecurityGroupId".to_string(),
+            regional_resource
+                .cloudformation_vpc_security_group_id
+                .clone()
+                .unwrap(),
+        );
+        common_dev_machine_params.insert("AsgDesiredCapacity".to_string(), "1".to_string());
+        // for CFN template updates
+        // ref. "Temporarily setting autoscaling group MinSize and DesiredCapacity to 2."
+        // ref. "Rolling update initiated. Terminating 1 obsolete instance(s) in batches of 1, while keeping at least 1 instance(s) in service."
+        common_dev_machine_params.insert("AsgMaxSize".to_string(), "2".to_string());
+        common_dev_machine_params.insert(
+            "VolumeSize".to_string(),
+            format!("{}", spec.machine.volume_size_in_gb),
+        );
+        common_dev_machine_params.insert("ArchType".to_string(), spec.machine.arch_type.clone());
+        common_dev_machine_params.insert(
+            "ImageIdSsmParameter".to_string(),
+            format!(
+                "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
+                spec.machine.arch_type
+            ),
+        );
+        common_dev_machine_params
+            .insert("RustOsType".to_string(), spec.machine.rust_os_type.clone());
+        common_dev_machine_params.insert(
+            "VolumeProvisionerInitialWaitRandomSeconds".to_string(),
+            "10".to_string(),
+        );
 
         if let Some(avalanchego_release_tag) = &spec.avalanchego_release_tag {
             common_asg_params.push(build_param(
@@ -831,6 +887,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 "InstanceTypesCount",
                 format!("{}", instance_types.len()).as_str(),
             ));
+
+            common_dev_machine_params.insert("InstanceTypes".to_string(), instance_types.join(","));
+            common_dev_machine_params.insert(
+                "InstanceTypesCount".to_string(),
+                format!("{}", instance_types.len()),
+            );
         }
 
         common_asg_params.push(build_param(
@@ -848,11 +910,26 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 "on-demand"
             },
         ));
+        common_dev_machine_params.insert(
+            "InstanceMode".to_string(),
+            if is_spot_instance {
+                "spot".to_string()
+            } else {
+                "on-demand".to_string()
+            },
+        );
+
         common_asg_params.push(build_param("IpMode", &spec.machine.ip_mode));
+        common_dev_machine_params.insert("IpMode".to_string(), spec.machine.ip_mode.clone());
+
         common_asg_params.push(build_param(
             "OnDemandPercentageAboveBaseCapacity",
             format!("{}", on_demand_pct).as_str(),
         ));
+        common_dev_machine_params.insert(
+            "OnDemandPercentageAboveBaseCapacity".to_string(),
+            format!("{}", on_demand_pct),
+        );
 
         if let Some(arn) = &regional_resource.nlb_acm_certificate_arn {
             common_asg_params.push(build_param("NlbAcmCertificateArn", arn));
@@ -864,6 +941,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         }
 
         region_to_common_asg_params.insert(region.to_string(), common_asg_params.clone());
+        region_to_common_dev_machine_asg_params
+            .insert(region.to_string(), common_dev_machine_params);
 
         let public_subnet_ids = regional_resource
             .cloudformation_vpc_public_subnet_ids
@@ -1902,85 +1981,6 @@ aws ssm start-session --region {} --target {}
         );
     }
 
-    if spec.create_dev_machine {
-        //
-        //
-        //
-        //
-        //
-        println!();
-        log::info!("creating a dev machine");
-
-        let mut regional_resource = spec
-            .resource
-            .regional_resources
-            .get(&spec.resource.regions[0])
-            .unwrap()
-            .clone();
-        let stack_name = if let Some(v) = &regional_resource.cloudformation_dev_machine {
-            v.clone()
-        } else {
-            let s = avalanche_ops::aws::spec::StackName::DevMachine(spec.id.clone()).encode();
-            regional_resource.cloudformation_dev_machine = Some(s.clone());
-            s
-        };
-
-        spec.resource
-            .regional_resources
-            .insert(spec.resource.regions[0].clone(), regional_resource);
-        spec.sync(spec_file_path)?;
-
-        let regional_shared_config = aws_manager::load_config(
-            Some(spec.resource.regions[0].clone()),
-            Some(Duration::from_secs(30)),
-        )
-        .await;
-        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
-
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print(format!(
-                "\n\n\nSTEP: creating dev machine ASG in '{}'\n\n",
-                spec.resource.regions[0]
-            )),
-            ResetColor
-        )?;
-        let asg_tmpl = avalanche_ops::aws::artifacts::asg_ubuntu_dev_machine_yaml().unwrap();
-
-        // TODO
-        let cfn_params = Vec::from([build_param("DocumentName", &"")]);
-
-        regional_cloudformation_manager
-            .create_stack(
-                &stack_name,
-                None,
-                OnFailure::Delete,
-                &asg_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
-                Some(cfn_params),
-            )
-            .await
-            .unwrap();
-
-        regional_cloudformation_manager
-            .poll_stack(
-                &stack_name,
-                StackStatus::CreateComplete,
-                Duration::from_secs(500),
-                Duration::from_secs(30),
-            )
-            .await
-            .unwrap();
-        log::info!(
-            "created a dev machine in the region '{}'",
-            spec.resource.regions[0]
-        );
-    }
-
     //
     //
     //
@@ -2157,7 +2157,7 @@ cat /tmp/{node_id}.crt
         log::info!("created ssm document for installing subnet in the region '{region}'");
     }
 
-    // TODO: support Fuji
+    // adding validators is only supported for custom network
     if spec.avalanchego_config.is_custom_network() {
         let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
         let priv_key =
@@ -2467,6 +2467,314 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         endpoints.metamask_rpc_c = Some(format!("{http_rpc}/ext/bc/C/rpc"));
         endpoints.websocket_rpc_c = Some(format!("ws://{host}:{port_for_dns}/ext/bc/C/ws"));
         println!("{}", endpoints.encode_yaml().unwrap());
+    }
+
+    if spec.create_dev_machine {
+        //
+        //
+        //
+        //
+        //
+        println!();
+        log::info!("creating a dev machine");
+
+        let mut regional_resource = spec
+            .resource
+            .regional_resources
+            .get(&spec.resource.regions[0])
+            .unwrap()
+            .clone();
+        let stack_name = if let Some(v) = &regional_resource.cloudformation_asg_dev_machine {
+            v.clone()
+        } else {
+            let s = avalanche_ops::aws::spec::StackName::DevMachine(spec.id.clone()).encode();
+            regional_resource.cloudformation_asg_dev_machine = Some(s.clone());
+            s
+        };
+        spec.resource
+            .regional_resources
+            .insert(spec.resource.regions[0].clone(), regional_resource.clone());
+        spec.sync(spec_file_path)?;
+
+        let mut regional_common_dev_machine_asg_params = region_to_common_dev_machine_asg_params
+            .get(&spec.resource.regions[0])
+            .unwrap()
+            .clone();
+        let dev_machine = spec.dev_machine.clone().unwrap();
+        regional_common_dev_machine_asg_params
+            .insert("IpMode".to_string(), dev_machine.ip_mode.clone());
+
+        let is_spot_instance = dev_machine.instance_mode == String::from("spot");
+        let on_demand_pct = if is_spot_instance { 0 } else { 100 };
+        regional_common_dev_machine_asg_params.insert(
+            "InstanceMode".to_string(),
+            if is_spot_instance {
+                "spot".to_string()
+            } else {
+                "on-demand".to_string()
+            },
+        );
+        regional_common_dev_machine_asg_params.insert(
+            "OnDemandPercentageAboveBaseCapacity".to_string(),
+            format!("{}", on_demand_pct),
+        );
+        regional_common_dev_machine_asg_params
+            .insert("ArchType".to_string(), dev_machine.arch_type.clone());
+        if dev_machine.rust_os_type != "al2" {
+            regional_common_dev_machine_asg_params.insert(
+                "ImageIdSsmParameter".to_string(),
+                format!(
+                    "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
+                    dev_machine.arch_type
+                ),
+            );
+            regional_common_dev_machine_asg_params
+                .insert("RustOsType".to_string(), "ubuntu20.04".to_string());
+        }
+
+        let regional_shared_config = aws_manager::load_config(
+            Some(spec.resource.regions[0].clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
+        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+        let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
+
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\n\n\nSTEP: creating dev machine ASG in '{}'\n\n",
+                spec.resource.regions[0]
+            )),
+            ResetColor
+        )?;
+        let asg_tmpl = avalanche_ops::aws::artifacts::asg_ubuntu_dev_machine_yaml().unwrap();
+
+        let mut cfn_params = Vec::new();
+        for (k, v) in regional_common_dev_machine_asg_params.iter() {
+            log::info!("dev-machine build parameter '{k}' : '{v}'");
+            cfn_params.push(build_param(k, v));
+        }
+
+        regional_cloudformation_manager
+            .create_stack(
+                &stack_name,
+                None,
+                OnFailure::Delete,
+                &asg_tmpl,
+                Some(Vec::from([Tag::builder()
+                    .key("KIND")
+                    .value("avalanche-ops")
+                    .build()])),
+                Some(cfn_params),
+            )
+            .await
+            .unwrap();
+
+        let stack = regional_cloudformation_manager
+            .poll_stack(
+                &stack_name,
+                StackStatus::CreateComplete,
+                Duration::from_secs(500),
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+        log::info!(
+            "created a dev machine in the region '{}'",
+            spec.resource.regions[0]
+        );
+
+        for o in stack.outputs.unwrap() {
+            let k = o.output_key.unwrap();
+            let v = o.output_value.unwrap();
+            log::info!("stack output key=[{}], value=[{}]", k, v,);
+            if k.eq("AsgLogicalId") {
+                regional_resource.cloudformation_asg_dev_machine_logical_id = Some(v);
+                continue;
+            }
+        }
+        if regional_resource
+            .cloudformation_asg_dev_machine_logical_id
+            .is_none()
+        {
+            return Err(Error::new(
+                ErrorKind::Other,
+                "dev-machine regional_resource.cloudformation_asg_dev_machine_logical_id not found",
+            ));
+        }
+
+        let asg_name = regional_resource
+            .cloudformation_asg_dev_machine_logical_id
+            .clone()
+            .unwrap();
+
+        let mut droplets: Vec<ec2::Droplet> = Vec::new();
+        for _ in 0..10 {
+            // TODO: better retries
+            log::info!("fetching all droplets for dev-machine SSH access (target node 1)",);
+            droplets = regional_ec2_manager.list_asg(&asg_name).await.unwrap();
+            if (droplets.len() as u32) >= 1 {
+                break;
+            }
+            log::info!(
+                "retrying fetching all droplets (only got {})",
+                droplets.len()
+            );
+            sleep(Duration::from_secs(30)).await;
+        }
+
+        let mut eips = Vec::new();
+        if spec.machine.ip_mode == String::from("elastic") {
+            log::info!("using elastic IPs... wait more");
+            loop {
+                eips = regional_ec2_manager
+                    .describe_eips_by_tags(HashMap::from([(
+                        String::from("Id"),
+                        format!("{}-dev-machine", spec.id),
+                    )]))
+                    .await
+                    .unwrap();
+
+                log::info!("got {} EIP addresses", eips.len());
+
+                let mut ready = true;
+                for eip_addr in eips.iter() {
+                    ready = ready && eip_addr.instance_id.is_some();
+                }
+                if ready && eips.len() == 1 {
+                    break;
+                }
+
+                sleep(Duration::from_secs(30)).await;
+            }
+        }
+
+        let mut instance_id_to_public_ip = HashMap::new();
+        for eip_addr in eips.iter() {
+            let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
+            let instance_id = eip_addr.instance_id.to_owned().unwrap();
+            let public_ip = eip_addr.public_ip.to_owned().unwrap();
+            log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
+            instance_id_to_public_ip.insert(instance_id, public_ip);
+        }
+
+        let ec2_key_path = regional_resource.ec2_key_path.clone();
+
+        let user_name = {
+            if dev_machine.rust_os_type == "al2" {
+                "ec2-user"
+            } else {
+                "ubuntu"
+            }
+        };
+
+        for d in droplets {
+            // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
+            // aws ssm start-session --region [region] --target [instance ID]
+            // TODO: support other user name?
+            let public_ip = if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
+                public_ip.clone()
+            } else {
+                d.public_ipv4.clone()
+            };
+
+            println!(
+                "
+# change SSH key permission
+chmod 400 {}
+# instance '{}' ({}, {}) -- ip mode '{}'
+ssh -o \"StrictHostKeyChecking no\" -i {} {}@{}
+# download to local machine
+scp -i {} {}@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
+scp -i {} -r {}@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
+# upload to remote machine
+scp -i {} LOCAL_FILE_PATH {}@{}:REMOTE_FILE_PATH
+scp -i {} -r LOCAL_DIRECTORY_PATH {}@{}:REMOTE_DIRECTORY_PATH
+# SSM session (requires SSM agent)
+aws ssm start-session --region {} --target {}
+",
+                ec2_key_path,
+                //
+                d.instance_id,
+                d.instance_state_name,
+                d.availability_zone,
+                spec.machine.ip_mode,
+                //
+                ec2_key_path,
+                user_name,
+                public_ip,
+                //
+                ec2_key_path,
+                user_name,
+                public_ip,
+                //
+                ec2_key_path,
+                user_name,
+                public_ip,
+                //
+                ec2_key_path,
+                user_name,
+                public_ip,
+                //
+                ec2_key_path,
+                user_name,
+                public_ip,
+                //
+                spec.resource.regions[0],
+                d.instance_id,
+            );
+        }
+        println!();
+
+        spec.resource
+            .regional_resources
+            .insert(spec.resource.regions[0].clone(), regional_resource);
+        spec.sync(spec_file_path)?;
+
+        sleep(Duration::from_secs(1)).await;
+        log::info!("uploading avalancheup spec file...");
+        default_s3_manager
+            .put_object(
+                &spec_file_path,
+                &spec.resource.s3_bucket,
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            )
+            .await
+            .unwrap();
+
+        //
+        //
+        //
+        //
+        //
+        println!();
+        log::info!(
+            "apply all success with node Ids {:?} and instance Ids {:?}",
+            all_node_ids,
+            all_instance_ids
+        );
+
+        println!();
+        println!("# delete resources");
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "{} delete \\
+--delete-cloudwatch-log-group \\
+--delete-s3-objects \\
+--delete-ebs-volumes \\
+--delete-elastic-ips \\
+--spec-file-path {}
+
+",
+                exec_path.display(),
+                spec_file_path
+            )),
+            ResetColor
+        )?;
     }
 
     Ok(())

@@ -229,17 +229,6 @@ pub struct RegionalResource {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_vpc_public_subnet_ids: Option<Vec<String>>,
 
-    /// CloudFormation stack name of Auto Scaling Group (ASG)
-    /// for anchor nodes.
-    /// None if mainnet.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_dev_machine: Option<String>,
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_dev_machine_logical_ids: Option<String>,
-
     /// CloudFormation stack names of Auto Scaling Group (ASG)
     /// for anchor nodes.
     /// None if mainnet.
@@ -287,6 +276,17 @@ pub struct RegionalResource {
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_ssm_install_subnet_chain: Option<String>,
+
+    /// CloudFormation stack name of Auto Scaling Group (ASG)
+    /// for anchor nodes.
+    /// None if mainnet.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_dev_machine: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_dev_machine_logical_id: Option<String>,
 }
 
 impl Default for RegionalResource {
@@ -314,9 +314,6 @@ impl RegionalResource {
             cloudformation_vpc_security_group_id: None,
             cloudformation_vpc_public_subnet_ids: None,
 
-            cloudformation_dev_machine: None,
-            cloudformation_dev_machine_logical_ids: None,
-
             cloudformation_asg_anchor_nodes: None,
             cloudformation_asg_anchor_nodes_logical_ids: None,
 
@@ -331,6 +328,9 @@ impl RegionalResource {
             cloudformation_asg_launch_template_version: None,
 
             cloudformation_ssm_install_subnet_chain: None,
+
+            cloudformation_asg_dev_machine: None,
+            cloudformation_asg_dev_machine_logical_id: None,
         }
     }
 }
