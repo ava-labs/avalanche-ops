@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     env,
     fs::File,
     io::{self, stdout, Error, ErrorKind},
@@ -817,7 +817,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("VolumeProvisionerInitialWaitRandomSeconds", "10"),
         ];
 
-        let mut common_dev_machine_params = HashMap::new();
+        // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
+        let mut common_dev_machine_params = BTreeMap::new();
         common_dev_machine_params.insert("Id".to_string(), format!("{}-dev-machine", spec.id));
         common_dev_machine_params.insert(
             "KmsKeyArn".to_string(),
@@ -2504,6 +2505,16 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         regional_common_dev_machine_asg_params
             .insert("IpMode".to_string(), dev_machine.ip_mode.clone());
 
+        if !dev_machine.instance_types.is_empty() {
+            let instance_types = dev_machine.instance_types.clone();
+            regional_common_dev_machine_asg_params
+                .insert("InstanceTypes".to_string(), instance_types.join(","));
+            regional_common_dev_machine_asg_params.insert(
+                "InstanceTypesCount".to_string(),
+                format!("{}", instance_types.len()),
+            );
+        }
+
         let is_spot_instance = dev_machine.instance_mode == String::from("spot");
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
         regional_common_dev_machine_asg_params.insert(
@@ -2553,7 +2564,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 
         let mut cfn_params = Vec::new();
         for (k, v) in regional_common_dev_machine_asg_params.iter() {
-            log::info!("dev-machine build parameter '{k}' : '{v}'");
+            log::info!("dev-machine CFN parameter: '{k}'='{v}'");
             cfn_params.push(build_param(k, v));
         }
 

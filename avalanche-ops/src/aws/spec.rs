@@ -684,6 +684,7 @@ impl Spec {
                 instance_mode: opts.instance_mode.clone(),
                 ip_mode: opts.ip_mode.clone(),
                 volume_size_in_gb: opts.volume_size_in_gb.clone(),
+                instance_types: region_to_instance_types.get(&regions[0]).unwrap().clone(),
             })
         } else {
             None
@@ -1241,6 +1242,7 @@ avalanched_config:
 
 
 create_dev_machine: false
+
 enable_nlb: false
 disable_logs_auto_removal: false
 metrics_fetch_interval_seconds: 5000
@@ -1779,6 +1781,9 @@ pub struct DevMachine {
     /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html
     #[serde(default)]
     pub volume_size_in_gb: u32,
+
+    #[serde(default)]
+    pub instance_types: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
