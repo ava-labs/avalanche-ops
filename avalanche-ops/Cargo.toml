@@ -10,8 +10,8 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
-avalanche-types = { version = "0.0.380", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.27.3", features = ["ec2", "sts"] } # https://github.com/gyuho/aws-manager/tags
+avalanche-types = { version = "0.0.381", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.27.4", features = ["ec2", "sts"] } # https://github.com/gyuho/aws-manager/tags
 compress-manager = "0.0.9"
 dir-manager = "0.0.1"
 env_logger = "0.10.0"
@@ -23,7 +23,7 @@ prometheus-manager = "0.0.28"
 public-ip = "0.2.2"
 random-manager = "0.0.5"
 rust-embed = "6.6.1"
-serde = { version = "1.0.162", features = ["derive"] }
+serde = { version = "1.0.163", features = ["derive"] }
 serde_json = "1.0.96" # https://github.com/serde-rs/json/releases
 serde_with = { version = "3.0.0", features = ["hex"] }
 serde_yaml = "0.9.21" # https://github.com/dtolnay/serde-yaml/releases
