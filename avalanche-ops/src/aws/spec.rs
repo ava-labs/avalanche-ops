@@ -55,6 +55,12 @@ pub struct Spec {
     /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: crate::aws::avalanched::Flags,
 
+    /// Set "true" to create a dev machine.
+    #[serde(default)]
+    pub create_dev_machine: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dev_machine: Option<DevMachine>,
+
     /// Set "true" to enable NLB.
     #[serde(default)]
     pub enable_nlb: bool,
@@ -270,6 +276,17 @@ pub struct RegionalResource {
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_ssm_install_subnet_chain: Option<String>,
+
+    /// CloudFormation stack name of Auto Scaling Group (ASG)
+    /// for anchor nodes.
+    /// None if mainnet.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_dev_machine: Option<String>,
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_asg_dev_machine_logical_id: Option<String>,
 }
 
 impl Default for RegionalResource {
@@ -311,6 +328,9 @@ impl RegionalResource {
             cloudformation_asg_launch_template_version: None,
 
             cloudformation_ssm_install_subnet_chain: None,
+
+            cloudformation_asg_dev_machine: None,
+            cloudformation_asg_dev_machine_logical_id: None,
         }
     }
 }
@@ -346,6 +366,8 @@ pub struct DefaultSpecOption {
     pub volume_size_in_gb: u32,
 
     pub ip_mode: String,
+
+    pub create_dev_machine: bool,
 
     pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,
@@ -655,6 +677,19 @@ impl Spec {
             regional_resources.insert(reg.to_string(), regional_resource);
         }
 
+        let dev_machine = if opts.create_dev_machine {
+            Some(DevMachine {
+                arch_type: opts.arch_type.clone(),
+                rust_os_type: opts.rust_os_type.clone(),
+                instance_mode: opts.instance_mode.clone(),
+                ip_mode: opts.ip_mode.clone(),
+                volume_size_in_gb: opts.volume_size_in_gb.clone(),
+                instance_types: region_to_instance_types.get(&regions[0]).unwrap().clone(),
+            })
+        } else {
+            None
+        };
+
         // [year][month][date]-[system host-based id]
         let s3_bucket = format!(
             "avalanche-ops-{}-{}-{}",
@@ -848,6 +883,9 @@ impl Spec {
                 avalanchego_release_tag,
 
                 avalanched_config,
+
+                create_dev_machine: opts.create_dev_machine,
+                dev_machine,
 
                 enable_nlb: opts.enable_nlb,
                 disable_logs_auto_removal: opts.disable_logs_auto_removal,
@@ -1202,6 +1240,9 @@ avalanched_config:
   use_default_config: false
   publish_periodic_node_info: false
 
+
+create_dev_machine: false
+
 enable_nlb: false
 disable_logs_auto_removal: false
 metrics_fetch_interval_seconds: 5000
@@ -1347,6 +1388,9 @@ coreth_chain_config:
             use_default_config: false,
             publish_periodic_node_info: Some(false),
         },
+
+        create_dev_machine: false,
+        dev_machine: None,
 
         enable_nlb: false,
         disable_logs_auto_removal: false,
@@ -1718,6 +1762,32 @@ pub struct Machine {
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
+pub struct DevMachine {
+    #[serde(default)]
+    pub arch_type: String,
+    #[serde(default)]
+    pub rust_os_type: String,
+
+    /// Either "spot" or "on-demand".
+    #[serde(default)]
+    pub instance_mode: String,
+
+    /// Either "elastic" or "ephemeral".
+    #[serde(default)]
+    pub ip_mode: String,
+
+    /// Initial EBS volume size in GB.
+    /// Can be resized with no downtime.
+    /// ref. https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html
+    #[serde(default)]
+    pub volume_size_in_gb: u32,
+
+    #[serde(default)]
+    pub instance_types: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
 pub struct RegionalMachine {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor_nodes: Option<u32>,
@@ -1783,6 +1853,7 @@ pub enum StackName {
     Ec2InstanceRole(String, String),
     Vpc(String),
     SsmInstallSubnetChain(String),
+    DevMachine(String),
 }
 
 impl StackName {
@@ -1793,6 +1864,7 @@ impl StackName {
             StackName::SsmInstallSubnetChain(id) => {
                 format!("{id}-ssm-install-subnet-chain")
             }
+            StackName::DevMachine(id) => format!("{}-dev-machine", id),
         }
     }
 }

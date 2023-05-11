@@ -141,6 +141,13 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
+            Arg::new("CREATE_DEV_MACHINE")
+                .long("create-dev-machine")
+                .help("Sets to create a dev-machine")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
             Arg::new("INGRESS_IPV4_CIDR")
                 .long("ingress-ipv4-cidr")
                 .help("Sets the IPv4 CIDR range for ingress traffic HTTP/SSH (leave empty to default to public IP on the local host)")
