@@ -213,6 +213,8 @@
         // allow users to specify their own user name
         request_fund_button.onclick = function () {
             var check_balance_input = check_balance_text.value;
+            user_address = check_balance_input;
+
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
                 if (xhr.readyState == XMLHttpRequest.DONE) {
