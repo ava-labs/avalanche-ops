@@ -139,8 +139,9 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
             }),
         )
         .and(users.clone())
-        .then(|sender_id, msg, users| async move {
-            handle_chat_post(sender_id, msg, &users);
+        .then(|sender_id, _msg, users| async move {
+            // discard message for security reasons
+            handle_chat_post(sender_id, &users);
             warp::reply()
         });
 
@@ -561,7 +562,7 @@ fn handle_chat_get(
 }
 
 /// TODO(용훈): implements rate limiting to prevent DDoS
-fn handle_chat_post(sender_id: usize, msg: String, users: &UserIds) {
+fn handle_chat_post(sender_id: usize, users: &UserIds) {
     let sender_user_id = {
         users
             .lock()
@@ -583,8 +584,8 @@ fn handle_chat_post(sender_id: usize, msg: String, users: &UserIds) {
             true
         } else {
             let new_msg = format!(
-                "[sender id {sender_id} ==> receiver id {}, receiver name {}, 0x{:x}] {}",
-                sender_address, receiver.user_id, receiver.address, msg
+                "[sender id {sender_id} ==> receiver id {}, receiver name {}, 0x{:x}] Hi 👋",
+                sender_address, receiver.user_id, receiver.address,
             );
 
             // If not `is_ok`, the SSE stream is gone, and so don't retain
