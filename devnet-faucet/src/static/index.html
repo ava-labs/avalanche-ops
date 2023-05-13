@@ -104,11 +104,9 @@
                 All events and chat messages are logged here.
             </p>
 
-            <input type="text" id="send_msg_text" />
-
-            <button id="send_msg_button">Send</button>
+            <button id="say_hi_button">Say Hi 👋</button>
             <button onclick="clearChatMsg()">Clear chat</button>
-            <div id="chats_logs_window">
+            <div id="msgs_window">
                 <p><em>Hello world...</em></p>
             </div>
         </div>
@@ -145,19 +143,19 @@
             document.getElementById("server_info_health_urls").innerHTML = data;
         }
 
-        function addChatLog(data) {
+        function addMsg(data) {
             var line = document.createElement('p');
             line.innerText = data;
-            chats_logs_window.appendChild(line);
+            msgs_window.appendChild(line);
         }
 
         function clearChatMsg() {
-            chats_logs_window.innerHTML = "<p><em>Just cleared!</em></p>";
+            msgs_window.innerHTML = "<p><em>Just cleared!</em></p>";
         }
 
         var sse_chat = new EventSource(uri_chat);
         sse_chat.onopen = function () {
-            chats_logs_window.innerHTML = "<p><em>Just connected! Hello world!</em></p>";
+            msgs_window.innerHTML = "<p><em>Just connected! Hello world!</em></p>";
         }
 
         var user_id;
@@ -183,7 +181,7 @@
         });
 
         sse_chat.onmessage = function (msg) {
-            addChatLog(msg.data);
+            addMsg(msg.data);
         };
 
         // allow users to specify their own user name
@@ -234,15 +232,12 @@
             displayServerInfo(connected_health_urls, connected_chain_id, connected_chain_id_u64, connected_chain_rpc_urls);
         };
 
-        send_msg_button.onclick = function () {
-            var msg = send_msg_text.value;
+        say_hi_button.onclick = function () {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", uri_chat + '/' + user_id, true);
-            xhr.send(msg);
+            xhr.send("");
 
-            send_msg_text.value = '';
-
-            addChatLog('sender/your user name ' + user_name + ', sender/your user id ' + user_id + ', sender/your address ' + user_address + '] ' + msg);
+            addMsg('[ sender/your user id ' + user_id + ', sender/your address ' + user_address + '] Said Hi 👋');
         };
     </script>
 </body>
