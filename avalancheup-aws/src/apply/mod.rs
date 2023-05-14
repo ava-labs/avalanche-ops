@@ -2230,6 +2230,40 @@ cat /tmp/{node_id}.crt
     //
     //
     //
+    println!(
+        "\n# EXAMPLE: ONLY add nodes as primary network validators WITHOUT subnet installation"
+    );
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{exec_path} add-primary-network-validators \\
+--log-level info \\
+--chain-rpc-url {chain_rpc_url} \\
+--key {priv_key_hex} \\
+--primary-network-validate-period-in-days 16 \\
+--staking-amount-in-avax 2000 \\
+--spec-file-path {spec_file_path}
+
+# or
+# --target-node-ids '{target_node_ids}'
+
+",
+            exec_path = exec_path.display(),
+            chain_rpc_url =
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+            priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
+            spec_file_path = spec_file_path,
+            target_node_ids = all_node_ids.join(","),
+        )),
+        ResetColor
+    )?;
+
+    //
+    //
+    //
+    //
+    //
     println!("\n# EXAMPLE: write subnet config");
     execute!(
         stdout(),
@@ -2320,35 +2354,6 @@ cat /tmp/{node_id}.crt
 ",
             exec_path = exec_path.display(),
             seed_eth_addresses = seed_eth_addresses,
-        )),
-        ResetColor
-    )?;
-
-    println!(
-        "\n# EXAMPLE: ONLY add nodes as primary network validators WITHOUT subnet installation"
-    );
-    execute!(
-        stdout(),
-        SetForegroundColor(Color::Green),
-        Print(format!(
-            "{exec_path} add-primary-network-validators \\
---log-level info \\
---chain-rpc-url {chain_rpc_url} \\
---key {priv_key_hex} \\
---primary-network-validate-period-in-days 16 \\
---staking-amount-in-avax 2000 \\
---spec-file-path {spec_file_path}
-
-# or
-# --target-node-ids '{target_node_ids}'
-
-",
-            exec_path = exec_path.display(),
-            chain_rpc_url =
-                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
-            priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
-            spec_file_path = spec_file_path,
-            target_node_ids = all_node_ids.join(","),
         )),
         ResetColor
     )?;
