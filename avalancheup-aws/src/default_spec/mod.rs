@@ -457,15 +457,42 @@ pub async fn execute(opts: avalanche_ops::aws::spec::DefaultSpecOption) -> io::R
         )),
         ResetColor
     )?;
+
     println!();
     println!("# run the following to delete resources");
     execute!(
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-                    "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--delete-elastic-ips \\\n--spec-file-path {}\n\n",
-                    exec_path.display(),
-                    spec_file_path
+            "{} delete \\
+--override-keep-resources-except-asg-ssm \\
+--delete-cloudwatch-log-group \\
+--delete-s3-objects \\
+--delete-ebs-volumes \\
+--delete-elastic-ips \\
+--spec-file-path {spec_file_path}
+",
+            exec_path.display(),
+        )),
+        ResetColor
+    )?;
+
+    println!();
+    println!("# delete resources with override option");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{} delete \\
+--override-keep-resources-except-asg-ssm \\
+--delete-cloudwatch-log-group \\
+--delete-s3-objects \\
+--delete-ebs-volumes \\
+--delete-elastic-ips \\
+--spec-file-path {spec_file_path}
+
+",
+            exec_path.display(),
         )),
         ResetColor
     )?;

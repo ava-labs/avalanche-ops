@@ -107,7 +107,8 @@ pub async fn execute(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
     );
 
-    let spec = avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
+    let mut spec =
+        avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
 
     let shared_config = aws_manager::load_config(
         Some(spec.resource.regions[0].clone()),
@@ -159,7 +160,7 @@ pub async fn execute(
     }
 
     log::info!("deleting resources...");
-    let s3_manager = s3::Manager::new(&shared_config);
+    let default_s3_manager = s3::Manager::new(&shared_config);
 
     let mut keep_resources_except_asg_ssm = spec.keep_resources_except_asg_ssm;
     if override_keep_resources_except_asg_ssm {
@@ -378,7 +379,8 @@ pub async fn execute(
         }
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+    for (region, rr) in spec.resource.regional_resources.clone().iter() {
+        let mut regional_resource = rr.clone();
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
@@ -429,6 +431,28 @@ pub async fn execute(
                     .unwrap();
             }
         }
+
+        // now that all ASG stacks are deleted, reset launch template
+        // that was defined in the same CFN template
+        log::warn!(
+            "resetting '{region}' cloudformation_asg_launch_template_id '{:?}' in the spec file",
+            regional_resource.cloudformation_asg_launch_template_id
+        );
+        regional_resource.cloudformation_asg_launch_template_id = None;
+        regional_resource.cloudformation_asg_launch_template_version = None;
+
+        spec.resource
+            .regional_resources
+            .insert(region.clone(), regional_resource);
+        spec.sync(spec_file_path)?;
+        default_s3_manager
+            .put_object(
+                &spec_file_path,
+                &spec.resource.s3_bucket,
+                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            )
+            .await
+            .expect("failed put_object ConfigFile");
     }
 
     if !keep_resources_except_asg_ssm {
@@ -612,7 +636,7 @@ pub async fn execute(
             ResetColor
         )?;
         sleep(Duration::from_secs(5)).await;
-        s3_manager
+        default_s3_manager
             .delete_objects(&spec.resource.s3_bucket, Some(&spec.id))
             .await
             .unwrap();
@@ -630,7 +654,7 @@ pub async fn execute(
             ResetColor
         )?;
         sleep(Duration::from_secs(5)).await;
-        s3_manager
+        default_s3_manager
             .delete_bucket(&spec.resource.s3_bucket)
             .await
             .unwrap();

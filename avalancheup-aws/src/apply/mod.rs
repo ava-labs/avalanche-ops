@@ -2056,11 +2056,10 @@ aws ssm start-session --region {} --target {}
 --delete-s3-objects \\
 --delete-ebs-volumes \\
 --delete-elastic-ips \\
---spec-file-path {}
+--spec-file-path {spec_file_path}
 
 ",
             exec_path.display(),
-            spec_file_path
         )),
         ResetColor
     )?;
@@ -2077,11 +2076,10 @@ aws ssm start-session --region {} --target {}
 --delete-s3-objects \\
 --delete-ebs-volumes \\
 --delete-elastic-ips \\
---spec-file-path {}
+--spec-file-path {spec_file_path}
 
 ",
             exec_path.display(),
-            spec_file_path
         )),
         ResetColor
     )?;
