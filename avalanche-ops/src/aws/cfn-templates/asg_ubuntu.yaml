@@ -568,8 +568,7 @@ Resources:
               while [ 1 ]; do
                 sudo apt-get update -yqq && sudo apt-get upgrade -yqq \
                 && sudo apt-get install -yq \
-                curl wget unzip zip gzip tar libssl-dev \
-                python3-pip python-setuptools zsh
+                curl wget unzip zip gzip tar libssl-dev zsh
                 if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                 sleep 2s;
               done;
