@@ -377,21 +377,21 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
-
         let regional_kms_manager = kms::Manager::new(&regional_shared_config);
+
+        sleep(Duration::from_secs(1)).await;
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\n\n\nSTEP: create KMS encrypt key in '{region}'\n"
+            )),
+            ResetColor
+        )?;
         if regional_resource
             .kms_symmetric_default_encrypt_key
             .is_none()
         {
-            sleep(Duration::from_secs(1)).await;
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: create encryption KMS key in '{region}'\n"
-                )),
-                ResetColor
-            )?;
             let key = regional_kms_manager
                 .create_symmetric_default_key(format!("{}-kms-key", spec.id).as_str(), false)
                 .await
@@ -413,7 +413,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .await
                 .unwrap();
         } else {
-            log::info!("skipping creating kms default encrypt key");
+            log::info!("skipping creating KMS default encrypt key");
         }
 
         let regional_envelope_manager = envelope::Manager::new(
@@ -492,19 +492,18 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\n\n\nSTEP: creating EC2 instance role in the region '{region}'\n"
+            )),
+            ResetColor
+        )?;
         if regional_resource
             .cloudformation_ec2_instance_profile_arn
             .is_none()
         {
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: creating EC2 instance role in the region '{region}'\n"
-                )),
-                ResetColor
-            )?;
-
             let ec2_instance_role_tmpl =
                 avalanche_ops::aws::artifacts::ec2_instance_role_yaml().unwrap();
             let ec2_instance_role_stack_name = regional_resource
@@ -618,6 +617,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print(format!(
+                "\n\n\nSTEP: creating a VPC in the region '{region}'\n"
+            )),
+            ResetColor
+        )?;
         if regional_resource.cloudformation_vpc_id.is_none()
             && regional_resource
                 .cloudformation_vpc_security_group_id
@@ -626,15 +633,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .cloudformation_vpc_public_subnet_ids
                 .is_none()
         {
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Green),
-                Print(format!(
-                    "\n\n\nSTEP: creating a VPC in the region '{region}'\n"
-                )),
-                ResetColor
-            )?;
-
             let vpc_tmpl = avalanche_ops::aws::artifacts::vpc_yaml().unwrap();
             let vpc_stack_name = regional_resource.cloudformation_vpc.clone().unwrap();
             let vpc_params = Vec::from([
