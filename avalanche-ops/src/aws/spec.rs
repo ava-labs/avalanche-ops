@@ -55,6 +55,9 @@ pub struct Spec {
     /// Flag to pass to the "avalanched" command-line interface.
     pub avalanched_config: crate::aws::avalanched::Flags,
 
+    /// Set "true" to keep resources for reuse.
+    #[serde(default)]
+    pub keep_resources_except_asg_ssm: bool,
     /// Set "true" to create a dev machine.
     #[serde(default)]
     pub create_dev_machine: bool,
@@ -367,6 +370,7 @@ pub struct DefaultSpecOption {
 
     pub ip_mode: String,
 
+    pub keep_resources_except_asg_ssm: bool,
     pub create_dev_machine: bool,
 
     pub enable_nlb: bool,
@@ -884,6 +888,7 @@ impl Spec {
 
                 avalanched_config,
 
+                keep_resources_except_asg_ssm: opts.keep_resources_except_asg_ssm,
                 create_dev_machine: opts.create_dev_machine,
                 dev_machine,
 
@@ -1241,6 +1246,7 @@ avalanched_config:
   publish_periodic_node_info: false
 
 
+keep_resources_except_asg_ssm: false
 create_dev_machine: false
 
 enable_nlb: false
@@ -1389,6 +1395,7 @@ coreth_chain_config:
             publish_periodic_node_info: Some(false),
         },
 
+        keep_resources_except_asg_ssm: false,
         create_dev_machine: false,
         dev_machine: None,
 

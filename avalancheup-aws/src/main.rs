@@ -113,6 +113,8 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&0)
                     .clone(),
 
+                keep_resources_except_asg_ssm: sub_matches
+                    .get_flag("KEEP_RESOURCES_EXCEPT_ASG_SSM"),
                 create_dev_machine: sub_matches.get_flag("CREATE_DEV_MACHINE"),
 
                 ingress_ipv4_cidr: sub_matches
@@ -264,6 +266,7 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("SPEC_FILE_PATH")
                     .unwrap()
                     .clone(),
+                sub_matches.get_flag("OVERRIDE_KEEP_RESOURCES_EXCEPT_ASG_SSM"),
                 sub_matches.get_flag("DELETE_CLOUDWATCH_LOG_GROUP"),
                 sub_matches.get_flag("DELETE_S3_OBJECTS"),
                 sub_matches.get_flag("DELETE_S3_BUCKET"),
