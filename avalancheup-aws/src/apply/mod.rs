@@ -2827,7 +2827,7 @@ async fn add_primary_network_permissionless_validator(
     let stake_amount_in_navax = stake_amount_in_navax.as_ref();
     let primary_network_validate_period_in_days = primary_network_validate_period_in_days.as_ref();
 
-    let (tx_id, added) = wallet_to_spend
+    match wallet_to_spend
         .p()
         .add_permissionless_validator()
         .node_id(node_id.clone())
@@ -2835,9 +2835,15 @@ async fn add_primary_network_permissionless_validator(
         .stake_amount(*stake_amount_in_navax)
         .validate_period_in_days(*primary_network_validate_period_in_days, 60)
         .check_acceptance(true)
+        .poll_timeout(Duration::from_secs(150))
         .issue()
         .await
-        .unwrap();
-
-    log::info!("primary network validator tx id {}, added {}", tx_id, added);
+    {
+        Ok((tx_id, added)) => {
+            log::info!("primary network validator tx id {}, added {}", tx_id, added);
+        }
+        Err(e) => {
+            log::warn!("failed add_permissionless_validator {}", e);
+        }
+    }
 }
