@@ -465,7 +465,6 @@ pub async fn execute(opts: avalanche_ops::aws::spec::DefaultSpecOption) -> io::R
         SetForegroundColor(Color::Green),
         Print(format!(
             "{} delete \\
---override-keep-resources-except-asg-ssm \\
 --delete-cloudwatch-log-group \\
 --delete-s3-objects \\
 --delete-ebs-volumes \\
