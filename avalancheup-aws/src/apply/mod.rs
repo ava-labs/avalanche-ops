@@ -357,7 +357,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .unwrap();
 
         // do not reset, we need this in case we need rerun
-        spec.upload_artifacts = None;
+        // spec.upload_artifacts = None;
 
         spec.sync(spec_file_path)?;
         default_s3_manager
