@@ -141,6 +141,13 @@ pub fn command() -> Command {
                 .default_value("0"),
         )
         .arg(
+            Arg::new("KEEP_RESOURCES_EXCEPT_ASG_SSM")
+                .long("keep-resources-except-asg-ssm")
+                .help("Sets to keep resources except ASG/SSM (useful for reusing IAM Role/VPC/KMS)")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
             Arg::new("CREATE_DEV_MACHINE")
                 .long("create-dev-machine")
                 .help("Sets to create a dev-machine")

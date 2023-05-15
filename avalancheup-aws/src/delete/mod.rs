@@ -48,6 +48,13 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("OVERRIDE_KEEP_RESOURCES_EXCEPT_ASG_SSM")
+                .long("override-keep-resources-except-asg-ssm")
+                .help("Ignore --keep-resources-except-asg-ssm option to delete all")
+                .required(false)
+                .num_args(0),
+        )
+        .arg(
             Arg::new("DELETE_CLOUDWATCH_LOG_GROUP")
                 .long("delete-cloudwatch-log-group")
                 .help("Enables to delete CloudWatch log group")
@@ -87,6 +94,7 @@ pub fn command() -> Command {
 pub async fn execute(
     log_level: &str,
     spec_file_path: &str,
+    override_keep_resources_except_asg_ssm: bool,
     delete_cloudwatch_log_group: bool,
     delete_s3_objects: bool,
     delete_s3_bucket: bool,
@@ -153,71 +161,119 @@ pub async fn execute(
     log::info!("deleting resources...");
     let s3_manager = s3::Manager::new(&shared_config);
 
-    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+    let mut keep_resources_except_asg_ssm = spec.keep_resources_except_asg_ssm;
+    if override_keep_resources_except_asg_ssm {
+        // don't keep if override
+        keep_resources_except_asg_ssm = false;
+    }
 
-        let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
-        let regional_kms_manager = kms::Manager::new(&regional_shared_config);
+    if !keep_resources_except_asg_ssm {
+        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+            let regional_shared_config =
+                aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
-        // delete this first since EC2 key delete does not depend on ASG/VPC
-        // (mainly to speed up delete operation)
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Red),
-            Print(format!(
-                "\n\n\nSTEP: delete EC2 key pair in the region '{region}'\n"
-            )),
-            ResetColor
-        )?;
+            let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
+            let regional_kms_manager = kms::Manager::new(&regional_shared_config);
 
-        let ec2_key_path = regional_resource.ec2_key_path.clone();
-        if Path::new(ec2_key_path.as_str()).exists() {
-            fs::remove_file(ec2_key_path.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed = format!(
-            "{}{}",
-            ec2_key_path,
-            compress_manager::Encoder::Zstd(3).ext()
-        );
-        if Path::new(ec2_key_path_compressed.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
-        }
-        let ec2_key_path_compressed_encrypted = format!("{}.encrypted", ec2_key_path_compressed);
-        if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
-            fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
-        }
-        regional_ec2_manager
-            .delete_key_pair(&regional_resource.ec2_key_name)
-            .await
-            .unwrap();
-
-        // delete this first since KMS key delete does not depend on ASG/VPC
-        // (mainly to speed up delete operation)
-        if regional_resource
-            .kms_symmetric_default_encrypt_key
-            .is_some()
-        {
-            sleep(Duration::from_secs(1)).await;
-
+            // delete this first since EC2 key delete does not depend on ASG/VPC
+            // (mainly to speed up delete operation)
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Red),
                 Print(format!(
-                    "\n\n\nSTEP: delete KMS key for encryption in the region '{region}'\n"
+                    "\n\n\nSTEP: delete EC2 key pair in the region '{region}'\n"
                 )),
                 ResetColor
             )?;
 
-            let k = regional_resource
-                .kms_symmetric_default_encrypt_key
-                .clone()
-                .unwrap();
-            regional_kms_manager
-                .schedule_to_delete(k.id.as_str(), 7)
+            let ec2_key_path = regional_resource.ec2_key_path.clone();
+            if Path::new(ec2_key_path.as_str()).exists() {
+                fs::remove_file(ec2_key_path.as_str()).unwrap();
+            }
+            let ec2_key_path_compressed = format!(
+                "{}{}",
+                ec2_key_path,
+                compress_manager::Encoder::Zstd(3).ext()
+            );
+            if Path::new(ec2_key_path_compressed.as_str()).exists() {
+                fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
+            }
+            let ec2_key_path_compressed_encrypted =
+                format!("{}.encrypted", ec2_key_path_compressed);
+            if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
+                fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
+            }
+            regional_ec2_manager
+                .delete_key_pair(&regional_resource.ec2_key_name)
                 .await
                 .unwrap();
+
+            // delete this first since KMS key delete does not depend on ASG/VPC
+            // (mainly to speed up delete operation)
+            if regional_resource
+                .kms_symmetric_default_encrypt_key
+                .is_some()
+            {
+                sleep(Duration::from_secs(1)).await;
+
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Red),
+                    Print(format!(
+                        "\n\n\nSTEP: delete KMS key for encryption in the region '{region}'\n"
+                    )),
+                    ResetColor
+                )?;
+
+                let k = regional_resource
+                    .kms_symmetric_default_encrypt_key
+                    .clone()
+                    .unwrap();
+                regional_kms_manager
+                    .schedule_to_delete(k.id.as_str(), 7)
+                    .await
+                    .unwrap();
+            }
         }
+    } else {
+        log::info!("skipping deleting EC2 key pairs and KMS keys");
+    }
+
+    if !keep_resources_except_asg_ssm {
+        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+            let regional_shared_config =
+                aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+
+            let regional_cloudformation_manager =
+                cloudformation::Manager::new(&regional_shared_config);
+
+            // IAM roles can be deleted without being blocked on ASG/VPC
+            if regional_resource
+                .cloudformation_ec2_instance_profile_arn
+                .is_some()
+            {
+                sleep(Duration::from_secs(1)).await;
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Red),
+                    Print(format!(
+                        "\n\n\nSTEP: trigger delete IAM EC2 instance role in the region '{region}'\n"
+                    )),
+                    ResetColor
+                )?;
+
+                let ec2_instance_role_stack_name = regional_resource
+                    .cloudformation_ec2_instance_role
+                    .clone()
+                    .unwrap();
+                regional_cloudformation_manager
+                    .delete_stack(ec2_instance_role_stack_name.as_str())
+                    .await
+                    .unwrap();
+            }
+        }
+    } else {
+        log::info!("skipping deleting IAM EC2 instance role");
     }
 
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
@@ -226,39 +282,14 @@ pub async fn execute(
 
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
-        // IAM roles can be deleted without being blocked on ASG/VPC
-        if regional_resource
-            .cloudformation_ec2_instance_profile_arn
-            .is_some()
-        {
-            sleep(Duration::from_secs(1)).await;
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Red),
-                Print(format!(
-                    "\n\n\nSTEP: trigger delete EC2 instance role in the region '{region}'\n"
-                )),
-                ResetColor
-            )?;
-
-            let ec2_instance_role_stack_name = regional_resource
-                .cloudformation_ec2_instance_role
-                .clone()
-                .unwrap();
-            regional_cloudformation_manager
-                .delete_stack(ec2_instance_role_stack_name.as_str())
-                .await
-                .unwrap();
-        }
-
         if let Some(ssm_doc_stack_name) = &regional_resource.cloudformation_ssm_install_subnet_chain
         {
             execute!(
-                stdout(),
-                SetForegroundColor(Color::Red),
-                Print(format!("\n\n\nSTEP: triggering delete SSM document for installing subnet in the region '{region}'\n")),
-                ResetColor
-            )?;
+            stdout(),
+            SetForegroundColor(Color::Red),
+            Print(format!("\n\n\nSTEP: triggering delete SSM document for installing subnet in the region '{region}'\n")),
+            ResetColor
+        )?;
             regional_cloudformation_manager
                 .delete_stack(ssm_doc_stack_name)
                 .await
@@ -400,82 +431,92 @@ pub async fn execute(
         }
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+    if !keep_resources_except_asg_ssm {
+        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+            let regional_shared_config =
+                aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
-        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+            let regional_cloudformation_manager =
+                cloudformation::Manager::new(&regional_shared_config);
 
-        // VPC delete must run after associated EC2 instances are terminated due to dependencies
-        if regional_resource.cloudformation_vpc_id.is_some()
-            && regional_resource
-                .cloudformation_vpc_security_group_id
-                .is_some()
-            && regional_resource
-                .cloudformation_vpc_public_subnet_ids
-                .is_some()
-        {
-            sleep(Duration::from_secs(1)).await;
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Red),
-                Print(format!(
-                    "\n\n\nSTEP: deleting VPC in the region '{region}'\n"
-                )),
-                ResetColor
-            )?;
-            let vpc_stack_name = regional_resource.cloudformation_vpc.clone().unwrap();
-            regional_cloudformation_manager
-                .delete_stack(vpc_stack_name.as_str())
-                .await
-                .unwrap();
-            sleep(Duration::from_secs(10)).await;
-            regional_cloudformation_manager
-                .poll_stack(
-                    vpc_stack_name.as_str(),
-                    StackStatus::DeleteComplete,
-                    Duration::from_secs(500),
-                    Duration::from_secs(30),
-                )
-                .await
-                .unwrap();
+            // VPC delete must run after associated EC2 instances are terminated due to dependencies
+            if regional_resource.cloudformation_vpc_id.is_some()
+                && regional_resource
+                    .cloudformation_vpc_security_group_id
+                    .is_some()
+                && regional_resource
+                    .cloudformation_vpc_public_subnet_ids
+                    .is_some()
+            {
+                sleep(Duration::from_secs(1)).await;
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Red),
+                    Print(format!(
+                        "\n\n\nSTEP: deleting VPC in the region '{region}'\n"
+                    )),
+                    ResetColor
+                )?;
+                let vpc_stack_name = regional_resource.cloudformation_vpc.clone().unwrap();
+                regional_cloudformation_manager
+                    .delete_stack(vpc_stack_name.as_str())
+                    .await
+                    .unwrap();
+                sleep(Duration::from_secs(10)).await;
+                regional_cloudformation_manager
+                    .poll_stack(
+                        vpc_stack_name.as_str(),
+                        StackStatus::DeleteComplete,
+                        Duration::from_secs(500),
+                        Duration::from_secs(30),
+                    )
+                    .await
+                    .unwrap();
+            }
         }
+    } else {
+        log::info!("skipping deleting VPC")
     }
 
-    for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+    if !keep_resources_except_asg_ssm {
+        for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
+            let regional_shared_config =
+                aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
 
-        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
+            let regional_cloudformation_manager =
+                cloudformation::Manager::new(&regional_shared_config);
 
-        if regional_resource
-            .cloudformation_ec2_instance_profile_arn
-            .is_some()
-        {
-            sleep(Duration::from_secs(1)).await;
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Red),
-                Print(format!(
-                    "\n\n\nSTEP: confirming delete EC2 instance role in the region '{region}'\n"
+            if regional_resource
+                .cloudformation_ec2_instance_profile_arn
+                .is_some()
+            {
+                sleep(Duration::from_secs(1)).await;
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Red),
+                    Print(format!(
+                    "\n\n\nSTEP: confirming delete IAM EC2 instance role in the region '{region}'\n"
                 )),
-                ResetColor
-            )?;
+                    ResetColor
+                )?;
 
-            let ec2_instance_role_stack_name = regional_resource
-                .cloudformation_ec2_instance_role
-                .clone()
-                .unwrap();
-            regional_cloudformation_manager
-                .poll_stack(
-                    ec2_instance_role_stack_name.as_str(),
-                    StackStatus::DeleteComplete,
-                    Duration::from_secs(500),
-                    Duration::from_secs(30),
-                )
-                .await
-                .unwrap();
+                let ec2_instance_role_stack_name = regional_resource
+                    .cloudformation_ec2_instance_role
+                    .clone()
+                    .unwrap();
+                regional_cloudformation_manager
+                    .poll_stack(
+                        ec2_instance_role_stack_name.as_str(),
+                        StackStatus::DeleteComplete,
+                        Duration::from_secs(500),
+                        Duration::from_secs(30),
+                    )
+                    .await
+                    .unwrap();
+            }
         }
+    } else {
+        log::info!("skipping confirming IAM EC2 instance role deletion")
     }
 
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
