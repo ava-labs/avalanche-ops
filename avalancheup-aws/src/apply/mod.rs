@@ -2312,13 +2312,15 @@ cat /tmp/{node_id}.crt
 --staking-amount-in-avax 2000 \\
 --spec-file-path {spec_file_path}
 
-# or
-# --target-node-ids '{target_node_ids}'
+# or --target-node-ids '{target_node_ids}'
 
 ",
             exec_path = exec_path.display(),
-            chain_rpc_url =
-                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+            chain_rpc_url = if spec.avalanchego_config.is_custom_network() {
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string()
+            } else {
+                "https://api.avax-test.network".to_string()
+            },
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
             spec_file_path = spec_file_path,
             target_node_ids = all_node_ids.join(","),
@@ -2434,25 +2436,25 @@ cat /tmp/{node_id}.crt
         SetForegroundColor(Color::Green),
         Print(format!(
             "{exec_path} install-subnet-chain \\
---log-level info \\
---s3-region {s3_region} \\
---s3-bucket {s3_bucket} \\
---s3-key-prefix {id}/install-subnet-chain \\
---chain-rpc-url {chain_rpc_url} \\
---key {priv_key_hex} \\
---primary-network-validate-period-in-days 16 \\
---subnet-validate-period-in-days 14 \\
---subnet-config-local-path /tmp/subnet-config.json \\
---subnet-config-remote-dir {subnet_config_remote_dir} \\
---vm-binary-local-path REPLACE_ME \\
---vm-binary-remote-dir {vm_plugin_remote_dir} \\
---chain-name subnetevm \\
---chain-genesis-path /tmp/subnet-evm-genesis.json \\
---chain-config-local-path /tmp/subnet-evm-chain-config.json \\
---chain-config-remote-dir {chain_config_remote_dir} \\
---avalanchego-config-remote-path {avalanchego_config_remote_path} \\
---staking-amount-in-avax 2000 \\
---ssm-docs '{region_to_ssm_doc_name}' \\
+        --log-level info \\
+        --s3-region {s3_region} \\
+        --s3-bucket {s3_bucket} \\
+        --s3-key-prefix {id}/install-subnet-chain \\
+        --chain-rpc-url {chain_rpc_url} \\
+        --key {priv_key_hex} \\
+        --primary-network-validate-period-in-days 16 \\
+        --subnet-validate-period-in-days 14 \\
+        --subnet-config-local-path /tmp/subnet-config.json \\
+        --subnet-config-remote-dir {subnet_config_remote_dir} \\
+        --vm-binary-local-path REPLACE_ME \\
+        --vm-binary-remote-dir {vm_plugin_remote_dir} \\
+        --chain-name subnetevm \\
+        --chain-genesis-path /tmp/subnet-evm-genesis.json \\
+        --chain-config-local-path /tmp/subnet-evm-chain-config.json \\
+        --chain-config-remote-dir {chain_config_remote_dir} \\
+        --avalanchego-config-remote-path {avalanchego_config_remote_path} \\
+        --staking-amount-in-avax 2000 \\
+        --ssm-docs '{region_to_ssm_doc_name}' \\
 --target-nodes '{node_id_to_region_machine_id}'
 
 # or use to add all nodes as subnet validators
@@ -2461,8 +2463,11 @@ cat /tmp/{node_id}.crt
             exec_path = exec_path.display(),
             s3_region = spec.resource.regions[0],
             s3_bucket = spec.resource.s3_bucket,
-            chain_rpc_url =
-                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string(),
+            chain_rpc_url = if spec.avalanchego_config.is_custom_network() {
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string()
+            } else {
+                "https://api.avax-test.network".to_string()
+            },
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
             id = spec.id,
             subnet_config_remote_dir = spec.avalanchego_config.subnet_config_dir,
