@@ -2228,6 +2228,7 @@ cat /tmp/{node_id}.crt
     }
 
     // adding validators is only supported for custom network
+    // because fuji + mainnet requires state sync with exiting chain state
     if spec.avalanchego_config.is_custom_network() {
         let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
         let priv_key =
