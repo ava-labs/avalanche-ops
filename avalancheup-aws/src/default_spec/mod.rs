@@ -24,11 +24,11 @@ impl clap::builder::TypedValueParser for HashMapStringToStringParser {
         _arg: Option<&Arg>,
         value: &std::ffi::OsStr,
     ) -> Result<Self::Value, clap::Error> {
-        let str = value.to_str().unwrap_or_default();
-        let m: HashMap<String, String> = serde_json::from_str(str).map_err(|e| {
+        let s = value.to_str().unwrap_or_default();
+        let m: HashMap<String, String> = serde_json::from_str(s).map_err(|e| {
             clap::Error::raw(
                 clap::error::ErrorKind::InvalidValue,
-                format!("HashMap parsing failed ({})", e),
+                format!("HashMap parsing '{}' failed ({})", s, e),
             )
         })?;
         Ok(m)
@@ -47,11 +47,11 @@ impl clap::builder::TypedValueParser for HashMapStringToStringsParser {
         _arg: Option<&Arg>,
         value: &std::ffi::OsStr,
     ) -> Result<Self::Value, clap::Error> {
-        let str = value.to_str().unwrap_or_default();
-        let m: HashMap<String, Vec<String>> = serde_json::from_str(str).map_err(|e| {
+        let s = value.to_str().unwrap_or_default();
+        let m: HashMap<String, Vec<String>> = serde_json::from_str(s).map_err(|e| {
             clap::Error::raw(
                 clap::error::ErrorKind::InvalidValue,
-                format!("HashMap parsing failed ({})", e),
+                format!("HashMap parsing '{}' failed ({})", s, e),
             )
         })?;
         Ok(m)
