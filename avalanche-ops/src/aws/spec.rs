@@ -512,7 +512,14 @@ impl Spec {
         let (total_anchor_nodes, total_non_anchor_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 // non-custom network only single node to utilize single AZ
-                Some(_) => (None, 1),
+                Some(_) => (
+                    None,
+                    if opts.non_anchor_nodes > 0 {
+                        opts.non_anchor_nodes
+                    } else {
+                        DEFAULT_MACHINE_NON_ANCHOR_NODES
+                    },
+                ),
 
                 // custom network
                 None => {
@@ -1015,13 +1022,14 @@ impl Spec {
                 ),
             ));
         }
-        if !self.avalanchego_config.is_custom_network() && self.machine.total_non_anchor_nodes != 1
+        if self.avalanchego_config.is_custom_network()
+            && self.machine.total_anchor_nodes.unwrap_or(0) == 0
         {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!(
-                    "'machine.non_anchor_nodes' must be 1 (set to {}) in order to maximize the benefit of static EBS provision per AZ",
-                    self.machine.total_non_anchor_nodes
+                    "'machine.total_anchor_nodes' must be >1 (set to {:?})",
+                    self.machine.total_anchor_nodes
                 ),
             ));
         }
@@ -1669,13 +1677,9 @@ pub const DEFAULT_MACHINE_ANCHOR_NODES: u32 = 1;
 pub const MIN_MACHINE_ANCHOR_NODES: u32 = 1;
 pub const MAX_MACHINE_ANCHOR_NODES: u32 = 100;
 
-/// Default machine non-anchor nodes size.
-/// "1" is better in order to choose only one AZ for static EBS provision.
-/// If one wants to run multiple nodes, it should create multiple groups
-/// of avalanche ops clusters.
-pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 2;
 pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
 pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 500;
+pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 1;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
