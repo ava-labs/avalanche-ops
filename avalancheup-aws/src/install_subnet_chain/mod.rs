@@ -36,6 +36,7 @@ pub struct Flags {
     pub s3_region: String,
     pub s3_bucket: String,
     pub s3_key_prefix: String,
+    pub s3_upload_timeout: u64,
 
     pub chain_rpc_url: String,
     pub key: String,
@@ -159,6 +160,15 @@ pub fn command() -> Command {
                 .help("Sets the S3 key prefix for all artifacts")
                 .required(true)
                 .num_args(1),
+        )
+        .arg(
+            Arg::new("S3_UPLOAD_TIMEOUT")
+                .long("s3-upload-timeout")
+                .help("Sets the S3 upload timeout in seconds (default 30)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("30")
         )
         .arg(
             Arg::new("CHAIN_RPC_URL")
@@ -469,10 +479,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', primary network validate period in days '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', S3 upload timeout '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', primary network validate period in days '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
             opts.s3_bucket,
             opts.s3_key_prefix,
+            opts.s3_upload_timeout,
             opts.subnet_config_local_path,
             opts.subnet_config_remote_dir,
             opts.vm_binary_local_path,
@@ -491,7 +502,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     )?;
 
     let shared_config =
-        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
+        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(opts.s3_upload_timeout))).await;
     let sts_manager = sts::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
 

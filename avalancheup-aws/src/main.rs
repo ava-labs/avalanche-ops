@@ -356,7 +356,11 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("S3_KEY_PREFIX")
                     .unwrap_or(&String::new())
                     .clone(),
-
+                s3_upload_timeout: sub_matches
+                    .get_one::<u64>("S3_UPLOAD_TIMEOUT")
+                    .unwrap_or(&30)
+                    .clone(),
+                    
                 chain_rpc_url: sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
                     .unwrap()
