@@ -9,7 +9,7 @@ use std::{
     str::FromStr,
 };
 
-use avalanche_types::units;
+use avalanche_types::{key::secp256k1::KeyType, units};
 use clap::{crate_version, Command};
 use primitive_types::{H160, U256};
 
@@ -53,6 +53,12 @@ async fn main() -> io::Result<()> {
         }
 
         Some((create::NAME, sub_matches)) => {
+            let s = sub_matches
+                .get_one::<String>("KEY_TYPE")
+                .unwrap_or(&String::new())
+                .clone();
+            let key_type = KeyType::from_str(&s).unwrap();
+
             let key_name_prefix = if let Some(p) = sub_matches.get_one::<String>("KEY_NAME_PREFIX")
             {
                 p.clone()
@@ -113,6 +119,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::from("info"))
                     .clone(),
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
+                key_type,
                 &key_name_prefix,
                 sub_matches.get_one::<usize>("KEYS").unwrap_or(&1).clone(),
                 &keys_file_output,

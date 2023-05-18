@@ -10,6 +10,14 @@
 ./target/release/avalanche-kms info --help
 ```
 
+To create a new hotkey:
+
+```bash
+./target/release/avalanche-kms create \
+--key-type hot \
+--keys 1
+```
+
 To create a new KMS key:
 
 ```bash
