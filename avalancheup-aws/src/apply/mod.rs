@@ -1905,6 +1905,10 @@ aws ssm start-session --region {} --target {}
     for node in created_nodes.iter() {
         println!("{}", node.encode_yaml().unwrap());
     }
+    let all_nodes_yaml_path = get_all_nodes_yaml_path(&spec_file_path);
+    let f = File::create(&all_nodes_yaml_path).unwrap();
+    serde_yaml::to_writer(f, &created_nodes.clone()).unwrap();
+    println!("# for all nodes\ncat {all_nodes_yaml_path}");
 
     execute!(
         stdout(),
@@ -2934,4 +2938,18 @@ async fn add_primary_network_permissionless_validator(
             log::warn!("failed add_permissionless_validator {}", e);
         }
     }
+}
+
+fn get_all_nodes_yaml_path(spec_file_path: &str) -> String {
+    let path = Path::new(spec_file_path);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let new_name = format!("{}-all-nodes.yaml", name.to_str().unwrap(),);
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
 }
