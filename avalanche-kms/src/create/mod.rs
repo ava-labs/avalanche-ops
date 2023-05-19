@@ -440,7 +440,7 @@ pub async fn execute(
                 let key_info = k.to_info(1).unwrap();
 
                 println!();
-                println!("loaded created KMS key\n\n{}\n", key_info);
+                println!("[{i}] created hotkey\n\n{}\n", key_info);
                 println!();
             }
 
