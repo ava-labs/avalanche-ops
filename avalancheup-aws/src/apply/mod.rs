@@ -542,12 +542,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 )
                 .await
                 .unwrap();
+
+            log::info!("waiting for IAM creation...");
+            sleep(Duration::from_secs(10)).await;
         } else {
             log::info!("skipping creating IAM EC2 instance role (already exists)")
         }
     }
-    log::info!("waiting for IAM creation...");
-    sleep(Duration::from_secs(10)).await;
+
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
@@ -667,12 +669,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 )
                 .await
                 .expect("failed create_stack for VPC");
+
+            log::info!("waiting for VPC creation...");
+            sleep(Duration::from_secs(10)).await;
         } else {
             log::info!("skipping creating VPC (already exists)")
         }
     }
-    log::info!("waiting for VPC creation...");
-    sleep(Duration::from_secs(10)).await;
+
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
