@@ -44,6 +44,7 @@ impl ConfigManager {
                 log_group_name: self.id.clone(),
                 log_stream_name: format!("{{instance_id}}-{}-all", self.node_kind.as_str()),
 
+                // use "**.log" for match all logs in the directory
                 // ref. /var/log/avalanchego/avalanchego.log contains logs from all chains
                 file_path: format!("{}/avalanchego.log", self.log_dir),
 
