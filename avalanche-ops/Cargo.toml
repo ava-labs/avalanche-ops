@@ -1,6 +1,6 @@
 [package]
 name = "avalanche-ops"
-version = "0.6.3-beta.1" # https://crates.io/crates/avalanche-ops
+version = "0.6.3" # https://crates.io/crates/avalanche-ops
 edition = "2021"
 rust-version = "1.69"
 publish = true

@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{self, stdout},
+    path::Path,
 };
 
 use avalanche_types::avalanchego::config as avalanchego_config;
