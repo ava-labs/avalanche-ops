@@ -444,7 +444,7 @@ pub async fn execute(opts: avalanche_ops::aws::spec::DefaultSpecOption) -> io::R
     execute!(
         stdout(),
         SetForegroundColor(Color::Magenta),
-        Print(format!("vi {}\n\n", spec_file_path)),
+        Print(format!("vi {}\n", spec_file_path)),
         ResetColor
     )?;
 
