@@ -217,7 +217,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                             }
                             true
                         });
-                        return   warp::reply::json(&UserInfo {
+                        return warp::reply::json(&UserInfo {
                             user_id: user_id,
                             user_address: H160::zero(),
                             connected_health_urls: connected_health_urls.clone(),
