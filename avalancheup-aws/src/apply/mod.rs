@@ -2440,25 +2440,25 @@ cat /tmp/{node_id}.crt
         SetForegroundColor(Color::Green),
         Print(format!(
             "{exec_path} install-subnet-chain \\
-        --log-level info \\
-        --s3-region {s3_region} \\
-        --s3-bucket {s3_bucket} \\
-        --s3-key-prefix {id}/install-subnet-chain \\
-        --chain-rpc-url {chain_rpc_url} \\
-        --key {priv_key_hex} \\
-        --primary-network-validate-period-in-days 16 \\
-        --subnet-validate-period-in-days 14 \\
-        --subnet-config-local-path /tmp/subnet-config.json \\
-        --subnet-config-remote-dir {subnet_config_remote_dir} \\
-        --vm-binary-local-path REPLACE_ME \\
-        --vm-binary-remote-dir {vm_plugin_remote_dir} \\
-        --chain-name subnetevm \\
-        --chain-genesis-path /tmp/subnet-evm-genesis.json \\
-        --chain-config-local-path /tmp/subnet-evm-chain-config.json \\
-        --chain-config-remote-dir {chain_config_remote_dir} \\
-        --avalanchego-config-remote-path {avalanchego_config_remote_path} \\
-        --staking-amount-in-avax 2000 \\
-        --ssm-docs '{region_to_ssm_doc_name}' \\
+--log-level info \\
+--s3-region {s3_region} \\
+--s3-bucket {s3_bucket} \\
+--s3-key-prefix {id}/install-subnet-chain \\
+--chain-rpc-url {chain_rpc_url} \\
+--key {priv_key_hex} \\
+--primary-network-validate-period-in-days 16 \\
+--subnet-validate-period-in-days 14 \\
+--subnet-config-local-path /tmp/subnet-config.json \\
+--subnet-config-remote-dir {subnet_config_remote_dir} \\
+--vm-binary-local-path REPLACE_ME \\
+--vm-binary-remote-dir {vm_plugin_remote_dir} \\
+--chain-name subnetevm \\
+--chain-genesis-path /tmp/subnet-evm-genesis.json \\
+--chain-config-local-path /tmp/subnet-evm-chain-config.json \\
+--chain-config-remote-dir {chain_config_remote_dir} \\
+--avalanchego-config-remote-path {avalanchego_config_remote_path} \\
+--staking-amount-in-avax 2000 \\
+--ssm-docs '{region_to_ssm_doc_name}' \\
 --target-nodes '{node_id_to_region_machine_id}'
 
 # or use to add all nodes as subnet validators
