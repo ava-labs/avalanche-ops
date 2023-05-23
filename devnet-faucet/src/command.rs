@@ -218,7 +218,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                             true
                         });
                         return warp::reply::json(&UserInfo {
-                            user_id: user_id,
+                            user_id,
                             user_address: H160::zero(),
                             connected_health_urls: connected_health_urls.clone(),
                             connected_chain_id: *chain_id.clone(),
@@ -265,7 +265,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 });
 
                 warp::reply::json(&UserInfo {
-                    user_id: user_id,
+                    user_id,
                     user_address: addr,
                     connected_health_urls: connected_health_urls.clone(),
                     connected_chain_id: *chain_id.clone(),
@@ -332,7 +332,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                             true
                         });
                         return warp::reply::json(&UserInfo {
-                            user_id: user_id,
+                            user_id,
                             user_address: H160::zero(),
                             connected_health_urls: connected_health_urls.clone(),
                             connected_chain_id: *chain_id.clone(),
@@ -356,8 +356,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                     .unwrap();
 
                 let transfer_amount_in_avax = U256::from(1000);
-                let transfer_amount =
-                    units::cast_avax_to_evm_navax(U256::from(transfer_amount_in_avax));
+                let transfer_amount = units::cast_avax_to_evm_navax(transfer_amount_in_avax);
 
                 let (msg, addr) = match H160::from_str(address_to_fund.trim_start_matches("0x")) {
                     Ok(transferee_addr) => match transferer_evm_wallet
@@ -413,7 +412,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
                 });
 
                 warp::reply::json(&UserInfo {
-                    user_id: user_id,
+                    user_id,
                     user_address: addr,
                     connected_health_urls: connected_health_urls.clone(),
                     connected_chain_id: *chain_id.clone(),
@@ -512,7 +511,7 @@ fn handle_chat_get(
             user_id: created_user_id,
             user_address: H160::zero(),
             connected_health_urls: connected_health_urls.clone(),
-            connected_chain_id: *chain_id.clone(),
+            connected_chain_id: *chain_id,
             connected_chain_id_u64: chain_id.as_u64(),
             connected_chain_rpc_urls: chain_rpc_urls.clone(),
             error: String::new(),
@@ -563,15 +562,7 @@ fn handle_chat_get(
 
 /// TODO(용훈): implements rate limiting to prevent DDoS
 fn handle_chat_post(sender_id: usize, users: &UserIds) {
-    let sender_user_id = {
-        users
-            .lock()
-            .unwrap()
-            .get(&sender_id)
-            .unwrap()
-            .user_id
-            .clone()
-    };
+    let sender_user_id = { users.lock().unwrap().get(&sender_id).unwrap().user_id };
     let sender_address = { users.lock().unwrap().get(&sender_id).unwrap().address };
 
     // New message from this user, send it to everyone else (except same uid)...
@@ -594,7 +585,7 @@ fn handle_chat_post(sender_id: usize, users: &UserIds) {
                 .notifier
                 .send(NotifyEvent {
                     sender_user_id,
-                    msg: Message::Reply(new_msg.clone()),
+                    msg: Message::Reply(new_msg),
                 })
                 .is_ok()
         }
@@ -734,13 +725,12 @@ fn test_file() {
 
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let contents = format!(
-        r#"
+    let contents = r#"
 
 - key: 56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027
 
-"#,
-    );
+"#
+    .to_string();
     let mut f = tempfile::NamedTempFile::new().unwrap();
     let ret = f.write_all(contents.as_bytes());
     assert!(ret.is_ok());

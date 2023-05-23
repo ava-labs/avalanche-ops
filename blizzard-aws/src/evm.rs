@@ -265,7 +265,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
             receiver_h160
         );
 
-        let sender_nonce = h160_to_nonce.get(&sender_h160).unwrap().clone();
+        let sender_nonce = *h160_to_nonce.get(&sender_h160).unwrap();
         loop {
             match first_ephemeral_evm_wallet
                 .eip1559()
@@ -357,7 +357,7 @@ pub async fn make_transfers(worker_idx: usize, spec: blizzardup_aws::Spec) {
                 )
                 .unwrap();
 
-            let sender_nonce = h160_to_nonce.get(&sender_h160).unwrap().clone();
+            let sender_nonce = *h160_to_nonce.get(&sender_h160).unwrap();
             loop {
                 match evm_wallet
                     .eip1559()

@@ -447,7 +447,7 @@ pub async fn execute(
         spec.sync(spec_file_path)?;
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )

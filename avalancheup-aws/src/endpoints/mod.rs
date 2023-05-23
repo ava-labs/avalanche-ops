@@ -75,7 +75,7 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
     }
     let mut all_node_ids = Vec::new();
     for n in all_nodes_set.iter() {
-        all_node_ids.push(n.clone());
+        all_node_ids.push(*n);
     }
 
     let mut node_id_to_peer: BTreeMap<ids::node::Id, Peer> = BTreeMap::new();
@@ -98,9 +98,9 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
                     }
 
                     node_id_to_peer.insert(
-                        p.node_id.clone(),
+                        p.node_id,
                         Peer {
-                            http_rpc: format!("http://{}:9650", p.ip.to_string()),
+                            http_rpc: format!("http://{}:9650", p.ip),
 
                             peer: p.clone(),
                         },
@@ -108,13 +108,13 @@ pub async fn execute(log_level: &str, chain_rpc_urls: Vec<String>) -> io::Result
 
                     for tracked_subnet_id in &p.tracked_subnets {
                         if let Some(v) = tracked_subnet_id_to_node_ids.get_mut(tracked_subnet_id) {
-                            v.insert(p.node_id.clone());
+                            v.insert(p.node_id);
                             continue;
                         }
 
                         let mut ss = BTreeSet::new();
-                        ss.insert(p.node_id.clone());
-                        tracked_subnet_id_to_node_ids.insert(tracked_subnet_id.clone(), ss);
+                        ss.insert(p.node_id);
+                        tracked_subnet_id_to_node_ids.insert(*tracked_subnet_id, ss);
                     }
                 }
             }

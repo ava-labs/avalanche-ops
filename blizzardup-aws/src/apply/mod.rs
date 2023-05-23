@@ -222,7 +222,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     log::info!("uploading blizzardup spec file...");
     s3_manager
         .put_object(
-            &spec_file_path,
+            spec_file_path,
             &resources.s3_bucket,
             &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
@@ -261,7 +261,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -326,7 +326,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -409,7 +409,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -486,7 +486,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let desired_capacity = spec.machine.nodes;
 
-        let is_spot_instance = spec.machine.instance_mode == String::from("spot");
+        let is_spot_instance = spec.machine.instance_mode == *"spot";
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
         asg_parameters.push(build_param("InstanceMode", &spec.machine.instance_mode));
         asg_parameters.push(build_param(
@@ -640,7 +640,7 @@ aws ssm start-session --region {} --target {}
 
         s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &resources.s3_bucket,
                 &blizzardup_aws::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )

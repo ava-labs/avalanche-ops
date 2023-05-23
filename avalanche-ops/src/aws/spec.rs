@@ -651,7 +651,7 @@ impl Spec {
                         current_anchor_nodes = *total_anchors;
                     } else {
                         regional_machine.anchor_nodes = Some(per_region);
-                        current_anchor_nodes = current_anchor_nodes + per_region;
+                        current_anchor_nodes += per_region;
                     }
                 }
             }
@@ -666,7 +666,7 @@ impl Spec {
                     current_non_anchor_nodes = total_non_anchor_nodes;
                 } else {
                     regional_machine.non_anchor_nodes = per_region;
-                    current_non_anchor_nodes = current_non_anchor_nodes + per_region;
+                    current_non_anchor_nodes += per_region;
                 }
             }
 
@@ -694,7 +694,7 @@ impl Spec {
                 rust_os_type: opts.rust_os_type.clone(),
                 instance_mode: opts.instance_mode.clone(),
                 ip_mode: opts.ip_mode.clone(),
-                volume_size_in_gb: opts.volume_size_in_gb.clone(),
+                volume_size_in_gb: opts.volume_size_in_gb,
                 instance_types: region_to_instance_types.get(&regions[0]).unwrap().clone(),
             })
         } else {
@@ -723,7 +723,7 @@ impl Spec {
             log::info!("empty ingress_ipv4_cidr, so default to public IP on the local host");
             resource.ingress_ipv4_cidr = if let Some(ip) = public_ip::addr().await {
                 log::info!("found public ip address {:?}", ip);
-                format!("{}/32", ip.to_string())
+                format!("{}/32", ip)
             } else {
                 log::warn!("failed to get a public IP address -- default to 0.0.0.0/0");
                 "0.0.0.0/0".to_string()
@@ -843,27 +843,23 @@ impl Spec {
         };
         let volume_size_in_gb = if opts.volume_size_in_gb > 0 {
             opts.volume_size_in_gb
-        } else {
-            if avalanchego_config.is_mainnet() {
-                if state_sync_enabled {
-                    300
-                } else {
-                    1024
-                }
-            } else if !avalanchego_config.is_custom_network() {
-                // fuji/*
-                if state_sync_enabled {
-                    250
-                } else {
-                    600
-                }
+        } else if avalanchego_config.is_mainnet() {
+            if state_sync_enabled {
+                300
             } else {
-                if state_sync_enabled {
-                    200
-                } else {
-                    400
-                }
+                1024
             }
+        } else if !avalanchego_config.is_custom_network() {
+            // fuji/*
+            if state_sync_enabled {
+                250
+            } else {
+                600
+            }
+        } else if state_sync_enabled {
+            200
+        } else {
+            400
         };
 
         let machine = Machine {
@@ -1035,44 +1031,41 @@ impl Spec {
         }
 
         if let Some(v) = &self.upload_artifacts {
-            if !v.aws_volume_provisioner_local_bin.is_empty() {
-                if !Path::new(&v.aws_volume_provisioner_local_bin).exists() {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "aws_volume_provisioner_bin {} does not exist",
-                            v.aws_volume_provisioner_local_bin
-                        ),
-                    ));
-                }
+            if !v.aws_volume_provisioner_local_bin.is_empty()
+                && !Path::new(&v.aws_volume_provisioner_local_bin).exists()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "aws_volume_provisioner_bin {} does not exist",
+                        v.aws_volume_provisioner_local_bin
+                    ),
+                ));
             }
-            if !v.aws_ip_provisioner_local_bin.is_empty() {
-                if !Path::new(&v.aws_ip_provisioner_local_bin).exists() {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!(
-                            "aws_ip_provisioner_bin {} does not exist",
-                            v.aws_ip_provisioner_local_bin
-                        ),
-                    ));
-                }
+            if !v.aws_ip_provisioner_local_bin.is_empty()
+                && !Path::new(&v.aws_ip_provisioner_local_bin).exists()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "aws_ip_provisioner_bin {} does not exist",
+                        v.aws_ip_provisioner_local_bin
+                    ),
+                ));
             }
 
-            if !v.avalanched_local_bin.is_empty() {
-                if !Path::new(&v.avalanched_local_bin).exists() {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!("avalanched_bin {} does not exist", v.avalanched_local_bin),
-                    ));
-                }
+            if !v.avalanched_local_bin.is_empty() && !Path::new(&v.avalanched_local_bin).exists() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("avalanched_bin {} does not exist", v.avalanched_local_bin),
+                ));
             }
-            if !v.avalanchego_local_bin.is_empty() {
-                if !Path::new(&v.avalanchego_local_bin).exists() {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        format!("avalanchego_bin {} does not exist", v.avalanchego_local_bin),
-                    ));
-                }
+            if !v.avalanchego_local_bin.is_empty() && !Path::new(&v.avalanchego_local_bin).exists()
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("avalanchego_bin {} does not exist", v.avalanchego_local_bin),
+                ));
             }
         }
 
@@ -1136,8 +1129,7 @@ impl Spec {
         if self.machine.total_anchor_nodes.unwrap_or(0) > 0 {
             let mut total_anchor_nodes = 0;
             for (_, regional_machine) in self.machine.regional_machines.iter() {
-                total_anchor_nodes =
-                    total_anchor_nodes + regional_machine.anchor_nodes.unwrap_or(0);
+                total_anchor_nodes += regional_machine.anchor_nodes.unwrap_or(0);
             }
             if self.machine.total_anchor_nodes.unwrap_or(0) != total_anchor_nodes {
                 return Err(Error::new(
@@ -1151,7 +1143,7 @@ impl Spec {
         }
         let mut total_non_anchor_nodes = 0;
         for (_, regional_machine) in self.machine.regional_machines.iter() {
-            total_non_anchor_nodes = total_non_anchor_nodes + regional_machine.non_anchor_nodes;
+            total_non_anchor_nodes += regional_machine.non_anchor_nodes;
         }
         if self.machine.total_non_anchor_nodes != total_non_anchor_nodes {
             return Err(Error::new(
@@ -1178,24 +1170,24 @@ fn test_spec() {
         .try_init();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(&vec![0]);
+    let ret = f.write_all(&[0]);
     assert!(ret.is_ok());
     let avalanche_config_bin = f.path().to_str().unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(&vec![0]);
+    let ret = f.write_all(&[0]);
     assert!(ret.is_ok());
     let avalanched_bin = f.path().to_str().unwrap();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(&vec![0]);
+    let ret = f.write_all(&[0]);
     assert!(ret.is_ok());
     let avalanchego_bin = f.path().to_str().unwrap();
 
     let tmp_dir = tempfile::tempdir().unwrap();
     let plugin_path = tmp_dir.path().join(random_manager::secure_string(10));
     let mut f = File::create(&plugin_path).unwrap();
-    let ret = f.write_all(&vec![0]);
+    let ret = f.write_all(&[0]);
     assert!(ret.is_ok());
     let plugin_dir = tmp_dir.path().as_os_str().to_str().unwrap();
 
@@ -2058,7 +2050,7 @@ impl StorageNamespace {
                     &node.proof_of_possession.proof_of_possession,
                 )?;
 
-                let mut cloned = node.clone();
+                let mut cloned = node;
                 cloned.proof_of_possession = pop;
 
                 Ok(cloned)
@@ -2105,7 +2097,7 @@ fn test_storage_path() {
         Node {
             region: "ap-northeast-2".to_string(),
             kind: String::from("non-anchor"),
-            machine_id: instance_id.clone(),
+            machine_id: instance_id,
             node_id: "NodeID-6ZmBHXTqjknJoZtXbnJ6x7af863rXDTwx".to_string(),
             proof_of_possession,
             public_ip: node_ip.to_string(),
