@@ -70,6 +70,34 @@ https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aw
 -o ${HOME}/avalanched-aws.x86_64-unknown-linux-gnu
 ```
 
+## Permissions
+
+To use `avalancheup` you need AWS credentials stored locally to authenticate with against the AWS API.
+
+Run `aws sts get-caller-identity` to check whether you are logged in successfully on your machine.
+
+To generate temporary credentials via SSO, use `aws configure` or the `saml2aws` tool. For example,
+
+```
+$ saml2aws configure \
+--idp-account='default' \
+--idp-provider='provider' \
+--mfa='Auto' \
+--url='https://sso.provider.com/saml2/aws' \
+--username='YOUR EMAIL@ORG.org' \
+--role='arn:aws:iam::XXXXXXXXXXX:role/developer' \
+--profile='default' \
+--skip-prompt
+
+$ saml2aws login \
+--idp-account=default \
+--force \
+--session-duration=43200
+
+# verify account login was successful
+$ aws sts get-caller-identity
+```
+
 ## TODOs
 
 Contributions are welcome!
