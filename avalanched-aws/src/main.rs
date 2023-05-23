@@ -47,36 +47,36 @@ async fn main() {
                     .get_one::<String>("LOG_LEVEL")
                     .unwrap_or(&String::from("info"))
                     .clone(),
-                &sub_matches.get_one::<String>("S3_REGION").unwrap(),
-                &sub_matches
+                sub_matches.get_one::<String>("S3_REGION").unwrap(),
+                sub_matches
                     .get_one::<String>("S3_BUCKET")
                     .unwrap_or(&String::new()),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AVALANCHEGO_S3_KEY")
                     .unwrap_or(&String::new()),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AVALANCHEGO_LOCAL_PATH")
                     .unwrap_or(&String::new()),
                 avalanchego_release_tag,
-                &sub_matches
+                sub_matches
                     .get_one::<String>("RUST_OS_TYPE")
                     .unwrap_or(&String::from("ubuntu20.04")),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AWS_VOLUME_PROVISIONER_S3_KEY")
                     .unwrap_or(&String::new()),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AWS_VOLUME_PROVISIONER_LOCAL_PATH")
                     .unwrap_or(&String::new()),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AWS_IP_PROVISIONER_S3_KEY")
                     .unwrap_or(&String::new()),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AWS_IP_PROVISIONER_LOCAL_PATH")
                     .unwrap_or(&String::new()),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AVALANCHE_TELEMETRY_CLOUDWATCH_S3_KEY")
                     .unwrap_or(&String::new()),
-                &sub_matches
+                sub_matches
                     .get_one::<String>("AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_PATH")
                     .unwrap_or(&String::new()),
             )

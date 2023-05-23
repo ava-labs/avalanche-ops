@@ -296,7 +296,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     "config-file '{}' already exists -- overwriting except tracked subnet ids!",
                     config_file
                 );
-                let old_cfg = avalanchego::config::Config::load(&config_file)?;
+                let old_cfg = avalanchego::config::Config::load(config_file)?;
                 old_cfg.track_subnets
             } else {
                 None
@@ -1091,7 +1091,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     // assume the tag value is static
     // assume we don't change on-demand to spot, or vice versa
     // if someone changes, tag needs to be updated manually and restart avalanched
-    if fetched_tags.instance_mode == String::from("spot") {
+    if fetched_tags.instance_mode == *"spot" {
         handles.push(tokio::spawn(monitor_spot_instance_action(
             Arc::new(meta.region.clone()),
             Arc::new(meta.ec2_instance_id.clone()),
@@ -1202,7 +1202,7 @@ fn write_default_avalanche_config(
     if let Some(config_file) = &avalanchego_config.config_file {
         if Path::new(&config_file).exists() {
             log::info!("avalanchego config-file '{}' already exists -- skipping writing/syncing one to avoid overwrites, loading existing one", config_file);
-            return avalanchego::config::Config::load(&config_file);
+            return avalanchego::config::Config::load(config_file);
         };
     }
 

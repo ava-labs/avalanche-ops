@@ -1,10 +1,7 @@
 use std::{fs, io};
 
-use avalanche_installer;
-use avalanche_telemetry_cloudwatch_installer;
-use aws_ip_provisioner_installer;
 use aws_manager::{self, s3};
-use aws_volume_provisioner_installer;
+
 use clap::{Arg, Command};
 use tokio::time::Duration;
 
@@ -160,7 +157,7 @@ pub async fn execute(
         let tmp_path =
             avalanche_installer::avalanchego::github::download(None, None, avalanchego_release_tag)
                 .await?;
-        fs::copy(&tmp_path, &avalanchego_local_path)?;
+        fs::copy(&tmp_path, avalanchego_local_path)?;
         fs::remove_file(&tmp_path)?;
     }
 

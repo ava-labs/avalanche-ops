@@ -121,12 +121,11 @@ async fn main() -> io::Result<()> {
                 &sub_matches.get_one::<String>("REGION").unwrap().clone(),
                 key_type,
                 &key_name_prefix,
-                sub_matches.get_one::<usize>("KEYS").unwrap_or(&1).clone(),
+                *sub_matches.get_one::<usize>("KEYS").unwrap_or(&1),
                 &keys_file_output,
-                sub_matches
+                *sub_matches
                     .get_one::<usize>("KEYS_FILE_CHUNKS")
-                    .unwrap_or(&1)
-                    .clone(),
+                    .unwrap_or(&1),
                 &grantee_principal,
                 &evm_chain_rpc_url,
                 &evm_funding_hotkey,
@@ -138,10 +137,9 @@ async fn main() -> io::Result<()> {
         }
 
         Some((delete::NAME, sub_matches)) => {
-            let pending_windows_in_days = sub_matches
+            let pending_windows_in_days = *sub_matches
                 .get_one::<i32>("PENDING_WINDOWS_IN_DAYS")
-                .unwrap_or(&1)
-                .clone();
+                .unwrap_or(&1);
 
             delete::execute(
                 &sub_matches

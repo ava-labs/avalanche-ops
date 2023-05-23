@@ -317,7 +317,7 @@ fn test_spec() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let mut f = tempfile::NamedTempFile::new().unwrap();
-    let ret = f.write_all(&vec![0]);
+    let ret = f.write_all(&[0]);
     assert!(ret.is_ok());
     let blizzard_bin = f.path().to_str().unwrap();
 
