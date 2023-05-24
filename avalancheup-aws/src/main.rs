@@ -389,6 +389,10 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
                 chain_name: sub_matches.get_one::<String>("CHAIN_NAME").unwrap().clone(),
+                chain_alias: sub_matches
+                    .get_one::<String>("CHAIN_ALIAS")
+                    .unwrap_or(&String::new())
+                    .clone(),
                 chain_genesis_path: sub_matches
                     .get_one::<String>("CHAIN_GENESIS_PATH")
                     .unwrap()

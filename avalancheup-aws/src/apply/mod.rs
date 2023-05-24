@@ -2463,6 +2463,7 @@ cat /tmp/{node_id}.crt
 --vm-binary-local-path REPLACE_ME \\
 --vm-binary-remote-dir {vm_plugin_remote_dir} \\
 --chain-name subnetevm \\
+--chain-alias mysubnet \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
 --chain-config-local-path /tmp/subnet-evm-chain-config.json \\
 --chain-config-remote-dir {chain_config_remote_dir} \\

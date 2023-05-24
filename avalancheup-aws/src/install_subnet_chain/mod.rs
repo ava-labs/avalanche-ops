@@ -9,6 +9,7 @@ use std::{
 
 use avalanche_types::{
     ids::{self, node},
+    jsonrpc::client::admin as json_client_admin,
     jsonrpc::client::info as json_client_info,
     key, subnet, units, wallet,
 };
@@ -52,6 +53,7 @@ pub struct Flags {
     pub vm_binary_remote_dir: String,
     pub vm_id: String,
     pub chain_name: String,
+    pub chain_alias: String,
     pub chain_genesis_path: String,
 
     pub chain_config_local_path: String,
@@ -270,6 +272,13 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("CHAIN_ALIAS")
+                .long("chain-alias")
+                .help("Set an alias for the chain. The admin API must be enabled on the node in order to set an alias.")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("CHAIN_GENESIS_PATH")
                 .long("chain-genesis-path")
                 .help("Chain genesis file path")
@@ -478,7 +487,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', S3 upload timeout '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', primary network validate period in days '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', S3 upload timeout '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain alias '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', primary network validate period in days '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
             opts.s3_bucket,
             opts.s3_key_prefix,
@@ -489,6 +498,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             opts.vm_binary_remote_dir,
             vm_id,
             opts.chain_name,
+            opts.chain_alias,
             opts.chain_config_local_path,
             opts.chain_config_remote_dir,
             opts.chain_genesis_path,
@@ -1011,7 +1021,40 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         }
     }
 
-    println!();
+    // If an alias for the chain is provided, set the alias here.
+    // Note: the admin API must be enabled on the node for aliasing to succeed.
+    // ref <https://docs.avax.network/apis/avalanchego/apis/admin#adminaliaschain>
+    if !opts.chain_alias.is_empty() {
+        match json_client_admin::alias_chain(
+            &opts.chain_rpc_url,
+            opts.chain_name.clone(),
+            opts.chain_alias.clone(),
+        )
+        .await
+        {
+            Ok(_) => log::info!(
+                "set alias {} for chain {}",
+                &opts.chain_alias,
+                &opts.chain_name
+            ),
+            Err(e) => {
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Red),
+                    Print("\nError setting alias for chain. The admin API must be enabled on the node to set an alias.\n"),
+                    ResetColor
+                )?;
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "error setting alias {} for chain {}: {}",
+                        opts.chain_alias, opts.chain_name, e
+                    ),
+                ));
+            }
+        }
+    }
+
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
