@@ -123,7 +123,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 Some(avalanche_ops::aws::spec::StackName::Vpc(spec.id.clone()).encode());
         }
 
-        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
+        let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
         // DON'T "spec.regional_resource.cloudformation_asg_anchor_nodes.is_none()"
         // in case we edit anchor node size after default spec generation
@@ -362,7 +362,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.sync(spec_file_path)?;
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -405,7 +405,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.sync(spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    &spec_file_path,
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -471,7 +471,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
             default_s3_manager
                 .put_object(
-                    &spec_file_path,
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -600,7 +600,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.sync(spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    &spec_file_path,
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -741,7 +741,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.sync(spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    &spec_file_path,
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -759,7 +759,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
-        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
+        let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -915,7 +915,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             avalanched_download_source,
         ));
 
-        let is_spot_instance = spec.machine.instance_mode == String::from("spot");
+        let is_spot_instance = spec.machine.instance_mode == *"spot";
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
         common_asg_params.push(build_param(
             "InstanceMode",
@@ -1024,7 +1024,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     // reuse ASG template from previous run
                     anchor_asg_params.push(build_param(
                         "AsgLaunchTemplateVersion",
-                        &asg_launch_template_version,
+                        asg_launch_template_version,
                     ));
                 }
 
@@ -1158,7 +1158,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.sync(spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    &spec_file_path,
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -1207,7 +1207,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.sync(spec_file_path)?;
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -1216,7 +1216,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
+        let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -1237,7 +1237,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         .list_asg(anchor_asg_name)
                         .await
                         .unwrap();
-                    if ds.len() >= 1 {
+                    if !ds.is_empty() {
                         dss = ds;
                         break;
                     }
@@ -1246,7 +1246,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
                 droplets.extend(dss);
 
-                if spec.machine.ip_mode == String::from("elastic") {
+                if spec.machine.ip_mode == *"elastic" {
                     log::info!("using elastic IPs... wait more");
                     let mut outs: Vec<Address>;
                     loop {
@@ -1409,7 +1409,7 @@ aws ssm start-session --region {} --target {}
             spec.sync(spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    &spec_file_path,
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -1424,7 +1424,7 @@ aws ssm start-session --region {} --target {}
 
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
-        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
+        let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -1498,7 +1498,7 @@ aws ssm start-session --region {} --target {}
                 // reuse ASG template from previous run
                 non_anchor_asg_params.push(build_param(
                     "AsgLaunchTemplateVersion",
-                    &asg_launch_template_version,
+                    asg_launch_template_version,
                 ));
             }
 
@@ -1632,7 +1632,7 @@ aws ssm start-session --region {} --target {}
         spec.sync(spec_file_path)?;
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -1679,7 +1679,7 @@ aws ssm start-session --region {} --target {}
         spec.sync(spec_file_path)?;
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -1688,7 +1688,7 @@ aws ssm start-session --region {} --target {}
     }
 
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        let regional_machine = spec.machine.regional_machines.get(region).clone().unwrap();
+        let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
         let regional_shared_config =
             aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
@@ -1709,7 +1709,7 @@ aws ssm start-session --region {} --target {}
                         .list_asg(non_anchor_asg_name)
                         .await
                         .unwrap();
-                    if ds.len() >= 1 {
+                    if !ds.is_empty() {
                         dss = ds;
                         break;
                     }
@@ -1718,7 +1718,7 @@ aws ssm start-session --region {} --target {}
                 }
                 droplets.extend(dss);
 
-                if spec.machine.ip_mode == String::from("elastic") {
+                if spec.machine.ip_mode == *"elastic" {
                     log::info!("using elastic IPs... wait more");
                     let mut outs: Vec<Address>;
                     loop {
@@ -1876,7 +1876,7 @@ aws ssm start-session --region {} --target {}
             spec.sync(spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    &spec_file_path,
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -1893,7 +1893,7 @@ aws ssm start-session --region {} --target {}
     spec.sync(spec_file_path)?;
     default_s3_manager
         .put_object(
-            &spec_file_path,
+            spec_file_path,
             &spec.resource.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
@@ -1909,7 +1909,7 @@ aws ssm start-session --region {} --target {}
     for node in created_nodes.iter() {
         println!("{}", node.encode_yaml().unwrap());
     }
-    let all_nodes_yaml_path = get_all_nodes_yaml_path(&spec_file_path);
+    let all_nodes_yaml_path = get_all_nodes_yaml_path(spec_file_path);
     let f = File::create(&all_nodes_yaml_path).unwrap();
     serde_yaml::to_writer(f, &created_nodes.clone()).unwrap();
     println!("# for all nodes\ncat {all_nodes_yaml_path}");
@@ -2269,12 +2269,10 @@ cat /tmp/{node_id}.crt
             // randomly wait to prevent UTXO double spends from the same wallet
             let initial_wait_sec = if i == 0 {
                 0
+            } else if created_nodes.len() > 50 {
+                2 + i as u64
             } else {
-                if created_nodes.len() > 50 {
-                    2 + i as u64
-                } else {
-                    1 + i as u64
-                }
+                1 + i as u64
             };
             let random_wait = Duration::from_secs(initial_wait_sec)
                 .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
@@ -2325,7 +2323,7 @@ cat /tmp/{node_id}.crt
 ",
             exec_path = exec_path.display(),
             chain_rpc_url = if spec.avalanchego_config.is_custom_network() {
-                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string()
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns)
             } else {
                 "https://api.avax-test.network".to_string()
             },
@@ -2472,7 +2470,7 @@ cat /tmp/{node_id}.crt
             s3_region = spec.resource.regions[0],
             s3_bucket = spec.resource.s3_bucket,
             chain_rpc_url = if spec.avalanchego_config.is_custom_network() {
-                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns).to_string()
+                format!("{}://{}:{}", scheme_for_dns, rpc_hosts[0], port_for_dns)
             } else {
                 "https://api.avax-test.network".to_string()
             },
@@ -2586,7 +2584,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         spec.sync(spec_file_path)?;
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -2611,7 +2609,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             );
         }
 
-        let is_spot_instance = dev_machine.instance_mode == String::from("spot");
+        let is_spot_instance = dev_machine.instance_mode == *"spot";
         let on_demand_pct = if is_spot_instance { 0 } else { 100 };
         regional_common_dev_machine_asg_params.insert(
             "InstanceMode".to_string(),
@@ -2733,7 +2731,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         }
 
         let mut eips = Vec::new();
-        if spec.machine.ip_mode == String::from("elastic") {
+        if spec.machine.ip_mode == *"elastic" {
             log::info!("using elastic IPs... wait more");
             loop {
                 eips = regional_ec2_manager
@@ -2841,7 +2839,7 @@ aws ssm start-session --region {} --target {}
         spec.sync(spec_file_path)?;
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -2852,7 +2850,7 @@ aws ssm start-session --region {} --target {}
         log::info!("uploading avalancheup spec file...");
         default_s3_manager
             .put_object(
-                &spec_file_path,
+                spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -2926,7 +2924,7 @@ async fn add_primary_network_permissionless_validator(
     match wallet_to_spend
         .p()
         .add_permissionless_validator()
-        .node_id(node_id.clone())
+        .node_id(*node_id)
         .proof_of_possession(pop.clone())
         .stake_amount(*stake_amount_in_navax)
         .validate_period_in_days(*primary_network_validate_period_in_days, 60)

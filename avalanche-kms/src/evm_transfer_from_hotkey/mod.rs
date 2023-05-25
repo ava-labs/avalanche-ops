@@ -140,7 +140,7 @@ pub async fn execute(
             .await
             .unwrap();
         let transferer_evm_wallet = w
-            .evm(&transferer_key_signer, chain_rpc_url, U256::from(chain_id))
+            .evm(&transferer_key_signer, chain_rpc_url, chain_id)
             .unwrap();
 
         let transferer_balance = transferer_evm_wallet.balance().await.unwrap();

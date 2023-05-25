@@ -224,13 +224,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
                     opts.staking_amount_in_avax,
                     opts.primary_network_validate_period_in_days,
-            ).to_string(),
+            ),
             format!(
                 "Yes, let's add primary network validators with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, primary network staking {} days",
                     units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
                     opts.staking_amount_in_avax,
                     opts.primary_network_validate_period_in_days,
-                ).to_string(),
+                ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select your 'add-primary-network-validators' option")
@@ -330,7 +330,7 @@ async fn add_primary_network_validator(
     let (tx_id, added) = wallet_to_spend
         .p()
         .add_validator()
-        .node_id(node_id.clone())
+        .node_id(*node_id)
         .stake_amount(*stake_amount_in_navax)
         .validate_period_in_days(*primary_network_validate_period_in_days, 60)
         .check_acceptance(true)
@@ -365,7 +365,7 @@ async fn add_primary_network_permissionless_validator(
     let (tx_id, added) = wallet_to_spend
         .p()
         .add_permissionless_validator()
-        .node_id(node_id.clone())
+        .node_id(*node_id)
         .proof_of_possession(pop.clone())
         .stake_amount(*stake_amount_in_navax)
         .validate_period_in_days(*primary_network_validate_period_in_days, 60)

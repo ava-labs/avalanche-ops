@@ -24,16 +24,12 @@ async fn main() {
 
     match matches.subcommand() {
         Some((default_spec::NAME, sub_matches)) => {
-            let funded_keys = sub_matches
-                .get_one::<usize>("FUNDED_KEYS")
-                .unwrap_or(&5)
-                .clone();
-            let blizzard_keys_to_generate = sub_matches
+            let funded_keys = *sub_matches.get_one::<usize>("FUNDED_KEYS").unwrap_or(&5);
+            let blizzard_keys_to_generate = *sub_matches
                 .get_one::<usize>("BLIZZARD_KEYS_TO_GENERATE")
-                .unwrap_or(&5)
-                .clone();
+                .unwrap_or(&5);
 
-            let nodes = sub_matches.get_one::<usize>("NODES").unwrap_or(&2).clone();
+            let nodes = *sub_matches.get_one::<usize>("NODES").unwrap_or(&2);
 
             let s = sub_matches
                 .get_one::<String>("BLIZZARD_CHAIN_RPC_URLS")
@@ -58,10 +54,9 @@ async fn main() {
                 blizzard_load_kinds.push(lk.to_string());
             }
 
-            let blizzard_workers = sub_matches
+            let blizzard_workers = *sub_matches
                 .get_one::<usize>("BLIZZARD_WORKERS")
-                .unwrap_or(&5)
-                .clone();
+                .unwrap_or(&5);
 
             let opt = blizzardup_aws::DefaultSpecOption {
                 log_level: sub_matches

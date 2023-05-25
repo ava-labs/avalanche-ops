@@ -36,6 +36,7 @@ pub struct Flags {
     pub s3_region: String,
     pub s3_bucket: String,
     pub s3_key_prefix: String,
+    pub s3_upload_timeout: u64,
 
     pub chain_rpc_url: String,
     pub key: String,
@@ -159,6 +160,15 @@ pub fn command() -> Command {
                 .help("Sets the S3 key prefix for all artifacts")
                 .required(true)
                 .num_args(1),
+        )
+        .arg(
+            Arg::new("S3_UPLOAD_TIMEOUT")
+                .long("s3-upload-timeout")
+                .help("Sets the S3 upload timeout in seconds (default 30)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("30")
         )
         .arg(
             Arg::new("CHAIN_RPC_URL")
@@ -469,10 +479,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Green),
         Print(format!(
-            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', primary network validate period in days '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            "\nInstalling subnet with network Id '{network_id}', chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', S3 upload timeout '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', primary network validate period in days '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
             opts.chain_rpc_url,
             opts.s3_bucket,
             opts.s3_key_prefix,
+            opts.s3_upload_timeout,
             opts.subnet_config_local_path,
             opts.subnet_config_remote_dir,
             opts.vm_binary_local_path,
@@ -490,8 +501,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         ResetColor
     )?;
 
-    let shared_config =
-        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
+    let shared_config = aws_manager::load_config(
+        Some(opts.s3_region.clone()),
+        Some(Duration::from_secs(opts.s3_upload_timeout)),
+    )
+    .await;
     let sts_manager = sts::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
 
@@ -508,14 +522,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     opts.staking_amount_in_avax,
                     opts.primary_network_validate_period_in_days,
                     opts.subnet_validate_period_in_days,
-            ).to_string(),
+            ),
             format!(
                 "Yes, let's install a subnet with the wallet {p_chain_address} of balance {} AVAX, staking amount {} AVAX, primary network staking {} days, subnet staking {} days",
                     units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance)),
                     opts.staking_amount_in_avax,
                     opts.primary_network_validate_period_in_days,
                     opts.subnet_validate_period_in_days,
-                ).to_string(),
+                ),
         ];
         let selected = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select your 'install-subnet-chain' option")
@@ -557,7 +571,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         let subnet_config_s3_key = format!(
             "{}{}",
             s3::append_slash(&opts.s3_key_prefix),
-            file_stem.to_str().unwrap().to_string()
+            file_stem.to_str().unwrap()
         );
 
         s3_manager
@@ -581,11 +595,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Print("\n\n\nSTEP: uploading VM binary local file to S3\n\n"),
         ResetColor
     )?;
-    let vm_binary_s3_key = format!(
-        "{}{}",
-        s3::append_slash(&opts.s3_key_prefix),
-        vm_id.to_string()
-    );
+    let vm_binary_s3_key = format!("{}{}", s3::append_slash(&opts.s3_key_prefix), vm_id);
     s3_manager
         .put_object(
             &opts.vm_binary_local_path,
@@ -624,7 +634,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         let chain_config_s3_key = format!(
             "{}{}",
             s3::append_slash(&opts.s3_key_prefix),
-            file_stem.to_str().unwrap().to_string()
+            file_stem.to_str().unwrap()
         );
 
         s3_manager
@@ -743,8 +753,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     s3_region = opts.s3_region,
         s3_bucket = opts.s3_bucket,
         vm_binary_s3_key = vm_binary_s3_key,
-        vm_binary_local_path = format!("{}{}", s3::append_slash(&opts.vm_binary_remote_dir), vm_id.to_string()),
-        subnet_id_to_track = created_subnet_id.to_string(),
+        vm_binary_local_path = format!("{}{}", s3::append_slash(&opts.vm_binary_remote_dir), vm_id),
+        subnet_id_to_track = created_subnet_id,
         avalanchego_config_remote_path = opts.avalanchego_config_remote_path,
     );
     let avalanched_args = if !opts.subnet_config_local_path.is_empty() {
@@ -754,14 +764,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         let subnet_config_s3_key = format!(
             "{}{}",
             s3::append_slash(&opts.s3_key_prefix),
-            file_stem.to_str().unwrap().to_string()
+            file_stem.to_str().unwrap()
         );
 
         // If a subnet id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
         // the config file for this subnet is located at {subnet-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt.json.
         format!("{subcmd} --subnet-config-s3-key {subnet_config_s3_key} --subnet-config-local-path {subnet_config_local_path}",
             subnet_config_s3_key = subnet_config_s3_key,
-            subnet_config_local_path = format!("{}{}.json", s3::append_slash(&opts.subnet_config_remote_dir), created_subnet_id.to_string()),
+            subnet_config_local_path = format!("{}{}.json", s3::append_slash(&opts.subnet_config_remote_dir), created_subnet_id),
         )
     } else {
         subcmd
@@ -894,7 +904,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         .create_chain()
         .subnet_id(created_subnet_id)
         .genesis_data(chain_genesis_bytes.clone())
-        .vm_id(vm_id.clone())
+        .vm_id(vm_id)
         .chain_name(opts.chain_name.clone())
         .dry_mode(true)
         .issue()
@@ -907,7 +917,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         .create_chain()
         .subnet_id(created_subnet_id)
         .genesis_data(chain_genesis_bytes.clone())
-        .vm_id(vm_id.clone())
+        .vm_id(vm_id)
         .chain_name(opts.chain_name.clone())
         .check_acceptance(true)
         .issue()
@@ -929,7 +939,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         let chain_config_s3_key = format!(
             "{}{}",
             s3::append_slash(&opts.s3_key_prefix),
-            file_stem.to_str().unwrap().to_string()
+            file_stem.to_str().unwrap()
         );
 
         // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
@@ -938,7 +948,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             region = opts.s3_region,
             s3_bucket = opts.s3_bucket,
             chain_config_s3_key = chain_config_s3_key,
-            chain_config_local_path = format!("{}{}/config.json", s3::append_slash(&opts.chain_config_remote_dir), blockchain_id.to_string()),
+            chain_config_local_path = format!("{}{}/config.json", s3::append_slash(&opts.chain_config_remote_dir), blockchain_id),
         );
 
         for (region, instance_ids) in region_to_instance_ids.iter() {
@@ -1037,7 +1047,7 @@ async fn add_primary_network_validator(
     let (tx_id, added) = wallet_to_spend
         .p()
         .add_validator()
-        .node_id(node_id.clone())
+        .node_id(*node_id)
         .stake_amount(*stake_amount_in_navax)
         .validate_period_in_days(*primary_network_validate_period_in_days, 60)
         .check_acceptance(true)
@@ -1072,7 +1082,7 @@ async fn add_primary_network_permissionless_validator(
     let (tx_id, added) = wallet_to_spend
         .p()
         .add_permissionless_validator()
-        .node_id(node_id.clone())
+        .node_id(*node_id)
         .proof_of_possession(pop.clone())
         .stake_amount(*stake_amount_in_navax)
         .validate_period_in_days(*primary_network_validate_period_in_days, 60)

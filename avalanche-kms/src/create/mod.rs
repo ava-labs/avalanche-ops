@@ -266,7 +266,7 @@ pub async fn execute(
                 // { source: CreateKeyError { kind: Unhandled(Unhandled { source: Error { code: Some(\\\"ThrottlingException\\\"), message: Some(\\\"You have exceeded the rate at which you may call KMS. Reduce the frequency of your calls.\\\"
                 sleep(Duration::from_secs(2)).await;
 
-                println!("");
+                println!();
                 log::info!("[{i}] creating KMS key");
                 let mut tags = HashMap::new();
                 tags.insert(
@@ -340,7 +340,7 @@ pub async fn execute(
                     .await
                     .unwrap();
                 let funding_evm_wallet = w
-                    .evm(&funding_key_signer, evm_chain_rpc_url, U256::from(chain_id))
+                    .evm(&funding_key_signer, evm_chain_rpc_url, chain_id)
                     .unwrap();
 
                 let transferer_balance = funding_evm_wallet.balance().await.unwrap();
@@ -412,14 +412,14 @@ pub async fn execute(
                 execute!(
                     stdout(),
                     SetForegroundColor(Color::Green),
-                    Print(format!("\nWrote keys in chunk\n",)),
+                    Print("\nWrote keys in chunk\n".to_string()),
                     ResetColor
                 )?;
 
                 let mut chunk_size = keys.0.len() / keys_file_chunks;
                 let remainder = keys.0.len() % keys_file_chunks;
                 if remainder != 0 {
-                    chunk_size = chunk_size + 1;
+                    chunk_size += 1;
                 }
                 for (cursor, chunk) in keys.0.chunks(chunk_size).enumerate() {
                     let chunk_file_output_path = format!("{keys_file_output}.{}.yaml", cursor + 1);

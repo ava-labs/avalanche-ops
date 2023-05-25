@@ -230,7 +230,7 @@ async fn download_spec(
     let spec = blizzardup_aws::Spec::load(&tmp_spec_file_path)?;
     log::info!("loaded blizzardup_aws::Spec");
 
-    fs::copy(&tmp_spec_file_path, &blizzardup_spec_path)?;
+    fs::copy(&tmp_spec_file_path, blizzardup_spec_path)?;
     fs::remove_file(&tmp_spec_file_path)?; // "blizzard" never updates "spec" file, runs in read-only mode
 
     Ok(spec)
