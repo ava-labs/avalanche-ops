@@ -81,6 +81,7 @@ Resources:
                   - kms:GenerateDataKey* # to encrypt TLS key
                   - kms:DescribeKey # to describe the KMS key
                 Resource: { Ref: KmsKeyArn }
+
               - Effect: Allow
                 Action:
                   - s3:List*
