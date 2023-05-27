@@ -1,6 +1,6 @@
 [package]
 name = "devnet-faucet"
-version = "0.6.6-beta.2" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.6.6-beta.3" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
