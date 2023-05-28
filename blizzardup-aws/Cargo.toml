@@ -1,6 +1,6 @@
 [package]
 name = "blizzardup-aws"
-version = "0.6.7" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.6.8" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.69"
 
