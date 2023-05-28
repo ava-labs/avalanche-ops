@@ -827,7 +827,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 "AvalanchedAwsArgs",
                 &format!("agent {}", spec.avalanched_config.to_flags()),
             ),
-            build_param("ProvisionerInitialWaitRandomSeconds", "120"),
+            build_param("ProvisionerInitialWaitRandomSeconds", "90"),
         ];
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
@@ -885,7 +885,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .insert("RustOsType".to_string(), spec.machine.rust_os_type.clone());
         common_dev_machine_params.insert(
             "ProvisionerInitialWaitRandomSeconds".to_string(),
-            "10".to_string(),
+            "90".to_string(),
         );
 
         if let Some(avalanchego_release_tag) = &spec.avalanchego_release_tag {
