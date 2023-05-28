@@ -53,6 +53,17 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
     Description: EC2 security group ID
 
+  ArchType:
+    Type: String
+    Default: "amd64"
+    Description: The name of the CPU architecture. Used for cloudwatch agent download links.
+
+  RustOsType:
+    Type: String
+    AllowedValues: ["ubuntu20.04"]
+    Default: "ubuntu20.04"
+    Description: The name of the OS distribution and kind. Used for Rust binary download links.
+
   ImageId:
     Type: String
     Default: ""
@@ -66,21 +77,7 @@ Parameters:
   ImageIdSsmParameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
-    # Default: /aws/service/canonical/ubuntu/server/20.04/stable/current/arm64/hvm/ebs-gp2/ami-id
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID.
-
-  ArchType:
-    Type: String
-    AllowedValues: ["amd64", "arm64"]
-    Default: "amd64"
-    # Default: "arm64"
-    Description: The name of the CPU architecture. Used for cloudwatch agent download links.
-
-  RustOsType:
-    Type: String
-    AllowedValues: ["unknown", "ubuntu20.04"]
-    Default: "unknown"
-    Description: The name of the OS distribution and kind. Used for Rust binary download links.
 
   AvalancheGoReleaseTag:
     Type: String

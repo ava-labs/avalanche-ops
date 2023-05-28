@@ -815,14 +815,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 format!("{}", spec.machine.volume_size_in_gb).as_str(),
             ),
             build_param("ArchType", &spec.machine.arch_type),
+            build_param("RustOsType", &spec.machine.rust_os_type),
             build_param(
                 "ImageIdSsmParameter",
-                &format!(
-                "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
-                spec.machine.arch_type
+                &ec2::default_image_id_ssm_parameter(
+                    &spec.machine.arch_type,
+                    &spec.machine.rust_os_type,
+                )
+                .unwrap(),
             ),
-            ),
-            build_param("RustOsType", &spec.machine.rust_os_type),
             build_param(
                 "AvalanchedAwsArgs",
                 &format!("agent {}", spec.avalanched_config.to_flags()),
@@ -874,15 +875,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             format!("{}", spec.machine.volume_size_in_gb),
         );
         common_dev_machine_params.insert("ArchType".to_string(), spec.machine.arch_type.clone());
-        common_dev_machine_params.insert(
-            "ImageIdSsmParameter".to_string(),
-            format!(
-                "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
-                spec.machine.arch_type
-            ),
-        );
         common_dev_machine_params
             .insert("RustOsType".to_string(), spec.machine.rust_os_type.clone());
+        common_dev_machine_params.insert(
+            "ImageIdSsmParameter".to_string(),
+            ec2::default_image_id_ssm_parameter(
+                &spec.machine.arch_type,
+                &spec.machine.rust_os_type,
+            )
+            .unwrap(),
+        );
         common_dev_machine_params.insert(
             "ProvisionerInitialWaitRandomSeconds".to_string(),
             "90".to_string(),
@@ -2635,17 +2637,16 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         );
         regional_common_dev_machine_asg_params
             .insert("ArchType".to_string(), dev_machine.arch_type.clone());
-        if dev_machine.rust_os_type != "al2" {
-            regional_common_dev_machine_asg_params.insert(
-                "ImageIdSsmParameter".to_string(),
-                format!(
-                    "/aws/service/canonical/ubuntu/server/20.04/stable/current/{}/hvm/ebs-gp2/ami-id",
-                    dev_machine.arch_type
-                ),
-            );
-            regional_common_dev_machine_asg_params
-                .insert("RustOsType".to_string(), "ubuntu20.04".to_string());
-        }
+        regional_common_dev_machine_asg_params
+            .insert("RustOsType".to_string(), "ubuntu20.04".to_string());
+        regional_common_dev_machine_asg_params.insert(
+            "ImageIdSsmParameter".to_string(),
+            ec2::default_image_id_ssm_parameter(
+                &spec.machine.arch_type,
+                &spec.machine.rust_os_type,
+            )
+            .unwrap(),
+        );
 
         let regional_shared_config = aws_manager::load_config(
             Some(spec.resource.regions[0].clone()),

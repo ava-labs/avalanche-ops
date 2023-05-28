@@ -5,6 +5,7 @@ use std::{
 };
 
 use avalanche_types::avalanchego::config as avalanchego_config;
+use aws_manager::ec2;
 use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
@@ -78,8 +79,11 @@ pub fn command() -> Command {
                 .help("Sets the machine architecture")
                 .required(true)
                 .num_args(1)
-                .value_parser(["amd64", "arm64"])
-                .default_value("amd64"),
+                .value_parser([
+                    ec2::ArchType::Amd64.as_str(),
+                    ec2::ArchType::Arm64.as_str(),
+                ])
+                .default_value(ec2::ArchType::Amd64.as_str()),
         )
         .arg(
             Arg::new("RUST_OS_TYPE")
@@ -87,8 +91,10 @@ pub fn command() -> Command {
                 .help("Sets Rust OS type")
                 .required(true)
                 .num_args(1)
-                .value_parser(["ubuntu20.04"])
-                .default_value("ubuntu20.04"),
+                .value_parser([
+                    ec2::OsType::Ubuntu2004.as_str(),
+                ])
+                .default_value(ec2::OsType::Ubuntu2004.as_str()),
         )
         .arg(
             Arg::new("ANCHOR_NODES")
