@@ -156,6 +156,13 @@ pub fn command() -> Command {
                 .num_args(0),
         )
         .arg(
+            Arg::new("DEV_MACHINE_SSH_KEY_EMAIL")
+                .long("dev-machine-ssh-key-email")
+                .help("Sets the email address for an SSH key")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
             Arg::new("INGRESS_IPV4_CIDR")
                 .long("ingress-ipv4-cidr")
                 .help("Sets the IPv4 CIDR range for ingress traffic HTTP/SSH (leave empty to default to public IP on the local host)")

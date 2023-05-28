@@ -372,6 +372,7 @@ pub struct DefaultSpecOption {
 
     pub keep_resources_except_asg_ssm: bool,
     pub create_dev_machine: bool,
+    pub dev_machine_ssh_key_email: String,
 
     pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,
@@ -689,7 +690,13 @@ impl Spec {
         }
 
         let dev_machine = if opts.create_dev_machine {
+            let ssh_key_email = if opts.dev_machine_ssh_key_email.is_empty() {
+                None
+            } else {
+                Some(opts.dev_machine_ssh_key_email.clone())
+            };
             Some(DevMachine {
+                ssh_key_email,
                 arch_type: opts.arch_type.clone(),
                 rust_os_type: opts.rust_os_type.clone(),
                 instance_mode: opts.instance_mode.clone(),
@@ -1766,6 +1773,9 @@ pub struct Machine {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct DevMachine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh_key_email: Option<String>,
+
     #[serde(default)]
     pub arch_type: String,
     #[serde(default)]

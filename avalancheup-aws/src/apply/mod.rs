@@ -2605,6 +2605,10 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         regional_common_dev_machine_asg_params
             .insert("IpMode".to_string(), dev_machine.ip_mode.clone());
 
+        if let Some(email) = &dev_machine.ssh_key_email {
+            regional_common_dev_machine_asg_params.insert("SshKeyEmail".to_string(), email.clone());
+        };
+
         if !dev_machine.instance_types.is_empty() {
             let instance_types = dev_machine.instance_types.clone();
             regional_common_dev_machine_asg_params

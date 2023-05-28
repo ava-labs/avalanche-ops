@@ -106,6 +106,10 @@ async fn main() -> io::Result<()> {
                 keep_resources_except_asg_ssm: sub_matches
                     .get_flag("KEEP_RESOURCES_EXCEPT_ASG_SSM"),
                 create_dev_machine: sub_matches.get_flag("CREATE_DEV_MACHINE"),
+                dev_machine_ssh_key_email: sub_matches
+                    .get_one::<String>("DEV_MACHINE_SSH_KEY_EMAIL")
+                    .unwrap_or(&String::new())
+                    .clone(),
 
                 ingress_ipv4_cidr: sub_matches
                     .get_one::<String>("INGRESS_IPV4_CIDR")
