@@ -827,7 +827,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 "AvalanchedAwsArgs",
                 &format!("agent {}", spec.avalanched_config.to_flags()),
             ),
-            build_param("VolumeProvisionerInitialWaitRandomSeconds", "0"),
+            build_param("VolumeProvisionerInitialWaitRandomSeconds", "120"),
         ];
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
