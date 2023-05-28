@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.6.8" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.6.9" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.69"
 
@@ -13,12 +13,12 @@ avalanche-installer = "0.0.75" # https://crates.io/crates/avalanche-installer
 avalanche-ops = { path = "../avalanche-ops" }
 avalanche-telemetry-cloudwatch-installer = "0.0.105" # https://crates.io/crates/avalanche-telemetry-cloudwatch
 avalanche-types = { version = "0.0.390", features = ["avalanchego", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
-aws-ip-provisioner-installer = "0.0.88" # https://crates.io/crates/aws-ip-provisioner-installer
+aws-ip-provisioner-installer = "0.0.90" # https://crates.io/crates/aws-ip-provisioner-installer
 aws-manager = { version = "0.28.0", features = ["autoscaling", "cloudwatch", "ec2", "s3"] } # https://github.com/gyuho/aws-manager/tags
 aws-sdk-cloudwatch = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-volume-provisioner-installer = "0.0.114" # https://crates.io/crates/aws-volume-provisioner-installer
+aws-volume-provisioner-installer = "0.0.116" # https://crates.io/crates/aws-volume-provisioner-installer
 clap = { version = "4.3.0", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 command-manager = "0.0.1"
 compress-manager = "0.0.10"
