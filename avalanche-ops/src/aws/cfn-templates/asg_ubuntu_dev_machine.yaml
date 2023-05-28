@@ -423,14 +423,16 @@ Resources:
               gcc --version
 
               cat<<EOF >> /home/ubuntu/.bashrc
+
               export GOPATH=/home/ubuntu/go
               export PATH=/usr/local/go/bin:/home/ubuntu/go/bin:/home/ubuntu/.cargo/bin:$PATH
               . /opt/rust/env
+
               EOF
 
               # install go
               sudo rm -rf /usr/local/go
-              GO_VERSION=1.20.3
+              GO_VERSION=1.20.4
               sudo curl -s https://storage.googleapis.com/golang/go$GO_VERSION.linux-$(dpkg --print-architecture).tar.gz | sudo tar -v -C /usr/local/ -xz
               /usr/local/go/bin/go version
 
