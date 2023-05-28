@@ -827,7 +827,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 "AvalanchedAwsArgs",
                 &format!("agent {}", spec.avalanched_config.to_flags()),
             ),
-            build_param("VolumeProvisionerInitialWaitRandomSeconds", "120"),
+            build_param("ProvisionerInitialWaitRandomSeconds", "120"),
         ];
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
@@ -884,7 +884,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         common_dev_machine_params
             .insert("RustOsType".to_string(), spec.machine.rust_os_type.clone());
         common_dev_machine_params.insert(
-            "VolumeProvisionerInitialWaitRandomSeconds".to_string(),
+            "ProvisionerInitialWaitRandomSeconds".to_string(),
             "10".to_string(),
         );
 
@@ -1051,13 +1051,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     .unwrap();
 
                 if i == 0 {
-                    // add 5-minute for ELB creation + volume provisioner
+                    log::info!(
+                        "waiting 1-minute for initial node creation to reuse NLB/ASG launch templates"
+                    );
+                    sleep(Duration::from_secs(100)).await;
+
+                    // add 5-minute for ELB creation + volume provisioner + ip provisioner
                     let mut wait_secs = 800;
                     if wait_secs > MAX_WAIT_SECONDS {
                         wait_secs = MAX_WAIT_SECONDS;
                     }
-                    sleep(Duration::from_secs(60)).await;
-
                     let stack = regional_cloudformation_manager
                         .poll_stack(
                             &stack_names[i],
@@ -1229,7 +1232,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let mut eips = Vec::new();
             let mut instance_id_to_public_ip = HashMap::new();
             for anchor_asg_name in anchor_asg_logical_ids.iter() {
-                let mut dss: Vec<ec2::Droplet> = Vec::new();
+                let mut local_droplets: Vec<ec2::Droplet> = Vec::new();
                 for _ in 0..20 {
                     // TODO: better retries
                     log::info!("fetching all droplets for anchor-node SSH access");
@@ -1238,18 +1241,21 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         .await
                         .unwrap();
                     if !ds.is_empty() {
-                        dss = ds;
+                        local_droplets = ds;
                         break;
                     }
                     log::info!("retrying fetching all droplets (only got {})", ds.len());
                     sleep(Duration::from_secs(30)).await;
                 }
-                droplets.extend(dss);
+                droplets.extend(local_droplets);
 
                 if spec.machine.ip_mode == *"elastic" {
                     log::info!("using elastic IPs... wait more");
                     let mut outs: Vec<Address>;
+                    let mut cnt = 0;
                     loop {
+                        cnt = cnt + 1;
+
                         outs = regional_ec2_manager
                             .describe_eips_by_tags(HashMap::from([
                                 (String::from("Id"), spec.id.clone()),
@@ -1261,7 +1267,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                             .await
                             .unwrap();
 
-                        log::info!("got {} EIP addresses", outs.len());
+                        log::info!("[retries {cnt}] got {} EIP addresses", outs.len());
 
                         let mut ready = true;
                         for eip_addr in outs.iter() {
