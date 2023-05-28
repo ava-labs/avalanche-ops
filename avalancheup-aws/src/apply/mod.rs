@@ -2660,7 +2660,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             )),
             ResetColor
         )?;
-        let asg_tmpl = avalanche_ops::aws::artifacts::asg_ubuntu_dev_machine_yaml().unwrap();
+        let asg_tmpl = aws_dev_machine::artifacts::asg_ubuntu_yaml().unwrap();
 
         let mut cfn_params = Vec::new();
         for (k, v) in regional_common_dev_machine_asg_params.iter() {
