@@ -1,6 +1,6 @@
 [package]
 name = "staking-key-cert-s3-downloader"
-version = "0.7.1" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.7.2" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.69"
 
