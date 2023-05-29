@@ -10,6 +10,8 @@ See ["Cheapest way to set up a network or validator"](avalancheup-aws/recipes-aw
 
 See [`tokenvm/DEVNETS.md`](https://github.com/ava-labs/hypersdk/blob/main/examples/tokenvm/DEVNETS.md) for dev net testing.
 
+Use https://devnet.routescan.io for DEVNET explorers.
+
 # Avalanche Ops
 
 A **single command to launch Avalanche nodes from scratch that joins any network of choice (e.g., test, fuji, main) or create a custom Avalanche network**. Provisions all resources required to run a node or network with recommended setups (configurable).
