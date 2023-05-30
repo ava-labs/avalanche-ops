@@ -59,7 +59,7 @@ async fn main() {
                     .unwrap_or(&String::new()),
                 avalanchego_release_tag,
                 sub_matches
-                    .get_one::<String>("RUST_OS_TYPE")
+                    .get_one::<String>("OS_TYPE")
                     .unwrap_or(&String::from("ubuntu20.04")),
                 sub_matches
                     .get_one::<String>("AWS_VOLUME_PROVISIONER_S3_KEY")

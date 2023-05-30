@@ -86,9 +86,9 @@ pub fn command() -> Command {
                 .default_value(ec2::ArchType::Amd64.as_str()),
         )
         .arg(
-            Arg::new("RUST_OS_TYPE")
-                .long("rust-os-type")
-                .help("Sets Rust OS type")
+            Arg::new("OS_TYPE")
+                .long("os-type")
+                .help("Sets the OS type")
                 .required(true)
                 .num_args(1)
                 .value_parser([
