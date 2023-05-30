@@ -815,12 +815,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 format!("{}", spec.machine.volume_size_in_gb).as_str(),
             ),
             build_param("ArchType", &spec.machine.arch_type),
-            build_param("RustOsType", &spec.machine.rust_os_type),
+            build_param("OsType", &spec.machine.os_type),
             build_param(
                 "ImageIdSsmParameter",
                 &ec2::default_image_id_ssm_parameter(
                     &spec.machine.arch_type,
-                    &spec.machine.rust_os_type,
+                    &spec.machine.os_type,
                 )
                 .unwrap(),
             ),
@@ -875,15 +875,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             format!("{}", spec.machine.volume_size_in_gb),
         );
         common_dev_machine_params.insert("ArchType".to_string(), spec.machine.arch_type.clone());
-        common_dev_machine_params
-            .insert("RustOsType".to_string(), spec.machine.rust_os_type.clone());
+        common_dev_machine_params.insert("OsType".to_string(), spec.machine.os_type.clone());
         common_dev_machine_params.insert(
             "ImageIdSsmParameter".to_string(),
-            ec2::default_image_id_ssm_parameter(
-                &spec.machine.arch_type,
-                &spec.machine.rust_os_type,
-            )
-            .unwrap(),
+            ec2::default_image_id_ssm_parameter(&spec.machine.arch_type, &spec.machine.os_type)
+                .unwrap(),
         );
         common_dev_machine_params.insert(
             "ProvisionerInitialWaitRandomSeconds".to_string(),
@@ -2638,14 +2634,11 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         regional_common_dev_machine_asg_params
             .insert("ArchType".to_string(), dev_machine.arch_type.clone());
         regional_common_dev_machine_asg_params
-            .insert("RustOsType".to_string(), "ubuntu20.04".to_string());
+            .insert("OsType".to_string(), "ubuntu20.04".to_string());
         regional_common_dev_machine_asg_params.insert(
             "ImageIdSsmParameter".to_string(),
-            ec2::default_image_id_ssm_parameter(
-                &spec.machine.arch_type,
-                &spec.machine.rust_os_type,
-            )
-            .unwrap(),
+            ec2::default_image_id_ssm_parameter(&spec.machine.arch_type, &spec.machine.os_type)
+                .unwrap(),
         );
 
         let regional_shared_config = aws_manager::load_config(
@@ -2779,7 +2772,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         let ec2_key_path = regional_resource.ec2_key_path.clone();
 
         let user_name = {
-            if dev_machine.rust_os_type == "al2" {
+            if dev_machine.os_type == "al2" {
                 "ec2-user"
             } else {
                 "ubuntu"

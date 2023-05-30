@@ -38,7 +38,7 @@ Parameters:
     Default: "amd64"
     Description: The name of the architecture.
 
-  RustOsType:
+  OsType:
     Type: String
     AllowedValues: ["ubuntu20.04"]
     Default: "ubuntu20.04"
@@ -393,16 +393,16 @@ Resources:
               done;
 
               if [[ ${BlizzardDownloadSource} == "github" ]]; then
-                sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
+                sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu
                 sudo rm -f /tmp/blizzard
                 sudo rm -f /usr/local/bin/blizzard
                 while [ 1 ]; do
-                  sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu || true;
-                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
+                  sudo rm -f ./blizzard-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu || true;
+                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/blizzard-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu
                   if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                   sleep 2s;
                 done;
-                mv ./blizzard-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu /tmp/blizzard
+                mv ./blizzard-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu /tmp/blizzard
                 chmod +x /tmp/blizzard
                 sudo mv /tmp/blizzard /usr/local/bin/blizzard
               else
@@ -492,8 +492,8 @@ Resources:
         - Key: ARCH_TYPE
           Value: !Ref ArchType
           PropagateAtLaunch: true
-        - Key: RUST_OS_TYPE
-          Value: !Ref RustOsType
+        - Key: OS_TYPE
+          Value: !Ref OsType
           PropagateAtLaunch: true
         - Key: INSTANCE_MODE
           PropagateAtLaunch: true

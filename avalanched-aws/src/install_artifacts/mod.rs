@@ -56,9 +56,9 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
-            Arg::new("RUST_OS_TYPE")
-                .long("rust-os-type")
-                .help("Sets Rust OS type")
+            Arg::new("OS_TYPE")
+                .long("os-type")
+                .help("Sets the OS type")
                 .required(false)
                 .num_args(1)
                 .value_parser(["ubuntu20.04"])
@@ -118,7 +118,7 @@ pub async fn execute(
     avalanchego_s3_key: &str,
     avalanchego_local_path: &str,
     avalanchego_release_tag: Option<String>,
-    rust_os_type: &str,
+    os_type: &str,
     aws_volume_provisioner_s3_key: &str,
     aws_volume_provisioner_local_path: &str,
     aws_ip_provisioner_s3_key: &str,
@@ -180,10 +180,10 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading aws-volume-provisioner from github");
-        let ot = if rust_os_type.is_empty() {
+        let ot = if os_type.is_empty() {
             None
         } else {
-            Some(aws_volume_provisioner_installer::github::Os::new(rust_os_type).unwrap())
+            Some(aws_volume_provisioner_installer::github::Os::new(os_type).unwrap())
         };
         aws_volume_provisioner_installer::github::download(
             None,
@@ -213,10 +213,10 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading aws-ip-provisioner from github");
-        let ot = if rust_os_type.is_empty() {
+        let ot = if os_type.is_empty() {
             None
         } else {
-            Some(aws_ip_provisioner_installer::github::Os::new(rust_os_type).unwrap())
+            Some(aws_ip_provisioner_installer::github::Os::new(os_type).unwrap())
         };
         aws_ip_provisioner_installer::github::download(
             None,
@@ -246,10 +246,10 @@ pub async fn execute(
     };
     if need_github_download {
         log::info!("downloading avalanche-telemetry-cloudwatch from github");
-        let ot = if rust_os_type.is_empty() {
+        let ot = if os_type.is_empty() {
             None
         } else {
-            Some(avalanche_telemetry_cloudwatch_installer::github::Os::new(rust_os_type).unwrap())
+            Some(avalanche_telemetry_cloudwatch_installer::github::Os::new(os_type).unwrap())
         };
         avalanche_telemetry_cloudwatch_installer::github::download(
             None,

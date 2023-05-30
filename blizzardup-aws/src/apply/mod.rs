@@ -450,12 +450,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ),
             build_param("PublicSubnetIds", &public_subnet_ids.join(",")),
             build_param("ArchType", &spec.machine.arch_type),
-            build_param("RustOsType", &spec.machine.rust_os_type),
+            build_param("OsType", &spec.machine.os_type),
             build_param(
                 "ImageIdSsmParameter",
                 &ec2::default_image_id_ssm_parameter(
                     &spec.machine.arch_type,
-                    &spec.machine.rust_os_type,
+                    &spec.machine.os_type,
                 )
                 .unwrap(),
             ),

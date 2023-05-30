@@ -352,7 +352,7 @@ pub struct DefaultSpecOption {
     pub network_name: String,
 
     pub arch_type: String,
-    pub rust_os_type: String,
+    pub os_type: String,
     pub anchor_nodes: u32,
     pub non_anchor_nodes: u32,
 
@@ -698,7 +698,7 @@ impl Spec {
             Some(DevMachine {
                 ssh_key_email,
                 arch_type: opts.arch_type.clone(),
-                rust_os_type: opts.rust_os_type.clone(),
+                os_type: opts.os_type.clone(),
                 instance_mode: opts.instance_mode.clone(),
                 ip_mode: opts.ip_mode.clone(),
                 volume_size_in_gb: opts.volume_size_in_gb,
@@ -874,7 +874,7 @@ impl Spec {
             total_non_anchor_nodes,
 
             arch_type: opts.arch_type,
-            rust_os_type: opts.rust_os_type,
+            os_type: opts.os_type,
             regional_machines,
 
             instance_mode: opts.instance_mode,
@@ -1227,7 +1227,7 @@ resource:
 machine:
   total_non_anchor_nodes: 1
   arch_type: amd64
-  rust_os_type: ubuntu20.04
+  os_type: ubuntu20.04
   volume_size_in_gb: 500
   instance_mode: spot
   ip_mode: elastic
@@ -1375,7 +1375,7 @@ coreth_chain_config:
             total_non_anchor_nodes: 1,
 
             arch_type: "amd64".to_string(),
-            rust_os_type: "ubuntu20.04".to_string(),
+            os_type: "ubuntu20.04".to_string(),
 
             instance_mode: String::from("spot"),
             ip_mode: String::from("elastic"),
@@ -1750,7 +1750,7 @@ pub struct Machine {
     #[serde(default)]
     pub arch_type: String,
     #[serde(default)]
-    pub rust_os_type: String,
+    pub os_type: String,
 
     /// Either "spot" or "on-demand".
     #[serde(default)]
@@ -1779,7 +1779,7 @@ pub struct DevMachine {
     #[serde(default)]
     pub arch_type: String,
     #[serde(default)]
-    pub rust_os_type: String,
+    pub os_type: String,
 
     /// Either "spot" or "on-demand".
     #[serde(default)]

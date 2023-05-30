@@ -58,7 +58,7 @@ Parameters:
     Default: "amd64"
     Description: The name of the CPU architecture. Used for cloudwatch agent download links.
 
-  RustOsType:
+  OsType:
     Type: String
     AllowedValues: ["ubuntu20.04"]
     Default: "ubuntu20.04"
@@ -620,16 +620,16 @@ Resources:
               # "aarch64-unknown-linux-gnu" may not work without cross-linker for linux
               # https://users.rust-lang.org/t/cant-cross-compile-project-with-openssl/70922
               if [[ ${AvalanchedAwsDownloadSource} == "github" ]]; then
-                sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
+                sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu
                 sudo rm -f /tmp/avalanched-aws
                 sudo rm -f /usr/local/bin/avalanched-aws
                 while [ 1 ]; do
-                  sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu || true;
-                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu
+                  sudo rm -f ./avalanched-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu || true;
+                  wget --quiet --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries=70 --continue https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu
                   if [ $? = 0 ]; then break; fi; # check return value, break if successful (0)
                   sleep 2s;
                 done;
-                mv ./avalanched-aws.${!LINUX_ARCH_TYPE}-${RustOsType}-linux-gnu /tmp/avalanched-aws
+                mv ./avalanched-aws.${!LINUX_ARCH_TYPE}-${OsType}-linux-gnu /tmp/avalanched-aws
                 chmod +x /tmp/avalanched-aws
                 sudo mv /tmp/avalanched-aws /usr/local/bin/avalanched-aws
               else
@@ -646,7 +646,7 @@ Resources:
               --avalanchego-s3-key ${Id}/bootstrap/install/avalanchego \
               --avalanchego-local-path /usr/local/bin/avalanchego \
               --avalanchego-release-tag ${AvalancheGoReleaseTag} \
-              --rust-os-type ${RustOsType} \
+              --os-type ${OsType} \
               --aws-volume-provisioner-s3-key ${Id}/bootstrap/install/aws-volume-provisioner \
               --aws-volume-provisioner-local-path /usr/local/bin/aws-volume-provisioner \
               --aws-ip-provisioner-s3-key ${Id}/bootstrap/install/aws-ip-provisioner \
@@ -805,8 +805,8 @@ Resources:
         - Key: ARCH_TYPE
           Value: !Ref ArchType
           PropagateAtLaunch: true
-        - Key: RUST_OS_TYPE
-          Value: !Ref RustOsType
+        - Key: OS_TYPE
+          Value: !Ref OsType
           PropagateAtLaunch: true
         - Key: INSTANCE_MODE
           Value: !Ref InstanceMode
