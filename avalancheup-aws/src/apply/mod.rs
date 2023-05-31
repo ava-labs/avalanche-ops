@@ -1405,17 +1405,19 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             sleep(Duration::from_secs(15)).await;
 
             for ssh_command in ssh_commands.iter() {
-                let output = ssh_command
-                    .run("tail -10 /var/log/cloud-init-output.log")
-                    .unwrap();
-                println!(
-                    "{} (anchor node) init script std output:\n{}\n",
-                    ssh_command.instance_id, output.stdout
-                );
-                println!(
-                    "{} (anchor node) init script std err:\n{}\n",
-                    ssh_command.instance_id, output.stderr
-                );
+                match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+                    Ok(output) => {
+                        println!(
+                            "{} (anchor node) init script std output:\n{}\n",
+                            ssh_command.instance_id, output.stdout
+                        );
+                        println!(
+                            "{} (anchor node) init script std err:\n{}\n",
+                            ssh_command.instance_id, output.stderr
+                        );
+                    }
+                    Err(e) => log::warn!("failed to run ssh command {}", e),
+                }
             }
         }
     }
@@ -1867,17 +1869,19 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             sleep(Duration::from_secs(20)).await;
 
             for ssh_command in ssh_commands.iter() {
-                let output = ssh_command
-                    .run("tail -10 /var/log/cloud-init-output.log")
-                    .unwrap();
-                println!(
-                    "{} (non-anchor node) init script std output:\n{}\n",
-                    ssh_command.instance_id, output.stdout
-                );
-                println!(
-                    "{} (non-anchor node) init script std err:\n{}\n",
-                    ssh_command.instance_id, output.stderr
-                );
+                match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+                    Ok(output) => {
+                        println!(
+                            "{} (non-anchor node) init script std output:\n{}\n",
+                            ssh_command.instance_id, output.stdout
+                        );
+                        println!(
+                            "{} (non-anchor node) init script std err:\n{}\n",
+                            ssh_command.instance_id, output.stderr
+                        );
+                    }
+                    Err(e) => log::warn!("failed to run ssh command {}", e),
+                }
             }
         }
     }
@@ -2825,17 +2829,19 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 
         sleep(Duration::from_secs(10)).await;
         for ssh_command in ssh_commands.iter() {
-            let output = ssh_command
-                .run("tail -10 /var/log/cloud-init-output.log")
-                .unwrap();
-            println!(
-                "{} (dev machine) init script std output:\n{}\n",
-                ssh_command.instance_id, output.stdout
-            );
-            println!(
-                "{} (dev machine) init script std err:\n{}\n",
-                ssh_command.instance_id, output.stderr
-            );
+            match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+                Ok(output) => {
+                    println!(
+                        "{} (dev machine) init script std output:\n{}\n",
+                        ssh_command.instance_id, output.stdout
+                    );
+                    println!(
+                        "{} (dev machine) init script std err:\n{}\n",
+                        ssh_command.instance_id, output.stderr
+                    );
+                }
+                Err(e) => log::warn!("failed to run ssh command {}", e),
+            }
         }
 
         //
