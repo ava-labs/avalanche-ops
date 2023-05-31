@@ -1293,56 +1293,37 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
 
             println!();
+            let mut ssh_commands = Vec::new();
             for d in droplets {
-                let (instance_ip, ip_kind) =
+                let (public_ip, ip_mode) =
                     if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
                         (public_ip.clone(), "elastic")
                     } else {
                         (d.public_ipv4.clone(), "ephemeral")
                     };
-                // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
-                // aws ssm start-session --region [region] --target [instance ID]
-                println!(
-                    "# change SSH key permission
-chmod 400 {}
-# instance '{}' ({}, {}) -- IP kind {}
-ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
-# download to local machine
-scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
-scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
-# upload to remote machine
-scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
-scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
-# SSM session (requires SSM agent)
-aws ssm start-session --region {} --target {}
-",
-                    regional_resource.ec2_key_path,
-                    //
-                    d.instance_id,
-                    d.instance_state_name,
-                    d.availability_zone,
-                    ip_kind,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    region,
-                    d.instance_id,
-                );
+
+                let ssh_command = ec2::SshCommand {
+                    ec2_key_path: regional_resource.ec2_key_path.clone(),
+                    user_name: String::from("ubuntu"),
+
+                    region: region.clone(),
+                    availability_zone: d.availability_zone,
+
+                    instance_id: d.instance_id,
+                    instance_state_name: d.instance_state_name,
+
+                    ip_mode: ip_mode.to_string(),
+                    public_ip: public_ip,
+                };
+                println!("\n{}\n", ssh_command.to_string());
+
+                ssh_commands.push(ssh_command);
             }
             println!();
+
+            ec2::SshCommands(ssh_commands)
+                .sync(&regional_resource.ssh_commands_path)
+                .unwrap();
 
             // wait for anchor nodes to generate certs and node ID and post to remote storage
             // TODO: set timeouts

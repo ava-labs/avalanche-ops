@@ -188,6 +188,8 @@ pub struct RegionalResource {
     pub ec2_key_name: String,
     #[serde(default)]
     pub ec2_key_path: String,
+    #[serde(default)]
+    pub ssh_commands_path: String,
 
     /// CloudFormation stack name for EC2 instance role.
     /// READ ONLY -- DO NOT SET.
@@ -304,6 +306,7 @@ impl RegionalResource {
             region: String::from("us-west-2"),
             ec2_key_name: String::new(),
             ec2_key_path: String::new(),
+            ssh_commands_path: String::new(),
 
             cloudformation_ec2_instance_role: None,
             cloudformation_ec2_instance_profile_arn: None,
@@ -681,6 +684,7 @@ impl Spec {
                 region: reg.to_string(),
                 ec2_key_name: format!("{id}-ec2-key"),
                 ec2_key_path: get_ec2_key_path(&spec_file_path, reg.as_str()),
+                ssh_commands_path: get_ssh_commands_path(&spec_file_path, reg.as_str()),
                 ..RegionalResource::default()
             };
             if let Some(nlb_acm_certificate_arn) = opts.nlb_acm_certificate_arns.get(reg) {
@@ -2141,9 +2145,9 @@ impl NodeInfo {
         }
     }
 
-    pub fn sync(&self, file_path: String) -> io::Result<()> {
-        log::info!("syncing Info to '{}'", file_path);
-        let path = Path::new(&file_path);
+    pub fn sync(&self, file_path: &str) -> io::Result<()> {
+        log::info!("syncing Info to '{file_path}'");
+        let path = Path::new(file_path);
         let parent_dir = path.parent().unwrap();
         fs::create_dir_all(parent_dir)?;
 
@@ -2166,6 +2170,20 @@ fn get_ec2_key_path(spec_file_path: &str, region: &str) -> String {
     let parent_dir = path.parent().unwrap();
     let name = path.file_stem().unwrap();
     let new_name = format!("{}-ec2-access.{region}.key", name.to_str().unwrap(),);
+    String::from(
+        parent_dir
+            .join(Path::new(new_name.as_str()))
+            .as_path()
+            .to_str()
+            .unwrap(),
+    )
+}
+
+fn get_ssh_commands_path(spec_file_path: &str, region: &str) -> String {
+    let path = Path::new(spec_file_path);
+    let parent_dir = path.parent().unwrap();
+    let name = path.file_stem().unwrap();
+    let new_name = format!("{}-ssh-commands.{region}.sh", name.to_str().unwrap(),);
     String::from(
         parent_dir
             .join(Path::new(new_name.as_str()))
