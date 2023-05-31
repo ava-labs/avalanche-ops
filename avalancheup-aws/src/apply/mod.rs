@@ -1317,6 +1317,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 };
                 println!("\n{}\n", ssh_command.to_string());
 
+                let output = ssh_command
+                    .run("tail -10 /var/log/cloud-init-output.log")
+                    .unwrap();
+                println!("init script std output:\n{}\n", output.stdout);
+                println!("init script std err:\n{}\n", output.stderr);
+
                 ssh_commands.push(ssh_command);
             }
             println!();
