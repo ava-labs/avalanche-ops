@@ -9,7 +9,7 @@ name = "devnet-faucet"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.392", features = ["evm", "jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.393", features = ["evm", "jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
 bytes = "1.4.0"
 clap = { version = "4.3.0", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
