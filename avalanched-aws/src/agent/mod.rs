@@ -719,7 +719,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 spec.coreth_chain_config.clone(),
             );
             let node_info_path = random_manager::tmp_path(10, Some(".yaml"))?;
-            node_info.sync(node_info_path.clone()).unwrap();
+            node_info.sync(&node_info_path).unwrap();
 
             s3_manager
                 .put_object(
@@ -1545,11 +1545,11 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
             Ok(out) => {
                 println!(
                     "\n'/var/log/avalanchego/avalanchego.log' stdout:\n\n{}\n",
-                    out.0
+                    out.stdout
                 );
                 println!(
                     "'/var/log/avalanchego/avalanchego.log' stderr:\n\n{}\n",
-                    out.1
+                    out.stderr
                 );
             }
             Err(e) => log::warn!(
@@ -1562,8 +1562,8 @@ async fn check_liveness(ep: &str) -> io::Result<()> {
 
         match command_manager::run("sudo journalctl -u avalanchego.service --lines=10 --no-pager") {
             Ok(out) => {
-                println!("\n'avalanchego.service' stdout:\n\n{}\n", out.0);
-                println!("'avalanchego.service' stderr:\n\n{}\n", out.1);
+                println!("\n'avalanchego.service' stdout:\n\n{}\n", out.stdout);
+                println!("'avalanchego.service' stderr:\n\n{}\n", out.stderr);
             }
             Err(e) => log::warn!("failed to check journalctl avalanchego.service: {}", e),
         }
@@ -1638,7 +1638,7 @@ async fn publish_node_info_ready_loop(
     );
 
     let node_info_path = random_manager::tmp_path(10, Some(".yaml")).unwrap();
-    node_info.sync(node_info_path.clone()).unwrap();
+    node_info.sync(&node_info_path).unwrap();
 
     let node_info_ready_s3_key = {
         if matches!(node_kind, node::Kind::Anchor) {
