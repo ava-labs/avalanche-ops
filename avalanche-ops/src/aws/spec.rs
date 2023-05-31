@@ -189,7 +189,11 @@ pub struct RegionalResource {
     #[serde(default)]
     pub ec2_key_path: String,
     #[serde(default)]
-    pub ssh_commands_path: String,
+    pub ssh_commands_path_anchor_nodes: String,
+    #[serde(default)]
+    pub ssh_commands_path_non_anchor_nodes: String,
+    #[serde(default)]
+    pub ssh_commands_path_dev_machine: String,
 
     /// CloudFormation stack name for EC2 instance role.
     /// READ ONLY -- DO NOT SET.
@@ -306,7 +310,9 @@ impl RegionalResource {
             region: String::from("us-west-2"),
             ec2_key_name: String::new(),
             ec2_key_path: String::new(),
-            ssh_commands_path: String::new(),
+            ssh_commands_path_anchor_nodes: String::new(),
+            ssh_commands_path_non_anchor_nodes: String::new(),
+            ssh_commands_path_dev_machine: String::new(),
 
             cloudformation_ec2_instance_role: None,
             cloudformation_ec2_instance_profile_arn: None,
@@ -684,7 +690,21 @@ impl Spec {
                 region: reg.to_string(),
                 ec2_key_name: format!("{id}-ec2-key"),
                 ec2_key_path: get_ec2_key_path(&spec_file_path, reg.as_str()),
-                ssh_commands_path: get_ssh_commands_path(&spec_file_path, reg.as_str()),
+                ssh_commands_path_anchor_nodes: get_ssh_commands_path(
+                    &spec_file_path,
+                    reg.as_str(),
+                    "anchor-nodes",
+                ),
+                ssh_commands_path_non_anchor_nodes: get_ssh_commands_path(
+                    &spec_file_path,
+                    reg.as_str(),
+                    "non-anchor-nodes",
+                ),
+                ssh_commands_path_dev_machine: get_ssh_commands_path(
+                    &spec_file_path,
+                    reg.as_str(),
+                    "dev-machine",
+                ),
                 ..RegionalResource::default()
             };
             if let Some(nlb_acm_certificate_arn) = opts.nlb_acm_certificate_arns.get(reg) {
@@ -2179,11 +2199,11 @@ fn get_ec2_key_path(spec_file_path: &str, region: &str) -> String {
     )
 }
 
-fn get_ssh_commands_path(spec_file_path: &str, region: &str) -> String {
+fn get_ssh_commands_path(spec_file_path: &str, region: &str, kind: &str) -> String {
     let path = Path::new(spec_file_path);
     let parent_dir = path.parent().unwrap();
     let name = path.file_stem().unwrap();
-    let new_name = format!("{}-ssh-commands.{region}.sh", name.to_str().unwrap(),);
+    let new_name = format!("{}-ssh-commands.{region}.{kind}.sh", name.to_str().unwrap(),);
     String::from(
         parent_dir
             .join(Path::new(new_name.as_str()))

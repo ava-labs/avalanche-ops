@@ -1316,19 +1316,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     public_ip: public_ip,
                 };
                 println!("\n{}\n", ssh_command.to_string());
-
-                let output = ssh_command
-                    .run("tail -10 /var/log/cloud-init-output.log")
-                    .unwrap();
-                println!("init script std output:\n{}\n", output.stdout);
-                println!("init script std err:\n{}\n", output.stderr);
-
                 ssh_commands.push(ssh_command);
             }
             println!();
 
-            ec2::SshCommands(ssh_commands)
-                .sync(&regional_resource.ssh_commands_path)
+            ec2::SshCommands(ssh_commands.clone())
+                .sync(&regional_resource.ssh_commands_path_anchor_nodes)
                 .unwrap();
 
             // wait for anchor nodes to generate certs and node ID and post to remote storage
@@ -1410,6 +1403,20 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
             log::info!("waiting for anchor nodes bootstrap and ready (to be safe)");
             sleep(Duration::from_secs(15)).await;
+
+            for ssh_command in ssh_commands.iter() {
+                let output = ssh_command
+                    .run("tail -10 /var/log/cloud-init-output.log")
+                    .unwrap();
+                println!(
+                    "{} (anchor node) init script std output:\n{}\n",
+                    ssh_command.instance_id, output.stdout
+                );
+                println!(
+                    "{} (anchor node) init script std err:\n{}\n",
+                    ssh_command.instance_id, output.stderr
+                );
+            }
         }
     }
 
@@ -1748,59 +1755,40 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
             }
 
-            println!();
             let f = File::open(&regional_resource.ec2_key_path).unwrap();
             f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+
+            println!();
+            let mut ssh_commands = Vec::new();
             for d in droplets {
-                let (instance_ip, ip_kind) =
+                let (public_ip, ip_mode) =
                     if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
                         (public_ip.clone(), "elastic")
                     } else {
                         (d.public_ipv4.clone(), "ephemeral")
                     };
-                // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
-                // aws ssm start-session --region [region] --target [instance ID]
-                println!(
-                    "# change SSH key permission
-chmod 400 {}
-# instance '{}' ({}, {}) -- IP kind {}
-ssh -o \"StrictHostKeyChecking no\" -i {} ubuntu@{}
-# download to local machine
-scp -i {} ubuntu@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
-scp -i {} -r ubuntu@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
-# upload to remote machine
-scp -i {} LOCAL_FILE_PATH ubuntu@{}:REMOTE_FILE_PATH
-scp -i {} -r LOCAL_DIRECTORY_PATH ubuntu@{}:REMOTE_DIRECTORY_PATH
-# SSM session (requires SSM agent)
-aws ssm start-session --region {} --target {}
-",
-                    regional_resource.ec2_key_path,
-                    //
-                    d.instance_id,
-                    d.instance_state_name,
-                    d.availability_zone,
-                    ip_kind,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.ec2_key_path,
-                    instance_ip,
-                    //
-                    regional_resource.region,
-                    d.instance_id,
-                );
+
+                let ssh_command = ec2::SshCommand {
+                    ec2_key_path: regional_resource.ec2_key_path.clone(),
+                    user_name: String::from("ubuntu"),
+
+                    region: region.clone(),
+                    availability_zone: d.availability_zone,
+
+                    instance_id: d.instance_id,
+                    instance_state_name: d.instance_state_name,
+
+                    ip_mode: ip_mode.to_string(),
+                    public_ip: public_ip,
+                };
+                println!("\n{}\n", ssh_command.to_string());
+                ssh_commands.push(ssh_command);
             }
             println!();
+
+            ec2::SshCommands(ssh_commands.clone())
+                .sync(&regional_resource.ssh_commands_path_non_anchor_nodes)
+                .unwrap();
 
             // wait for non anchor nodes to generate certs and node ID and post to remote storage
             // TODO: set timeouts
@@ -1877,6 +1865,20 @@ aws ssm start-session --region {} --target {}
 
             log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
             sleep(Duration::from_secs(20)).await;
+
+            for ssh_command in ssh_commands.iter() {
+                let output = ssh_command
+                    .run("tail -10 /var/log/cloud-init-output.log")
+                    .unwrap();
+                println!(
+                    "{} (non-anchor node) init script std output:\n{}\n",
+                    ssh_command.instance_id, output.stdout
+                );
+                println!(
+                    "{} (non-anchor node) init script std err:\n{}\n",
+                    ssh_command.instance_id, output.stderr
+                );
+            }
         }
     }
 
@@ -2756,8 +2758,6 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             instance_id_to_public_ip.insert(instance_id, public_ip);
         }
 
-        let ec2_key_path = regional_resource.ec2_key_path.clone();
-
         let user_name = {
             if dev_machine.os_type == "al2" {
                 "ec2-user"
@@ -2766,6 +2766,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             }
         };
 
+        let mut ssh_commands = Vec::new();
         for d in droplets {
             // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
             // aws ssm start-session --region [region] --target [instance ID]
@@ -2776,53 +2777,27 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 d.public_ipv4.clone()
             };
 
-            println!(
-                "
-# change SSH key permission
-chmod 400 {}
-# instance '{}' ({}, {}) -- ip mode '{}'
-ssh -o \"StrictHostKeyChecking no\" -i {} {}@{}
-# download to local machine
-scp -i {} {}@{}:REMOTE_FILE_PATH LOCAL_FILE_PATH
-scp -i {} -r {}@{}:REMOTE_DIRECTORY_PATH LOCAL_DIRECTORY_PATH
-# upload to remote machine
-scp -i {} LOCAL_FILE_PATH {}@{}:REMOTE_FILE_PATH
-scp -i {} -r LOCAL_DIRECTORY_PATH {}@{}:REMOTE_DIRECTORY_PATH
-# SSM session (requires SSM agent)
-aws ssm start-session --region {} --target {}
-",
-                ec2_key_path,
-                //
-                d.instance_id,
-                d.instance_state_name,
-                d.availability_zone,
-                spec.machine.ip_mode,
-                //
-                ec2_key_path,
-                user_name,
-                public_ip,
-                //
-                ec2_key_path,
-                user_name,
-                public_ip,
-                //
-                ec2_key_path,
-                user_name,
-                public_ip,
-                //
-                ec2_key_path,
-                user_name,
-                public_ip,
-                //
-                ec2_key_path,
-                user_name,
-                public_ip,
-                //
-                spec.resource.regions[0],
-                d.instance_id,
-            );
+            let ssh_command = ec2::SshCommand {
+                ec2_key_path: regional_resource.ec2_key_path.clone(),
+                user_name: user_name.to_string(),
+
+                region: spec.resource.regions[0].clone(),
+                availability_zone: d.availability_zone,
+
+                instance_id: d.instance_id,
+                instance_state_name: d.instance_state_name,
+
+                ip_mode: spec.machine.ip_mode.clone(),
+                public_ip: public_ip,
+            };
+            println!("\n{}\n", ssh_command.to_string());
+            ssh_commands.push(ssh_command);
         }
         println!();
+
+        ec2::SshCommands(ssh_commands.clone())
+            .sync(&regional_resource.ssh_commands_path_dev_machine)
+            .unwrap();
 
         spec.resource
             .regional_resources
@@ -2847,6 +2822,21 @@ aws ssm start-session --region {} --target {}
             )
             .await
             .unwrap();
+
+        sleep(Duration::from_secs(10)).await;
+        for ssh_command in ssh_commands.iter() {
+            let output = ssh_command
+                .run("tail -10 /var/log/cloud-init-output.log")
+                .unwrap();
+            println!(
+                "{} (dev machine) init script std output:\n{}\n",
+                ssh_command.instance_id, output.stdout
+            );
+            println!(
+                "{} (dev machine) init script std err:\n{}\n",
+                ssh_command.instance_id, output.stderr
+            );
+        }
 
         //
         //
