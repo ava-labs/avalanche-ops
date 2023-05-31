@@ -126,7 +126,6 @@ pub fn command() -> Command {
         .arg(
             Arg::new("SKIP_PROMPT")
                 .long("skip-prompt")
-                .short('s')
                 .help("Skips prompt mode")
                 .required(false)
                 .num_args(0),
