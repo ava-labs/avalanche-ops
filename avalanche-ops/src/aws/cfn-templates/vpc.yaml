@@ -10,6 +10,10 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
+  UserId:
+    Type: String
+    Description: For tagging resources.
+
   VpcCidr:
     Type: String
     Default: 10.0.0.0/16
@@ -97,6 +101,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Join ["-", [!Ref Id, "igw"]]
+        - Key: UserId
+          Value: !Ref UserId
 
   VPC:
     Type: AWS::EC2::VPC
@@ -107,6 +113,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Join ["-", [!Ref Id, "vpc"]]
+        - Key: UserId
+          Value: !Ref UserId
 
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -137,6 +145,8 @@ Resources:
           Value: !Join ["-", [!Ref Id, "public-subnet-1"]]
         - Key: Network
           Value: Public
+        - Key: UserId
+          Value: !Ref UserId
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -155,6 +165,8 @@ Resources:
           Value: !Join ["-", [!Ref Id, "public-subnet-2"]]
         - Key: Network
           Value: Public
+        - Key: UserId
+          Value: !Ref UserId
 
   PublicSubnet3:
     Condition: HasMoreThan2Azs
@@ -174,6 +186,8 @@ Resources:
           Value: !Join ["-", [!Ref Id, "public-subnet-3"]]
         - Key: Network
           Value: Public
+        - Key: UserId
+          Value: !Ref UserId
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -186,6 +200,8 @@ Resources:
           Value: !Join ["-", [!Ref Id, "public-round-table"]]
         - Key: Network
           Value: Public
+        - Key: UserId
+          Value: !Ref UserId
 
   PublicRoute:
     Type: AWS::EC2::Route

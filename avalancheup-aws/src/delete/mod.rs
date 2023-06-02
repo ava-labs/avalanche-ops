@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs,
-    io::{self, stdout, Error, ErrorKind},
+    io::{self, stdout},
     path::Path,
 };
 
@@ -119,19 +119,18 @@ pub async fn execute(
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();
 
-    if let Some(identity) = &spec.resource.identity {
+    // validate identity
+    if !spec.resource.identity.user_id.is_empty() {
         // AWS calls must be made from the same caller
-        if !identity.eq(&current_identity) {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!(
-                    "config identity {:?} != currently loaded identity {:?}",
-                    identity, current_identity
-                ),
-            ));
+        if spec.resource.identity.user_id != current_identity.user_id {
+            log::warn!(
+                "config identity {:?} != currently loaded identity {:?}",
+                spec.resource.identity,
+                current_identity
+            );
         }
     } else {
-        return Err(Error::new(ErrorKind::Other, "unknown identity"));
+        spec.resource.identity = current_identity;
     }
 
     execute!(

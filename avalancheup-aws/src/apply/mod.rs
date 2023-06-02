@@ -87,19 +87,17 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let current_identity = sts_manager.get_identity().await.unwrap();
 
     // validate identity
-    if let Some(identity) = &spec.resource.identity {
+    if !spec.resource.identity.user_id.is_empty() {
         // AWS calls must be made from the same caller
-        if !identity.eq(&current_identity) {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!(
-                    "config identity {:?} != currently loaded identity {:?}",
-                    identity, current_identity
-                ),
-            ));
+        if spec.resource.identity.user_id != current_identity.user_id {
+            log::warn!(
+                "config identity {:?} != currently loaded identity {:?}",
+                spec.resource.identity,
+                current_identity
+            );
         }
     } else {
-        spec.resource.identity = Some(current_identity);
+        spec.resource.identity = current_identity;
     }
 
     // set defaults based on ID
@@ -639,6 +637,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let vpc_stack_name = regional_resource.cloudformation_vpc.clone().unwrap();
             let vpc_params = Vec::from([
                 build_param("Id", &spec.id),
+                build_param("UserId", &spec.resource.identity.user_id),
                 build_param("VpcCidr", "10.0.0.0/16"),
                 build_param("PublicSubnetCidr1", "10.0.64.0/19"),
                 build_param("PublicSubnetCidr2", "10.0.128.0/19"),
@@ -767,6 +766,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let mut common_asg_params = vec![
             build_param("Id", &spec.id),
+            build_param("UserId", &spec.resource.identity.user_id),
             build_param(
                 "NetworkId",
                 format!("{}", &spec.avalanchego_config.network_id).as_str(),
@@ -834,6 +834,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
         let mut common_dev_machine_params = BTreeMap::new();
         common_dev_machine_params.insert("Id".to_string(), format!("{}-dev-machine", spec.id));
+        common_dev_machine_params
+            .insert("UserId".to_string(), spec.resource.identity.user_id.clone());
         common_dev_machine_params.insert("AsgName".to_string(), format!("{}-dev-machine", spec.id));
         common_dev_machine_params.insert(
             "KmsKeyArn".to_string(),
@@ -1039,10 +1041,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         None,
                         OnFailure::Delete,
                         &cloudformation_asg_anchor_nodes_tmpl,
-                        Some(Vec::from([Tag::builder()
-                            .key("KIND")
-                            .value("avalanche-ops")
-                            .build()])),
+                        Some(Vec::from([
+                            Tag::builder().key("KIND").value("avalanche-ops").build(),
+                            Tag::builder()
+                                .key("UserId")
+                                .value(spec.resource.identity.user_id.clone())
+                                .build(),
+                        ])),
                         Some(anchor_asg_params),
                     )
                     .await
@@ -1515,10 +1520,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     None,
                     OnFailure::Delete,
                     &cloudformation_asg_non_anchor_nodes_tmpl,
-                    Some(Vec::from([Tag::builder()
-                        .key("KIND")
-                        .value("avalanche-ops")
-                        .build()])),
+                    Some(Vec::from([
+                        Tag::builder().key("KIND").value("avalanche-ops").build(),
+                        Tag::builder()
+                            .key("UserId")
+                            .value(spec.resource.identity.user_id.clone())
+                            .build(),
+                    ])),
                     Some(non_anchor_asg_params),
                 )
                 .await
@@ -2194,10 +2202,13 @@ cat /tmp/{node_id}.crt
                 Some(vec![Capability::CapabilityNamedIam]),
                 OnFailure::Delete,
                 &ssm_doc_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
+                Some(Vec::from([
+                    Tag::builder().key("KIND").value("avalanche-ops").build(),
+                    Tag::builder()
+                        .key("UserId")
+                        .value(spec.resource.identity.user_id.clone())
+                        .build(),
+                ])),
                 Some(cfn_params),
             )
             .await
@@ -2665,10 +2676,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 None,
                 OnFailure::Delete,
                 &asg_tmpl,
-                Some(Vec::from([Tag::builder()
-                    .key("KIND")
-                    .value("avalanche-ops")
-                    .build()])),
+                Some(Vec::from([
+                    Tag::builder().key("KIND").value("avalanche-ops").build(),
+                    Tag::builder()
+                        .key("UserId")
+                        .value(spec.resource.identity.user_id.clone())
+                        .build(),
+                ])),
                 Some(cfn_params),
             )
             .await

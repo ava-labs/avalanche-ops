@@ -11,6 +11,10 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
+  UserId:
+    Type: String
+    Description: For tagging resources.
+
   NetworkId:
     Type: Number
     Description: Avalanche network ID, used for resource tagging.
@@ -453,6 +457,7 @@ Resources:
       # load balancer name '...' cannot be longer than '32' characters
       Tags:
         - { Key: Name, Value: !Sub "${Id}-nlb" }
+        - { Key: UserId, Value: !Sub "${UserId}" }
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
   NLBTargetGroup:
@@ -549,6 +554,7 @@ Resources:
           - ResourceType: instance
             Tags:
               - { Key: Name, Value: !Sub "${Id}-${ArchType}" }
+              - { Key: UserId, Value: !Sub "${UserId}" }
 
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html#cfn-ec2-launchtemplate-launchtemplatedata-userdata
         # https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html
@@ -793,6 +799,9 @@ Resources:
           PropagateAtLaunch: true
         - Key: ID
           Value: !Ref Id
+          PropagateAtLaunch: true
+        - Key: USER_ID
+          Value: !Ref UserId
           PropagateAtLaunch: true
         - Key: NETWORK_ID
           Value: !Ref NetworkId

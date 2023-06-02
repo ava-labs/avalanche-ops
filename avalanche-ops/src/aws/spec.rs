@@ -121,8 +121,8 @@ pub struct KmsKey {
 pub struct Resource {
     /// AWS STS caller loaded from its local environment.
     /// READ ONLY.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub identity: Option<sts::Identity>,
+    #[serde(default)]
+    pub identity: sts::Identity,
 
     /// AWS region to create resources.
     /// MUST BE NON-EMPTY.
@@ -161,7 +161,7 @@ impl Default for Resource {
 impl Resource {
     pub fn default() -> Self {
         Self {
-            identity: None,
+            identity: sts::Identity::default(),
 
             regions: vec![String::from("us-west-2")],
             s3_bucket: String::new(),
