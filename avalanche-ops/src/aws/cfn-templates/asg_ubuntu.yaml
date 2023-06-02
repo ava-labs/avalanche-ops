@@ -130,7 +130,7 @@ Parameters:
   # wait longer by default, because EC2 tag population takes awhile...
   ProvisionerInitialWaitRandomSeconds:
     Type: Number
-    Default: 90
+    Default: 15
     MinValue: 0
     MaxValue: 500
     Description: Only set non-zero if multiple instances may compete for the same EBS volume in the same zone.
