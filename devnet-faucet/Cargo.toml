@@ -13,7 +13,7 @@ avalanche-types = { version = "0.0.393", features = ["evm", "jsonrpc_client", "w
 bytes = "1.4.0"
 clap = { version = "4.3.0", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
-ethers = { version = "=2.0.4" }
+ethers = { version = "=2.0.7" }
 ethers-core = { version = "=2.0.4", features = ["eip712"] }
 ethers-providers = { version = "=2.0.4" }
 ethers-signers = { version = "=2.0.4" }
