@@ -17,7 +17,7 @@ aws-sdk-s3 = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
 blizzardup-aws = { path = "../blizzardup-aws" }
 clap = { version = "4.3.0", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
-ethers-signers = { version = "=2.0.4", optional = false }
+ethers-signers = { version = "=2.0.6", optional = false }
 log = "0.4.18"
 primitive-types = { version = "0.12.1", optional = false } # https://crates.io/crates/primitive-types
 random-manager = "0.0.5"
