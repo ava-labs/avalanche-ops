@@ -1027,16 +1027,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     if !opts.chain_alias.is_empty() {
         match json_client_admin::alias_chain(
             &opts.chain_rpc_url,
-            opts.chain_name.clone(),
+            subnet_id.to_string(),
             opts.chain_alias.clone(),
         )
         .await
         {
-            Ok(_) => log::info!(
-                "set alias {} for chain {}",
-                &opts.chain_alias,
-                &opts.chain_name
-            ),
+            Ok(_) => log::info!("set alias {} for chain {}", &opts.chain_alias, subnet_id,),
             Err(e) => {
                 execute!(
                     stdout(),
@@ -1048,7 +1044,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                     ErrorKind::Other,
                     format!(
                         "error setting alias {} for chain {}: {}",
-                        opts.chain_alias, opts.chain_name, e
+                        opts.chain_alias, subnet_id, e
                     ),
                 ));
             }
