@@ -2649,34 +2649,37 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         //
         //
         //
-        println!();
-        log::info!("creating a dev machine");
+        for region in &spec.resource.regions {
+            println!();
+            log::info!("creating a dev machine in {region}");
+            let mut regional_resource = spec
+                .resource
+                .regional_resources
+                .get(region)
+                .unwrap()
+                .clone();
 
-        let mut regional_resource = spec
-            .resource
-            .regional_resources
-            .get(&spec.resource.regions[0])
-            .unwrap()
-            .clone();
-        let stack_name = if let Some(v) = &regional_resource.cloudformation_asg_dev_machine {
-            v.clone()
-        } else {
-            let s = avalanche_ops::aws::spec::StackName::DevMachine(spec.id.clone()).encode();
-            regional_resource.cloudformation_asg_dev_machine = Some(s.clone());
-            s
-        };
-        spec.resource
-            .regional_resources
-            .insert(spec.resource.regions[0].clone(), regional_resource.clone());
-        spec.sync(spec_file_path)?;
-        default_s3_manager
-            .put_object(
-                spec_file_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .expect("failed put_object ConfigFile");
+            let stack_name = if let Some(v) = &regional_resource.cloudformation_asg_dev_machine {
+                v.clone()
+            } else {
+                let s = avalanche_ops::aws::spec::StackName::DevMachine(spec.id.clone()).encode();
+                regional_resource.cloudformation_asg_dev_machine = Some(s.clone());
+                s
+            };
+
+            spec.resource
+                .regional_resources
+                .insert(region.clone(), regional_resource.clone());
+            spec.sync(spec_file_path)?;
+            default_s3_manager
+                .put_object(
+                    spec_file_path,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object ConfigFile");
 
         // Put dev machine scripts into s3 if specified
         if let Some(script) = spec.dev_machine_script.clone() {
@@ -2692,54 +2695,56 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 .expect("failed put_object dev machine script");
         }
 
-        let mut regional_common_dev_machine_asg_params = region_to_common_dev_machine_asg_params
-            .get(&spec.resource.regions[0])
-            .unwrap()
-            .clone();
-        let dev_machine = spec.dev_machine.clone().unwrap();
-        regional_common_dev_machine_asg_params
-            .insert("IpMode".to_string(), dev_machine.ip_mode.clone());
-
-        if let Some(email) = &dev_machine.ssh_key_email {
-            regional_common_dev_machine_asg_params.insert("SshKeyEmail".to_string(), email.clone());
-        };
-
-        if !dev_machine.instance_types.is_empty() {
-            let instance_types = dev_machine.instance_types.clone();
+            let mut regional_common_dev_machine_asg_params =
+                region_to_common_dev_machine_asg_params
+                    .get(region)
+                    .unwrap()
+                    .clone();
+            let dev_machine = spec.dev_machine.clone().unwrap();
             regional_common_dev_machine_asg_params
-                .insert("InstanceTypes".to_string(), instance_types.join(","));
-            regional_common_dev_machine_asg_params.insert(
-                "InstanceTypesCount".to_string(),
-                format!("{}", instance_types.len()),
-            );
-        }
+                .insert("IpMode".to_string(), dev_machine.ip_mode.clone());
 
-        let is_spot_instance = dev_machine.instance_mode == *"spot";
-        let on_demand_pct = if is_spot_instance { 0 } else { 100 };
-        regional_common_dev_machine_asg_params.insert(
-            "InstanceMode".to_string(),
-            if is_spot_instance {
-                "spot".to_string()
-            } else {
-                "on-demand".to_string()
-            },
-        );
-        regional_common_dev_machine_asg_params.insert(
-            "OnDemandPercentageAboveBaseCapacity".to_string(),
-            format!("{}", on_demand_pct),
-        );
-        regional_common_dev_machine_asg_params
-            .insert("ArchType".to_string(), dev_machine.arch_type.clone());
-        regional_common_dev_machine_asg_params
-            .insert("OsType".to_string(), "ubuntu20.04".to_string());
-        regional_common_dev_machine_asg_params.insert(
-            "ImageIdSsmParameter".to_string(),
-            ec2::default_image_id_ssm_parameter(&spec.machine.arch_type, &spec.machine.os_type)
-                .unwrap(),
-        );
+            if let Some(email) = &dev_machine.ssh_key_email {
+                regional_common_dev_machine_asg_params
+                    .insert("SshKeyEmail".to_string(), email.clone());
+            };
+
+            if !dev_machine.instance_types.is_empty() {
+                let instance_types = dev_machine.instance_types.clone();
+                regional_common_dev_machine_asg_params
+                    .insert("InstanceTypes".to_string(), instance_types.join(","));
+                regional_common_dev_machine_asg_params.insert(
+                    "InstanceTypesCount".to_string(),
+                    format!("{}", instance_types.len()),
+                );
+            }
+
+            let is_spot_instance = dev_machine.instance_mode == *"spot";
+            let on_demand_pct = if is_spot_instance { 0 } else { 100 };
+            regional_common_dev_machine_asg_params.insert(
+                "InstanceMode".to_string(),
+                if is_spot_instance {
+                    "spot".to_string()
+                } else {
+                    "on-demand".to_string()
+                },
+            );
+            regional_common_dev_machine_asg_params.insert(
+                "OnDemandPercentageAboveBaseCapacity".to_string(),
+                format!("{}", on_demand_pct),
+            );
+            regional_common_dev_machine_asg_params
+                .insert("ArchType".to_string(), dev_machine.arch_type.clone());
+            regional_common_dev_machine_asg_params
+                .insert("OsType".to_string(), "ubuntu20.04".to_string());
+            regional_common_dev_machine_asg_params.insert(
+                "ImageIdSsmParameter".to_string(),
+                ec2::default_image_id_ssm_parameter(&spec.machine.arch_type, &spec.machine.os_type)
+                    .unwrap(),
+            );
 
         let regional_shared_config = aws_manager::load_config(
-            Some(spec.resource.regions[0].clone()),
+            Some(region.clone()),
             Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
@@ -2747,22 +2752,22 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
         let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print(format!(
-                "\n\n\nSTEP: creating dev machine ASG in '{}'\n\n",
-                spec.resource.regions[0]
-            )),
-            ResetColor
-        )?;
-        let asg_tmpl = avalanche_ops::dev_machine_artifacts::asg_ubuntu_yaml().unwrap();
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print(format!(
+                    "\n\n\nSTEP: creating dev machine ASG in '{}'\n\n",
+                    region.clone()
+                )),
+                ResetColor
+            )?;
+            let asg_tmpl = aws_dev_machine::artifacts::asg_ubuntu_yaml().unwrap();
 
-        let mut cfn_params = Vec::new();
-        for (k, v) in regional_common_dev_machine_asg_params.iter() {
-            log::info!("dev-machine CFN parameter: '{k}'='{v}'");
-            cfn_params.push(build_param(k, v));
-        }
+            let mut cfn_params = Vec::new();
+            for (k, v) in regional_common_dev_machine_asg_params.iter() {
+                log::info!("dev-machine CFN parameter: '{k}'='{v}'");
+                cfn_params.push(build_param(k, v));
+            }
 
         // Add the security group ids to the dev machine ASG
         cfn_params.push(build_param(
@@ -2774,214 +2779,215 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 .as_str(),
         ));
 
-        regional_cloudformation_manager
-            .create_stack(
-                &stack_name,
-                None,
-                OnFailure::Delete,
-                &asg_tmpl,
-                Some(Vec::from([
-                    Tag::builder().key("KIND").value("avalanche-ops").build(),
-                    Tag::builder()
-                        .key("UserId")
-                        .value(spec.resource.identity.user_id.clone())
-                        .build(),
-                ])),
-                Some(cfn_params),
-            )
-            .await
-            .unwrap();
+            regional_cloudformation_manager
+                .create_stack(
+                    &stack_name,
+                    None,
+                    OnFailure::Delete,
+                    &asg_tmpl,
+                    Some(Vec::from([
+                        Tag::builder().key("KIND").value("avalanche-ops").build(),
+                        Tag::builder()
+                            .key("UserId")
+                            .value(spec.resource.identity.user_id.clone())
+                            .build(),
+                    ])),
+                    Some(cfn_params),
+                )
+                .await
+                .unwrap();
 
-        let stack = regional_cloudformation_manager
-            .poll_stack(
-                &stack_name,
-                StackStatus::CreateComplete,
-                Duration::from_secs(500),
-                Duration::from_secs(30),
-            )
-            .await
-            .unwrap();
-        log::info!(
-            "created a dev machine in the region '{}'",
-            spec.resource.regions[0]
-        );
+            let stack = regional_cloudformation_manager
+                .poll_stack(
+                    &stack_name,
+                    StackStatus::CreateComplete,
+                    Duration::from_secs(500),
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
+            log::info!("created a dev machine in the region '{}'", region.clone());
 
-        for o in stack.outputs.unwrap() {
-            let k = o.output_key.unwrap();
-            let v = o.output_value.unwrap();
-            log::info!("stack output key=[{}], value=[{}]", k, v,);
-            if k.eq("AsgLogicalId") {
-                regional_resource.cloudformation_asg_dev_machine_logical_id = Some(v);
-                continue;
-            }
-        }
-        if regional_resource
-            .cloudformation_asg_dev_machine_logical_id
-            .is_none()
-        {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "dev-machine regional_resource.cloudformation_asg_dev_machine_logical_id not found",
-            ));
-        }
-
-        let asg_name = regional_resource
-            .cloudformation_asg_dev_machine_logical_id
-            .clone()
-            .unwrap();
-
-        let mut droplets: Vec<ec2::Droplet> = Vec::new();
-        for _ in 0..10 {
-            // TODO: better retries
-            log::info!("fetching all droplets for dev-machine SSH access (target node 1)",);
-            droplets = regional_ec2_manager.list_asg(&asg_name).await.unwrap();
-            if (droplets.len() as u32) >= 1 {
-                break;
-            }
-            log::info!(
-                "retrying fetching all droplets (only got {})",
-                droplets.len()
-            );
-            sleep(Duration::from_secs(30)).await;
-        }
-
-        let mut eips = Vec::new();
-        if spec.machine.ip_mode == *"elastic" {
-            log::info!("using elastic IPs... wait more");
-            loop {
-                eips = regional_ec2_manager
-                    .describe_eips_by_tags(HashMap::from([(
-                        String::from("Id"),
-                        format!("{}-dev-machine", spec.id),
-                    )]))
-                    .await
-                    .unwrap();
-
-                log::info!("got {} EIP addresses", eips.len());
-
-                let mut ready = true;
-                for eip_addr in eips.iter() {
-                    ready = ready && eip_addr.instance_id.is_some();
+            for o in stack.outputs.unwrap() {
+                let k = o.output_key.unwrap();
+                let v = o.output_value.unwrap();
+                log::info!("stack output key=[{}], value=[{}]", k, v,);
+                if k.eq("AsgLogicalId") {
+                    regional_resource.cloudformation_asg_dev_machine_logical_id = Some(v);
+                    continue;
                 }
-                if ready && eips.len() == 1 {
+            }
+            if regional_resource
+                .cloudformation_asg_dev_machine_logical_id
+                .is_none()
+            {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "dev-machine regional_resource.cloudformation_asg_dev_machine_logical_id not found",
+                ));
+            }
+
+            let asg_name = regional_resource
+                .cloudformation_asg_dev_machine_logical_id
+                .clone()
+                .unwrap();
+
+            let mut droplets: Vec<ec2::Droplet> = Vec::new();
+            for _ in 0..10 {
+                // TODO: better retries
+                log::info!("fetching all droplets for dev-machine SSH access (target node 1)",);
+                droplets = regional_ec2_manager.list_asg(&asg_name).await.unwrap();
+                if (droplets.len() as u32) >= 1 {
                     break;
                 }
-
+                log::info!(
+                    "retrying fetching all droplets (only got {})",
+                    droplets.len()
+                );
                 sleep(Duration::from_secs(30)).await;
             }
-        }
 
-        let mut instance_id_to_public_ip = HashMap::new();
-        for eip_addr in eips.iter() {
-            let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
-            let instance_id = eip_addr.instance_id.to_owned().unwrap();
-            let public_ip = eip_addr.public_ip.to_owned().unwrap();
-            log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
-            instance_id_to_public_ip.insert(instance_id, public_ip);
-        }
+            let mut eips = Vec::new();
+            if spec.machine.ip_mode == *"elastic" {
+                log::info!("using elastic IPs... wait more");
+                loop {
+                    eips = regional_ec2_manager
+                        .describe_eips_by_tags(HashMap::from([(
+                            String::from("Id"),
+                            format!("{}-dev-machine", spec.id),
+                        )]))
+                        .await
+                        .unwrap();
 
-        let user_name = {
-            if dev_machine.os_type == "al2" {
-                "ec2-user"
-            } else {
-                "ubuntu"
+                    log::info!("got {} EIP addresses", eips.len());
+
+                    let mut ready = true;
+                    for eip_addr in eips.iter() {
+                        ready = ready && eip_addr.instance_id.is_some();
+                    }
+                    if ready && eips.len() == 1 {
+                        break;
+                    }
+
+                    sleep(Duration::from_secs(30)).await;
+                }
             }
-        };
 
-        let mut ssh_commands = Vec::new();
-        for d in droplets {
-            // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
-            // aws ssm start-session --region [region] --target [instance ID]
-            // TODO: support other user name?
-            let public_ip = if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
-                public_ip.clone()
-            } else {
-                d.public_ipv4.clone()
+            let mut instance_id_to_public_ip = HashMap::new();
+            for eip_addr in eips.iter() {
+                let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
+                let instance_id = eip_addr.instance_id.to_owned().unwrap();
+                let public_ip = eip_addr.public_ip.to_owned().unwrap();
+                log::info!("EIP found {allocation_id} for {instance_id} and {public_ip}");
+                instance_id_to_public_ip.insert(instance_id, public_ip);
+            }
+
+            let user_name = {
+                if dev_machine.os_type == "al2" {
+                    "ec2-user"
+                } else {
+                    "ubuntu"
+                }
             };
+
+            let mut ssh_commands = Vec::new();
+            for d in droplets {
+                // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
+                // aws ssm start-session --region [region] --target [instance ID]
+                // TODO: support other user name?
+                let public_ip =
+                    if let Some(public_ip) = instance_id_to_public_ip.get(&d.instance_id) {
+                        public_ip.clone()
+                    } else {
+                        d.public_ipv4.clone()
+                    };
             instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
 
-            let ssh_command = ec2::SshCommand {
-                ec2_key_path: regional_resource.ec2_key_path.clone(),
-                user_name: user_name.to_string(),
+                let ssh_command = ec2::SshCommand {
+                    ec2_key_path: regional_resource.ec2_key_path.clone(),
+                    user_name: user_name.to_string(),
 
-                region: spec.resource.regions[0].clone(),
-                availability_zone: d.availability_zone,
+                    region: region.clone(),
+                    availability_zone: d.availability_zone,
 
-                instance_id: d.instance_id,
-                instance_state_name: d.instance_state_name,
+                    instance_id: d.instance_id,
+                    instance_state_name: d.instance_state_name,
 
-                ip_mode: spec.machine.ip_mode.clone(),
-                public_ip: public_ip,
-            };
-            println!("\n{}\n", ssh_command.to_string());
-            ssh_commands.push(ssh_command);
-        }
-        println!();
+                    ip_mode: spec.machine.ip_mode.clone(),
+                    public_ip,
+                };
+                println!("\n{}\n", ssh_command);
+                ssh_commands.push(ssh_command);
+            }
+            println!();
 
-        ec2::SshCommands(ssh_commands.clone())
-            .sync(&regional_resource.ssh_commands_path_dev_machine)
-            .unwrap();
+            ec2::SshCommands(ssh_commands.clone())
+                .sync(&regional_resource.ssh_commands_path_dev_machine)
+                .unwrap();
 
-        spec.resource
-            .regional_resources
-            .insert(spec.resource.regions[0].clone(), regional_resource);
-        spec.sync(spec_file_path)?;
-        default_s3_manager
-            .put_object(
-                spec_file_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .expect("failed put_object ConfigFile");
+            spec.resource
+                .regional_resources
+                .insert(region.to_string(), regional_resource);
+            spec.sync(spec_file_path)?;
+            default_s3_manager
+                .put_object(
+                    spec_file_path,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object ConfigFile");
 
-        sleep(Duration::from_secs(1)).await;
-        log::info!("uploading avalancheup spec file...");
-        default_s3_manager
-            .put_object(
-                spec_file_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
-            )
-            .await
-            .unwrap();
-
-        sleep(Duration::from_secs(10)).await;
-        for ssh_command in ssh_commands.iter() {
-            match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
-                Ok(output) => {
-                    println!(
-                        "{} (dev machine) init script std output:\n{}\n",
-                        ssh_command.instance_id, output.stdout
-                    );
-                    println!(
-                        "{} (dev machine) init script std err:\n{}\n",
-                        ssh_command.instance_id, output.stderr
-                    );
+            sleep(Duration::from_secs(10)).await;
+            for ssh_command in ssh_commands.iter() {
+                match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+                    Ok(output) => {
+                        println!(
+                            "{} (dev machine) init script std output:\n{}\n",
+                            ssh_command.instance_id, output.stdout
+                        );
+                        println!(
+                            "{} (dev machine) init script std err:\n{}\n",
+                            ssh_command.instance_id, output.stderr
+                        );
+                    }
+                    Err(e) => log::warn!("failed to run ssh command {}", e),
                 }
-                Err(e) => log::warn!("failed to run ssh command {}", e),
             }
         }
+    }
 
-        //
-        //
-        //
-        //
-        //
-        println!();
-        log::info!(
-            "apply all success with node Ids {:?} and instance Ids {:?}",
-            all_node_ids,
-            all_instance_ids
-        );
+    sleep(Duration::from_secs(1)).await;
+    log::info!("uploading avalancheup spec file...");
+    default_s3_manager
+        .put_object(
+            spec_file_path,
+            &spec.resource.s3_bucket,
+            &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+        )
+        .await
+        .unwrap();
 
-        println!();
-        println!("# delete resources");
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print(format!(
-                "{} delete \\
+    //
+    //
+    //
+    //
+    //
+    println!();
+    log::info!(
+        "apply all success with node Ids {:?} and instance Ids {:?}",
+        all_node_ids,
+        all_instance_ids
+    );
+
+    println!();
+    println!("# delete resources");
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "{} delete \\
 --delete-cloudwatch-log-group \\
 --delete-s3-objects \\
 --delete-ebs-volumes \\
@@ -2989,12 +2995,11 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 --spec-file-path {}
 
 ",
-                exec_path.display(),
-                spec_file_path
-            )),
-            ResetColor
-        )?;
-    }
+            exec_path.display(),
+            spec_file_path
+        )),
+        ResetColor
+    )?;
 
     Ok(())
 }
