@@ -12,6 +12,8 @@ use std::{
     },
 };
 
+mod dev_machine;
+
 use avalanche_types::{
     ids, jsonrpc::client::health as jsonrpc_client_health,
     jsonrpc::client::info as jsonrpc_client_info, key, units, wallet,
