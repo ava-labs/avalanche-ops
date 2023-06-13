@@ -20,11 +20,11 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
 
     let s3_shared_config =
-        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
+        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30)), None).await;
     let s3_manager = s3::Manager::new(&s3_shared_config);
 
     let kms_shared_config =
-        aws_manager::load_config(Some(opts.kms_region.clone()), Some(Duration::from_secs(30)))
+        aws_manager::load_config(Some(opts.kms_region.clone()), Some(Duration::from_secs(30)), None)
             .await;
     let kms_manager = kms::Manager::new(&kms_shared_config);
 
