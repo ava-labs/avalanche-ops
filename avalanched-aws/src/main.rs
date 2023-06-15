@@ -31,6 +31,10 @@ async fn main() {
                     .clone(),
                 use_default_config: sub_matches.get_flag("USE_DEFAULT_CONFIG"),
                 publish_periodic_node_info: sub_matches.get_flag("PUBLISH_PERIODIC_NODE_INFO"),
+                profile_name: sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             };
             agent::execute(opts).await.unwrap();
         }
@@ -79,6 +83,10 @@ async fn main() {
                 sub_matches
                     .get_one::<String>("AVALANCHE_TELEMETRY_CLOUDWATCH_LOCAL_PATH")
                     .unwrap_or(&String::new()),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             )
             .await
             .unwrap();
@@ -122,6 +130,10 @@ async fn main() {
                     .get_one::<String>("AVALANCHEGO_CONFIG_PATH")
                     .unwrap()
                     .to_string(),
+                profile_name: sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             })
             .await
             .unwrap();
@@ -149,6 +161,10 @@ async fn main() {
                     .get_one::<String>("CHAIN_CONFIG_LOCAL_PATH")
                     .unwrap()
                     .to_string(),
+                profile_name: sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             })
             .await
             .unwrap();
