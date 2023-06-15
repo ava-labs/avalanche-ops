@@ -62,6 +62,14 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(1),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile_name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
 }
 
 pub async fn execute(
@@ -70,6 +78,7 @@ pub async fn execute(
     key_type: &str,
     key: &str,
     chain_rpc_url: &str,
+    profile_name: String,
 ) -> io::Result<()> {
     // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
@@ -101,8 +110,12 @@ pub async fn execute(
     };
     log::info!("network Id: {network_id}");
 
-    let shared_config =
-        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await;
+    let shared_config = aws_manager::load_config(
+        Some(region.to_string()),
+        Some(profile_name),
+        Some(Duration::from_secs(30)),
+    )
+    .await;
 
     let sts_manager = sts::Manager::new(&shared_config);
     let current_identity = sts_manager.get_identity().await.unwrap();

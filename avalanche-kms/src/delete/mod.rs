@@ -58,6 +58,14 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile_name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
 }
 
 pub async fn execute(
@@ -66,6 +74,7 @@ pub async fn execute(
     key_arn: &str,
     pending_windows_in_days: i32,
     unsafe_skip_prompt: bool,
+    profile_name: String,
 ) -> io::Result<()> {
     // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
@@ -74,8 +83,12 @@ pub async fn execute(
 
     log::info!("requesting to delete {key_arn} ({region}) in {pending_windows_in_days} days");
 
-    let shared_config =
-        aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30))).await;
+    let shared_config = aws_manager::load_config(
+        Some(region.to_string()),
+        Some(profile_name),
+        Some(Duration::from_secs(30)),
+    )
+    .await;
     let kms_manager = kms::Manager::new(&shared_config);
 
     let sts_manager = sts::Manager::new(&shared_config);
