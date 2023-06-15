@@ -225,6 +225,10 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("SPEC_FILE_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
+                profile_name: sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             };
             default_spec::execute(opt)
                 .await
@@ -242,6 +246,10 @@ async fn main() -> io::Result<()> {
                     .unwrap()
                     .clone(),
                 sub_matches.get_flag("SKIP_PROMPT"),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             )
             .await
             .expect("failed to execute 'apply'");
@@ -264,6 +272,10 @@ async fn main() -> io::Result<()> {
                 sub_matches.get_flag("DELETE_EBS_VOLUMES"),
                 sub_matches.get_flag("DELETE_ELASTIC_IPS"),
                 sub_matches.get_flag("SKIP_PROMPT"),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             )
             .await
             .expect("failed to execute 'delete'");
@@ -410,6 +422,10 @@ async fn main() -> io::Result<()> {
 
                 ssm_docs,
                 target_nodes,
+                profile_name: sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap()
+                    .clone(),
             })
             .await
             .expect("failed to execute 'install-subnet-chain'");

@@ -101,6 +101,14 @@ staking-key-cert-s3-downloader \
                 .required(true)
                 .num_args(1),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile_name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
         .get_matches();
 
     let opts = flags::Options {
@@ -120,6 +128,7 @@ staking-key-cert-s3-downloader \
         aad_tag: matches.get_one::<String>("AAD_TAG").unwrap().clone(),
         tls_key_path: matches.get_one::<String>("TLS_KEY_PATH").unwrap().clone(),
         tls_cert_path: matches.get_one::<String>("TLS_CERT_PATH").unwrap().clone(),
+        profile_name: matches.get_one::<String>("PROFILE_NAME").unwrap().clone(),
     };
     command::execute(opts).await.unwrap();
 }

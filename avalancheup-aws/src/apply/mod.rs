@@ -67,7 +67,12 @@ pub fn command() -> Command {
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
-pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
+pub async fn execute(
+    log_level: &str,
+    spec_file_path: &str,
+    skip_prompt: bool,
+    profile_name: String,
+) -> io::Result<()> {
     // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -79,6 +84,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
     let default_shared_config = aws_manager::load_config(
         Some(spec.resource.regions[0].clone()),
+        Some(profile_name.clone()),
         Some(Duration::from_secs(30)),
     )
     .await;
@@ -373,8 +379,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_kms_manager = kms::Manager::new(&regional_shared_config);
 
         sleep(Duration::from_secs(1)).await;
@@ -486,8 +496,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let regional_resource = r.clone();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         execute!(
@@ -551,8 +565,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         if regional_resource
@@ -613,8 +631,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let regional_resource = r.clone();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         execute!(
@@ -679,8 +701,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         if regional_resource.cloudformation_vpc_id.is_none()
@@ -760,8 +786,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         let mut common_asg_params = vec![
@@ -1224,8 +1254,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
         if let Some(anchor_asg_logical_ids) =
@@ -1431,8 +1465,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         let mut regional_resource = r.clone();
         let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         let common_asg_params = region_to_common_asg_params.get(region).unwrap();
@@ -1698,8 +1736,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_machine = spec.machine.regional_machines.get(region).unwrap();
 
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
         if let Some(non_anchor_asg_logical_ids) =
@@ -2170,8 +2212,12 @@ cat /tmp/{node_id}.crt
     //
     let mut region_to_ssm_doc_name = HashMap::new();
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         execute!(
@@ -2217,8 +2263,12 @@ cat /tmp/{node_id}.crt
     log::info!("waiting for SSM creation...");
     sleep(Duration::from_secs(10)).await;
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
-        let regional_shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let regional_shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
 
         execute!(
@@ -2647,6 +2697,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 
         let regional_shared_config = aws_manager::load_config(
             Some(spec.resource.regions[0].clone()),
+            Some(profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;

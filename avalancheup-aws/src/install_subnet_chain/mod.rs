@@ -61,6 +61,7 @@ pub struct Flags {
 
     pub ssm_docs: HashMap<String, String>,
     pub target_nodes: HashMap<String, avalanche_ops::aws::spec::RegionMachineId>,
+    pub profile_name: String,
 }
 
 #[derive(Clone, Debug)]
@@ -321,6 +322,14 @@ pub fn command() -> Command {
                 .value_parser(HashMapStringToRegionInstanceIdParser {})
                 .num_args(1),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile_name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
 }
 
 pub async fn execute(opts: Flags) -> io::Result<()> {
@@ -502,6 +511,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
     let shared_config = aws_manager::load_config(
         Some(opts.s3_region.clone()),
+        Some(opts.profile_name.clone()),
         Some(Duration::from_secs(opts.s3_upload_timeout)),
     )
     .await;
@@ -789,8 +799,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             "sending SSM commands for the region '{region}' with instances {:?}",
             instance_ids
         );
-        let shared_config =
-            aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+        let shared_config = aws_manager::load_config(
+            Some(region.clone()),
+            Some(opts.profile_name.clone()),
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let regional_ssm_manager = ssm::Manager::new(&shared_config);
 
         // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
@@ -963,8 +977,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 "sending SSM commands for the region '{region}' with instances {:?}",
                 instance_ids
             );
-            let shared_config =
-                aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30))).await;
+            let shared_config = aws_manager::load_config(
+                Some(region.clone()),
+                Some(opts.profile_name.clone()),
+                Some(Duration::from_secs(30)),
+            )
+            .await;
             let regional_ssm_manager = ssm::Manager::new(&shared_config);
 
             // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
