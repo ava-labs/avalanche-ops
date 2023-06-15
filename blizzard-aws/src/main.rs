@@ -23,6 +23,14 @@ async fn main() {
                 .value_parser(["debug", "info"])
                 .default_value("info"),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile_name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
         .get_matches();
 
     println!("{} version: {}", APP_NAME, crate_version!());
@@ -31,6 +39,7 @@ async fn main() {
             .get_one::<String>("LOG_LEVEL")
             .unwrap_or(&String::from("info"))
             .clone(),
+        profile_name: matches.get_one::<String>("PROFILE_NAME").unwrap().clone(),
     };
     command::execute(opts).await.unwrap();
 }

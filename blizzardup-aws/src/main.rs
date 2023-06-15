@@ -106,6 +106,10 @@ async fn main() {
                     .unwrap()
                     .clone(),
                 sub_matches.get_flag("SKIP_PROMPT"),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap()
+                    .clone(),
             )
             .await
             .expect("failed to execute 'apply'");
@@ -125,6 +129,10 @@ async fn main() {
                 sub_matches.get_flag("DELETE_S3_OBJECTS"),
                 sub_matches.get_flag("DELETE_S3_BUCKET"),
                 sub_matches.get_flag("SKIP_PROMPT"),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap()
+                    .clone(),
             )
             .await
             .expect("failed to execute 'delete'");
