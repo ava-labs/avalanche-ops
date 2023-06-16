@@ -67,12 +67,7 @@ pub fn command() -> Command {
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
-pub async fn execute(
-    log_level: &str,
-    spec_file_path: &str,
-    skip_prompt: bool,
-    profile_name: String,
-) -> io::Result<()> {
+pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
     // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
@@ -84,7 +79,7 @@ pub async fn execute(
 
     let default_shared_config = aws_manager::load_config(
         Some(spec.resource.regions[0].clone()),
-        Some(profile_name.clone()),
+        Some(spec.profile_name.clone()),
         Some(Duration::from_secs(30)),
     )
     .await;
@@ -381,7 +376,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -498,7 +493,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -567,7 +562,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -633,7 +628,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -703,7 +698,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -788,7 +783,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -1256,7 +1251,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -1467,7 +1462,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -1738,7 +1733,7 @@ pub async fn execute(
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -2214,7 +2209,7 @@ cat /tmp/{node_id}.crt
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -2265,7 +2260,7 @@ cat /tmp/{node_id}.crt
     for (region, regional_resource) in spec.resource.regional_resources.clone().iter() {
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -2697,7 +2692,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 
         let regional_shared_config = aws_manager::load_config(
             Some(spec.resource.regions[0].clone()),
-            Some(profile_name.clone()),
+            Some(spec.profile_name.clone()),
             Some(Duration::from_secs(30)),
         )
         .await;
