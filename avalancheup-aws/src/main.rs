@@ -225,6 +225,10 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("SPEC_FILE_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
+                profile_name: sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap_or(&String::from("default"))
+                    .clone(),
             };
             default_spec::execute(opt)
                 .await
@@ -410,6 +414,10 @@ async fn main() -> io::Result<()> {
 
                 ssm_docs,
                 target_nodes,
+                profile_name: sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap()
+                    .clone(),
             })
             .await
             .expect("failed to execute 'install-subnet-chain'");

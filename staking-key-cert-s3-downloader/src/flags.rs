@@ -11,4 +11,5 @@ pub struct Options {
     pub aad_tag: String,
     pub tls_key_path: String,
     pub tls_cert_path: String,
+    pub profile_name: String,
 }

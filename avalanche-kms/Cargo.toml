@@ -2,7 +2,7 @@
 name = "avalanche-kms"
 version = "0.8.5" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.69"
+rust-version = "1.70"
 
 [dependencies]
 avalanche-types = { version = "0.0.395", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws"] } # https://crates.io/crates/avalanche-types

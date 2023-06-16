@@ -96,8 +96,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     //
-    let shared_config =
-        aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await;
+    let shared_config = aws_manager::load_config(
+        Some(meta.region.clone()),
+        None,
+        Some(Duration::from_secs(30)),
+    )
+    .await;
     let ec2_manager = ec2::Manager::new(&shared_config);
     let kms_manager = kms::Manager::new(&shared_config);
 
@@ -219,6 +223,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let s3_manager = s3::Manager::new(
         &aws_manager::load_config(
             Some(fetched_tags.s3_region.clone()),
+            None,
             Some(Duration::from_secs(30)),
         )
         .await,
@@ -443,8 +448,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .build(),
     ];
     log::info!("describing existing volume to find the attached volume Id");
-    let shared_config =
-        aws_manager::load_config(Some(meta.region.clone()), Some(Duration::from_secs(30))).await;
+    let shared_config = aws_manager::load_config(
+        Some(meta.region.clone()),
+        None,
+        Some(Duration::from_secs(30)),
+    )
+    .await;
     let local_ec2_manager = ec2::Manager::new(&shared_config);
 
     let volumes = local_ec2_manager
@@ -598,6 +607,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
                 let shared_config = aws_manager::load_config(
                     Some(meta.region.clone()),
+                    None,
                     Some(Duration::from_secs(30)),
                 )
                 .await;
@@ -916,9 +926,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             // now delete old/terminated instances that were anchor nodes
             let mut running_machine_ids = HashSet::new();
             for (region, anchor_asg_names) in region_to_anchor_asg_names.iter() {
-                let shared_config =
-                    aws_manager::load_config(Some(region.clone()), Some(Duration::from_secs(30)))
-                        .await;
+                let shared_config = aws_manager::load_config(
+                    Some(region.clone()),
+                    None,
+                    Some(Duration::from_secs(30)),
+                )
+                .await;
                 let regional_ec2_manager = ec2::Manager::new(&shared_config);
 
                 for anchor_asg_name in anchor_asg_names {
@@ -1657,9 +1670,12 @@ async fn publish_node_info_ready_loop(
     };
 
     loop {
-        let shared_config =
-            aws_manager::load_config(Some(s3_region.to_string()), Some(Duration::from_secs(30)))
-                .await;
+        let shared_config = aws_manager::load_config(
+            Some(s3_region.to_string()),
+            None,
+            Some(Duration::from_secs(30)),
+        )
+        .await;
         let s3_manager = s3::Manager::new(&shared_config);
 
         match s3_manager
@@ -1702,6 +1718,7 @@ async fn monitor_spot_instance_action(
 
         let shared_config = aws_manager::load_config(
             Some(local_region.to_string()),
+            None,
             Some(Duration::from_secs(30)),
         )
         .await;

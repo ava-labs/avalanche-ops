@@ -2,7 +2,7 @@
 name = "avalanche-ops"
 version = "0.8.5" # https://crates.io/crates/avalanche-ops
 edition = "2021"
-rust-version = "1.69"
+rust-version = "1.70"
 publish = true
 description = "avalanche-ops spec"
 repository = "https://github.com/ava-labs/avalanche-ops"

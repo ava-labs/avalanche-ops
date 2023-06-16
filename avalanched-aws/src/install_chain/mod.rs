@@ -72,8 +72,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
-    let shared_config =
-        aws_manager::load_config(Some(opts.s3_region.clone()), Some(Duration::from_secs(30))).await;
+    let shared_config = aws_manager::load_config(
+        Some(opts.s3_region.clone()),
+        None,
+        Some(Duration::from_secs(30)),
+    )
+    .await;
     let s3_manager = s3::Manager::new(&shared_config);
 
     let path = Path::new(&opts.chain_config_local_path);
