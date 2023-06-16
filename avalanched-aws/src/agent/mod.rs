@@ -41,8 +41,6 @@ pub struct Flags {
     /// Otherwise, publish only once until success!
     /// Might be useful to publish ready heartbeats to S3 in the future.
     pub publish_periodic_node_info: bool,
-    /// AWS profile name to use when authenticating against the AWS API.
-    pub profile_name: String,
 }
 
 pub fn command() -> Command {
@@ -72,14 +70,6 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(0),
         )
-        .arg(
-            Arg::new("PROFILE_NAME")
-                .long("profile-name")
-                .help("Sets the AWS credential profile name for API calls/endpoints")
-                .required(false)
-                .default_value("default")
-                .num_args(1),
-        )
 }
 
 pub async fn execute(opts: Flags) -> io::Result<()> {
@@ -108,7 +98,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     let shared_config = aws_manager::load_config(
         Some(meta.region.clone()),
-        Some(opts.profile_name.clone()),
+        None,
         Some(Duration::from_secs(30)),
     )
     .await;
@@ -233,7 +223,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     let s3_manager = s3::Manager::new(
         &aws_manager::load_config(
             Some(fetched_tags.s3_region.clone()),
-            Some(opts.profile_name.clone()),
+            None,
             Some(Duration::from_secs(30)),
         )
         .await,
@@ -460,7 +450,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     log::info!("describing existing volume to find the attached volume Id");
     let shared_config = aws_manager::load_config(
         Some(meta.region.clone()),
-        Some(opts.profile_name.clone()),
+        None,
         Some(Duration::from_secs(30)),
     )
     .await;
@@ -617,7 +607,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 // ref. <https://github.com/awslabs/aws-sdk-rust/issues/611>
                 let shared_config = aws_manager::load_config(
                     Some(meta.region.clone()),
-                    Some(opts.profile_name.clone()),
+                    None,
                     Some(Duration::from_secs(30)),
                 )
                 .await;
@@ -938,7 +928,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             for (region, anchor_asg_names) in region_to_anchor_asg_names.iter() {
                 let shared_config = aws_manager::load_config(
                     Some(region.clone()),
-                    Some(opts.profile_name.clone()),
+                    None,
                     Some(Duration::from_secs(30)),
                 )
                 .await;
@@ -1101,7 +1091,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             Arc::new(fetched_tags.avalancheup_spec_path.clone()),
             Arc::new(proof_of_possession.clone()),
             opts.publish_periodic_node_info,
-            opts.profile_name.clone(),
         )));
     }
 
@@ -1120,7 +1109,6 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             Arc::new(meta.region.clone()),
             Arc::new(meta.ec2_instance_id.clone()),
             Arc::new(attached_volume_id.clone()),
-            opts.profile_name.clone(),
         )));
     } else {
         log::info!("skipped monitoring the spot instance-action...");
@@ -1627,7 +1615,6 @@ async fn publish_node_info_ready_loop(
     avalancheup_spec_path: Arc<String>,
     proof_of_possession: Arc<bls::ProofOfPossession>,
     publish_periodic_node_info: bool,
-    profile_name: String,
 ) {
     log::info!("STEP: publishing node info for its readiness...");
 
@@ -1685,7 +1672,7 @@ async fn publish_node_info_ready_loop(
     loop {
         let shared_config = aws_manager::load_config(
             Some(s3_region.to_string()),
-            Some(profile_name.clone()),
+            None,
             Some(Duration::from_secs(30)),
         )
         .await;
@@ -1721,7 +1708,6 @@ async fn monitor_spot_instance_action(
     local_region: Arc<String>,
     ec2_instance_id: Arc<String>,
     attached_volume_id: Arc<String>,
-    profile_name: String,
 ) {
     loop {
         log::info!(
@@ -1732,7 +1718,7 @@ async fn monitor_spot_instance_action(
 
         let shared_config = aws_manager::load_config(
             Some(local_region.to_string()),
-            Some(profile_name.clone()),
+            None,
             Some(Duration::from_secs(30)),
         )
         .await;

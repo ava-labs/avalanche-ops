@@ -29,7 +29,6 @@ pub struct Flags {
 
     pub subnet_id_to_track: String,
     pub avalanchego_config_path: String,
-    pub profile_name: String,
 }
 
 pub fn command() -> Command {
@@ -103,14 +102,6 @@ pub fn command() -> Command {
                 .required(true)
                 .num_args(1),
         )
-        .arg(
-            Arg::new("PROFILE_NAME")
-                .long("profile-name")
-                .help("Sets the AWS credential profile name for API calls/endpoints")
-                .required(false)
-                .default_value("default")
-                .num_args(1),
-        )
 }
 
 pub async fn execute(opts: Flags) -> io::Result<()> {
@@ -121,7 +112,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
     let shared_config = aws_manager::load_config(
         Some(opts.s3_region.clone()),
-        Some(opts.profile_name),
+        None,
         Some(Duration::from_secs(30)),
     )
     .await;
