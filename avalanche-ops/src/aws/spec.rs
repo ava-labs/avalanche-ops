@@ -38,6 +38,10 @@ pub struct Spec {
     #[serde(default)]
     pub aad_tag: String,
 
+    /// AWS profile to use for API calls.
+    #[serde(default)]
+    pub profile_name: String,
+
     /// AWS resources if run in AWS.
     pub resource: Resource,
     /// Defines how the underlying infrastructure is set up.
@@ -419,6 +423,8 @@ pub struct DefaultSpecOption {
     pub coreth_state_sync_enabled: bool,
 
     pub spec_file_path: String,
+    /// The AWS profile to use.
+    pub profile_name: String,
 }
 
 impl Spec {
@@ -907,6 +913,8 @@ impl Spec {
             volume_size_in_gb,
         };
 
+        let profile_name = opts.profile_name;
+
         Ok((
             Self {
                 version: VERSION,
@@ -937,6 +945,7 @@ impl Spec {
                 avalanchego_config,
                 coreth_chain_config,
                 avalanchego_genesis_template,
+                profile_name,
             },
             spec_file_path,
         ))
@@ -1387,6 +1396,7 @@ coreth_chain_config:
 
         id: id.clone(),
         aad_tag: String::from("test"),
+        profile_name: String::from("default"),
 
         resource: Resource {
             regions: vec![String::from("us-west-2")],

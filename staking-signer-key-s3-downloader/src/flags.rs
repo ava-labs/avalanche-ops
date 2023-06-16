@@ -9,4 +9,5 @@ pub struct Options {
     pub kms_key_id: String,
     pub aad_tag: String,
     pub key_path: String,
+    pub profile_name: String,
 }

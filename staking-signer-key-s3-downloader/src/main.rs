@@ -85,6 +85,14 @@ staking-signer-key-s3-downloader \
                 .required(true)
                 .num_args(1),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile-name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
         .get_matches();
 
     let opts = flags::Options {
@@ -99,6 +107,7 @@ staking-signer-key-s3-downloader \
         kms_key_id: matches.get_one::<String>("KMS_KEY_ID").unwrap().clone(),
         aad_tag: matches.get_one::<String>("AAD_TAG").unwrap().clone(),
         key_path: matches.get_one::<String>("KEY_PATH").unwrap().clone(),
+        profile_name: matches.get_one::<String>("PROFILE_NAME").unwrap().clone(),
     };
     command::execute(opts).await.unwrap();
 }

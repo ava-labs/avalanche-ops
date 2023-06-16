@@ -76,29 +76,23 @@ https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalanched-aw
 
 To use `avalancheup` you need AWS credentials stored locally to authenticate with against the AWS API.
 
-Run `aws sts get-caller-identity` to check whether you are logged in successfully on your machine.
+Use the [aws CLI tool](https://aws.amazon.com/cli/) to login to AWS from the command line. It is recommended to start from a clean `.aws` folder each time you use avalanche-ops. 
 
-To generate temporary credentials via SSO, use `aws configure` or the `saml2aws` tool. For example,
-
+Use `aws configure sso` to login, with the following settings:
 ```
-$ saml2aws configure \
---idp-account='default' \
---idp-provider='provider' \
---mfa='Auto' \
---url='https://sso.provider.com/saml2/aws' \
---username='YOUR EMAIL@ORG.org' \
---role='arn:aws:iam::XXXXXXXXXXX:role/developer' \
---profile='default' \
---skip-prompt
-
-$ saml2aws login \
---idp-account=default \
---force \
---session-duration=43200
-
-# verify account login was successful
-$ aws sts get-caller-identity
+SSO session name: <EMPTY> (hit enter)
+SSO start URL: <SSO ENDPOINT>
+SSO region: <REGION>
 ```
+
+After that the tool will login to AWS via the browser. Then enter the following settings:
+```
+CLI default client Region: <REGION>
+CLI default output format: json
+CLI profile name: <YOUR USERNAME>
+```
+
+Once logged in, you can use the avalanche-ops suite of tools successfully. Note that the daemons and other backend services that run directly in AWS have their own authentication patterns. 
 
 ## TODOs
 

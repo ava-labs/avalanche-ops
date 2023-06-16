@@ -66,6 +66,14 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile-name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
 }
 
 // 50-minute
@@ -78,6 +86,7 @@ pub async fn execute(
     delete_s3_objects: bool,
     delete_s3_bucket: bool,
     skip_prompt: bool,
+    profile_name: String,
 ) -> io::Result<()> {
     // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
@@ -89,6 +98,7 @@ pub async fn execute(
 
     let shared_config = aws_manager::load_config(
         Some(resources.region.clone()),
+        Some(profile_name),
         Some(Duration::from_secs(30)),
     )
     .await;

@@ -53,12 +53,25 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile-name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
 }
 
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
-pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
+pub async fn execute(
+    log_level: &str,
+    spec_file_path: &str,
+    skip_prompt: bool,
+    profile_name: String,
+) -> io::Result<()> {
     #[derive(RustEmbed)]
     #[folder = "cfn-templates/"]
     #[prefix = "cfn-templates/"]
@@ -75,6 +88,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let mut resources = spec.resources.clone().unwrap();
     let shared_config = aws_manager::load_config(
         Some(resources.region.clone()),
+        Some(profile_name),
         Some(Duration::from_secs(30)),
     )
     .await;
