@@ -103,7 +103,7 @@ staking-key-cert-s3-downloader \
         )
         .arg(
             Arg::new("PROFILE_NAME")
-                .long("profile_name")
+                .long("profile-name")
                 .help("Sets the AWS credential profile name for API calls/endpoints")
                 .required(false)
                 .default_value("default")
