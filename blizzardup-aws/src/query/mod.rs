@@ -56,6 +56,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str) -> io::Result<()> {
     let mut prev: HashMap<String, HashMap<String, f64>> = HashMap::new();
 
     // TODO: implement better math...
+    #[allow(clippy::never_loop)]
     loop {
         for rpc_ep in spec.blizzard_spec.chain_rpc_urls.iter() {
             let (scheme, host, port, _, _) =

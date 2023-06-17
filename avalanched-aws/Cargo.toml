@@ -2,7 +2,7 @@
 name = "avalanched-aws"
 version = "0.8.5" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
-rust-version = "1.69"
+rust-version = "1.70"
 
 [[bin]]
 name = "avalanched-aws"

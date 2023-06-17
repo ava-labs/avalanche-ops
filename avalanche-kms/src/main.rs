@@ -131,6 +131,10 @@ async fn main() -> io::Result<()> {
                 &evm_funding_hotkey,
                 evm_funding_amount_navax,
                 sub_matches.get_flag("SKIP_PROMPT"),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap()
+                    .clone(),
             )
             .await
             .unwrap();
@@ -150,6 +154,10 @@ async fn main() -> io::Result<()> {
                 &sub_matches.get_one::<String>("KEY_ARN").unwrap().clone(),
                 pending_windows_in_days,
                 sub_matches.get_flag("UNSAFE_SKIP_PROMPT"),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap()
+                    .clone(),
             )
             .await
             .unwrap();
@@ -167,6 +175,10 @@ async fn main() -> io::Result<()> {
                 &sub_matches
                     .get_one::<String>("CHAIN_RPC_URL")
                     .unwrap_or(&String::new())
+                    .clone(),
+                sub_matches
+                    .get_one::<String>("PROFILE_NAME")
+                    .unwrap()
                     .clone(),
             )
             .await

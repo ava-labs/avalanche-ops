@@ -194,8 +194,17 @@ pub fn command() -> Command {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile-name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
+        )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn execute(
     log_level: &str,
     region: &str,
@@ -209,6 +218,7 @@ pub async fn execute(
     evm_funding_hotkey: &str,
     evm_funding_amount_navax: U256,
     skip_prompt: bool,
+    profile_name: String,
 ) -> io::Result<()> {
     // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
@@ -239,9 +249,12 @@ pub async fn execute(
             "requesting to create new {keys} KMS key(s) with prefix '{key_name_prefix}' (in the {region}, grantee principal {grantee_principal}, keys file output {keys_file_output})"
         );
 
-            let shared_config =
-                aws_manager::load_config(Some(region.to_string()), Some(Duration::from_secs(30)))
-                    .await;
+            let shared_config = aws_manager::load_config(
+                Some(region.to_string()),
+                Some(profile_name),
+                Some(Duration::from_secs(30)),
+            )
+            .await;
             let kms_manager = kms::Manager::new(&shared_config);
 
             let sts_manager = sts::Manager::new(&shared_config);

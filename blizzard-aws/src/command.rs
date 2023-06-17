@@ -17,7 +17,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
     );
 
     let meta = fetch_metadata().await?;
-    let aws_creds = load_aws_credential(&meta.region).await?;
+    let aws_creds = load_aws_credential(&meta.region, opts.profile_name).await?;
     let tags = fetch_tags(&aws_creds.ec2_manager, &meta.ec2_instance_id).await?;
 
     let spec = download_spec(
@@ -121,11 +121,15 @@ struct AwsCreds {
     s3_manager: s3::Manager,
 }
 
-async fn load_aws_credential(reg: &str) -> io::Result<AwsCreds> {
+async fn load_aws_credential(reg: &str, profile_name: String) -> io::Result<AwsCreds> {
     log::info!("STEP: loading up AWS credential for region '{}'...", reg);
 
-    let shared_config =
-        aws_manager::load_config(Some(reg.to_string()), Some(Duration::from_secs(30))).await;
+    let shared_config = aws_manager::load_config(
+        Some(reg.to_string()),
+        Some(profile_name.clone()),
+        Some(Duration::from_secs(30)),
+    )
+    .await;
 
     let ec2_manager = ec2::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
