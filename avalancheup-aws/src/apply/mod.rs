@@ -1436,22 +1436,31 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .unwrap();
 
             log::info!("waiting for anchor nodes bootstrap and ready (to be safe)");
-            sleep(Duration::from_secs(15)).await;
-
-            for ssh_command in ssh_commands.iter() {
-                match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
-                    Ok(output) => {
-                        println!(
-                            "{} (anchor node) init script std output:\n{}\n",
-                            ssh_command.instance_id, output.stdout
-                        );
-                        println!(
-                            "{} (anchor node) init script std err:\n{}\n",
-                            ssh_command.instance_id, output.stderr
-                        );
+            sleep(Duration::from_secs(15)).await;          
+            async fn read_script(ssh_commands::Vec<ec2::SshCommand>,) {
+                for ssh_command in ssh_commands.iter() {
+                    match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+                        Ok(output) => {
+                            println!(
+                                "{} (anchor node) init script std output:\n{}\n",
+                                ssh_command.instance_id, output.stdout
+                            );
+                            println!(
+                                "{} (anchor node) init script std err:\n{}\n",
+                                ssh_command.instance_id, output.stderr
+                            );
+                        }
+                        Err(e) => log::warn!("failed to run ssh command {}", e),
                     }
-                    Err(e) => log::warn!("failed to run ssh command {}", e),
                 }
+            }
+            tokio::spawn(read_script(ssh_commands));
+            let timeout_duration = Duration::from_secs(10);
+            let result = tokio::time::timeout(timeout_duration, read_script(ssh_commands)).await;
+            if result.is_err() {
+                log::warn!(
+                    "VPC security group has wrong IP for SSH2 22 port ingress traffic, please fix"
+                );
             }
         }
     }
