@@ -202,6 +202,14 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("IMAGE_IDS")
+                .long("image-ids")
+                .help("Sets the hash map from a region to the EC2 image ID to overwrite SSM parameter")
+                .required(false)
+                .value_parser(HashMapStringToStringParser {})
+                .num_args(1),
+        )
+        .arg(
             Arg::new("IP_MODE")
                 .long("ip-mode")
                 .help("Sets IP mode to provision EC2 elastic IPs for all nodes")

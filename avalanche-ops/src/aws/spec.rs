@@ -379,6 +379,7 @@ pub struct DefaultSpecOption {
     pub instance_mode: String,
     pub instance_size: String,
     pub instance_types: HashMap<String, Vec<String>>,
+    pub image_ids: HashMap<String, String>,
     pub volume_size_in_gb: u32,
 
     pub ip_mode: String,
@@ -647,6 +648,7 @@ impl Spec {
                 anchor_nodes: None,
                 non_anchor_nodes: 0,
                 instance_types: region_to_instance_types.get(reg).unwrap().clone(),
+                image_id: opts.image_ids.get(reg).unwrap_or(&String::new()).clone(),
             };
 
             // last iteration, but still remaining... use them up
@@ -1267,6 +1269,7 @@ machine:
 
   regional_machines:
     us-west-2:
+      image_id: ami-123
       non_anchor_nodes: 1
       instance_types:
       - m5.large
@@ -1387,6 +1390,7 @@ coreth_chain_config:
                 String::from("r5.large"),
                 String::from("t3.large"),
             ],
+            image_id: String::from("ami-123"),
         },
     );
 
@@ -1842,6 +1846,8 @@ pub struct RegionalMachine {
     pub non_anchor_nodes: u32,
     #[serde(default)]
     pub instance_types: Vec<String>,
+    #[serde(default)]
+    pub image_id: String,
 }
 
 /// Represents artifacts for installation, to be shared with

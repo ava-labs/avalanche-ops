@@ -842,19 +842,23 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("ArchType", &spec.machine.arch_type),
             build_param("OsType", &spec.machine.os_type),
             build_param(
+                "AvalanchedAwsArgs",
+                &format!("agent {}", spec.avalanched_config.to_flags()),
+            ),
+            build_param("ProvisionerInitialWaitRandomSeconds", "15"),
+        ];
+        if !regional_machine.image_id.is_empty() {
+            common_asg_params.push(build_param("ImageId", &regional_machine.image_id));
+        } else {
+            common_asg_params.push(build_param(
                 "ImageIdSsmParameter",
                 &ec2::default_image_id_ssm_parameter(
                     &spec.machine.arch_type,
                     &spec.machine.os_type,
                 )
                 .unwrap(),
-            ),
-            build_param(
-                "AvalanchedAwsArgs",
-                &format!("agent {}", spec.avalanched_config.to_flags()),
-            ),
-            build_param("ProvisionerInitialWaitRandomSeconds", "15"),
-        ];
+            ));
+        }
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
         let mut common_dev_machine_params = BTreeMap::new();
