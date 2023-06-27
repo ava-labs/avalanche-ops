@@ -12,6 +12,8 @@ use std::{
     },
 };
 
+mod dev_machine;
+
 use avalanche_types::{
     ids, jsonrpc::client::health as jsonrpc_client_health,
     jsonrpc::client::info as jsonrpc_client_info, key, units, wallet,
@@ -2643,6 +2645,19 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             )
             .await
             .expect("failed put_object ConfigFile");
+
+        // Put dev machine scripts into s3 if specified
+        if let Some(script) = spec.dev_machine_script.clone() {
+            default_s3_manager
+                .put_object(
+                    script.to_str().unwrap(),
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object dev machine script");
+        }
 
         let mut regional_common_dev_machine_asg_params = region_to_common_dev_machine_asg_params
             .get(&spec.resource.regions[0])
