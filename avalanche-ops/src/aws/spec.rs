@@ -70,7 +70,7 @@ pub struct Spec {
     /// Filepath to a local directory containing bash scripts.
     /// These scripts will be invoked on the dev machine upon startup.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub dev_machine_scripts_path: Option<std::path::PathBuf>,
+    pub dev_machine_scripts_dir_path: Option<std::path::PathBuf>,
     /// Set "true" to enable NLB.
     #[serde(default)]
     pub enable_nlb: bool,
@@ -389,7 +389,7 @@ pub struct DefaultSpecOption {
     pub keep_resources_except_asg_ssm: bool,
     pub create_dev_machine: bool,
     pub dev_machine_ssh_key_email: String,
-    pub dev_machine_scripts_path: Option<std::path::PathBuf>,
+    pub dev_machine_scripts_dir_path: Option<std::path::PathBuf>,
 
     pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,
@@ -937,7 +937,7 @@ impl Spec {
                 keep_resources_except_asg_ssm: opts.keep_resources_except_asg_ssm,
                 create_dev_machine: opts.create_dev_machine,
                 dev_machine,
-                dev_machine_scripts_path: None,
+                dev_machine_scripts_dir_path: None,
 
                 enable_nlb: opts.enable_nlb,
                 disable_logs_auto_removal: opts.disable_logs_auto_removal,
@@ -1444,7 +1444,7 @@ coreth_chain_config:
         keep_resources_except_asg_ssm: false,
         create_dev_machine: false,
         dev_machine: None,
-        dev_machine_scripts_path: None,
+        dev_machine_scripts_dir_path: None,
 
         enable_nlb: false,
         disable_logs_auto_removal: false,
