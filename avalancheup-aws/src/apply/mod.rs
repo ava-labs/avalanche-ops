@@ -2646,6 +2646,19 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             .await
             .expect("failed put_object ConfigFile");
 
+        // Put dev machine scripts into s3 if specified
+        if let Some(dev_scripts_dir) = spec.dev_machine_scripts_dir_path.clone() {
+            default_s3_manager
+                .put_object(
+                    dev_scripts_dir.to_str().unwrap(),
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                        .encode(),
+                )
+                .await
+                .expect("failed put_object dev machine scripts");
+        }
+
         let mut regional_common_dev_machine_asg_params = region_to_common_dev_machine_asg_params
             .get(&spec.resource.regions[0])
             .unwrap()
@@ -2905,6 +2918,8 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 Err(e) => log::warn!("failed to run ssh command {}", e),
             }
         }
+
+        // Run dev-machine scripts
 
         //
         //
