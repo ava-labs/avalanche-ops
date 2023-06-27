@@ -110,8 +110,8 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("DEV_MACHINE_SSH_KEY_EMAIL")
                     .unwrap_or(&String::new())
                     .clone(),
-                dev_machine_scripts_dir_path: sub_matches
-                    .get_one::<Option<std::path::PathBuf>>("dev_machine_scripts_dir_path")
+                dev_machine_script: sub_matches
+                    .get_one::<Option<std::path::PathBuf>>("dev_machine_script")
                     .unwrap_or(&None)
                     .clone(),
 
