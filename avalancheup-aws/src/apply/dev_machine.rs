@@ -1,37 +1,50 @@
-use std::io::{stdout, Error, ErrorKind, Write};
+use std::fs;
+use std::io::{self, stdout, Error, ErrorKind, Write};
 /// Module for extracting and running dev machine scripts on startup
-/// Users can provide a path to a script file, or a directory containing multiple scripts, to execute.
-/// Note: scripts must be written in bash with a bash shebang included.
-/// Note: scripts must ensure that the network is up and running before executing(polling the liveness API for example).
-use std::path::Path;
+/// Users provide a path to a directory containing multiple scripts, to execute.
+/// Scripts are executed in lexicographical order.
+/// Scripts should be placed at the top level without any subdirectories.
+use std::path::PathBuf;
 use std::process::Command;
 
-/// Parses the user-provided path to an script or a directory containing scripts for the dev machine to execute.
+/// Parses the user-provided path to a directory containing scripts for the dev machine to execute.
 #[allow(dead_code)]
-pub fn parse_path(provided_path: Option<Box<Path>>) -> Result<Option<Vec<Box<Path>>>, Error> {
-    if provided_path.is_none() {
-        return Ok(None);
+pub fn parse_path(provided_path: PathBuf) -> Result<Vec<PathBuf>, Error> {
+    let mut out_vec: Vec<PathBuf> = Vec::new();
+
+    if !provided_path.exists() {
+        return Err(Error::new(ErrorKind::NotFound, "{provided_path} not found"));
+    }
+    if provided_path.is_file() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "{provided_path} is a file, not a directory",
+        ));
     }
 
-    let mut out_vec: Vec<Box<Path>> = Vec::new();
+    // sort the entries in the directory lexicographically
+    let mut entries = fs::read_dir(provided_path)?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, io::Error>>()?;
+    entries.sort();
 
-    if let Some(path) = provided_path {
-        if !path.exists() {
-            return Err(Error::new(ErrorKind::NotFound, "{path} not found"));
-        }
-        if path.is_file() {
-            // return the path to the file
-            out_vec.push(path);
-        } else if path.is_dir() {
-            // return the paths to a series of files in the directory
-            todo!();
+    // return the paths to a series of files in the directory
+    for entry in entries {
+        if entry.is_file() {
+            out_vec.push(entry);
+        } else {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "{provided_path} should only contain files, not directories",
+            ));
         }
     }
-    Ok(Some(out_vec))
+
+    Ok(out_vec)
 }
 
 #[allow(dead_code)]
-pub fn execute_script(scripts: Vec<Box<Path>>) -> Result<(), Error> {
+pub fn execute_script(scripts: Vec<PathBuf>) -> Result<(), Error> {
     for script in scripts {
         let output = Command::new("/bin/sh")
             .arg("-C")
@@ -48,4 +61,41 @@ pub fn execute_script(scripts: Vec<Box<Path>>) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+mod test {
+
+    #[test]
+    fn test_parse_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("my-script.sh");
+        let _ = std::fs::File::create(file_path).unwrap();
+
+        let scripts_dir = std::path::PathBuf::from(dir.path());
+        let result = super::parse_path(scripts_dir.clone());
+        assert!(result.is_ok());
+
+        // create subdirectory and try again (error)
+        let sub_dir = dir.path().join("subdir");
+        std::fs::DirBuilder::new().create(sub_dir).unwrap();
+        let result = super::parse_path(scripts_dir);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sorting() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("00_my-script.sh");
+        let _ = std::fs::File::create(file_path).unwrap();
+        let file_path = dir.path().join("01_my-script.sh");
+        let _ = std::fs::File::create(file_path).unwrap();
+        let file_path = dir.path().join("02_my-script.sh");
+        let _ = std::fs::File::create(file_path).unwrap();
+
+        let scripts_dir = std::path::PathBuf::from(dir.path());
+        let result = super::parse_path(scripts_dir).unwrap();
+        assert_eq!(result[0], dir.path().join("00_my-script.sh"));
+        assert_eq!(result[1], dir.path().join("01_my-script.sh"));
+        assert_eq!(result[2], dir.path().join("02_my-script.sh"));
+    }
 }

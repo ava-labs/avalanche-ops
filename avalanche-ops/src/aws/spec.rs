@@ -389,7 +389,7 @@ pub struct DefaultSpecOption {
     pub keep_resources_except_asg_ssm: bool,
     pub create_dev_machine: bool,
     pub dev_machine_ssh_key_email: String,
-    pub dev_machine_scripts_path: Option<Box<std::path::PathBuf>>,
+    pub dev_machine_scripts_path: Option<std::path::PathBuf>,
 
     pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,

@@ -111,7 +111,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
                 dev_machine_scripts_path: sub_matches
-                    .get_one::<Option<Box<std::path::Path>>>("DEV_MACHINE_SCRIPTS_PATH")
+                    .get_one::<Option<std::path::PathBuf>>("DEV_MACHINE_SCRIPTS_PATH")
                     .unwrap_or(&None)
                     .clone(),
 
