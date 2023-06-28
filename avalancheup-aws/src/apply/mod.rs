@@ -33,6 +33,8 @@ use crossterm::{
 use dialoguer::{theme::ColorfulTheme, Select};
 use tokio::time::{sleep, Duration};
 
+use crate::apply::dev_machine::validate_path;
+
 pub const NAME: &str = "apply";
 
 pub fn command() -> Command {
@@ -2648,6 +2650,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 
         // Put dev machine scripts into s3 if specified
         if let Some(script) = spec.dev_machine_script.clone() {
+            let script = validate_path(script)?;
             default_s3_manager
                 .put_object(
                     script.to_str().unwrap(),
