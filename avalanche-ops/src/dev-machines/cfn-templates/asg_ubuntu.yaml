@@ -385,7 +385,7 @@ Resources:
             DeleteOnTermination: true
             DeviceIndex: 0
             Groups:
-              - !Ref SecurityGroupId
+              - !Ref DevMachineSecurityGroupId
         TagSpecifications:
           - ResourceType: instance
             Tags:

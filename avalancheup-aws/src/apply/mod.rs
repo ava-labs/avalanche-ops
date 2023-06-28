@@ -663,8 +663,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 build_param("PublicSubnetCidr1", "10.0.64.0/19"),
                 build_param("PublicSubnetCidr2", "10.0.128.0/19"),
                 build_param("PublicSubnetCidr3", "10.0.192.0/19"),
+                build_param(
+                    "UserDefinedPort",
+                    &spec.resource.user_defined_port.to_string(),
+                ),
                 build_param("SshPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
                 build_param("HttpPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
+                build_param(
+                    "UserDefinedPortIngressIpv4Range",
+                    &spec.resource.user_defined_ipv4_cidr,
+                ),
                 build_param("StakingPortIngressIpv4Range", "0.0.0.0/0"),
                 build_param(
                     "StakingPort",
@@ -746,6 +754,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
                 if k.eq("SecurityGroupId") {
                     regional_resource.cloudformation_vpc_security_group_id = Some(v);
+                    continue;
+                }
+                if k.eq("DevMachineSecurityGroupId") {
+                    regional_resource.cloudformation_dev_machine_security_group_id = Some(v);
                     continue;
                 }
                 if k.eq("PublicSubnetIds") {
@@ -2744,13 +2756,23 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             )),
             ResetColor
         )?;
-        let asg_tmpl = aws_dev_machine::artifacts::asg_ubuntu_yaml().unwrap();
+        let asg_tmpl = avalanche_ops::dev_machine_artifacts::asg_ubuntu_yaml().unwrap();
 
         let mut cfn_params = Vec::new();
         for (k, v) in regional_common_dev_machine_asg_params.iter() {
             log::info!("dev-machine CFN parameter: '{k}'='{v}'");
             cfn_params.push(build_param(k, v));
         }
+
+        // Add the security group ids to the dev machine ASG
+        cfn_params.push(build_param(
+            "DevMachineSecurityGroupId",
+            regional_resource
+                .cloudformation_dev_machine_security_group_id
+                .clone()
+                .unwrap()
+                .as_str(),
+        ));
 
         regional_cloudformation_manager
             .create_stack(
