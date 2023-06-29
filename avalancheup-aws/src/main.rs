@@ -110,6 +110,10 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("DEV_MACHINE_SSH_KEY_EMAIL")
                     .unwrap_or(&String::new())
                     .clone(),
+                dev_machine_script: sub_matches
+                    .get_one::<Option<std::path::PathBuf>>("dev_machine_script")
+                    .unwrap_or(&None)
+                    .clone(),
 
                 ingress_ipv4_cidr: sub_matches
                     .get_one::<String>("INGRESS_IPV4_CIDR")
