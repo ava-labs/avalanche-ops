@@ -1762,9 +1762,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
                 if spec.machine.ip_mode == *"elastic" {
                     log::info!("using elastic IPs... wait more");
-                    let mut outs: Vec<Address>;
+                    #[allow(unused_assignments)]
+                    let mut eips_out: Vec<Address> = Vec::new();
+                    let max_retry = 10;
                     loop {
-                        outs = regional_ec2_manager
+                        let mut retry_count = 0;
+                        let outs = match regional_ec2_manager
                             .describe_eips_by_tags(HashMap::from([
                                 (String::from("Id"), spec.id.clone()),
                                 (
@@ -1773,7 +1776,27 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                                 ),
                             ]))
                             .await
-                            .unwrap();
+                        {
+                            Ok(o) => o,
+                            Err(e) => {
+                                retry_count += 1;
+                                if retry_count == max_retry {
+                                    return Err(io::Error::new(
+                                        io::ErrorKind::TimedOut,
+                                        format!(
+                                            "could not find elastic ip for node {}",
+                                            spec.id.clone()
+                                        ),
+                                    ));
+                                }
+
+                                log::error!(
+                                    "error finding elastic ip for node {}: {e}",
+                                    spec.id.clone()
+                                );
+                                continue;
+                            }
+                        };
 
                         log::info!("got {} EIP addresses", outs.len());
 
@@ -1782,14 +1805,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                             ready = ready && eip_addr.instance_id.is_some();
                         }
                         if ready && outs.len() == 1 {
+                            eips_out = outs.clone();
                             break;
                         }
 
                         sleep(Duration::from_secs(30)).await;
                     }
-                    eips.extend(outs.clone());
+                    eips.extend(eips_out.clone());
 
-                    for eip_addr in outs.iter() {
+                    for eip_addr in eips_out.iter() {
                         let allocation_id = eip_addr.allocation_id.to_owned().unwrap();
                         let instance_id = eip_addr.instance_id.to_owned().unwrap();
                         let public_ip = eip_addr.public_ip.to_owned().unwrap();
