@@ -1440,31 +1440,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .unwrap();
 
             log::info!("waiting for anchor nodes bootstrap and ready (to be safe)");
-            sleep(Duration::from_secs(15)).await;          
-            async fn read_script(ssh_commands: Vec<ec2::SshCommand>) {
-                for ssh_command in ssh_commands.iter() {
-                    match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
-                        Ok(output) => {
-                            println!(
-                                "{} (anchor node) init script std output:\n{}\n",
-                                ssh_command.instance_id, output.stdout
-                            );
-                            println!(
-                                "{} (anchor node) init script std err:\n{}\n",
-                                ssh_command.instance_id, output.stderr
-                            );
-                        }
-                        Err(e) => log::warn!("failed to run ssh command {}", e),
-                    }
-                }
-            }
+            sleep(Duration::from_secs(15)).await;
+
             let timeout_duration = Duration::from_secs(10);
-            let result = tokio::time::timeout(timeout_duration, read_script(ssh_commands)).await;
-            if result.is_err() {
-                log::warn!(
-                    "VPC security group may have wrong inbound rule for SSH 22 port, please fix"
-                );
-            }
+            let _ = tokio::time::timeout(timeout_duration, read_script(ssh_commands)).await.map_err(|_| log::warn!(
+                "VPC security group may have wrong inbound rule for SSH 22 port, security group id: {}", &regional_resource.cloudformation_vpc_security_group_id.clone().unwrap()
+            ));
         }
     }
 
@@ -3027,4 +3008,22 @@ fn get_all_nodes_yaml_path(spec_file_path: &str) -> String {
             .to_str()
             .unwrap(),
     )
+}
+
+async fn read_script(ssh_commands: Vec<ec2::SshCommand>) {
+    for ssh_command in ssh_commands.iter() {
+        match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+            Ok(output) => {
+                println!(
+                    "{} (anchor node) init script std output:\n{}\n",
+                    ssh_command.instance_id, output.stdout
+                );
+                println!(
+                    "{} (anchor node) init script std err:\n{}\n",
+                    ssh_command.instance_id, output.stderr
+                );
+            }
+            Err(e) => log::warn!("failed to run ssh command {}", e),
+        }
+    }
 }
