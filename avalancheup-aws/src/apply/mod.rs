@@ -1462,7 +1462,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             let result = tokio::time::timeout(timeout_duration, read_script(ssh_commands)).await;
             if result.is_err() {
                 log::warn!(
-                    "VPC security group has wrong IP for SSH2 22 port ingress traffic, please fix"
+                    "VPC security group may have wrong inbound rule for SSH 22 port, please fix"
                 );
             }
         }
