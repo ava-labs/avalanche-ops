@@ -21,7 +21,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     let s3_shared_config = aws_manager::load_config(
         Some(opts.s3_region.clone()),
-        Some(opts.profile_name.clone()),
+        None,
         Some(Duration::from_secs(30)),
     )
     .await;
@@ -29,7 +29,7 @@ pub async fn execute(opts: flags::Options) -> io::Result<()> {
 
     let kms_shared_config = aws_manager::load_config(
         Some(opts.kms_region.clone()),
-        Some(opts.profile_name.clone()),
+        None,
         Some(Duration::from_secs(30)),
     )
     .await;
