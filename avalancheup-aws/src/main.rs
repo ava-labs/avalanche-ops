@@ -51,6 +51,10 @@ async fn main() -> io::Result<()> {
                 .get_one::<HashMap<String, Vec<String>>>("INSTANCE_TYPES")
                 .unwrap_or(&HashMap::new())
                 .clone();
+            let image_ids: HashMap<String, String> = sub_matches
+                .get_one::<HashMap<String, String>>("IMAGE_IDS")
+                .unwrap_or(&HashMap::new())
+                .clone();
 
             let nlb_acm_certificate_arns: HashMap<String, String> = sub_matches
                 .get_one::<HashMap<String, String>>("NLB_ACM_CERTIFICATE_ARNS")
@@ -129,6 +133,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::from("large"))
                     .clone(),
                 instance_types,
+                image_ids,
 
                 volume_size_in_gb: *sub_matches
                     .get_one::<u32>("VOLUME_SIZE_IN_GB")
