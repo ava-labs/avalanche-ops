@@ -7,7 +7,7 @@ rust-version = "1.70"
 [dependencies]
 avalanche-types = { version = "0.0.398", features = ["jsonrpc_client", "wallet", "wallet_evm", "kms_aws"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.28.42", features = ["kms", "sts"] } # https://github.com/gyuho/aws-manager/tags
-clap = { version = "4.3.0", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.3.10", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 crossterm = "0.26.1"
 dialoguer = "0.10.4"
 env_logger = "0.10.0"
@@ -19,4 +19,4 @@ random-manager = "0.0.5"
 serde = { version = "1.0.163", features = ["derive"] } # https://github.com/serde-rs/serde/releases
 serde_with = { version = "3.0.0", features = ["hex"] }
 serde_yaml = "0.9.21" # https://github.com/dtolnay/serde-yaml/releases
-tokio = { version = "1.28.2", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
+tokio = { version = "1.29.1", features = ["full"] } # https://github.com/tokio-rs/tokio/releases

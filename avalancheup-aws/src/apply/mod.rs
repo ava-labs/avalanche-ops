@@ -1835,6 +1835,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     } else {
                         (d.public_ipv4.clone(), "ephemeral")
                     };
+                instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
 
                 let ssh_command = ec2::SshCommand {
                     ec2_key_path: regional_resource.ec2_key_path.clone(),
@@ -2875,6 +2876,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             } else {
                 d.public_ipv4.clone()
             };
+            instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
 
             let ssh_command = ec2::SshCommand {
                 ec2_key_path: regional_resource.ec2_key_path.clone(),
