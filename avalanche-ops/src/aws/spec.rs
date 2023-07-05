@@ -147,6 +147,15 @@ pub struct Resource {
     #[serde(default)]
     pub ingress_ipv4_cidr: String,
 
+    /// Arbitrary port specified by the user.
+    /// Defaults to 9090 for Grafana.
+    #[serde(default)]
+    pub user_defined_port: u32,
+
+    /// CIDR range for the user-defined port.
+    #[serde(default)]
+    pub user_defined_ipv4_cidr: String,
+
     /// Only populate as many as we need to fill up anchor/non-anchor nodes.
     /// e.g., "regions" may have 5 but we may only need 2 regions for 3 node cluster.
     #[serde(default)]
@@ -160,18 +169,14 @@ pub struct Resource {
 
 impl Default for Resource {
     fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl Resource {
-    pub fn default() -> Self {
         Self {
             identity: sts::Identity::default(),
 
             regions: vec![String::from("us-west-2")],
             s3_bucket: String::new(),
             ingress_ipv4_cidr: String::from("0.0.0.0/0"),
+            user_defined_port: 9090,
+            user_defined_ipv4_cidr: String::from("0.0.0.0/0"),
 
             regional_resources: BTreeMap::new(),
 
@@ -238,6 +243,11 @@ pub struct RegionalResource {
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_vpc_security_group_id: Option<String>,
+    /// Security group ID from "cloudformation_vpc".
+    /// Only updated after creation.
+    /// READ ONLY -- DO NOT SET.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloudformation_dev_machine_security_group_id: Option<String>,
     /// Public subnet IDs from "cloudformation_vpc".
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
@@ -330,6 +340,7 @@ impl RegionalResource {
             cloudformation_vpc: None,
             cloudformation_vpc_id: None,
             cloudformation_vpc_security_group_id: None,
+            cloudformation_dev_machine_security_group_id: None,
             cloudformation_vpc_public_subnet_ids: None,
 
             cloudformation_asg_anchor_nodes: None,
@@ -378,6 +389,8 @@ pub struct DefaultSpecOption {
     pub auto_regions: u32,
 
     pub ingress_ipv4_cidr: String,
+    pub user_defined_port: u32,
+    pub user_defined_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
     pub instance_types: HashMap<String, Vec<String>>,
@@ -757,6 +770,10 @@ impl Spec {
             ..Resource::default()
         };
 
+        if !opts.user_defined_port.eq(&9090) {
+            resource.user_defined_port = opts.user_defined_port;
+        }
+
         // TODO: we need also whitelist within-VPC traffic
         // resources.ingress_ipv4_cidr = "0.0.0.0/0".to_string();
         if !opts.ingress_ipv4_cidr.is_empty() {
@@ -772,6 +789,19 @@ impl Spec {
             };
         };
         log::info!("ingress IPv4 range {}", resource.ingress_ipv4_cidr);
+
+        if !opts.user_defined_ipv4_cidr.is_empty() {
+            resource.user_defined_ipv4_cidr = opts.user_defined_ipv4_cidr.clone();
+        } else {
+            log::info!("empty user_defined_ipv4_cidr, so default to public IP on the local host");
+            resource.user_defined_ipv4_cidr = if let Some(ip) = public_ip::addr().await {
+                log::info!("found public ip address {:?}", ip);
+                format!("{}/32", ip)
+            } else {
+                log::warn!("failed to get a public IP address -- default to 0.0.0.0/0");
+                "0.0.0.0/0".to_string()
+            }
+        }
 
         let mut upload_artifacts = UploadArtifacts {
             avalanched_local_bin: String::new(),

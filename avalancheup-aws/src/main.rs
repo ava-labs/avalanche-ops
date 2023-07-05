@@ -124,6 +124,15 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
 
+                user_defined_port: *sub_matches
+                    .get_one::<u32>("USER_DEFINED_PORT")
+                    .unwrap_or(&9090),
+
+                user_defined_ipv4_cidr: sub_matches
+                    .get_one::<String>("USER_DEFINED_IPV4_CIDR")
+                    .unwrap_or(&String::new())
+                    .clone(),
+
                 instance_mode: sub_matches
                     .get_one::<String>("INSTANCE_MODE")
                     .unwrap()
