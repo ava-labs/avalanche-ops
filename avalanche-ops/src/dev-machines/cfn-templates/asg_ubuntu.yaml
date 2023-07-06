@@ -8,6 +8,14 @@ Parameters:
     Type: String
     Description: Unique identifier, prefix for all resources created below.
 
+  UserId:
+    Type: String
+    Description: User ID
+
+  DevMachineSecurityGroupId:
+    Type: String
+    Description: Security group ID for the dev machine.
+
   KmsKeyArn:
     Type: String
     Description: KMS CMK ARN that de/encrypts resources.

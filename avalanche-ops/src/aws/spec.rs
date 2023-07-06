@@ -1225,6 +1225,14 @@ impl Spec {
             ));
         }
 
+        // Error in the case create_dev_machine is specified but no dev machine spec is provided
+        if self.create_dev_machine && self.dev_machine.is_none() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "create_dev_machine is specified but no dev machine spec is provided",
+            ));
+        }
+
         Ok(())
     }
 }
