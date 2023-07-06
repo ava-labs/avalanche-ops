@@ -316,12 +316,6 @@ pub struct RegionalResource {
 
 impl Default for RegionalResource {
     fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl RegionalResource {
-    pub fn default() -> Self {
         Self {
             region: String::from("us-west-2"),
             ec2_key_name: String::new(),
