@@ -1468,6 +1468,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for (region, r) in spec.resource.regional_resources.clone().iter() {
         let mut regional_resource = r.clone();
         let regional_machine = spec.machine.regional_machines.get(region).unwrap();
+        let regional_non_anchor_nodes = regional_machine.non_anchor_nodes;
+
+        // multi-region deployment may have some regions with no non-anchor node
+        if regional_non_anchor_nodes == 0 {
+            log::info!("skipping creating non-anchor node in the region '{region}'");
+            continue;
+        }
 
         let regional_shared_config = aws_manager::load_config(
             Some(region.clone()),
@@ -2681,19 +2688,19 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 .await
                 .expect("failed put_object ConfigFile");
 
-        // Put dev machine scripts into s3 if specified
-        if let Some(script) = spec.dev_machine_script.clone() {
-            let script = validate_path(script)?;
-            default_s3_manager
-                .put_object(
-                    script.to_str().unwrap(),
-                    &spec.resource.s3_bucket,
-                    &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
-                        .encode(),
-                )
-                .await
-                .expect("failed put_object dev machine script");
-        }
+            // Put dev machine scripts into s3 if specified
+            if let Some(script) = spec.dev_machine_script.clone() {
+                let script = validate_path(script)?;
+                default_s3_manager
+                    .put_object(
+                        script.to_str().unwrap(),
+                        &spec.resource.s3_bucket,
+                        &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
+                            .encode(),
+                    )
+                    .await
+                    .expect("failed put_object dev machine script");
+            }
 
             let mut regional_common_dev_machine_asg_params =
                 region_to_common_dev_machine_asg_params
@@ -2743,14 +2750,15 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                     .unwrap(),
             );
 
-        let regional_shared_config = aws_manager::load_config(
-            Some(region.clone()),
-            Some(spec.profile_name.clone()),
-            Some(Duration::from_secs(30)),
-        )
-        .await;
-        let regional_cloudformation_manager = cloudformation::Manager::new(&regional_shared_config);
-        let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
+            let regional_shared_config = aws_manager::load_config(
+                Some(region.clone()),
+                Some(spec.profile_name.clone()),
+                Some(Duration::from_secs(30)),
+            )
+            .await;
+            let regional_cloudformation_manager =
+                cloudformation::Manager::new(&regional_shared_config);
+            let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
 
             execute!(
                 stdout(),
@@ -2769,15 +2777,15 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 cfn_params.push(build_param(k, v));
             }
 
-        // Add the security group ids to the dev machine ASG
-        cfn_params.push(build_param(
-            "DevMachineSecurityGroupId",
-            regional_resource
-                .cloudformation_dev_machine_security_group_id
-                .clone()
-                .unwrap()
-                .as_str(),
-        ));
+            // Add the security group ids to the dev machine ASG
+            cfn_params.push(build_param(
+                "DevMachineSecurityGroupId",
+                regional_resource
+                    .cloudformation_dev_machine_security_group_id
+                    .clone()
+                    .unwrap()
+                    .as_str(),
+            ));
 
             regional_cloudformation_manager
                 .create_stack(
@@ -2901,7 +2909,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                     } else {
                         d.public_ipv4.clone()
                     };
-            instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
+                instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
 
                 let ssh_command = ec2::SshCommand {
                     ec2_key_path: regional_resource.ec2_key_path.clone(),
