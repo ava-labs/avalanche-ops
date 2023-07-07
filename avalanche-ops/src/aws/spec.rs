@@ -316,12 +316,6 @@ pub struct RegionalResource {
 
 impl Default for RegionalResource {
     fn default() -> Self {
-        Self::default()
-    }
-}
-
-impl RegionalResource {
-    pub fn default() -> Self {
         Self {
             region: String::from("us-west-2"),
             ec2_key_name: String::new(),
@@ -1228,6 +1222,14 @@ impl Spec {
                     "'machine.total_non_anchor_nodes' {} != {total_non_anchor_nodes} from regions",
                     self.machine.total_non_anchor_nodes
                 ),
+            ));
+        }
+
+        // Error in the case create_dev_machine is specified but no dev machine spec is provided
+        if self.create_dev_machine && self.dev_machine.is_none() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "create_dev_machine is specified but no dev machine spec is provided",
             ));
         }
 
