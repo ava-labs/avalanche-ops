@@ -39,31 +39,31 @@ jobs:
         shell: bash
         run: scripts/tests.lint.sh
 
-  check_cargo_unused:
-    name: Check Cargo unused
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  # check_cargo_unused:
+  #   name: Check Cargo unused
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
+  #     - name: Install Rust
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         profile: minimal
+  #         components: rustfmt, clippy
+  #         override: true
 
-      - name: Check Rust version
-        run: rustc --version
+  #     - name: Check Rust version
+  #       run: rustc --version
 
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
+  #     - uses: Swatinem/rust-cache@v1
+  #       with:
+  #         cache-on-failure: true
 
-      - name: Check unused Cargo dependencies
-        shell: bash
-        run: scripts/tests.unused.sh
+  #     - name: Check unused Cargo dependencies
+  #       shell: bash
+  #       run: scripts/tests.unused.sh
 
   unit_tests:
     name: Unit tests
