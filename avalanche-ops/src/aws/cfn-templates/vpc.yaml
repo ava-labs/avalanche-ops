@@ -313,6 +313,16 @@ Resources:
       FromPort: !Ref StakingPort
       ToPort: !Ref StakingPort
       CidrIp: !Ref StakingPortIngressIpv4Range
+  
+  # ingress from dev machine(s) to the node network
+  DevMachineIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: "-1"
+      FromPort: "-1"
+      ToPort: "-1"
+      SourceSecurityGroupId: !Ref DevMachineSecurityGroup
 
   # allow all outbound traffic
   Egress:
