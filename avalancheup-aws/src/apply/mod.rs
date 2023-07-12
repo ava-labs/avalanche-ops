@@ -1357,25 +1357,25 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         (d.public_ipv4.clone(), "ephemeral")
                     };
 
-                let ssh_command = ec2::SshCommand {
-                    ec2_key_path: regional_resource.ec2_key_path.clone(),
+                let ssh_command = ssh_scp_manager::ssh::Command {
+                    ssh_key_path: regional_resource.ec2_key_path.clone(),
                     user_name: String::from("ubuntu"),
 
                     region: region.clone(),
                     availability_zone: d.availability_zone,
 
                     instance_id: d.instance_id,
-                    instance_state_name: d.instance_state_name,
+                    instance_state: d.instance_state_name,
 
                     ip_mode: ip_mode.to_string(),
-                    public_ip: public_ip,
+                    public_ip,
                 };
                 println!("\n{}\n", ssh_command.to_string());
                 ssh_commands.push(ssh_command);
             }
             println!();
 
-            ec2::SshCommands(ssh_commands.clone())
+            ssh_scp_manager::ssh::Commands(ssh_commands.clone())
                 .sync(&regional_resource.ssh_commands_path_anchor_nodes)
                 .unwrap();
 
@@ -1857,25 +1857,25 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     };
                 instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
 
-                let ssh_command = ec2::SshCommand {
-                    ec2_key_path: regional_resource.ec2_key_path.clone(),
+                let ssh_command = ssh_scp_manager::ssh::Command {
+                    ssh_key_path: regional_resource.ec2_key_path.clone(),
                     user_name: String::from("ubuntu"),
 
                     region: region.clone(),
                     availability_zone: d.availability_zone,
 
                     instance_id: d.instance_id,
-                    instance_state_name: d.instance_state_name,
+                    instance_state: d.instance_state_name,
 
                     ip_mode: ip_mode.to_string(),
-                    public_ip: public_ip,
+                    public_ip,
                 };
                 println!("\n{}\n", ssh_command.to_string());
                 ssh_commands.push(ssh_command);
             }
             println!();
 
-            ec2::SshCommands(ssh_commands.clone())
+            ssh_scp_manager::ssh::Commands(ssh_commands.clone())
                 .sync(&regional_resource.ssh_commands_path_non_anchor_nodes)
                 .unwrap();
 
@@ -2912,15 +2912,15 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                     };
                 instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
 
-                let ssh_command = ec2::SshCommand {
-                    ec2_key_path: regional_resource.ec2_key_path.clone(),
+                let ssh_command = ssh_scp_manager::ssh::Command {
+                    ssh_key_path: regional_resource.ec2_key_path.clone(),
                     user_name: user_name.to_string(),
 
                     region: region.clone(),
                     availability_zone: d.availability_zone,
 
                     instance_id: d.instance_id,
-                    instance_state_name: d.instance_state_name,
+                    instance_state: d.instance_state_name,
 
                     ip_mode: spec.machine.ip_mode.clone(),
                     public_ip,
@@ -2930,7 +2930,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             }
             println!();
 
-            ec2::SshCommands(ssh_commands.clone())
+            ssh_scp_manager::ssh::Commands(ssh_commands.clone())
                 .sync(&regional_resource.ssh_commands_path_dev_machine)
                 .unwrap();
 
@@ -3076,7 +3076,7 @@ fn get_all_nodes_yaml_path(spec_file_path: &str) -> String {
     )
 }
 
-async fn read_script(ssh_commands: Vec<ec2::SshCommand>) {
+async fn read_script(ssh_commands: Vec<ssh_scp_manager::ssh::Command>) {
     for ssh_command in ssh_commands.iter() {
         match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
             Ok(output) => {
