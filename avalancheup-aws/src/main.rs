@@ -153,7 +153,9 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .to_string(),
 
+                enable_ssh: sub_matches.get_flag("ENABLE_SSH"),
                 enable_nlb: sub_matches.get_flag("ENABLE_NLB"),
+
                 disable_logs_auto_removal: sub_matches.get_flag("DISABLE_LOGS_AUTO_REMOVAL"),
                 metrics_fetch_interval_seconds: *sub_matches
                     .get_one::<u64>("METRICS_FETCH_INTERVAL_SECONDS")

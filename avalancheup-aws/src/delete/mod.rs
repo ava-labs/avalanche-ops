@@ -181,38 +181,42 @@ pub async fn execute(
             let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
             let regional_kms_manager = kms::Manager::new(&regional_shared_config);
 
-            // delete this first since EC2 key delete does not depend on ASG/VPC
-            // (mainly to speed up delete operation)
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Red),
-                Print(format!(
-                    "\n\n\nSTEP: delete EC2 key pair in the region '{region}'\n"
-                )),
-                ResetColor
-            )?;
+            if spec.enable_ssh {
+                // delete this first since EC2 key delete does not depend on ASG/VPC
+                // (mainly to speed up delete operation)
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Red),
+                    Print(format!(
+                        "\n\n\nSTEP: delete EC2 key pair in the region '{region}'\n"
+                    )),
+                    ResetColor
+                )?;
 
-            let ec2_key_path = regional_resource.ec2_key_path.clone();
-            if Path::new(ec2_key_path.as_str()).exists() {
-                fs::remove_file(ec2_key_path.as_str()).unwrap();
+                let ec2_key_path = regional_resource.ec2_key_path.clone();
+                if Path::new(ec2_key_path.as_str()).exists() {
+                    fs::remove_file(ec2_key_path.as_str()).unwrap();
+                }
+                let ec2_key_path_compressed = format!(
+                    "{}{}",
+                    ec2_key_path,
+                    compress_manager::Encoder::Zstd(3).ext()
+                );
+                if Path::new(ec2_key_path_compressed.as_str()).exists() {
+                    fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
+                }
+                let ec2_key_path_compressed_encrypted =
+                    format!("{}.encrypted", ec2_key_path_compressed);
+                if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
+                    fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
+                }
+                regional_ec2_manager
+                    .delete_key_pair(&regional_resource.ec2_key_name)
+                    .await
+                    .unwrap();
+            } else {
+                log::info!("skipping deleting EC2 key pair");
             }
-            let ec2_key_path_compressed = format!(
-                "{}{}",
-                ec2_key_path,
-                compress_manager::Encoder::Zstd(3).ext()
-            );
-            if Path::new(ec2_key_path_compressed.as_str()).exists() {
-                fs::remove_file(ec2_key_path_compressed.as_str()).unwrap();
-            }
-            let ec2_key_path_compressed_encrypted =
-                format!("{}.encrypted", ec2_key_path_compressed);
-            if Path::new(ec2_key_path_compressed_encrypted.as_str()).exists() {
-                fs::remove_file(ec2_key_path_compressed_encrypted.as_str()).unwrap();
-            }
-            regional_ec2_manager
-                .delete_key_pair(&regional_resource.ec2_key_name)
-                .await
-                .unwrap();
 
             // delete this first since KMS key delete does not depend on ASG/VPC
             // (mainly to speed up delete operation)

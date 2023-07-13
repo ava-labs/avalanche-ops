@@ -70,6 +70,10 @@ pub struct Spec {
     /// Local filepath to a bash script to be executed on the dev machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dev_machine_script: Option<std::path::PathBuf>,
+    /// Set "true" to enable SSH.
+    /// Otherwise, use SSM.
+    #[serde(default)]
+    pub enable_ssh: bool,
     /// Set "true" to enable NLB.
     #[serde(default)]
     pub enable_nlb: bool,
@@ -398,6 +402,7 @@ pub struct DefaultSpecOption {
     pub dev_machine_ssh_key_email: String,
     pub dev_machine_script: Option<std::path::PathBuf>,
 
+    pub enable_ssh: bool,
     pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,
     pub metrics_fetch_interval_seconds: u64,
@@ -964,6 +969,7 @@ impl Spec {
                 dev_machine,
                 dev_machine_script: None,
 
+                enable_ssh: opts.enable_ssh,
                 enable_nlb: opts.enable_nlb,
                 disable_logs_auto_removal: opts.disable_logs_auto_removal,
                 metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
@@ -1328,6 +1334,7 @@ avalanched_config:
 keep_resources_except_asg_ssm: false
 create_dev_machine: false
 
+enable_ssh: true
 enable_nlb: false
 disable_logs_auto_removal: false
 metrics_fetch_interval_seconds: 5000
@@ -1481,6 +1488,7 @@ coreth_chain_config:
         dev_machine: None,
         dev_machine_script: None,
 
+        enable_ssh: true,
         enable_nlb: false,
         disable_logs_auto_removal: false,
         metrics_fetch_interval_seconds: 5000,
