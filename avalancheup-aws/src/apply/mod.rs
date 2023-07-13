@@ -434,7 +434,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             "avalanche-ops".to_string(),
         );
 
-        if !Path::new(&regional_resource.ec2_key_path).exists() {
+        if spec.enable_ssh && !Path::new(&regional_resource.ec2_key_path).exists() {
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
@@ -486,6 +486,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 )
                 .await
                 .unwrap();
+        } else {
+            log::warn!("skipped creating EC2 key pair");
         }
 
         spec.resource
@@ -1376,7 +1378,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         Some(spec.profile_name.clone())
                     },
                 };
-                println!("\n{}\n", ssh_command.to_string());
+                if spec.enable_ssh {
+                    println!("\n{}\n", ssh_command.to_string());
+                } else {
+                    println!("\n{}\n", ssh_command.ssm_start_session_command());
+                }
                 ssh_commands.push(ssh_command);
             }
             println!();
@@ -1882,7 +1888,11 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         Some(spec.profile_name.clone())
                     },
                 };
-                println!("\n{}\n", ssh_command.to_string());
+                if spec.enable_ssh {
+                    println!("\n{}\n", ssh_command.to_string());
+                } else {
+                    println!("\n{}\n", ssh_command.ssm_start_session_command());
+                }
                 ssh_commands.push(ssh_command);
             }
             println!();
@@ -1967,19 +1977,21 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
             sleep(Duration::from_secs(20)).await;
 
-            for ssh_command in ssh_commands.iter() {
-                match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
-                    Ok(output) => {
-                        println!(
-                            "{} (non-anchor node) init script std output:\n{}\n",
-                            ssh_command.instance_id, output.stdout
-                        );
-                        println!(
-                            "{} (non-anchor node) init script std err:\n{}\n",
-                            ssh_command.instance_id, output.stderr
-                        );
+            if spec.enable_ssh {
+                for ssh_command in ssh_commands.iter() {
+                    match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+                        Ok(output) => {
+                            println!(
+                                "{} (non-anchor node) init script std output:\n{}\n",
+                                ssh_command.instance_id, output.stdout
+                            );
+                            println!(
+                                "{} (non-anchor node) init script std err:\n{}\n",
+                                ssh_command.instance_id, output.stderr
+                            );
+                        }
+                        Err(e) => log::warn!("failed to run ssh command {}", e),
                     }
-                    Err(e) => log::warn!("failed to run ssh command {}", e),
                 }
             }
         }
@@ -2943,7 +2955,11 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                         Some(spec.profile_name.clone())
                     },
                 };
-                println!("\n{}\n", ssh_command);
+                if spec.enable_ssh {
+                    println!("\n{}\n", ssh_command.to_string());
+                } else {
+                    println!("\n{}\n", ssh_command.ssm_start_session_command());
+                }
                 ssh_commands.push(ssh_command);
             }
             println!();

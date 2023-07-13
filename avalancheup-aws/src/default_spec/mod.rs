@@ -219,6 +219,13 @@ pub fn command() -> Command {
                 .default_value("elastic"),
         )
         .arg(
+            Arg::new("ENABLE_SSH")
+                .long("enable-ssh")
+                .help("Sets to enable SSH")
+                .required(false)
+                .num_args(0),
+        )      
+        .arg(
             Arg::new("ENABLE_NLB")
                 .long("enable-nlb")
                 .help("Sets to enable NLB")
