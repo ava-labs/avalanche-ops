@@ -224,7 +224,7 @@ pub fn command() -> Command {
                 .help("Sets to enable SSH")
                 .required(false)
                 .num_args(0),
-        )      
+        )
         .arg(
             Arg::new("ENABLE_NLB")
                 .long("enable-nlb")
