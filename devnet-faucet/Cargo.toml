@@ -18,7 +18,7 @@ ethers-core = { version = "=2.0.7", features = ["eip712"] }
 ethers-providers = { version = "=2.0.7" }
 ethers-signers = { version = "=2.0.7" }
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
-governor = "0.5.1"
+governor = "0.6.0"
 log = "0.4.18"
 nonzero_ext = "0.3.0"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
