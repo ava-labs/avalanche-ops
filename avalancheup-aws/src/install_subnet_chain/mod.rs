@@ -955,6 +955,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             file_stem.to_str().unwrap()
         );
 
+        let avalanched_alias_args = format!(
+            "alias-chain --log-level info --chain_id {chain_id} --chain_alias {alias}",
+            chain_id = blockchain_id,
+            alias = opts.chain_name.clone(),
+        );
+
         // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
         // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
         let avalanched_args = format!("install-chain --log-level info --s3-region {region} --s3-bucket {s3_bucket} --chain-config-s3-key {chain_config_s3_key} --chain-config-local-path {chain_config_local_path}",
@@ -992,6 +998,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 .document_name(ssm_doc.clone())
                 .set_instance_ids(Some(instance_ids.clone()))
                 .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+                .parameters("aliasArgs", vec![avalanched_alias_args.clone()])
                 .output_s3_region(opts.s3_region.clone())
                 .output_s3_bucket_name(opts.s3_bucket.clone())
                 .output_s3_key_prefix(format!(
@@ -1034,7 +1041,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Blue),
         Print(format!(
-            "\n\n\nSUCCESS!\nsubnet Id: {created_subnet_id}\nblockchain Id: {blockchain_id}\n\n"
+            "\n\n\nSUCCESS!\nsubnet Id: {created_subnet_id}\nblockchain Id: {blockchain_id}\nalias: {chain_name}\n\n",
+            chain_name = opts.chain_name.clone(),
         )),
         ResetColor
     )?;
