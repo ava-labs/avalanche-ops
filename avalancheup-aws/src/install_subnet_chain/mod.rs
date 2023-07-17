@@ -12,7 +12,7 @@ use avalanche_types::{
     jsonrpc::client::info as json_client_info,
     key, subnet, units, wallet,
 };
-use aws_manager::{self, s3, ssm, sts};
+use aws_manager::{self, s3, ssm};
 use aws_sdk_ssm::types::CommandInvocationStatus;
 use clap::{value_parser, Arg, Command};
 use crossterm::{
@@ -515,11 +515,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         Some(Duration::from_secs(opts.s3_upload_timeout)),
     )
     .await;
-    let sts_manager = sts::Manager::new(&shared_config);
+    // let sts_manager = sts::Manager::new(&shared_config);
     let s3_manager = s3::Manager::new(&shared_config);
 
-    let current_identity = sts_manager.get_identity().await.unwrap();
-    log::info!("current AWS identity: {:?}", current_identity);
+    // TODO: This is now causing an error. It's optional so we can leave it is as is for now.
+    // let current_identity = sts_manager.get_identity().await.unwrap();
+    // log::info!("current AWS identity: {:?}", current_identity);
 
     if !opts.skip_prompt {
         println!();
@@ -814,6 +815,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .document_name(ssm_doc.clone())
             .set_instance_ids(Some(instance_ids.clone()))
             .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+            // hack: send in dummy alias parameters in the no-op case
+            .parameters("aliasArgs", vec!["--version".to_string()])
             .output_s3_region(opts.s3_region.clone())
             .output_s3_bucket_name(opts.s3_bucket.clone())
             .output_s3_key_prefix(format!(
@@ -1041,7 +1044,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         stdout(),
         SetForegroundColor(Color::Blue),
         Print(format!(
-            "\n\n\nSUCCESS!\nsubnet Id: {created_subnet_id}\nblockchain Id: {blockchain_id}\nalias: {chain_name}\n\n",
+            "\n\n\nSUCCESS!\nsubnet Id: {created_subnet_id}\nblockchain Id: {blockchain_id}\nchain alias: {chain_name}\n\n",
             chain_name = opts.chain_name.clone(),
         )),
         ResetColor
