@@ -826,7 +826,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("AadTag", &spec.aad_tag),
             build_param("S3Region", &spec.resource.regions[0]),
             build_param("S3BucketName", &spec.resource.s3_bucket),
-            build_param("Ec2KeyPairName", &regional_resource.ec2_key_name),
             build_param("SshEnabled", &spec.enable_ssh.to_string()),
             build_param(
                 "InstanceProfileArn",
@@ -879,6 +878,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .unwrap(),
             ));
         }
+        if spec.enable_ssh {
+            common_asg_params.push(build_param(
+                "Ec2KeyPairName",
+                &regional_resource.ec2_key_name,
+            ));
+        } else {
+            common_asg_params.push(build_param("Ec2KeyPairName", "AWS::NoValue"));
+        }
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
         let mut common_dev_machine_params = BTreeMap::new();
@@ -898,10 +905,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         common_dev_machine_params.insert("AadTag".to_string(), spec.aad_tag.clone());
         common_dev_machine_params
             .insert("S3BucketName".to_string(), spec.resource.s3_bucket.clone());
-        common_dev_machine_params.insert(
-            "Ec2KeyPairName".to_string(),
-            regional_resource.ec2_key_name.clone(),
-        );
+
+        if spec.enable_ssh {
+            common_dev_machine_params.insert(
+                "Ec2KeyPairName".to_string(),
+                regional_resource.ec2_key_name.clone(),
+            )
+        } else {
+            common_dev_machine_params
+                .insert("Ec2KeyPairName".to_string(), "AWS::NoValue".to_string())
+        };
         common_dev_machine_params.insert(
             "InstanceProfileArn".to_string(),
             regional_resource
