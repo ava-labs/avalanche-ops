@@ -827,6 +827,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("S3Region", &spec.resource.regions[0]),
             build_param("S3BucketName", &spec.resource.s3_bucket),
             build_param("Ec2KeyPairName", &regional_resource.ec2_key_name),
+            build_param("SshEnabled", &spec.enable_ssh.to_string()),
             build_param(
                 "InstanceProfileArn",
                 &regional_resource
@@ -2740,6 +2741,9 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 regional_common_dev_machine_asg_params
                     .insert("SshKeyEmail".to_string(), email.clone());
             };
+            // SSH keys for dev machine
+            regional_common_dev_machine_asg_params
+                .insert("SshEnabled".to_string(), spec.enable_ssh.to_string());
 
             if !dev_machine.instance_types.is_empty() {
                 let instance_types = dev_machine.instance_types.clone();
