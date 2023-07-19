@@ -826,7 +826,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             build_param("AadTag", &spec.aad_tag),
             build_param("S3Region", &spec.resource.regions[0]),
             build_param("S3BucketName", &spec.resource.s3_bucket),
-            build_param("Ec2KeyPairName", &regional_resource.ec2_key_name),
+            build_param("SshEnabled", &spec.enable_ssh.to_string()),
             build_param(
                 "InstanceProfileArn",
                 &regional_resource
@@ -878,6 +878,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .unwrap(),
             ));
         }
+        if spec.enable_ssh {
+            common_asg_params.push(build_param(
+                "Ec2KeyPairName",
+                &regional_resource.ec2_key_name,
+            ));
+        }
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
         let mut common_dev_machine_params = BTreeMap::new();
@@ -897,10 +903,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         common_dev_machine_params.insert("AadTag".to_string(), spec.aad_tag.clone());
         common_dev_machine_params
             .insert("S3BucketName".to_string(), spec.resource.s3_bucket.clone());
-        common_dev_machine_params.insert(
-            "Ec2KeyPairName".to_string(),
-            regional_resource.ec2_key_name.clone(),
-        );
+
+        if spec.enable_ssh {
+            common_dev_machine_params.insert(
+                "Ec2KeyPairName".to_string(),
+                regional_resource.ec2_key_name.clone(),
+            );
+        }
         common_dev_machine_params.insert(
             "InstanceProfileArn".to_string(),
             regional_resource
@@ -1346,8 +1355,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
             }
 
-            let f = File::open(&regional_resource.ec2_key_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            if spec.enable_ssh {
+                let f = File::open(&regional_resource.ec2_key_path).unwrap();
+                f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            }
 
             println!();
             let mut ssh_commands = Vec::new();
@@ -1379,7 +1390,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     },
                 };
                 if spec.enable_ssh {
-                    println!("\n{}\n", ssh_command.to_string());
+                    println!("\n{}\n", ssh_command);
                 } else {
                     println!("\n{}\n", ssh_command.ssm_start_session_command());
                 }
@@ -1855,8 +1866,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
             }
 
-            let f = File::open(&regional_resource.ec2_key_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            if spec.enable_ssh {
+                let f = File::open(&regional_resource.ec2_key_path).unwrap();
+                f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            }
 
             println!();
             let mut ssh_commands = Vec::new();
@@ -1889,7 +1902,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     },
                 };
                 if spec.enable_ssh {
-                    println!("\n{}\n", ssh_command.to_string());
+                    println!("\n{}\n", ssh_command);
                 } else {
                     println!("\n{}\n", ssh_command.ssm_start_session_command());
                 }
@@ -2740,6 +2753,9 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 regional_common_dev_machine_asg_params
                     .insert("SshKeyEmail".to_string(), email.clone());
             };
+            // SSH keys for dev machine
+            regional_common_dev_machine_asg_params
+                .insert("SshEnabled".to_string(), spec.enable_ssh.to_string());
 
             if !dev_machine.instance_types.is_empty() {
                 let instance_types = dev_machine.instance_types.clone();
