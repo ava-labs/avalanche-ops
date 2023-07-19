@@ -883,8 +883,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 "Ec2KeyPairName",
                 &regional_resource.ec2_key_name,
             ));
-        } else {
-            common_asg_params.push(build_param("Ec2KeyPairName", "AWS::NoValue"));
         }
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
@@ -910,11 +908,8 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             common_dev_machine_params.insert(
                 "Ec2KeyPairName".to_string(),
                 regional_resource.ec2_key_name.clone(),
-            )
-        } else {
-            common_dev_machine_params
-                .insert("Ec2KeyPairName".to_string(), "AWS::NoValue".to_string())
-        };
+            );
+        }
         common_dev_machine_params.insert(
             "InstanceProfileArn".to_string(),
             regional_resource
@@ -1360,8 +1355,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
             }
 
-            let f = File::open(&regional_resource.ec2_key_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            if spec.enable_ssh {
+                let f = File::open(&regional_resource.ec2_key_path).unwrap();
+                f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            }
 
             println!();
             let mut ssh_commands = Vec::new();
@@ -1393,7 +1390,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     },
                 };
                 if spec.enable_ssh {
-                    println!("\n{}\n", ssh_command.to_string());
+                    println!("\n{}\n", ssh_command);
                 } else {
                     println!("\n{}\n", ssh_command.ssm_start_session_command());
                 }
@@ -1869,8 +1866,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 }
             }
 
-            let f = File::open(&regional_resource.ec2_key_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            if spec.enable_ssh {
+                let f = File::open(&regional_resource.ec2_key_path).unwrap();
+                f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            }
 
             println!();
             let mut ssh_commands = Vec::new();
@@ -1903,7 +1902,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     },
                 };
                 if spec.enable_ssh {
-                    println!("\n{}\n", ssh_command.to_string());
+                    println!("\n{}\n", ssh_command);
                 } else {
                     println!("\n{}\n", ssh_command.ssm_start_session_command());
                 }

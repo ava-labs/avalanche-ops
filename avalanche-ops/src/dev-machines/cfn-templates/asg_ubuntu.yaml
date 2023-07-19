@@ -29,8 +29,9 @@ Parameters:
     Description: S3 bucket name.
 
   Ec2KeyPairName:
-    Type: AWS::EC2::KeyPair::KeyName
+    Type: String
     Description: EC2 SSH key name
+    Default: ""
 
   InstanceProfileArn:
     Type: String
