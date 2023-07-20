@@ -35,6 +35,9 @@ Resources:
           avalanchedArgs:
             type: String
             description: New blockchain id to move configuration to.
+          aliasArgs:
+            type: String
+            description: Aliasing arguments for avalanched.
         mainSteps:
           - action: aws:runShellScript
             name: installSubnetChain
@@ -49,6 +52,9 @@ Resources:
 
                   # to download vm binary, write/update subnet/chain config
                   /usr/local/bin/avalanched-aws {{ avalanchedArgs }}
+
+                  # to set the chain alias 
+                  /usr/local/bin/avalanched-aws {{ aliasArgs }}
 
                   # to reload updated configs
                   sudo systemctl restart --no-block avalanchego.service

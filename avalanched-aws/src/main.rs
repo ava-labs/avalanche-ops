@@ -1,4 +1,5 @@
 mod agent;
+mod alias_chain;
 mod install_artifacts;
 mod install_chain;
 mod install_subnet;
@@ -17,6 +18,7 @@ async fn main() {
             install_artifacts::command(),
             install_chain::command(),
             install_subnet::command(),
+            alias_chain::command(),
         ])
         .get_matches();
 
@@ -147,6 +149,25 @@ async fn main() {
                     .to_string(),
                 chain_config_local_path: sub_matches
                     .get_one::<String>("CHAIN_CONFIG_LOCAL_PATH")
+                    .unwrap()
+                    .to_string(),
+            })
+            .await
+            .unwrap();
+        }
+
+        Some((alias_chain::NAME, sub_matches)) => {
+            alias_chain::execute(alias_chain::Flags {
+                log_level: sub_matches
+                    .get_one::<String>("LOG_LEVEL")
+                    .unwrap_or(&String::from("info"))
+                    .to_string(),
+                chain_name: sub_matches
+                    .get_one::<String>("CHAIN_NAME")
+                    .unwrap()
+                    .to_string(),
+                chain_id: sub_matches
+                    .get_one::<String>("CHAIN_ID")
                     .unwrap()
                     .to_string(),
             })
