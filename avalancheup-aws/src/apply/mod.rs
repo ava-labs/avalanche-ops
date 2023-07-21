@@ -2575,6 +2575,7 @@ cat /tmp/{node_id}.crt
         Print(format!(
             "{exec_path} install-subnet-chain \\
 --log-level info \\
+--profile-name <REPLACE_ME> \\
 --s3-region {s3_region} \\
 --s3-bucket {s3_bucket} \\
 --s3-key-prefix {id}/install-subnet-chain \\
@@ -2584,7 +2585,7 @@ cat /tmp/{node_id}.crt
 --subnet-validate-period-in-days 14 \\
 --subnet-config-local-path /tmp/subnet-config.json \\
 --subnet-config-remote-dir {subnet_config_remote_dir} \\
---vm-binary-local-path REPLACE_ME \\
+--vm-binary-local-path <REPLACE_ME> \\
 --vm-binary-remote-dir {vm_plugin_remote_dir} \\
 --chain-name subnetevm \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
