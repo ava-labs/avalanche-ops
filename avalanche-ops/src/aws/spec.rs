@@ -452,15 +452,6 @@ impl Spec {
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
-        if opts.network_name == "custom" && opts.keys_to_generate == 0 {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!(
-                    "can't --keys-to-generate=0 for {} network",
-                    opts.network_name
-                ),
-            ));
-        }
         if opts.network_name != "custom" && opts.keys_to_generate > 0 {
             return Err(Error::new(
                 ErrorKind::Other,
@@ -575,10 +566,19 @@ impl Spec {
             fs::create_dir_all(&opts.key_files_dir).unwrap();
         }
 
-        log::info!("generating hot keys...");
+        let keys_to_generate = if opts.network_name == "custom" && opts.keys_to_generate <= 1 {
+            log::warn!(
+                "can't --keys-to-generate <2 for {} network, overriding to 10",
+                opts.network_name
+            );
+            10
+        } else {
+            opts.keys_to_generate
+        };
+        log::info!("generating {keys_to_generate} hot keys...");
         let mut prefunded_keys_info: Vec<key::secp256k1::Info> = Vec::new();
         let mut prefunded_pubkeys: Vec<key::secp256k1::public_key::Key> = Vec::new();
-        for i in 0..opts.keys_to_generate {
+        for i in 0..keys_to_generate {
             let (key_info, key_read_only) = if i < key::secp256k1::TEST_KEYS.len() {
                 (
                     key::secp256k1::TEST_KEYS[i].to_info(network_id).unwrap(),
