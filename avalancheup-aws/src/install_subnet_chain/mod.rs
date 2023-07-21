@@ -959,7 +959,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         );
 
         let avalanched_alias_args = format!(
-            "alias-chain --log-level info --chain_id {chain_id} --chain_alias {alias}",
+            "alias-chain --log-level info --chain-id {chain_id} --chain-name {alias}",
             chain_id = blockchain_id,
             alias = opts.chain_name.clone(),
         );
