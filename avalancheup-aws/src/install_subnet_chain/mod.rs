@@ -585,13 +585,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         );
 
         s3_manager
-            .put_object(
+            .put_object_with_retries(
                 &opts.subnet_config_local_path,
                 &opts.s3_bucket,
                 &subnet_config_s3_key,
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
-            .expect("failed put_object subnet_config_path");
+            .expect("failed put_object_with_retries subnet_config_path");
     }
 
     //
@@ -607,13 +609,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     )?;
     let vm_binary_s3_key = format!("{}{}", s3::append_slash(&opts.s3_key_prefix), vm_id);
     s3_manager
-        .put_object(
+        .put_object_with_retries(
             &opts.vm_binary_local_path,
             &opts.s3_bucket,
             &vm_binary_s3_key,
+            Duration::from_secs(10),
+            Duration::from_millis(300),
         )
         .await
-        .expect("failed put_object vm_binary_path");
+        .expect("failed put_object_with_retries vm_binary_path");
 
     //
     //
@@ -648,13 +652,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         );
 
         s3_manager
-            .put_object(
+            .put_object_with_retries(
                 &opts.chain_config_local_path,
                 &opts.s3_bucket,
                 &chain_config_s3_key,
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
-            .expect("failed put_object chain_config_path");
+            .expect("failed put_object_with_retries chain_config_path");
     }
 
     //
