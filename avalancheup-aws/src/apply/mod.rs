@@ -247,11 +247,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             // don't compress since we need to download this in user data
             // while instance bootstrapping
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.avalanched_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalanchedAwsBin(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.avalanched_bin");
@@ -268,13 +270,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             // while instance bootstrapping
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.aws_volume_provisioner_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.aws_volume_provisioner_bin");
@@ -289,13 +293,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             // while instance bootstrapping
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.aws_ip_provisioner_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AwsIpProvisionerBin(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
@@ -312,13 +318,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             // while instance bootstrapping
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.avalanche_telemetry_cloudwatch_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.avalanche_telemetry_cloudwatch_bin");
@@ -331,11 +339,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         if !v.avalanchego_local_bin.is_empty() && Path::new(&v.avalanchego_local_bin).exists() {
             // upload without compression first
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.avalanchego_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalancheGoBin(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object avalanchego_bin");
@@ -352,10 +362,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             ResetColor
         )?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 &v.prometheus_metrics_rules_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .unwrap();
@@ -365,10 +377,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         spec.sync(spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -412,11 +426,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 });
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -466,23 +482,27 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .unwrap();
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &tmp_encrypted_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -617,11 +637,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .insert(region.clone(), regional_resource);
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -779,11 +801,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 .insert(region.clone(), regional_resource);
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -1220,11 +1244,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 Some(anchor_asg_logical_ids.clone());
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -1269,10 +1295,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .insert(region.clone(), regional_resource);
         spec.sync(spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -1470,11 +1498,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.resource.created_nodes = Some(created_nodes.clone());
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -1712,10 +1742,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             Some(non_anchor_asg_logical_ids.clone());
         spec.sync(spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -1759,10 +1791,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             .insert(region.clone(), regional_resource);
         spec.sync(spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .unwrap();
@@ -1978,11 +2012,13 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.resource.created_nodes = Some(created_nodes.clone());
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -2013,10 +2049,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     spec.resource.created_nodes = Some(created_nodes.clone());
     spec.sync(spec_file_path)?;
     default_s3_manager
-        .put_object(
+        .put_object_with_retries(
             spec_file_path,
             &spec.resource.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Duration::from_secs(10),
+            Duration::from_millis(300),
         )
         .await
         .expect("failed put_object ConfigFile");
@@ -2718,11 +2756,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 .insert(region.clone(), regional_resource.clone());
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -2731,11 +2771,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             if let Some(script) = spec.dev_machine_script.clone() {
                 let script = validate_path(script)?;
                 default_s3_manager
-                    .put_object(
+                    .put_object_with_retries(
                         script.to_str().unwrap(),
                         &spec.resource.s3_bucket,
                         &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                             .encode(),
+                        Duration::from_secs(10),
+                        Duration::from_millis(300),
                     )
                     .await
                     .expect("failed put_object dev machine script");
@@ -2990,11 +3032,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 .insert(region.to_string(), regional_resource);
             spec.sync(spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -3021,10 +3065,12 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
     sleep(Duration::from_secs(1)).await;
     log::info!("uploading avalancheup spec file...");
     default_s3_manager
-        .put_object(
+        .put_object_with_retries(
             spec_file_path,
             &spec.resource.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Duration::from_secs(10),
+            Duration::from_millis(300),
         )
         .await
         .unwrap();
