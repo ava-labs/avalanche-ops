@@ -2,7 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     env,
     fs::File,
-    io::{self, stdout, Error, ErrorKind},
+    io::{self, stdout, BufReader, Error, ErrorKind, Read},
     os::unix::fs::PermissionsExt,
     path::Path,
     str::FromStr,
@@ -17,21 +17,24 @@ mod dev_machine;
 use avalanche_ops::dev_machine_artifacts;
 use avalanche_types::{
     ids, jsonrpc::client::health as jsonrpc_client_health,
-    jsonrpc::client::info as jsonrpc_client_info, key, units, wallet,
+    jsonrpc::client::info as jsonrpc_client_info,
+    key, subnet, units, wallet,
 };
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
-    s3, sts,
+    s3, ssm, sts,
 };
+use aws_sdk_ssm::types::CommandInvocationStatus;
 use aws_sdk_cloudformation::types::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_ec2::types::Address;
-use clap::{Arg, Command};
+use clap::{value_parser, Arg, Command};
 use crossterm::{
     execute,
     style::{Color, Print, ResetColor, SetForegroundColor},
 };
 use dialoguer::{theme::ColorfulTheme, Select};
+use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 
 use crate::apply::dev_machine::validate_path;
@@ -66,6 +69,197 @@ pub fn command() -> Command {
                 .help("Skips prompt mode")
                 .required(false)
                 .num_args(0),
+        )
+        .arg(
+            Arg::new("S3_REGION")
+                .long("s3-region")
+                .help("Sets the AWS S3 region")
+                .required(true)
+                .num_args(1)
+                .default_value("us-west-2"),
+        )
+        .arg(
+            Arg::new("S3_BUCKET")
+                .long("s3-bucket")
+                .help("Sets the S3 bucket")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("S3_KEY_PREFIX")
+                .long("s3-key-prefix")
+                .help("Sets the S3 key prefix for all artifacts")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("S3_UPLOAD_TIMEOUT")
+                .long("s3-upload-timeout")
+                .help("Sets the S3 upload timeout in seconds (default 30)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("30")
+        )
+        .arg(
+            Arg::new("CHAIN_RPC_URL")
+                .long("chain-rpc-url")
+                .help("Sets the P-chain or Avalanche RPC endpoint")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("KEY")
+                .long("key")
+                .help("Sets the key Id (if hotkey, use private key in hex format)")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("PRIMARY_NETWORK_VALIDATE_PERIOD_IN_DAYS") 
+                .long("primary-network-validate-period-in-days")
+                .help("Sets the number of days to validate primary network")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("16"),
+        )
+        .arg(
+            Arg::new("SUBNET_VALIDATE_PERIOD_IN_DAYS") // TODO: use float
+                .long("subnet-validate-period-in-days")
+                .help("Sets the number of days to validate/stake the subnet (default 14 since primary network default validate period is 16-day in avalanche-types)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("14"),
+        )
+        .arg(
+            Arg::new("STAKING_AMOUNT_IN_AVAX")
+                .long("staking-amount-in-avax")
+                .help(
+                    "Sets the staking amount in P-chain AVAX (not in nAVAX) for primary network validator",
+                )
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("2000"),
+        )
+        .arg(
+            Arg::new("SUBNET_CONFIG_LOCAL_PATH")
+                .long("subnet-config-local-path")
+                .help("Subnet configuration local file path")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("SUBNET_CONFIG_S3_KEY")
+                .long("subnet-config-s3-key")
+                .help("Sets the S3 key for the subnet config (if empty, default to local file name)")
+                .required(false)
+                .default_value("subnet-config.json")
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("SUBNET_CONFIG_REMOTE_PATH")
+                .long("subnet-config-remote-dir")
+                .help("Subnet configuration remote file path")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("VM_BINARY_LOCAL_PATH")
+                .long("vm-binary-local-path")
+                .help("VM binary local file path")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("VM_BINARY_S3_KEY")
+                .long("vm-binary-s3-key")
+                .help("Sets the S3 key for the Vm binary (if empty, default to local file name)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("VM_BINARY_REMOTE_DIR")
+                .long("vm-binary-remote-dir")
+                .help("Plugin dir for VM binaries")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("VM_ID")
+                .long("vm-id")
+                .help("Sets the 32-byte Vm Id for the Vm binary (if empty, converts chain name to Id)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("CHAIN_NAME")
+                .long("chain-name")
+                .help("Sets the chain name")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("CHAIN_GENESIS_PATH")
+                .long("chain-genesis-path")
+                .help("Chain genesis file path")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("CHAIN_CONFIG_LOCAL_PATH")
+                .long("chain-config-local-path")
+                .help("Chain configuration local file path")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("CHAIN_CONFIG_S3_KEY")
+                .long("chain-config-s3-key")
+                .help("Sets the S3 key for the subnet chain config (if empty, default to local file name)")
+                .required(false)
+                .default_value("subnet-chain-config.json")
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("CHAIN_CONFIG_REMOTE_PATH")
+                .long("chain-config-remote-dir")
+                .help("Chain configuration remote file path")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("AVALANCHEGO_CONFIG_REMOTE_PATH")
+                .long("avalanchego-config-remote-path")
+                .help("avalanchego config remote file path")
+                .required(true)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("SSM_DOCS")
+                .long("ssm-docs")
+                .help("Sets the hash map of AWS region to SSM document name for subnet and chain install (see avalanche-ops/src/aws/cfn-templates/ssm_install_subnet_chain.yaml)")
+                .required(false)
+                .value_parser(HashMapStringToStringParser {})
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("TARGET_NODES")
+                .long("target-nodes")
+                .help("Sets the hash map of node Id to the corresponding EC2 region, and instance Id in JSON format")
+                .required(false)
+                .value_parser(HashMapStringToRegionInstanceIdParser {})
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("PROFILE_NAME")
+                .long("profile-name")
+                .help("Sets the AWS credential profile name for API calls/endpoints")
+                .required(false)
+                .default_value("default")
+                .num_args(1),
         )
 }
 
