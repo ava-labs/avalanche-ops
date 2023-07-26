@@ -480,11 +480,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             // don't compress since we need to download this in user data
             // while instance bootstrapping
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.avalanched_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalanchedAwsBin(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.avalanched_bin");
@@ -501,13 +503,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             // while instance bootstrapping
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.aws_volume_provisioner_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AwsVolumeProvisionerBin(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.aws_volume_provisioner_bin");
@@ -522,13 +526,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             // while instance bootstrapping
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.aws_ip_provisioner_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AwsIpProvisionerBin(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.aws_ip_provisioner_bin");
@@ -545,13 +551,15 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             // while instance bootstrapping
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.avalanche_telemetry_cloudwatch_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalancheTelemetryCloudwatchBin(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object upload_artifacts.avalanche_telemetry_cloudwatch_bin");
@@ -564,11 +572,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         if !v.avalanchego_local_bin.is_empty() && Path::new(&v.avalanchego_local_bin).exists() {
             // upload without compression first
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &v.avalanchego_local_bin,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::AvalancheGoBin(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object avalanchego_bin");
@@ -585,10 +595,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             ResetColor
         )?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 &v.prometheus_metrics_rules_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .unwrap();
@@ -598,10 +610,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
         spec.sync(opts.spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -645,11 +659,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 });
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -667,7 +683,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             "avalanche-ops".to_string(),
         );
 
-        if !Path::new(&regional_resource.ec2_key_path).exists() {
+        if spec.enable_ssh && !Path::new(&regional_resource.ec2_key_path).exists() {
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Green),
@@ -699,26 +715,32 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 .unwrap();
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     &tmp_encrypted_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::Ec2AccessKeyCompressedEncrypted(
                         spec.id.clone(),
                     )
                     .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
 
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
+        } else {
+            log::warn!("skipped creating EC2 key pair");
         }
 
         spec.resource
@@ -848,11 +870,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 .insert(region.clone(), regional_resource);
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -1010,11 +1034,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 .insert(region.clone(), regional_resource);
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -1057,7 +1083,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             build_param("AadTag", &spec.aad_tag),
             build_param("S3Region", &spec.resource.regions[0]),
             build_param("S3BucketName", &spec.resource.s3_bucket),
-            build_param("Ec2KeyPairName", &regional_resource.ec2_key_name),
+            build_param("SshEnabled", &spec.enable_ssh.to_string()),
             build_param(
                 "InstanceProfileArn",
                 &regional_resource
@@ -1109,6 +1135,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 .unwrap(),
             ));
         }
+        if spec.enable_ssh {
+            common_asg_params.push(build_param(
+                "Ec2KeyPairName",
+                &regional_resource.ec2_key_name,
+            ));
+        }
 
         // just copy the regional machine params, and later overwrite if 'create-dev-machine' is true
         let mut common_dev_machine_params = BTreeMap::new();
@@ -1128,10 +1160,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
         common_dev_machine_params.insert("AadTag".to_string(), spec.aad_tag.clone());
         common_dev_machine_params
             .insert("S3BucketName".to_string(), spec.resource.s3_bucket.clone());
-        common_dev_machine_params.insert(
-            "Ec2KeyPairName".to_string(),
-            regional_resource.ec2_key_name.clone(),
-        );
+
+        if spec.enable_ssh {
+            common_dev_machine_params.insert(
+                "Ec2KeyPairName".to_string(),
+                regional_resource.ec2_key_name.clone(),
+            );
+        }
         common_dev_machine_params.insert(
             "InstanceProfileArn".to_string(),
             regional_resource
@@ -1442,11 +1477,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 Some(anchor_asg_logical_ids.clone());
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -1491,10 +1528,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .insert(region.clone(), regional_resource);
         spec.sync(opts.spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -1577,8 +1616,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 }
             }
 
-            let f = File::open(&regional_resource.ec2_key_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            if spec.enable_ssh {
+                let f = File::open(&regional_resource.ec2_key_path).unwrap();
+                f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            }
 
             println!();
             let mut ssh_commands = Vec::new();
@@ -1609,7 +1650,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                         Some(spec.profile_name.clone())
                     },
                 };
-                println!("\n{}\n", ssh_command.to_string());
+                if spec.enable_ssh {
+                    println!("\n{}\n", ssh_command);
+                } else {
+                    println!("\n{}\n", ssh_command.ssm_start_session_command());
+                }
                 ssh_commands.push(ssh_command);
             }
             println!();
@@ -1686,11 +1731,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             spec.resource.created_nodes = Some(created_nodes.clone());
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .unwrap();
@@ -1928,10 +1975,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             Some(non_anchor_asg_logical_ids.clone());
         spec.sync(opts.spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .expect("failed put_object ConfigFile");
@@ -1975,10 +2024,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             .insert(region.clone(), regional_resource);
         spec.sync(opts.spec_file_path)?;
         default_s3_manager
-            .put_object(
+            .put_object_with_retries(
                 opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
             )
             .await
             .unwrap();
@@ -2082,8 +2133,10 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                 }
             }
 
-            let f = File::open(&regional_resource.ec2_key_path).unwrap();
-            f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            if spec.enable_ssh {
+                let f = File::open(&regional_resource.ec2_key_path).unwrap();
+                f.set_permissions(PermissionsExt::from_mode(0o444)).unwrap();
+            }
 
             println!();
             let mut ssh_commands = Vec::new();
@@ -2115,7 +2168,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
                         Some(spec.profile_name.clone())
                     },
                 };
-                println!("\n{}\n", ssh_command.to_string());
+                if spec.enable_ssh {
+                    println!("\n{}\n", ssh_command);
+                } else {
+                    println!("\n{}\n", ssh_command.ssm_start_session_command());
+                }
                 ssh_commands.push(ssh_command);
             }
             println!();
@@ -2188,11 +2245,13 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             spec.resource.created_nodes = Some(created_nodes.clone());
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
+                .put_object_with_retries(
                     opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -2200,19 +2259,21 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             log::info!("waiting for non-anchor nodes bootstrap and ready (to be safe)");
             sleep(Duration::from_secs(20)).await;
 
-            for ssh_command in ssh_commands.iter() {
-                match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
-                    Ok(output) => {
-                        println!(
-                            "{} (non-anchor node) init script std output:\n{}\n",
-                            ssh_command.instance_id, output.stdout
-                        );
-                        println!(
-                            "{} (non-anchor node) init script std err:\n{}\n",
-                            ssh_command.instance_id, output.stderr
-                        );
+            if spec.enable_ssh {
+                for ssh_command in ssh_commands.iter() {
+                    match ssh_command.run("tail -10 /var/log/cloud-init-output.log") {
+                        Ok(output) => {
+                            println!(
+                                "{} (non-anchor node) init script std output:\n{}\n",
+                                ssh_command.instance_id, output.stdout
+                            );
+                            println!(
+                                "{} (non-anchor node) init script std err:\n{}\n",
+                                ssh_command.instance_id, output.stderr
+                            );
+                        }
+                        Err(e) => log::warn!("failed to run ssh command {}", e),
                     }
-                    Err(e) => log::warn!("failed to run ssh command {}", e),
                 }
             }
         }
@@ -2221,10 +2282,12 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     spec.resource.created_nodes = Some(created_nodes.clone());
     spec.sync(opts.spec_file_path)?;
     default_s3_manager
-        .put_object(
+        .put_object_with_retries(
             opts.spec_file_path,
             &spec.resource.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Duration::from_secs(10),
+            Duration::from_millis(300),
         )
         .await
         .expect("failed put_object ConfigFile");
@@ -2668,7 +2731,7 @@ cat /tmp/{node_id}.crt
                 "https://api.avax-test.network".to_string()
             },
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
-            spec_file_path = opts.spec_file_path,
+            spec_file_path = opts.opts.spec_file_path,
             target_node_ids = all_node_ids.join(","),
         )),
         ResetColor
@@ -2783,6 +2846,7 @@ cat /tmp/{node_id}.crt
         Print(format!(
             "{exec_path} install-subnet-chain \\
 --log-level info \\
+--profile-name <REPLACE_ME> \\
 --s3-region {s3_region} \\
 --s3-bucket {s3_bucket} \\
 --s3-key-prefix {id}/install-subnet-chain \\
@@ -2792,7 +2856,7 @@ cat /tmp/{node_id}.crt
 --subnet-validate-period-in-days 14 \\
 --subnet-config-local-path /tmp/subnet-config.json \\
 --subnet-config-remote-dir {subnet_config_remote_dir} \\
---vm-binary-local-path REPLACE_ME \\
+--vm-binary-local-path <REPLACE_ME> \\
 --vm-binary-remote-dir {vm_plugin_remote_dir} \\
 --chain-name subnetevm \\
 --chain-genesis-path /tmp/subnet-evm-genesis.json \\
@@ -2925,11 +2989,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 .insert(region.clone(), regional_resource.clone());
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
-                    opts.spec_file_path,
+                .put_object_with_retries(
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -2938,11 +3004,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             if let Some(script) = spec.dev_machine_script.clone() {
                 let script = validate_path(script)?;
                 default_s3_manager
-                    .put_object(
+                    .put_object_with_retries(
                         script.to_str().unwrap(),
                         &spec.resource.s3_bucket,
                         &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                             .encode(),
+                        Duration::from_secs(10),
+                        Duration::from_millis(300),
                     )
                     .await
                     .expect("failed put_object dev machine script");
@@ -2961,6 +3029,9 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 regional_common_dev_machine_asg_params
                     .insert("SshKeyEmail".to_string(), email.clone());
             };
+            // SSH keys for dev machine
+            regional_common_dev_machine_asg_params
+                .insert("SshEnabled".to_string(), spec.enable_ssh.to_string());
 
             if !dev_machine.instance_types.is_empty() {
                 let instance_types = dev_machine.instance_types.clone();
@@ -3176,7 +3247,11 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                         Some(spec.profile_name.clone())
                     },
                 };
-                println!("\n{}\n", ssh_command);
+                if spec.enable_ssh {
+                    println!("\n{}\n", ssh_command.to_string());
+                } else {
+                    println!("\n{}\n", ssh_command.ssm_start_session_command());
+                }
                 ssh_commands.push(ssh_command);
             }
             println!();
@@ -3190,11 +3265,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 .insert(region.to_string(), regional_resource);
             spec.sync(opts.spec_file_path)?;
             default_s3_manager
-                .put_object(
-                    opts.spec_file_path,
+                .put_object_with_retries(
+                    spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
                 )
                 .await
                 .expect("failed put_object ConfigFile");
@@ -3221,10 +3298,12 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
     sleep(Duration::from_secs(1)).await;
     log::info!("uploading avalancheup spec file...");
     default_s3_manager
-        .put_object(
-            opts.spec_file_path,
+        .put_object_with_retries(
+            spec_file_path,
             &spec.resource.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
+            Duration::from_secs(10),
+            Duration::from_millis(300),
         )
         .await
         .unwrap();
