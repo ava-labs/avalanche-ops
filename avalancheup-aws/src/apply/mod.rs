@@ -41,6 +41,53 @@ use crate::apply::dev_machine::validate_path;
 
 pub const NAME: &str = "apply";
 
+#[derive(Clone, Debug)]
+pub struct HashMapStringToStringParser;
+
+impl clap::builder::TypedValueParser for HashMapStringToStringParser {
+    type Value = HashMap<String, String>;
+
+    fn parse_ref(
+        &self,
+        _cmd: &Command,
+        _arg: Option<&Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        let s = value.to_str().unwrap_or_default();
+        let m: HashMap<String, String> = serde_json::from_str(s).map_err(|e| {
+            clap::Error::raw(
+                clap::error::ErrorKind::InvalidValue,
+                format!("HashMap parsing '{}' failed ({})", s, e),
+            )
+        })?;
+        Ok(m)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HashMapStringToRegionInstanceIdParser;
+
+impl clap::builder::TypedValueParser for HashMapStringToRegionInstanceIdParser {
+    type Value = HashMap<String, avalanche_ops::aws::spec::RegionMachineId>;
+
+    fn parse_ref(
+        &self,
+        _cmd: &Command,
+        _arg: Option<&Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        let s = value.to_str().unwrap_or_default();
+        let m: HashMap<String, avalanche_ops::aws::spec::RegionMachineId> = serde_json::from_str(s)
+            .map_err(|e| {
+                clap::Error::raw(
+                    clap::error::ErrorKind::InvalidValue,
+                    format!("HashMap parsing '{}' failed ({})", s, e),
+                )
+            })?;
+        Ok(m)
+    }
+}
+
 pub fn command() -> Command {
     Command::new(NAME)
         .about("Applies/creates resources based on configuration")
@@ -310,15 +357,178 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
+    let mut node_id_to_pop = HashMap::new();
+    let mut region_to_ssm_doc = HashMap::new();
+    let mut target_nodes = HashMap::new();
+    if !opts.spec_file_path.is_empty() {
+        let mut spec =
+            avalanche_ops::aws::spec::Spec::load(opts.spec_file_path).expect("failed to load spec");
+        spec.validate()?;
+        for (region, regional_resource) in spec.resource.regional_resources.iter() {
+            region_to_ssm_doc.insert(
+                region.to_string(),
+                regional_resource
+                    .cloudformation_ssm_install_subnet_chain
+                    .clone()
+                    .unwrap(),
+            );
+        }
+        if let Some(created_nodes) = &spec.resource.created_nodes {
+            for node in created_nodes {
+                let node_id = ids::node::Id::from_str(&node.node_id).unwrap();
+                node_id_to_pop.insert(node_id, node.proof_of_possession.clone());
+                target_nodes.insert(
+                    node.node_id.clone(),
+                    avalanche_ops::aws::spec::RegionMachineId {
+                        region: node.region.clone(),
+                        machine_id: node.machine_id.clone(),
+                    },
+                );
+            }
+        }
+    } else {
+        target_nodes = opts.target_nodes.clone();
+        region_to_ssm_doc = opts.ssm_docs.clone();
+    }
 
-    let mut spec =
-        avalanche_ops::aws::spec::Spec::load(opts.spec_file_path).expect("failed to load spec");
-    spec.validate()?;
+    if !Path::new(&opts.vm_binary_local_path).exists() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("vm binary file '{}' not found", opts.vm_binary_local_path),
+        ));
+    }
+
+    if !opts.subnet_config_local_path.is_empty() && opts.subnet_config_remote_dir.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "subnet_config_local_path not empty but subnet_config_remote_dir empty",
+        ));
+    }
+    if !opts.chain_config_local_path.is_empty() && opts.chain_config_remote_dir.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "chain_config_local_path not empty but chain_config_remote_dir empty",
+        ));
+    }
+    if !Path::new(&opts.chain_genesis_path).exists() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("chain genesis file '{}' not found", opts.chain_genesis_path),
+        ));
+    }
+    let f = File::open(&opts.chain_genesis_path).map_err(|e| {
+        Error::new(
+            ErrorKind::Other,
+            format!("failed to open {} ({})", opts.chain_genesis_path, e),
+        )
+    })?;
+    let mut reader = BufReader::new(f);
+    let mut chain_genesis_bytes = Vec::new();
+    reader.read_to_end(&mut chain_genesis_bytes)?;
+
+    let vm_id = if opts.vm_id.is_empty() {
+        subnet::vm_name_to_id(&opts.chain_name)?
+    } else {
+        ids::Id::from_str(&opts.vm_id)?
+    };
+    log::info!("VM ID is {}", vm_id.to_string());
+
+    let resp = jsonrpc_client_info::get_network_id(&opts.chain_rpc_url)
+        .await
+        .unwrap();
+    let network_id = resp.result.unwrap().network_id;
+
+    let priv_key = key::secp256k1::private_key::Key::from_hex(&opts.key).unwrap();
+    let wallet_to_spend = wallet::Builder::new(&priv_key)
+        .base_http_url(opts.chain_rpc_url.clone())
+        .build()
+        .await
+        .unwrap();
+
+    let p_chain_balance = wallet_to_spend.p().balance().await.unwrap();
+    let p_chain_address = priv_key
+        .to_public_key()
+        .to_hrp_address(network_id, "P")
+        .unwrap();
+    log::info!(
+        "loaded wallet '{p_chain_address}', fetched its P-chain balance {} AVAX ({p_chain_balance} nAVAX, network id {network_id})",
+        units::cast_xp_navax_to_avax(primitive_types::U256::from(p_chain_balance))
+    );
+
+    let mut all_node_ids = Vec::new();
+    let mut region_to_instance_ids: HashMap<String, Vec<String>> = HashMap::new();
+    for (node_id, region_machine_id) in target_nodes.iter() {
+        log::info!(
+            "will send SSM doc to the node '{node_id}' of '{}' in the region '{}'",
+            region_machine_id.machine_id,
+            region_machine_id.region,
+        );
+        all_node_ids.push(node_id.clone());
+
+        if let Some(instance_ids) = region_to_instance_ids.get_mut(&region_machine_id.region) {
+            instance_ids.push(region_machine_id.machine_id.clone());
+        } else {
+            region_to_instance_ids.insert(
+                region_machine_id.region.clone(),
+                vec![region_machine_id.machine_id.clone()],
+            );
+        }
+    }
+
+    // if all nodes need to be staked
+    println!();
+    let estimated_required_avax =
+        units::cast_avax_to_xp_navax(primitive_types::U256::from(opts.staking_amount_in_avax))
+            .checked_mul(primitive_types::U256::from(all_node_ids.len()))
+            .unwrap();
+    log::info!(
+        "required AVAX to validate all nodes {estimated_required_avax} nAVAX ({} AVAX)",
+        units::cast_xp_navax_to_avax(estimated_required_avax)
+    );
+    if primitive_types::U256::from(p_chain_balance) < estimated_required_avax {
+        log::warn!("'{p_chain_address}' only has {p_chain_balance}, not enough to validate all nodes (needs {estimated_required_avax} nAVAX)");
+        let selected = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Should we still proceed?")
+            .items(&["Yes...?", "No!!!"])
+            .default(0)
+            .interact()
+            .unwrap();
+        if selected == 1 {
+            return Ok(());
+        }
+    }
+
+    println!();
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::Green),
+        Print(format!(
+            "\nInstalling network Id '{network_id}' with subnet , chain rpc url '{}', S3 bucket '{}', S3 key prefix '{}', S3 upload timeout '{}', subnet config local '{}', subnet config remote dir '{}', VM binary local '{}', VM binary remote dir '{}', VM Id '{}', chain name '{}', chain config local '{}', chain config remote dir '{}', chain genesis file '{}', primary network validate period in days '{}', subnet validate period in days '{}', staking amount in avax '{}', node ids to instance ids '{:?}'\n",
+            opts.chain_rpc_url,
+            opts.s3_bucket,
+            opts.s3_key_prefix,
+            opts.s3_upload_timeout,
+            opts.subnet_config_local_path,
+            opts.subnet_config_remote_dir,
+            opts.vm_binary_local_path,
+            opts.vm_binary_remote_dir,
+            vm_id,
+            opts.chain_name,
+            opts.chain_config_local_path,
+            opts.chain_config_remote_dir,
+            opts.chain_genesis_path,
+            opts.primary_network_validate_period_in_days,
+            opts.subnet_validate_period_in_days,
+            opts.staking_amount_in_avax,
+            target_nodes,
+        )),
+        ResetColor
+    )?;
 
     let default_shared_config = aws_manager::load_config(
-        Some(spec.resource.regions[0].clone()),
+        Some(spec.s3_region.regions[0].clone()),
         Some(spec.profile_name.clone()),
-        Some(Duration::from_secs(30)),
+        Some(Duration::from_secs(opts.s3_upload_timeout)),
     )
     .await;
 
@@ -2455,7 +2665,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 --delete-s3-objects \\
 --delete-ebs-volumes \\
 --delete-elastic-ips \\
---spec-file-path {spec_file_path}
+--spec-file-path {opts.spec_file_path}
 
 ",
             exec_path.display(),
@@ -2475,7 +2685,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 --delete-s3-objects \\
 --delete-ebs-volumes \\
 --delete-elastic-ips \\
---spec-file-path {spec_file_path}
+--spec-file-path {opts.spec_file_path}
 
 ",
             exec_path.display(),
