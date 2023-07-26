@@ -29,8 +29,9 @@ Parameters:
     Description: S3 bucket name.
 
   Ec2KeyPairName:
-    Type: AWS::EC2::KeyPair::KeyName
+    Type: String
     Description: EC2 SSH key name
+    Default: ""
 
   InstanceProfileArn:
     Type: String
@@ -186,6 +187,12 @@ Parameters:
     MinValue: 0
     MaxValue: 100
     Description: 0 for Spot only. 100 for On-Demand only.
+
+  SshEnabled:
+    Type: String
+    AllowedValues: [true, false]
+    Default: false
+    Description: true to enable SSH access to nodes
 
 Conditions:
   HasImageId:
@@ -355,6 +362,11 @@ Conditions:
       - Ref: InstanceTypesCount
       - 10
 
+  SshEnabledTrue:
+    Fn::Equals:
+      - Ref: SshEnabled
+      - "true"
+
 Resources:
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-launchtemplatedata.html
   AsgLaunchTemplate:
@@ -370,7 +382,11 @@ Resources:
             - HasImageId
             - !Ref ImageId
             - !Ref ImageIdSsmParameter
-        KeyName: !Ref Ec2KeyPairName
+        KeyName:
+          Fn::If: 
+            - SshEnabledTrue
+            - !Ref Ec2KeyPairName
+            - !Ref AWS::NoValue
 
         # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-launchtemplate-blockdevicemapping.html

@@ -70,6 +70,10 @@ pub struct Spec {
     /// Local filepath to a bash script to be executed on the dev machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dev_machine_script: Option<std::path::PathBuf>,
+    /// Set "true" to enable SSH.
+    /// Otherwise, use SSM.
+    #[serde(default)]
+    pub enable_ssh: bool,
     /// Set "true" to enable NLB.
     #[serde(default)]
     pub enable_nlb: bool,
@@ -398,6 +402,7 @@ pub struct DefaultSpecOption {
     pub dev_machine_ssh_key_email: String,
     pub dev_machine_script: Option<std::path::PathBuf>,
 
+    pub enable_ssh: bool,
     pub enable_nlb: bool,
     pub disable_logs_auto_removal: bool,
     pub metrics_fetch_interval_seconds: u64,
@@ -447,15 +452,6 @@ impl Spec {
             None => constants::DEFAULT_CUSTOM_NETWORK_ID,
         };
 
-        if opts.network_name == "custom" && opts.keys_to_generate == 0 {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!(
-                    "can't --keys-to-generate=0 for {} network",
-                    opts.network_name
-                ),
-            ));
-        }
         if opts.network_name != "custom" && opts.keys_to_generate > 0 {
             return Err(Error::new(
                 ErrorKind::Other,
@@ -570,10 +566,19 @@ impl Spec {
             fs::create_dir_all(&opts.key_files_dir).unwrap();
         }
 
-        log::info!("generating hot keys...");
+        let keys_to_generate = if opts.network_name == "custom" && opts.keys_to_generate <= 1 {
+            log::warn!(
+                "can't --keys-to-generate <2 for {} network, overriding to 10",
+                opts.network_name
+            );
+            10
+        } else {
+            opts.keys_to_generate
+        };
+        log::info!("generating {keys_to_generate} hot keys...");
         let mut prefunded_keys_info: Vec<key::secp256k1::Info> = Vec::new();
         let mut prefunded_pubkeys: Vec<key::secp256k1::public_key::Key> = Vec::new();
-        for i in 0..opts.keys_to_generate {
+        for i in 0..keys_to_generate {
             let (key_info, key_read_only) = if i < key::secp256k1::TEST_KEYS.len() {
                 (
                     key::secp256k1::TEST_KEYS[i].to_info(network_id).unwrap(),
@@ -964,6 +969,7 @@ impl Spec {
                 dev_machine,
                 dev_machine_script: None,
 
+                enable_ssh: opts.enable_ssh,
                 enable_nlb: opts.enable_nlb,
                 disable_logs_auto_removal: opts.disable_logs_auto_removal,
                 metrics_fetch_interval_seconds: opts.metrics_fetch_interval_seconds,
@@ -1328,6 +1334,7 @@ avalanched_config:
 keep_resources_except_asg_ssm: false
 create_dev_machine: false
 
+enable_ssh: true
 enable_nlb: false
 disable_logs_auto_removal: false
 metrics_fetch_interval_seconds: 5000
@@ -1481,6 +1488,7 @@ coreth_chain_config:
         dev_machine: None,
         dev_machine_script: None,
 
+        enable_ssh: true,
         enable_nlb: false,
         disable_logs_auto_removal: false,
         metrics_fetch_interval_seconds: 5000,
