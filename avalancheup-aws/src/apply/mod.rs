@@ -266,14 +266,53 @@ pub fn command() -> Command {
 // 50-minute
 const MAX_WAIT_SECONDS: u64 = 50 * 60;
 
-pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct Flags {
+    pub log_level: String,
+
+    pub skip_prompt: bool,
+    pub spec_file_path: String,
+
+    pub s3_region: String,
+    pub s3_bucket: String,
+    pub s3_key_prefix: String,
+    pub s3_upload_timeout: u64,
+
+    pub chain_rpc_url: String,
+    pub key: String,
+
+    pub primary_network_validate_period_in_days: u64,
+    pub subnet_validate_period_in_days: u64,
+    pub staking_amount_in_avax: u64,
+
+    pub subnet_config_local_path: String,
+    pub subnet_config_remote_dir: String,
+
+    pub vm_binary_local_path: String,
+    pub vm_binary_remote_dir: String,
+    pub vm_id: String,
+    pub chain_name: String,
+    pub chain_genesis_path: String,
+
+    pub chain_config_local_path: String,
+    pub chain_config_remote_dir: String,
+
+    pub avalanchego_config_remote_path: String,
+
+    pub ssm_docs: HashMap<String, String>,
+    pub target_nodes: HashMap<String, avalanche_ops::aws::spec::RegionMachineId>,
+    pub profile_name: String,
+}
+
+// pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -> io::Result<()> {
+pub async fn execute(opts: Flags) -> io::Result<()> {
     // ref. <https://github.com/env-logger-rs/env_logger/issues/47>
     env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, log_level),
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, opts.log_level),
     );
 
     let mut spec =
-        avalanche_ops::aws::spec::Spec::load(spec_file_path).expect("failed to load spec");
+        avalanche_ops::aws::spec::Spec::load(opts.spec_file_path).expect("failed to load spec");
     spec.validate()?;
 
     let default_shared_config = aws_manager::load_config(
@@ -359,19 +398,19 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.resource
             .regional_resources
             .insert(region.clone(), regional_resource);
-        spec.sync(spec_file_path)?;
+        spec.sync(opts.spec_file_path)?;
     }
 
     execute!(
         stdout(),
         SetForegroundColor(Color::Blue),
-        Print(format!("\nLoaded Spec: '{}'\n", spec_file_path)),
+        Print(format!("\nLoaded Spec: '{}'\n", opts.spec_file_path)),
         ResetColor
     )?;
     let spec_contents = spec.encode_yaml()?;
     println!("{}\n", spec_contents);
 
-    if !skip_prompt {
+    if !opts.skip_prompt {
         let options = &[
             "No, I am not ready to create resources.",
             "Yes, let's create resources.",
@@ -391,7 +430,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let exec_parent_dir = exec_path.parent().expect("unexpected None parent");
     let exec_parent_dir = exec_parent_dir.display().to_string();
 
-    log::info!("creating resources (with spec path {})", spec_file_path);
+    log::info!("creating resources (with spec path {})", opts.spec_file_path);
     let default_s3_manager = s3::Manager::new(&default_shared_config);
 
     let term = Arc::new(AtomicBool::new(false));
@@ -557,10 +596,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         // do not reset, we need this in case we need rerun
         // spec.upload_artifacts = None;
 
-        spec.sync(spec_file_path)?;
+        spec.sync(opts.spec_file_path)?;
         default_s3_manager
             .put_object(
-                spec_file_path,
+                opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -604,10 +643,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     id: key.id,
                     arn: key.arn,
                 });
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -673,7 +712,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -807,10 +846,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.resource
                 .regional_resources
                 .insert(region.clone(), regional_resource);
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -969,10 +1008,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             spec.resource
                 .regional_resources
                 .insert(region.clone(), regional_resource);
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -1401,10 +1440,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
             regional_resource.cloudformation_asg_anchor_nodes_logical_ids =
                 Some(anchor_asg_logical_ids.clone());
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -1450,10 +1489,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.resource
             .regional_resources
             .insert(region.clone(), regional_resource);
-        spec.sync(spec_file_path)?;
+        spec.sync(opts.spec_file_path)?;
         default_s3_manager
             .put_object(
-                spec_file_path,
+                opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -1633,7 +1672,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         Print(format!(
                             "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--delete-elastic-ips \\\n--spec-file-path {}\n\n",
                             exec_path.display(),
-                            spec_file_path
+                            opts.spec_file_path
                         )),
                         ResetColor
                     )?;
@@ -1645,10 +1684,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 created_nodes.push(anchor_node.clone());
             }
             spec.resource.created_nodes = Some(created_nodes.clone());
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -1887,10 +1926,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
 
         regional_resource.cloudformation_asg_non_anchor_nodes_logical_ids =
             Some(non_anchor_asg_logical_ids.clone());
-        spec.sync(spec_file_path)?;
+        spec.sync(opts.spec_file_path)?;
         default_s3_manager
             .put_object(
-                spec_file_path,
+                opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -1934,10 +1973,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         spec.resource
             .regional_resources
             .insert(region.clone(), regional_resource);
-        spec.sync(spec_file_path)?;
+        spec.sync(opts.spec_file_path)?;
         default_s3_manager
             .put_object(
-                spec_file_path,
+                opts.spec_file_path,
                 &spec.resource.s3_bucket,
                 &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
             )
@@ -2135,7 +2174,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                         Print(format!(
                             "{} delete \\\n--delete-cloudwatch-log-group \\\n--delete-s3-objects \\\n--delete-ebs-volumes \\\n--delete-elastic-ips \\\n--spec-file-path {}\n\n",
                             exec_path.display(),
-                            spec_file_path
+                            opts.spec_file_path
                         )),
                         ResetColor
                     )?;
@@ -2147,10 +2186,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 created_nodes.push(non_anchor_node.clone());
             }
             spec.resource.created_nodes = Some(created_nodes.clone());
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -2180,10 +2219,10 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     }
 
     spec.resource.created_nodes = Some(created_nodes.clone());
-    spec.sync(spec_file_path)?;
+    spec.sync(opts.spec_file_path)?;
     default_s3_manager
         .put_object(
-            spec_file_path,
+            opts.spec_file_path,
             &spec.resource.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
@@ -2199,7 +2238,7 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     for node in created_nodes.iter() {
         println!("{}", node.encode_yaml().unwrap());
     }
-    let all_nodes_yaml_path = get_all_nodes_yaml_path(spec_file_path);
+    let all_nodes_yaml_path = get_all_nodes_yaml_path(opts.spec_file_path);
     let f = File::create(&all_nodes_yaml_path).unwrap();
     serde_yaml::to_writer(f, &created_nodes.clone()).unwrap();
     println!("# for all nodes\ncat {all_nodes_yaml_path}");
@@ -2629,7 +2668,7 @@ cat /tmp/{node_id}.crt
                 "https://api.avax-test.network".to_string()
             },
             priv_key_hex = key::secp256k1::TEST_KEYS[0].to_hex(),
-            spec_file_path = spec_file_path,
+            spec_file_path = opts.spec_file_path,
             target_node_ids = all_node_ids.join(","),
         )),
         ResetColor
@@ -2783,7 +2822,7 @@ cat /tmp/{node_id}.crt
             avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
             region_to_ssm_doc_name = region_to_ssm_doc_name,
             node_id_to_region_machine_id = node_id_to_region_machine_id,
-            spec_file_path = spec_file_path,
+            spec_file_path = opts.spec_file_path,
         )),
         ResetColor
     )?;
@@ -2884,10 +2923,10 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             spec.resource
                 .regional_resources
                 .insert(region.clone(), regional_resource.clone());
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -3149,10 +3188,10 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             spec.resource
                 .regional_resources
                 .insert(region.to_string(), regional_resource);
-            spec.sync(spec_file_path)?;
+            spec.sync(opts.spec_file_path)?;
             default_s3_manager
                 .put_object(
-                    spec_file_path,
+                    opts.spec_file_path,
                     &spec.resource.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone())
                         .encode(),
@@ -3183,7 +3222,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
     log::info!("uploading avalancheup spec file...");
     default_s3_manager
         .put_object(
-            spec_file_path,
+            opts.spec_file_path,
             &spec.resource.s3_bucket,
             &avalanche_ops::aws::spec::StorageNamespace::ConfigFile(spec.id.clone()).encode(),
         )
@@ -3217,7 +3256,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
 
 ",
             exec_path.display(),
-            spec_file_path
+            opts.spec_file_path
         )),
         ResetColor
     )?;
