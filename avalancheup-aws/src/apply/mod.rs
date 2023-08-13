@@ -2473,6 +2473,18 @@ cat /tmp/{node_id}.crt
     //
     //
     //
+    if let Some(vm_install) = &spec.vm_install {
+        log::info!("install VM after applying network for {:?}", vm_install);
+
+        // TODO
+        unimplemented!("VM installation on apply not implemented");
+    }
+
+    //
+    //
+    //
+    //
+    //
     println!(
         "\n# EXAMPLE: ONLY add nodes as primary network validators WITHOUT subnet installation"
     );

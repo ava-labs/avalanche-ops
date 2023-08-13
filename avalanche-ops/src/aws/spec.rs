@@ -112,6 +112,19 @@ pub struct Spec {
     /// initial stakers yet with to-be-created node IDs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avalanchego_genesis_template: Option<avalanchego_genesis::Genesis>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vm_install: Option<VmInstall>,
+}
+
+/// Represents the KMS key resource.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct VmInstall {
+    pub vm_binary_file: String,
+    pub chain_name: String,
+    pub chain_genesis_file: String,
+    pub chain_config_file: String,
 }
 
 /// Represents the KMS key resource.
@@ -439,8 +452,15 @@ pub struct DefaultSpecOption {
     pub coreth_state_sync_enabled: bool,
 
     pub spec_file_path: String,
-    /// The AWS profile to use.
+
+    /// Onl required for SSO login.
     pub profile_name: String,
+
+    /// Only required for custom VM installation on apply.
+    pub vm_binary_file: String,
+    pub chain_name: String,
+    pub chain_genesis_file: String,
+    pub chain_config_file: String,
 }
 
 impl Spec {
@@ -949,6 +969,44 @@ impl Spec {
 
         let profile_name = opts.profile_name;
 
+        let vm_install = if !opts.vm_binary_file.is_empty() {
+            if !Path::new(&opts.vm_binary_file).exists() {
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    format!("file {} specified but does not exists", opts.vm_binary_file),
+                ));
+            }
+            if opts.chain_name.is_empty() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "chain-name must be specified if vm-binary-file is specified",
+                ));
+            }
+            if opts.chain_genesis_file.is_empty() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "chain-genesis-file must be specified if vm-binary-file is specified",
+                ));
+            }
+            if !Path::new(&opts.chain_genesis_file).exists() {
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    format!(
+                        "chain-genesis-file {} specified but does not exists",
+                        opts.chain_genesis_file
+                    ),
+                ));
+            }
+            Some(VmInstall {
+                vm_binary_file: opts.vm_binary_file.clone(),
+                chain_name: opts.chain_name.clone(),
+                chain_genesis_file: opts.chain_genesis_file.clone(),
+                chain_config_file: opts.chain_config_file.clone(),
+            })
+        } else {
+            None
+        };
+
         Ok((
             Self {
                 version: VERSION,
@@ -981,7 +1039,10 @@ impl Spec {
                 avalanchego_config,
                 coreth_chain_config,
                 avalanchego_genesis_template,
+
                 profile_name,
+
+                vm_install,
             },
             spec_file_path,
         ))
@@ -1237,6 +1298,39 @@ impl Spec {
                 ErrorKind::InvalidInput,
                 "create_dev_machine is specified but no dev machine spec is provided",
             ));
+        }
+
+        if let Some(vm_install) = &self.vm_install {
+            if !Path::new(&vm_install.vm_binary_file).exists() {
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    format!(
+                        "file {} specified but does not exists",
+                        vm_install.vm_binary_file
+                    ),
+                ));
+            }
+            if vm_install.chain_name.is_empty() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "chain-name must be specified if vm-binary-file is specified",
+                ));
+            }
+            if vm_install.chain_genesis_file.is_empty() {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    "chain-genesis-file must be specified if vm-binary-file is specified",
+                ));
+            }
+            if !Path::new(&vm_install.chain_genesis_file).exists() {
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    format!(
+                        "chain-genesis-file {} specified but does not exists",
+                        vm_install.chain_genesis_file
+                    ),
+                ));
+            }
         }
 
         Ok(())
@@ -1499,6 +1593,8 @@ coreth_chain_config:
         avalanchego_config,
         coreth_chain_config: coreth_chain_config::Config::default(),
         avalanchego_genesis_template: None,
+
+        vm_install: None,
     };
 
     cfg.validate().expect("unexpected validate failure");
