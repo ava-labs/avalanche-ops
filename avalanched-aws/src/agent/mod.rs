@@ -657,8 +657,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     // always overwrite in case of non-anchor node restarts
-    if avalanchego_config.is_custom_network() && avalanchego_config.genesis.is_some() {
-        let genesis_file_exists = Path::new(&avalanchego_config.clone().genesis.unwrap()).exists();
+    if avalanchego_config.is_custom_network() && avalanchego_config.genesis_file.is_some() {
+        let genesis_file_exists = Path::new(&avalanchego_config.clone().genesis_file.unwrap()).exists();
         if matches!(fetched_tags.node_kind, node::Kind::Anchor) {
             if genesis_file_exists {
                 log::info!(
@@ -805,7 +805,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             log::info!("STEP: uploading the new genesis file from each anchor node, which is to be shared with non-anchor nodes");
             s3_manager
                 .put_object(
-                    &avalanchego_config.clone().genesis.unwrap(),
+                    &avalanchego_config.clone().genesis_file.unwrap(),
                     &fetched_tags.s3_bucket,
                     &avalanche_ops::aws::spec::StorageNamespace::GenesisFile(
                         fetched_tags.id.clone(),
@@ -849,7 +849,7 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
 
             fs::copy(
                 &tmp_genesis_path,
-                spec.avalanchego_config.clone().genesis.unwrap(),
+                spec.avalanchego_config.clone().genesis_file.unwrap(),
             )?;
             fs::remove_file(&tmp_genesis_path)?;
 
@@ -1406,7 +1406,7 @@ fn merge_bootstrapping_anchor_nodes_to_write_genesis(
         initial_stakers.len()
     );
 
-    let avalanchego_genesis_path = spec.avalanchego_config.clone().genesis.unwrap();
+    let avalanchego_genesis_path = spec.avalanchego_config.clone().genesis_file.unwrap();
 
     let mut avalanchego_genesis_template = spec
         .avalanchego_genesis_template
