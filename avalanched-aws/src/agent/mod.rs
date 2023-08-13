@@ -658,7 +658,8 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     // always overwrite in case of non-anchor node restarts
     if avalanchego_config.is_custom_network() && avalanchego_config.genesis_file.is_some() {
-        let genesis_file_exists = Path::new(&avalanchego_config.clone().genesis_file.unwrap()).exists();
+        let genesis_file_exists =
+            Path::new(&avalanchego_config.clone().genesis_file.unwrap()).exists();
         if matches!(fetched_tags.node_kind, node::Kind::Anchor) {
             if genesis_file_exists {
                 log::info!(
