@@ -245,10 +245,28 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("SPEC_FILE_PATH")
                     .unwrap_or(&String::new())
                     .clone(),
+
                 profile_name: sub_matches
                     .get_one::<String>("PROFILE_NAME")
                     .unwrap_or(&String::from("default"))
                     .clone(),
+
+                vm_binary_file: sub_matches
+                    .get_one::<String>("VM_BINARY_FILE")
+                    .unwrap_or(&String::new())
+                    .to_string(),
+                chain_name: sub_matches
+                    .get_one::<String>("CHAIN_NAME")
+                    .unwrap_or(&String::new())
+                    .to_string(),
+                chain_genesis_file: sub_matches
+                    .get_one::<String>("CHAIN_GENESIS_FILE")
+                    .unwrap_or(&String::new())
+                    .to_string(),
+                chain_config_file: sub_matches
+                    .get_one::<String>("CHAIN_CONFIG_FILE")
+                    .unwrap_or(&String::new())
+                    .to_string(),
             };
             default_spec::execute(opt)
                 .await
