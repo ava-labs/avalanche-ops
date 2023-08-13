@@ -9,9 +9,9 @@ name = "devnet-faucet"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.399", features = ["evm", "jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.401", features = ["evm", "jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
 bytes = "1.4.0"
-clap = { version = "4.3.10", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+clap = { version = "4.3.21", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
 ethers = { version = "=2.0.7" }
 ethers-core = { version = "=2.0.7", features = ["eip712"] }
@@ -23,11 +23,11 @@ log = "0.4.18"
 nonzero_ext = "0.3.0"
 primitive-types = "0.12.1" # https://crates.io/crates/primitive-types
 random-manager = "0.0.5"
-serde = { version = "1.0.163", features = ["derive"] } # https://github.com/serde-rs/serde/releases
+serde = { version = "1.0.183", features = ["derive"] } # https://github.com/serde-rs/serde/releases
 serde_json = "1.0.96" # https://github.com/serde-rs/json/releases
 serde_with = { version = "3.0.0", features = ["hex"] }
 serde_yaml = "0.9.21" # https://github.com/dtolnay/serde-yaml/releases
-tokio = { version = "1.29.1", features = ["full"] }
+tokio = { version = "1.31.0", features = ["full"] }
 tokio-stream = "0.1.1"
 warp = "0.3.5"
 
