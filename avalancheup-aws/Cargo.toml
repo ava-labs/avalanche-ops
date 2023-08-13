@@ -16,7 +16,7 @@ aws-manager = { version = "0.28.73", features = ["cloudformation", "cloudwatch",
 aws-sdk-cloudformation = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-ec2 = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
 aws-sdk-s3 = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-ssm = "0.28.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-ssm = "0.29.0" # https://github.com/awslabs/aws-sdk-rust/releases
 clap = { version = "4.3.21", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.10"
 crossterm = "0.26.1"
