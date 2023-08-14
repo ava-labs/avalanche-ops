@@ -122,9 +122,11 @@ pub struct Spec {
 #[serde(rename_all = "snake_case")]
 pub struct VmInstall {
     pub vm_binary_file: String,
+    pub subnet_config_file: Option<String>,
+    pub subnet_validate_period_in_days: u64,
     pub chain_name: String,
     pub chain_genesis_file: String,
-    pub chain_config_file: String,
+    pub chain_config_file: Option<String>,
 }
 
 /// Represents the KMS key resource.
@@ -458,6 +460,8 @@ pub struct DefaultSpecOption {
 
     /// Only required for custom VM installation on apply.
     pub vm_binary_file: String,
+    pub subnet_config_file: String,
+    pub subnet_validate_period_in_days: u64,
     pub chain_name: String,
     pub chain_genesis_file: String,
     pub chain_config_file: String,
@@ -999,9 +1003,19 @@ impl Spec {
             }
             Some(VmInstall {
                 vm_binary_file: opts.vm_binary_file.clone(),
+                subnet_config_file: if opts.subnet_config_file.is_empty() {
+                    None
+                } else {
+                    Some(opts.subnet_config_file.clone())
+                },
+                subnet_validate_period_in_days: opts.subnet_validate_period_in_days,
                 chain_name: opts.chain_name.clone(),
                 chain_genesis_file: opts.chain_genesis_file.clone(),
-                chain_config_file: opts.chain_config_file.clone(),
+                chain_config_file: if opts.chain_config_file.is_empty() {
+                    None
+                } else {
+                    Some(opts.chain_config_file.clone())
+                },
             })
         } else {
             None

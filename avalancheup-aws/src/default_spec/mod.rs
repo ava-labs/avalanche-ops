@@ -463,6 +463,22 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("SUBNET_CONFIG_FILE")
+                .long("subnet-config-file")
+                .help("Subnet configuration local file path (only required for custom VM installation)")
+                .required(false)
+                .num_args(1),
+        )
+        .arg(
+            Arg::new("SUBNET_VALIDATE_PERIOD_IN_DAYS") // TODO: use float
+                .long("subnet-validate-period-in-days")
+                .help("Sets the number of days to validate/stake the subnet (default 14 since primary network default validate period is 16-day in avalanche-types)")
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("14"),
+        )
+        .arg(
             Arg::new("CHAIN_NAME")
                 .long("chain-name")
                 .help("Sets the chain name, VM ID is derived from this value (only required for custom VM installation)")
