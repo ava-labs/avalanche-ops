@@ -17,7 +17,7 @@ mod dev_machine;
 use avalanche_ops::dev_machine_artifacts;
 use avalanche_types::{
     ids, jsonrpc::client::health as jsonrpc_client_health,
-    jsonrpc::client::info as jsonrpc_client_info, key, units, wallet,
+    jsonrpc::client::info as jsonrpc_client_info, key, subnet, units, wallet,
 };
 use aws_manager::{
     self, cloudformation, ec2,
@@ -2475,8 +2475,146 @@ cat /tmp/{node_id}.crt
     //
     if let Some(vm_install) = &spec.vm_install {
         log::info!("install VM after applying network for {:?}", vm_install);
+        let vm_id = subnet::vm_name_to_id(&vm_install.chain_name)?;
+        log::info!(
+            "derived vm id '{}' from chain name {}",
+            vm_id,
+            vm_install.chain_name
+        );
 
+        //
+        //
+        //
+        println!();
+        println!();
+        println!();
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP(custom VM): uploading VM binary local file to S3\n\n"),
+            ResetColor
+        )?;
         // TODO
+
+        //
+        //
+        //
+        if let Some(_subnet_config_file) = &vm_install.subnet_config_file {
+            println!();
+            println!();
+            println!();
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP(custom VM): uploading subnet config local file to S3\n\n"),
+                ResetColor
+            )?;
+            // TODO
+        }
+
+        //
+        //
+        //
+        if let Some(_chain_config_file) = &vm_install.chain_config_file {
+            println!();
+            println!();
+            println!();
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP(custom VM): uploading subnet chain config local file to S3\n\n"),
+                ResetColor
+            )?;
+            // TODO
+        }
+
+        //
+        //
+        //
+        println!();
+        println!();
+        println!();
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP(custom VM): creating a subnet\n\n"),
+            ResetColor
+        )?;
+        // TODO
+
+        //
+        //
+        //
+        println!();
+        println!();
+        println!();
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP(custom VM): send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
+            ResetColor
+        )?;
+        // TODO
+
+        //
+        //
+        //
+        println!();
+        println!();
+        println!();
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP(custom VM): adding all nodes as subnet validators\n\n"),
+            ResetColor
+        )?;
+        // TODO
+
+        //
+        //
+        //
+        println!();
+        println!();
+        println!();
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Green),
+            Print("\n\n\nSTEP(custom VM): creating a blockchain with the genesis\n\n"),
+            ResetColor
+        )?;
+        // TODO
+
+        if let Some(chain_config_file) = &vm_install.chain_config_file {
+            //
+            //
+            //
+            println!();
+            println!();
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP(custom VM): sending SSM doc for chain-config updates\n\n"),
+                ResetColor
+            )?;
+            // TODO
+        }
+
+        //
+        //
+        //
+        println!();
+        println!();
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::Blue),
+            Print(format!(
+                "\n\n\nSUCCESS!\nsubnet Id: _\nblockchain Id: _\nchain alias: {chain_name}\n\n",
+                chain_name = vm_install.chain_name.clone(),
+            )),
+            ResetColor
+        )?;
+        // TODO
+
         unimplemented!("VM installation on apply not implemented");
     }
 

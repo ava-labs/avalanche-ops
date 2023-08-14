@@ -255,6 +255,13 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("VM_BINARY_FILE")
                     .unwrap_or(&String::new())
                     .to_string(),
+                subnet_validate_period_in_days: *sub_matches
+                    .get_one::<u64>("SUBNET_VALIDATE_PERIOD_IN_DAYS")
+                    .unwrap_or(&14),
+                subnet_config_file: sub_matches
+                    .get_one::<String>("SUBNET_CONFIG_FILE")
+                    .unwrap_or(&String::new())
+                    .to_string(),
                 chain_name: sub_matches
                     .get_one::<String>("CHAIN_NAME")
                     .unwrap_or(&String::new())
