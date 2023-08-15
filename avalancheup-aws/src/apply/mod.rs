@@ -2494,12 +2494,21 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP(custom VM): uploading VM binary local file to S3\n\n"),
             ResetColor
         )?;
-        // TODO
+        default_s3_manager
+            .put_object_with_retries(
+                &vm_install.vm_binary_file,
+                &spec.resource.s3_bucket,
+                &avalanche_ops::aws::spec::StorageNamespace::CustomVmBin(spec.id.clone()).encode(),
+                Duration::from_secs(10),
+                Duration::from_millis(300),
+            )
+            .await
+            .expect("failed put_object CustomVmBin");
 
         //
         //
         //
-        if let Some(_subnet_config_file) = &vm_install.subnet_config_file {
+        if let Some(subnet_config_file) = &vm_install.subnet_config_file {
             println!();
             println!();
             println!();
@@ -2509,13 +2518,23 @@ cat /tmp/{node_id}.crt
                 Print("\n\n\nSTEP(custom VM): uploading subnet config local file to S3\n\n"),
                 ResetColor
             )?;
-            // TODO
+            default_s3_manager
+                .put_object_with_retries(
+                    subnet_config_file,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::SubnetConfig(spec.id.clone())
+                        .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
+                )
+                .await
+                .expect("failed put_object SubnetConfig");
         }
 
         //
         //
         //
-        if let Some(_chain_config_file) = &vm_install.chain_config_file {
+        if let Some(chain_config_file) = &vm_install.chain_config_file {
             println!();
             println!();
             println!();
@@ -2525,7 +2544,17 @@ cat /tmp/{node_id}.crt
                 Print("\n\n\nSTEP(custom VM): uploading subnet chain config local file to S3\n\n"),
                 ResetColor
             )?;
-            // TODO
+            default_s3_manager
+                .put_object_with_retries(
+                    chain_config_file,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::ChainConfig(spec.id.clone())
+                        .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
+                )
+                .await
+                .expect("failed put_object ChainConfig");
         }
 
         //

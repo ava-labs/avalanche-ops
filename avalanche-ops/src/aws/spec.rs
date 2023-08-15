@@ -2102,6 +2102,10 @@ pub enum StorageNamespace {
 
     AvalanchedAwsBin(String),
 
+    CustomVmBin(String),
+    SubnetConfig(String),
+    ChainConfig(String),
+
     AwsVolumeProvisionerBin(String),
     AwsIpProvisionerBin(String),
     AvalancheTelemetryCloudwatchBin(String),
@@ -2146,6 +2150,16 @@ impl StorageNamespace {
 
             StorageNamespace::AvalanchedAwsBin(id) => {
                 format!("{}/bootstrap/install/avalanched-aws", id)
+            }
+
+            StorageNamespace::CustomVmBin(id) => {
+                format!("{id}/install-subnet-chain-during-apply/vm-binary")
+            }
+            StorageNamespace::SubnetConfig(id) => {
+                format!("{id}/install-subnet-chain-during-apply/subnet-config")
+            }
+            StorageNamespace::ChainConfig(id) => {
+                format!("{id}/install-subnet-chain-during-apply/chain-config")
             }
 
             StorageNamespace::AwsVolumeProvisionerBin(id) => {
