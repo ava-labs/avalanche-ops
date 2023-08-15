@@ -1315,6 +1315,19 @@ impl Spec {
         }
 
         if let Some(vm_install) = &self.vm_install {
+            if vm_install.subnet_validate_period_in_days
+                >= self.primary_network_validate_period_in_days
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "subnet_validate_period_in_days {} >= primary_network_validate_period_in_days {}",
+                        vm_install.subnet_validate_period_in_days,
+                        self.primary_network_validate_period_in_days
+                    ),
+                ));
+            }
+
             if !Path::new(&vm_install.vm_binary_file).exists() {
                 return Err(Error::new(
                     ErrorKind::NotFound,
@@ -2089,6 +2102,10 @@ pub enum StorageNamespace {
 
     AvalanchedAwsBin(String),
 
+    CustomVmBin(String),
+    SubnetConfig(String),
+    ChainConfig(String),
+
     AwsVolumeProvisionerBin(String),
     AwsIpProvisionerBin(String),
     AvalancheTelemetryCloudwatchBin(String),
@@ -2133,6 +2150,16 @@ impl StorageNamespace {
 
             StorageNamespace::AvalanchedAwsBin(id) => {
                 format!("{}/bootstrap/install/avalanched-aws", id)
+            }
+
+            StorageNamespace::CustomVmBin(id) => {
+                format!("{id}/install-subnet-chain-during-apply/vm-binary")
+            }
+            StorageNamespace::SubnetConfig(id) => {
+                format!("{id}/install-subnet-chain-during-apply/subnet-config")
+            }
+            StorageNamespace::ChainConfig(id) => {
+                format!("{id}/install-subnet-chain-during-apply/chain-config")
             }
 
             StorageNamespace::AwsVolumeProvisionerBin(id) => {
