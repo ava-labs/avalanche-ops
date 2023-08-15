@@ -1315,6 +1315,19 @@ impl Spec {
         }
 
         if let Some(vm_install) = &self.vm_install {
+            if vm_install.subnet_validate_period_in_days
+                >= self.primary_network_validate_period_in_days
+            {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "subnet_validate_period_in_days {} >= primary_network_validate_period_in_days {}",
+                        vm_install.subnet_validate_period_in_days,
+                        self.primary_network_validate_period_in_days
+                    ),
+                ));
+            }
+
             if !Path::new(&vm_install.vm_binary_file).exists() {
                 return Err(Error::new(
                     ErrorKind::NotFound,
