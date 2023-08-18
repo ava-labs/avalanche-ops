@@ -2629,7 +2629,7 @@ cat /tmp/{node_id}.crt
             subnet_id_to_track = created_subnet_id,
             avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
         );
-        let avalanched_args = if let Some(subnet_config_file) = &vm_install.subnet_config_file {
+        let avalanched_args = if vm_install.subnet_config_file.is_some() {
             let subnet_config_s3_key =
                 avalanche_ops::aws::spec::StorageNamespace::SubnetConfig(spec.id.clone()).encode();
 
