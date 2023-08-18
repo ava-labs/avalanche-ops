@@ -1,6 +1,6 @@
 [package]
 name = "devnet-faucet"
-version = "0.8.5" # https://github.com/ava-labs/avalanche-ops/releases
+version = "0.8.8" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
@@ -9,7 +9,7 @@ name = "devnet-faucet"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.401", features = ["evm", "jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.0.402", features = ["evm", "jsonrpc_client", "wallet", "wallet_evm"] } # https://crates.io/crates/avalanche-types
 bytes = "1.4.0"
 clap = { version = "4.3.22", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
