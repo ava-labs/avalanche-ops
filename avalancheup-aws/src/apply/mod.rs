@@ -2,7 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     env,
     fs::File,
-    io::{self, stdout, Error, ErrorKind},
+    io::{self, stdout, BufReader, Error, ErrorKind, Read},
     os::unix::fs::PermissionsExt,
     path::Path,
     str::FromStr,
@@ -16,16 +16,18 @@ mod dev_machine;
 
 use avalanche_ops::dev_machine_artifacts;
 use avalanche_types::{
-    ids, jsonrpc::client::health as jsonrpc_client_health,
-    jsonrpc::client::info as jsonrpc_client_info, key, subnet, units, wallet,
+    ids::{self, node},
+    jsonrpc::client::{health as jsonrpc_client_health, info as jsonrpc_client_info},
+    key, subnet, units, wallet,
 };
 use aws_manager::{
     self, cloudformation, ec2,
     kms::{self, envelope},
-    s3, sts,
+    s3, ssm, sts,
 };
 use aws_sdk_cloudformation::types::{Capability, OnFailure, Parameter, StackStatus, Tag};
 use aws_sdk_ec2::types::Address;
+use aws_sdk_ssm::types::CommandInvocationStatus;
 use clap::{Arg, Command};
 use crossterm::{
     execute,
@@ -2183,7 +2185,9 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
     let mut all_node_ids = Vec::new();
     let mut all_instance_ids = Vec::new();
     let mut node_id_to_region_machine_id = HashMap::new();
+    let mut region_to_instance_ids: HashMap<String, Vec<String>> = HashMap::new();
     for node in created_nodes.iter() {
+        let region = node.region.clone();
         let node_id = node.node_id.clone();
         let instance_id = node.machine_id.clone();
 
@@ -2194,9 +2198,14 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             node_id,
             avalanche_ops::aws::spec::RegionMachineId {
                 region: node.region.clone(),
-                machine_id: instance_id,
+                machine_id: instance_id.clone(),
             },
         );
+        if let Some(instance_ids) = region_to_instance_ids.get_mut(&region) {
+            instance_ids.push(instance_id.clone());
+        } else {
+            region_to_instance_ids.insert(region.clone(), vec![instance_id.clone()]);
+        }
     }
 
     //
@@ -2494,11 +2503,13 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP(custom VM): uploading VM binary local file to S3\n\n"),
             ResetColor
         )?;
+        let vm_bin_s3_key =
+            avalanche_ops::aws::spec::StorageNamespace::CustomVmBin(spec.id.clone()).encode();
         default_s3_manager
             .put_object_with_retries(
                 &vm_install.vm_binary_file,
                 &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::CustomVmBin(spec.id.clone()).encode(),
+                &vm_bin_s3_key,
                 Duration::from_secs(10),
                 Duration::from_millis(300),
             )
@@ -2557,6 +2568,16 @@ cat /tmp/{node_id}.crt
                 .expect("failed put_object ChainConfig");
         }
 
+        let ki = spec.prefunded_keys.clone().unwrap()[0].clone();
+        let priv_key =
+            key::secp256k1::private_key::Key::from_cb58(ki.private_key_cb58.clone().unwrap())
+                .unwrap();
+        let wallet_to_spend = wallet::Builder::new(&priv_key)
+            .base_http_urls(all_nodes_http_rpcs.clone())
+            .build()
+            .await
+            .unwrap();
+
         //
         //
         //
@@ -2569,7 +2590,24 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP(custom VM): creating a subnet\n\n"),
             ResetColor
         )?;
-        // TODO
+        let subnet_id = wallet_to_spend
+            .p()
+            .create_subnet()
+            .dry_mode(true)
+            .issue()
+            .await
+            .unwrap();
+        log::info!("[dry mode] subnet Id '{}'", subnet_id);
+
+        let created_subnet_id = wallet_to_spend
+            .p()
+            .create_subnet()
+            .check_acceptance(true)
+            .issue()
+            .await
+            .unwrap();
+        log::info!("created subnet '{}' (still need track)", created_subnet_id);
+        sleep(Duration::from_secs(10)).await;
 
         //
         //
@@ -2583,7 +2621,89 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP(custom VM): send SSM doc to download Vm binary, track subnet Id, update subnet config\n\n"),
             ResetColor
         )?;
-        // TODO
+        let remote_cmd = format!("install-subnet --log-level info --s3-region {s3_region} --s3-bucket {s3_bucket} --vm-binary-s3-key {vm_bin_s3_key} --vm-binary-local-path {vm_bin_local_path} --subnet-id-to-track {subnet_id_to_track} --avalanchego-config-path {avalanchego_config_remote_path}",
+            s3_region =spec.resource.regions[0].clone(),
+            s3_bucket = spec.resource.s3_bucket.clone(),
+            vm_bin_s3_key = vm_bin_s3_key,
+            vm_bin_local_path = format!("{}{}", s3::append_slash(&spec.avalanchego_config.plugin_dir), vm_id),
+            subnet_id_to_track = created_subnet_id,
+            avalanchego_config_remote_path = spec.avalanchego_config.config_file.clone().unwrap(),
+        );
+        let avalanched_args = if let Some(subnet_config_file) = &vm_install.subnet_config_file {
+            let subnet_config_s3_key =
+                avalanche_ops::aws::spec::StorageNamespace::SubnetConfig(spec.id.clone()).encode();
+
+            // If a subnet id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+            // the config file for this subnet is located at {subnet-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt.json.
+            format!("{remote_cmd} --subnet-config-s3-key {subnet_config_s3_key} --subnet-config-local-path {subnet_config_local_path}",
+                subnet_config_s3_key = subnet_config_s3_key,
+                subnet_config_local_path = format!("{}{}.json", s3::append_slash(&spec.avalanchego_config.subnet_config_dir), created_subnet_id),
+            )
+        } else {
+            remote_cmd
+        };
+        for (region, instance_ids) in region_to_instance_ids.iter() {
+            if !region_to_ssm_doc_name.contains_key(region) {
+                panic!(
+                    "--ssm-docs does not have the document name for the region '{}'",
+                    region
+                );
+            }
+            let ssm_doc_name = region_to_ssm_doc_name.get(region).unwrap();
+
+            log::info!(
+                "sending SSM commands via '{ssm_doc_name}' for the region '{region}' with instances {:?}",
+                instance_ids
+            );
+            let shared_config = aws_manager::load_config(
+                Some(region.clone()),
+                Some(spec.profile_name.clone()),
+                Some(Duration::from_secs(30)),
+            )
+            .await;
+            let regional_ssm_manager = ssm::Manager::new(&shared_config);
+
+            // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
+            let ssm_output = regional_ssm_manager
+                .cli
+                .send_command()
+                .document_name(ssm_doc_name.clone())
+                .set_instance_ids(Some(instance_ids.clone()))
+                .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+                // hack: send in dummy alias parameters in the no-op case
+                .parameters("aliasArgs", vec!["--version".to_string()])
+                .output_s3_region(spec.resource.regions[0].clone())
+                .output_s3_bucket_name(spec.resource.s3_bucket.clone())
+                .output_s3_key_prefix(format!("{}ssm-output-logs", s3::append_slash(&spec.id)))
+                .send()
+                .await
+                .unwrap();
+            let ssm_output = ssm_output.command().unwrap();
+            let ssm_command_id = ssm_output.command_id().unwrap();
+            log::info!("sent SSM command {}", ssm_command_id);
+            sleep(Duration::from_secs(30)).await;
+
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+                ResetColor
+            )?;
+            for instance_id in instance_ids.iter() {
+                let status = regional_ssm_manager
+                    .poll_command(
+                        ssm_command_id,
+                        instance_id,
+                        CommandInvocationStatus::Success,
+                        Duration::from_secs(300),
+                        Duration::from_secs(5),
+                    )
+                    .await
+                    .unwrap();
+                log::info!("status {:?} for instance id {}", status, instance_id);
+            }
+            sleep(Duration::from_secs(5)).await;
+        }
 
         //
         //
@@ -2597,7 +2717,45 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP(custom VM): adding all nodes as subnet validators\n\n"),
             ResetColor
         )?;
-        // TODO
+        let mut handles = Vec::new();
+        for (i, node_id) in all_node_ids.iter().enumerate() {
+            log::info!(
+                "spawning add_subnet_validator on '{}' (staking period in days '{}')",
+                node_id,
+                vm_install.subnet_validate_period_in_days
+            );
+
+            // TODO: remove this... after fixing flaky errors of utxo not found
+            sleep(Duration::from_secs(2)).await;
+
+            // randomly wait to prevnt UTXO double spends from the same wallet
+            let random_wait = if i < 5 {
+                Duration::from_secs(2 + (i * 2) as u64)
+                    .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
+                    .unwrap()
+            } else {
+                Duration::from_secs(5 + (i * 2) as u64)
+                    .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
+                    .unwrap()
+            };
+            handles.push(tokio::spawn(add_subnet_validator(
+                Arc::new(random_wait),
+                Arc::new(wallet_to_spend.clone()),
+                Arc::new(node_id.to_owned()),
+                Arc::new(created_subnet_id.to_owned()),
+                Arc::new(vm_install.subnet_validate_period_in_days),
+            )));
+        }
+        log::info!("STEP: blocking on add_subnet_validator handles via JoinHandle");
+        for handle in handles {
+            handle.await.map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed await on add_subnet_validator JoinHandle {}", e),
+                )
+            })?;
+        }
+        sleep(Duration::from_secs(5)).await;
 
         //
         //
@@ -2611,7 +2769,50 @@ cat /tmp/{node_id}.crt
             Print("\n\n\nSTEP(custom VM): creating a blockchain with the genesis\n\n"),
             ResetColor
         )?;
-        // TODO
+        if !Path::new(&vm_install.chain_genesis_file).exists() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "chain genesis file '{}' not found",
+                    vm_install.chain_genesis_file
+                ),
+            ));
+        }
+        let f = File::open(&vm_install.chain_genesis_file).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("failed to open {} ({})", vm_install.chain_genesis_file, e),
+            )
+        })?;
+        let mut reader = BufReader::new(f);
+        let mut chain_genesis_bytes = Vec::new();
+        reader.read_to_end(&mut chain_genesis_bytes)?;
+
+        let blockchain_id = wallet_to_spend
+            .p()
+            .create_chain()
+            .subnet_id(created_subnet_id)
+            .genesis_data(chain_genesis_bytes.clone())
+            .vm_id(vm_id)
+            .chain_name(vm_install.chain_name.clone())
+            .dry_mode(true)
+            .issue()
+            .await
+            .unwrap();
+        log::info!("[dry mode] blockchain Id {blockchain_id} for subnet {created_subnet_id}");
+
+        let blockchain_id = wallet_to_spend
+            .p()
+            .create_chain()
+            .subnet_id(created_subnet_id)
+            .genesis_data(chain_genesis_bytes.clone())
+            .vm_id(vm_id)
+            .chain_name(vm_install.chain_name.clone())
+            .check_acceptance(true)
+            .issue()
+            .await
+            .unwrap();
+        log::info!("created a blockchain {blockchain_id} for subnet {created_subnet_id}");
 
         if let Some(chain_config_file) = &vm_install.chain_config_file {
             //
@@ -2625,7 +2826,90 @@ cat /tmp/{node_id}.crt
                 Print("\n\n\nSTEP(custom VM): sending SSM doc for chain-config updates\n\n"),
                 ResetColor
             )?;
-            // TODO
+
+            let file_stem = Path::new(chain_config_file).file_stem().unwrap();
+            let chain_config_s3_key = format!(
+                "{}{}",
+                s3::append_slash(&spec.id),
+                file_stem.to_str().unwrap()
+            );
+
+            let avalanched_alias_args = format!(
+                "alias-chain --log-level info --chain-id {chain_id} --chain-name {alias}",
+                chain_id = blockchain_id,
+                alias = vm_install.chain_name.clone(),
+            );
+
+            // If a Subnet's chain id is 2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt,
+            // the config file for this chain is located at {chain-config-dir}/2ebCneCbwthjQ1rYT41nhd7M76Hc6YmosMAQrTFhBq8qeqh6tt/config.json.
+            let avalanched_args = format!("install-chain --log-level info --s3-region {region} --s3-bucket {s3_bucket} --chain-config-s3-key {chain_config_s3_key} --chain-config-local-path {chain_config_local_path}",
+                region = spec.resource.regions[0].clone(),
+                s3_bucket = spec.resource.s3_bucket.clone(),
+                chain_config_s3_key = chain_config_s3_key,
+                chain_config_local_path = format!("{}{}/config.json", s3::append_slash(&spec.avalanchego_config.chain_config_dir), blockchain_id),
+            );
+
+            for (region, instance_ids) in region_to_instance_ids.iter() {
+                if !region_to_ssm_doc_name.contains_key(region) {
+                    panic!(
+                        "--ssm-docs does not have the document name for the region '{}'",
+                        region
+                    );
+                }
+                let ssm_doc_name = region_to_ssm_doc_name.get(region).unwrap();
+
+                log::info!(
+                    "sending SSM commands for the region '{region}' with instances {:?}",
+                    instance_ids
+                );
+                let shared_config = aws_manager::load_config(
+                    Some(region.clone()),
+                    Some(spec.profile_name.clone()),
+                    Some(Duration::from_secs(30)),
+                )
+                .await;
+                let regional_ssm_manager = ssm::Manager::new(&shared_config);
+
+                // ref. <https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_SendCommand.html>
+                let ssm_output = regional_ssm_manager
+                    .cli
+                    .send_command()
+                    .document_name(ssm_doc_name.clone())
+                    .set_instance_ids(Some(instance_ids.clone()))
+                    .parameters("avalanchedArgs", vec![avalanched_args.clone()])
+                    .parameters("aliasArgs", vec![avalanched_alias_args.clone()])
+                    .output_s3_region(spec.resource.regions[0].clone())
+                    .output_s3_bucket_name(spec.resource.s3_bucket.clone())
+                    .output_s3_key_prefix(format!("{}ssm-output-logs", s3::append_slash(&spec.id)))
+                    .send()
+                    .await
+                    .unwrap();
+                let ssm_output = ssm_output.command().unwrap();
+                let ssm_command_id = ssm_output.command_id().unwrap();
+                log::info!("sent SSM command {}", ssm_command_id);
+                sleep(Duration::from_secs(30)).await;
+
+                execute!(
+                    stdout(),
+                    SetForegroundColor(Color::Green),
+                    Print("\n\n\nSTEP: checking the status of SSM command...\n\n"),
+                    ResetColor
+                )?;
+                for instance_id in instance_ids.iter() {
+                    let status = regional_ssm_manager
+                        .poll_command(
+                            ssm_command_id,
+                            instance_id,
+                            CommandInvocationStatus::Success,
+                            Duration::from_secs(300),
+                            Duration::from_secs(5),
+                        )
+                        .await
+                        .unwrap();
+                    log::info!("status {:?} for instance id {}", status, instance_id);
+                }
+                sleep(Duration::from_secs(5)).await;
+            }
         }
 
         //
@@ -2642,9 +2926,6 @@ cat /tmp/{node_id}.crt
             )),
             ResetColor
         )?;
-        // TODO
-
-        unimplemented!("VM installation on apply not implemented");
     }
 
     //
@@ -3336,6 +3617,39 @@ async fn add_primary_network_permissionless_validator(
             log::warn!("failed add_permissionless_validator {}", e);
         }
     }
+}
+
+/// randomly wait to prevent UTXO double spends from the same wallet
+async fn add_subnet_validator(
+    random_wait_dur: Arc<Duration>,
+    wallet_to_spend: Arc<wallet::Wallet<key::secp256k1::private_key::Key>>,
+    node_id: Arc<String>,
+    subnet_id: Arc<ids::Id>,
+    subnet_validate_period_in_days: Arc<u64>,
+) {
+    let random_wait_dur = random_wait_dur.as_ref();
+    log::info!(
+        "adding '{node_id}' as a subnet validator '{subnet_id}' after waiting random {:?}",
+        *random_wait_dur
+    );
+    sleep(*random_wait_dur).await;
+
+    let node_id = node::Id::from_str(&node_id).unwrap();
+    let subnet_id = subnet_id.as_ref();
+    let subnet_validate_period_in_days = subnet_validate_period_in_days.as_ref();
+
+    let (tx_id, added) = wallet_to_spend
+        .p()
+        .add_subnet_validator()
+        .node_id(node_id)
+        .subnet_id(*subnet_id)
+        .validate_period_in_days(*subnet_validate_period_in_days, 60)
+        .check_acceptance(true)
+        .issue()
+        .await
+        .unwrap();
+
+    log::info!("subnet validator tx id {}, added {}", tx_id, added);
 }
 
 fn get_all_nodes_yaml_path(spec_file_path: &str) -> String {
