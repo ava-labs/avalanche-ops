@@ -357,22 +357,27 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
             );
         }
 
-        execute!(
-            stdout(),
-            SetForegroundColor(Color::Green),
-            Print("\n\n\nSTEP: uploading metrics rules\n"),
-            ResetColor
-        )?;
-        default_s3_manager
-            .put_object_with_retries(
-                &v.prometheus_metrics_rules_file_path,
-                &spec.resource.s3_bucket,
-                &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(spec.id.clone()).encode(),
-                Duration::from_secs(10),
-                Duration::from_millis(300),
-            )
-            .await
-            .unwrap();
+        if !v.prometheus_metrics_rules_file_path.is_empty()
+            && Path::new(&v.prometheus_metrics_rules_file_path).exists()
+        {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Green),
+                Print("\n\n\nSTEP: uploading metrics rules\n"),
+                ResetColor
+            )?;
+            default_s3_manager
+                .put_object_with_retries(
+                    &v.prometheus_metrics_rules_file_path,
+                    &spec.resource.s3_bucket,
+                    &avalanche_ops::aws::spec::StorageNamespace::MetricsRules(spec.id.clone())
+                        .encode(),
+                    Duration::from_secs(10),
+                    Duration::from_millis(300),
+                )
+                .await
+                .unwrap();
+        }
 
         // do not reset, we need this in case we need rerun
         // spec.upload_artifacts = None;
