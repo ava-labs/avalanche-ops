@@ -376,7 +376,15 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                     Duration::from_millis(300),
                 )
                 .await
-                .unwrap();
+                .map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!(
+                            "failed put_object upload_artifacts.prometheus_metrics_rules_file_path: {}",
+                            e
+                        ),
+                    )
+                })?;
         }
 
         // do not reset, we need this in case we need rerun
@@ -392,7 +400,12 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 Duration::from_millis(300),
             )
             .await
-            .expect("failed put_object ConfigFile");
+            .map_err(|e| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("failed put_object upload_artifacts.config_file: {}", e),
+                )
+            })?;
     } else {
         log::info!("skipping uploading artifacts...");
     }
