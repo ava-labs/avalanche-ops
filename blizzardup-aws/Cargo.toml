@@ -28,7 +28,7 @@ prometheus-manager = "0.0.30"
 random-manager = "0.0.5"
 regex = "1.8.1"
 reqwest = "0.11.18"
-rust-embed = "6.8.1"
+rust-embed = "8.0.0"
 serde = { version = "1.0.186", features = ["derive"] }
 serde_yaml = "0.9.25" # https://github.com/dtolnay/serde-yaml/releases
 signal-hook = "0.3.17"
