@@ -9,12 +9,12 @@ name = "blizzardup-aws"
 path = "src/main.rs"
 
 [dependencies]
-avalanche-types = { version = "0.0.402", features = ["avalanchego", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
-aws-manager = { version = "0.29.0", features = ["cloudformation", "cloudwatch", "ec2", "s3", "sts"] } # https://github.com/gyuho/aws-manager/tags
-aws-sdk-cloudformation = "0.29.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-ec2 = "0.29.0" # https://github.com/awslabs/aws-sdk-rust/releases
-aws-sdk-s3 = "0.29.0" # https://github.com/awslabs/aws-sdk-rust/releases
-clap = { version = "4.3.22", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
+avalanche-types = { version = "0.0.403", features = ["avalanchego", "jsonrpc_client", "subnet_evm"] } # https://crates.io/crates/avalanche-types
+aws-manager = { version = "0.30.0", features = ["cloudformation", "cloudwatch", "ec2", "s3", "sts"] } # https://github.com/gyuho/aws-manager/tags
+aws-sdk-cloudformation = "0.30.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-ec2 = "0.30.0" # https://github.com/awslabs/aws-sdk-rust/releases
+aws-sdk-s3 = "0.30.0" # https://github.com/awslabs/aws-sdk-rust/releases
+clap = { version = "4.3.24", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.10"
 crossterm = "0.27.0"
 dialoguer = "0.10.4"
@@ -28,11 +28,11 @@ prometheus-manager = "0.0.30"
 random-manager = "0.0.5"
 regex = "1.8.1"
 reqwest = "0.11.18"
-rust-embed = "6.8.1"
-serde = { version = "1.0.183", features = ["derive"] }
+rust-embed = "8.0.0"
+serde = { version = "1.0.186", features = ["derive"] }
 serde_yaml = "0.9.25" # https://github.com/dtolnay/serde-yaml/releases
 signal-hook = "0.3.17"
 tokio = { version = "1.32.0", features = ["full"] } # https://github.com/tokio-rs/tokio/releases
 
 [dev-dependencies]
-tempfile = "3.7.1"
+tempfile = "3.8.0"
