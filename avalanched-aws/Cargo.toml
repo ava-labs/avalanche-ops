@@ -1,6 +1,6 @@
 [package]
 name = "avalanched-aws"
-version = "0.9.0" # https://github.com/ava-labs/avalanche-ops/releases
+version = "1.0.0-alpha.1" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.70"
 
