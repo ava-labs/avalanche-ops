@@ -10,7 +10,7 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
-avalanche-types = { version = "0.0.405", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.1.2", features = ["avalanchego"] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.30.2", features = ["ec2", "sts"] } # https://github.com/gyuho/aws-manager/tags
 compress-manager = "0.0.10"
 dir-manager = "0.0.1"
