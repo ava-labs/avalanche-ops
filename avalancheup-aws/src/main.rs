@@ -95,6 +95,7 @@ async fn main() -> io::Result<()> {
 
                 anchor_nodes: *sub_matches.get_one::<u32>("ANCHOR_NODES").unwrap_or(&0),
                 non_anchor_nodes: *sub_matches.get_one::<u32>("NON_ANCHOR_NODES").unwrap_or(&0),
+                api_nodes: *sub_matches.get_one::<u32>("API_NODES").unwrap_or(&0),
 
                 key_files_dir: sub_matches
                     .get_one::<String>("KEY_FILES_DIR")

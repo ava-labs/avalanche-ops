@@ -394,6 +394,7 @@ pub struct DefaultSpecOption {
     pub os_type: String,
     pub anchor_nodes: u32,
     pub non_anchor_nodes: u32,
+    pub api_nodes: u32,
 
     pub key_files_dir: String,
     pub keys_to_generate: usize,
@@ -960,6 +961,7 @@ impl Spec {
         let machine = Machine {
             total_anchor_nodes,
             total_non_anchor_nodes,
+            total_api_nodes: opts.api_nodes,
 
             arch_type: opts.arch_type,
             os_type: opts.os_type,
@@ -998,6 +1000,15 @@ impl Spec {
                     format!(
                         "chain-genesis-file {} specified but does not exists",
                         opts.chain_genesis_file
+                    ),
+                ));
+            }
+            if opts.api_nodes > total_non_anchor_nodes {
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!(
+                        "api-nodes={} must be less than or equal to total-non-anchor-nodes={}",
+                        opts.api_nodes, total_non_anchor_nodes
                     ),
                 ));
             }
@@ -1575,6 +1586,7 @@ coreth_chain_config:
         machine: Machine {
             total_anchor_nodes: None,
             total_non_anchor_nodes: 1,
+            total_api_nodes: 0,
 
             arch_type: "amd64".to_string(),
             os_type: "ubuntu20.04".to_string(),
@@ -1698,6 +1710,7 @@ pub struct Node {
 }
 
 impl Node {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         region: &str,
         kind: node::Kind,
@@ -1952,7 +1965,9 @@ pub struct Machine {
     pub total_anchor_nodes: Option<u32>,
     #[serde(default)]
     pub total_non_anchor_nodes: u32,
-
+    /// API Nodes relay transactions but are not validators.
+    #[serde(default)]
+    pub total_api_nodes: u32,
     #[serde(default)]
     pub arch_type: String,
     #[serde(default)]
