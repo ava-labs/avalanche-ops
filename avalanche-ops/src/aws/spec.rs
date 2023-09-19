@@ -175,7 +175,7 @@ pub struct Resource {
     #[serde(default)]
     pub user_defined_ipv4_cidr: String,
 
-    /// Only populate as many as we need to fill up anchor/non-anchor/api nodes.
+    /// Only populate as many as we need to fill up anchor/non-anchor nodes.
     /// e.g., "regions" may have 5 but we may only need 2 regions for 3 node cluster.
     #[serde(default)]
     pub regional_resources: BTreeMap<String, RegionalResource>,
@@ -293,14 +293,7 @@ pub struct RegionalResource {
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cloudformation_asg_non_anchor_nodes_logical_ids: Option<Vec<String>>,
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_api_nodes: Option<Vec<String>>,
-    /// Only updated after creation.
-    /// READ ONLY -- DO NOT SET.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloudformation_asg_api_nodes_logical_ids: Option<Vec<String>>,
+
     /// Only updated after creation.
     /// READ ONLY -- DO NOT SET.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -369,9 +362,6 @@ impl Default for RegionalResource {
             cloudformation_asg_non_anchor_nodes: None,
             cloudformation_asg_non_anchor_nodes_logical_ids: None,
 
-            cloudformation_asg_api_nodes: None,
-            cloudformation_asg_api_nodes_logical_ids: None,
-
             cloudformation_asg_nlb_arn: None,
             cloudformation_asg_nlb_target_group_arn: None,
             cloudformation_asg_nlb_dns_name: None,
@@ -404,7 +394,6 @@ pub struct DefaultSpecOption {
     pub os_type: String,
     pub anchor_nodes: u32,
     pub non_anchor_nodes: u32,
-    pub api_nodes: u32,
 
     pub key_files_dir: String,
     pub keys_to_generate: usize,
@@ -567,7 +556,7 @@ impl Spec {
             }
         };
 
-        let (total_anchor_nodes, total_non_anchor_nodes, total_api_nodes) =
+        let (total_anchor_nodes, total_non_anchor_nodes) =
             match constants::NETWORK_ID_TO_NETWORK_NAME.get(&network_id) {
                 // non-custom network only single node to utilize single AZ
                 Some(_) => (
@@ -576,11 +565,6 @@ impl Spec {
                         opts.non_anchor_nodes
                     } else {
                         DEFAULT_MACHINE_NON_ANCHOR_NODES
-                    },
-                    if opts.api_nodes > 0 {
-                        opts.api_nodes
-                    } else {
-                        DEFAULT_MACHINE_API_NODES // 0
                     },
                 ),
 
@@ -596,13 +580,8 @@ impl Spec {
                     } else {
                         DEFAULT_MACHINE_NON_ANCHOR_NODES
                     };
-                    let api_nodes = if opts.api_nodes > 0 {
-                        opts.api_nodes
-                    } else {
-                        DEFAULT_MACHINE_API_NODES
-                    };
 
-                    (Some(anchor_nodes), non_anchor_nodes, api_nodes)
+                    (Some(anchor_nodes), non_anchor_nodes)
                 }
             };
 
@@ -699,7 +678,6 @@ impl Spec {
         // only iterate until we used up all total* nodes
         let mut current_anchor_nodes = 0_u32;
         let mut current_non_anchor_nodes = 0_u32;
-        let mut current_api_nodes = 0_u32;
 
         let mut regional_resources = BTreeMap::new();
         let mut regional_machines = BTreeMap::new();
@@ -708,7 +686,6 @@ impl Spec {
             let mut regional_machine = RegionalMachine {
                 anchor_nodes: None,
                 non_anchor_nodes: 0,
-                api_nodes: 0,
                 instance_types: region_to_instance_types.get(reg).unwrap().clone(),
                 image_id: opts.image_ids.get(reg).unwrap_or(&String::new()).clone(),
             };
@@ -750,24 +727,7 @@ impl Spec {
                 }
             }
 
-            if total_api_nodes > current_api_nodes {
-                let mut per_region = total_api_nodes / regions.len() as u32;
-                if per_region == 0 {
-                    per_region = 1;
-                }
-                if i == regions.len() - 1 {
-                    regional_machine.api_nodes = total_api_nodes - current_api_nodes;
-                    current_api_nodes = total_api_nodes;
-                } else {
-                    regional_machine.api_nodes = per_region;
-                    current_api_nodes += per_region;
-                }
-            }
-
-            if regional_machine.anchor_nodes.is_none()
-                && regional_machine.non_anchor_nodes == 0
-                && regional_machine.api_nodes == 0
-            {
+            if regional_machine.anchor_nodes.is_none() && regional_machine.non_anchor_nodes == 0 {
                 log::info!("no more node to allocate in region '{reg}' -- skipping");
                 continue;
             }
@@ -1000,7 +960,6 @@ impl Spec {
         let machine = Machine {
             total_anchor_nodes,
             total_non_anchor_nodes,
-            total_api_nodes,
 
             arch_type: opts.arch_type,
             os_type: opts.os_type,
@@ -1207,15 +1166,6 @@ impl Spec {
                 format!(
                     "'machine.non_anchor_nodes' {} >maximum {}",
                     self.machine.total_non_anchor_nodes, MAX_MACHINE_NON_ANCHOR_NODES
-                ),
-            ));
-        }
-        if self.machine.total_api_nodes > MAX_MACHINE_API_NODES {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "'machine.api_nodes' {} >maximum {}",
-                    self.machine.total_api_nodes, MAX_MACHINE_API_NODES
                 ),
             ));
         }
@@ -1598,7 +1548,6 @@ coreth_chain_config:
         RegionalMachine {
             anchor_nodes: None,
             non_anchor_nodes: 1,
-            api_nodes: 0,
             instance_types: vec![
                 String::from("m5.large"),
                 String::from("c5.large"),
@@ -1626,7 +1575,6 @@ coreth_chain_config:
         machine: Machine {
             total_anchor_nodes: None,
             total_non_anchor_nodes: 1,
-            total_api_nodes: 0,
 
             arch_type: "amd64".to_string(),
             os_type: "ubuntu20.04".to_string(),
@@ -1938,10 +1886,6 @@ pub const MIN_MACHINE_NON_ANCHOR_NODES: u32 = 1;
 pub const MAX_MACHINE_NON_ANCHOR_NODES: u32 = 500;
 pub const DEFAULT_MACHINE_NON_ANCHOR_NODES: u32 = 1;
 
-pub const MIN_MACHINE_API_NODES: u32 = 0;
-pub const MAX_MACHINE_API_NODES: u32 = 100;
-pub const DEFAULT_MACHINE_API_NODES: u32 = 0;
-
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct Endpoints {
@@ -2008,9 +1952,6 @@ pub struct Machine {
     pub total_anchor_nodes: Option<u32>,
     #[serde(default)]
     pub total_non_anchor_nodes: u32,
-    #[serde(default)]
-    /// API Nodes relay transactions but are not validators.
-    pub total_api_nodes: u32,
 
     #[serde(default)]
     pub arch_type: String,
@@ -2071,8 +2012,6 @@ pub struct RegionalMachine {
     pub anchor_nodes: Option<u32>,
     #[serde(default)]
     pub non_anchor_nodes: u32,
-    #[serde(default)]
-    pub api_nodes: u32,
     #[serde(default)]
     pub instance_types: Vec<String>,
     #[serde(default)]

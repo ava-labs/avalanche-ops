@@ -159,14 +159,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
         }
         regional_resource.cloudformation_asg_non_anchor_nodes = Some(asg_names);
 
-        let api_nodes = regional_machine.api_nodes;
-        let mut api_asg_names = Vec::new();
-        for i in 0..api_nodes {
-            let asg_name = format!("{}-api-{}-{:02}", spec.id, spec.machine.arch_type, i + 1);
-            api_asg_names.push(asg_name);
-        }
-        regional_resource.cloudformation_asg_api_nodes = Some(api_asg_names);
-
         // just create these no matter what for simplification
         regional_resource.cloudformation_ssm_install_subnet_chain = Some(
             avalanche_ops::aws::spec::StackName::SsmInstallSubnetChain(spec.id.clone()).encode(),
