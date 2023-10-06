@@ -67,6 +67,9 @@ pub struct Spec {
     pub create_dev_machine: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dev_machine: Option<DevMachine>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dev_machine_ips: Option<Vec<String>>,
+
     /// Local filepath to a bash script to be executed on the dev machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dev_machine_script: Option<std::path::PathBuf>,
@@ -1039,6 +1042,7 @@ impl Spec {
                 keep_resources_except_asg_ssm: opts.keep_resources_except_asg_ssm,
                 create_dev_machine: opts.create_dev_machine,
                 dev_machine,
+                dev_machine_ips: None,
                 dev_machine_script: None,
 
                 enable_ssh: opts.enable_ssh,
@@ -1607,6 +1611,7 @@ coreth_chain_config:
         keep_resources_except_asg_ssm: false,
         create_dev_machine: false,
         dev_machine: None,
+        dev_machine_ips: None,
         dev_machine_script: None,
 
         enable_ssh: true,

@@ -310,6 +310,14 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
             None
         };
 
+        if spec.avalanchego_config.is_custom_network()
+            && spec.avalanchego_config.genesis_file.is_none()
+        {
+            log::warn!("[SOME BUG...] custom network must have genesis-file field... TODO: fix this... for now set it to default");
+            spec.avalanchego_config.genesis_file =
+                Some(String::from(avalanchego::config::DEFAULT_GENESIS_PATH))
+        }
+
         // always "only" overwrite public-ip and track-subnets flag in case of EC2 instance replacement
         spec.avalanchego_config.public_ip = Some(public_ipv4.to_string());
         spec.avalanchego_config.add_track_subnets(track_subnets);
@@ -657,6 +665,11 @@ pub async fn execute(opts: Flags) -> io::Result<()> {
     //
     //
     // always overwrite in case of non-anchor node restarts
+    if avalanchego_config.is_custom_network() && avalanchego_config.genesis_file.is_none() {
+        log::warn!("[EVEN MORE WEIRD... BUG...] custom network must have genesis-file field... TODO: fix this... for now set it to default");
+        avalanchego_config.genesis_file =
+            Some(String::from(avalanchego::config::DEFAULT_GENESIS_PATH))
+    }
     if avalanchego_config.is_custom_network() && avalanchego_config.genesis_file.is_some() {
         let genesis_file_exists =
             Path::new(&avalanchego_config.clone().genesis_file.unwrap()).exists();
