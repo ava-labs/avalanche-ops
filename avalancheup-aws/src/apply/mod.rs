@@ -2504,7 +2504,7 @@ cat /tmp/{node_id}.crt
     //
     //
     //
-    if let Some(vm_install) = &spec.vm_install {
+    let updated_vm_install = if let Some(vm_install) = &spec.vm_install {
         log::info!("install VM after applying network for {:?}", vm_install);
         let vm_id = subnet::vm_name_to_id(&vm_install.chain_name)?;
         log::info!(
@@ -2938,12 +2938,26 @@ cat /tmp/{node_id}.crt
             stdout(),
             SetForegroundColor(Color::Blue),
             Print(format!(
-                "\n\n\nSUCCESS!\nsubnet Id: _\nblockchain Id: _\nchain alias: {chain_name}\n\n",
+                "\n\n\nSUCCESS!\nsubnet Id: _\nblockchain Id: {blockchain_id}\nchain alias: {chain_name}\n\n",
+                blockchain_id = blockchain_id.clone().to_string(),
                 chain_name = vm_install.chain_name.clone(),
             )),
             ResetColor
         )?;
-    }
+
+        Some(avalanche_ops::aws::spec::VmInstall {
+            vm_binary_file: vm_install.vm_binary_file.clone(),
+            subnet_config_file: vm_install.subnet_config_file.clone(),
+            subnet_validate_period_in_days: vm_install.subnet_validate_period_in_days,
+            chain_name: vm_install.chain_name.clone(),
+            chain_genesis_file: vm_install.chain_genesis_file.clone(),
+            chain_config_file: vm_install.chain_config_file.clone(),
+            chain_id: Some(blockchain_id.clone().to_string()),
+        })
+    } else {
+        None
+    };
+    spec.vm_install = updated_vm_install;
 
     //
     //

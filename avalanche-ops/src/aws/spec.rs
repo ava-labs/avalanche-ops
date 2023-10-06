@@ -130,6 +130,10 @@ pub struct VmInstall {
     pub chain_name: String,
     pub chain_genesis_file: String,
     pub chain_config_file: Option<String>,
+
+    /// Blockchain ID that's created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chain_id: Option<String>,
 }
 
 /// Represents the KMS key resource.
@@ -1023,6 +1027,7 @@ impl Spec {
                 } else {
                     Some(opts.chain_config_file.clone())
                 },
+                chain_id: None,
             })
         } else {
             None
