@@ -172,7 +172,7 @@ pub struct Resource {
     /// Arbitrary port specified by the user.
     /// Defaults to 9090 for Grafana.
     #[serde(default)]
-    pub user_defined_port: u32,
+    pub user_defined_ports: Vec<String>,
 
     /// CIDR range for the user-defined port.
     #[serde(default)]
@@ -197,7 +197,7 @@ impl Default for Resource {
             regions: vec![String::from("us-west-2")],
             s3_bucket: String::new(),
             ingress_ipv4_cidr: String::from("0.0.0.0/0"),
-            user_defined_port: 9090,
+            user_defined_ports: vec![String::from("22"), String::from("9090")],
             user_defined_ipv4_cidr: String::from("0.0.0.0/0"),
 
             regional_resources: BTreeMap::new(),
@@ -405,7 +405,7 @@ pub struct DefaultSpecOption {
     pub auto_regions: u32,
 
     pub ingress_ipv4_cidr: String,
-    pub user_defined_port: u32,
+    pub user_defined_ports: Vec<String>,
     pub user_defined_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
@@ -796,8 +796,12 @@ impl Spec {
             ..Resource::default()
         };
 
-        if !opts.user_defined_port.eq(&9090) {
-            resource.user_defined_port = opts.user_defined_port;
+        if !opts.user_defined_ports.is_empty() {
+            resource.user_defined_ports = opts.user_defined_ports.clone();
+        }
+        if resource.user_defined_ports.is_empty() {
+            // TODO: remove this
+            resource.user_defined_ports = vec![String::from("22"), String::from("9090")]
         }
 
         // TODO: we need also whitelist within-VPC traffic

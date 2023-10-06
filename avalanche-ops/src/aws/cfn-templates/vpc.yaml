@@ -59,10 +59,15 @@ Parameters:
     AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
     Description: IP range for HTTP inbound traffic
 
-  UserDefinedPort:
-    Type: Number
+  UserDefinedPort1:
+    Type: String
+    Default: 22
+    Description: User-specified HTTP port (defaults to 22 for SSH, only used for dev machine)
+
+  UserDefinedPort2:
+    Type: String
     Default: 9090
-    Description: User-specified HTTP port (defaults to 9090 for Grafana)
+    Description: User-specified HTTP port (defaults to 9090 for Grafana, only used for dev machine)
 
   HttpPort:
     Type: Number
@@ -296,13 +301,22 @@ Resources:
       ToPort: !Ref HttpPort
       CidrIp: !Ref HttpPortIngressIpv4Range
 
-  UserDefinedIngress:
+  UserDefinedIngress1:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       GroupId: !Ref DevMachineSecurityGroup
       IpProtocol: tcp
-      FromPort: !Ref UserDefinedPort
-      ToPort: !Ref UserDefinedPort
+      FromPort: !Ref UserDefinedPort1
+      ToPort: !Ref UserDefinedPort1
+      CidrIp: !Ref UserDefinedPortIngressIpv4Range
+
+  UserDefinedIngress2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DevMachineSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref UserDefinedPort2
+      ToPort: !Ref UserDefinedPort2
       CidrIp: !Ref UserDefinedPortIngressIpv4Range
 
   StakingIngress:
@@ -313,7 +327,7 @@ Resources:
       FromPort: !Ref StakingPort
       ToPort: !Ref StakingPort
       CidrIp: !Ref StakingPortIngressIpv4Range
-  
+
   # ingress from dev machine(s) to the node network
   DevMachineIngress:
     Type: AWS::EC2::SecurityGroupIngress
@@ -342,7 +356,7 @@ Outputs:
   SecurityGroupId:
     Description: Security group ID
     Value: !Ref SecurityGroup
-  
+
   DevMachineSecurityGroupId:
     Description: Dev machine security group ID
     Value: !Ref DevMachineSecurityGroup
