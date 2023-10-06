@@ -74,6 +74,22 @@ async fn main() -> io::Result<()> {
                 }
             }
 
+            let s = sub_matches
+                .get_one::<String>("USER_DEFINED_PORTS")
+                .unwrap_or(&String::from("22,9090"))
+                .clone();
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut user_defined_ports = Vec::new();
+            for p in ss.iter() {
+                let trimmed = p.trim().to_string();
+                if !trimmed.is_empty() {
+                    user_defined_ports.push(p.trim().to_string());
+                }
+            }
+            if user_defined_ports.is_empty() {
+                user_defined_ports = vec![String::from("22"), String::from("9090")]
+            }
+
             let opt = avalanche_ops::aws::spec::DefaultSpecOption {
                 log_level: sub_matches
                     .get_one::<String>("LOG_LEVEL")
@@ -124,10 +140,7 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
 
-                user_defined_port: *sub_matches
-                    .get_one::<u32>("USER_DEFINED_PORT")
-                    .unwrap_or(&9090),
-
+                user_defined_ports,
                 user_defined_ipv4_cidr: sub_matches
                     .get_one::<String>("USER_DEFINED_IPV4_CIDR")
                     .unwrap_or(&String::new())
