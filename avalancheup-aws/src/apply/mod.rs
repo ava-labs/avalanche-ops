@@ -3461,6 +3461,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             };
 
             let mut ssh_commands = Vec::new();
+            let mut dev_machine_ips = Vec::new();
             for d in droplets {
                 // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
                 // aws ssm start-session --region [region] --target [instance ID]
@@ -3472,6 +3473,7 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                         d.public_ipv4.clone()
                     };
                 instance_id_to_public_ip.insert(d.instance_id.clone(), public_ip.clone());
+                dev_machine_ips.push(public_ip.clone());
 
                 let ssh_command = ssh_scp_manager::ssh::aws::Command {
                     ssh_key_path: regional_resource.ec2_key_path.clone(),
@@ -3500,6 +3502,12 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 ssh_commands.push(ssh_command);
             }
             println!();
+
+            log::info!(
+                "recording dev machine IPs to spec file: {:?}",
+                dev_machine_ips
+            );
+            spec.dev_machine_ips = Some(dev_machine_ips);
 
             ssh_scp_manager::ssh::aws::Commands(ssh_commands.clone())
                 .sync(&regional_resource.ssh_commands_path_dev_machine)
