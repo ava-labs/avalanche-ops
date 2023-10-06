@@ -173,14 +173,13 @@ pub struct Resource {
     #[serde(default)]
     pub ingress_ipv4_cidr: String,
 
+    /// CIDR range for the user-defined port.
+    #[serde(default)]
+    pub user_defined_ipv4_cidrs: Vec<String>,
     /// Arbitrary port specified by the user.
     /// Defaults to 9090 for Grafana.
     #[serde(default)]
     pub user_defined_ports: Vec<String>,
-
-    /// CIDR range for the user-defined port.
-    #[serde(default)]
-    pub user_defined_ipv4_cidr: String,
 
     /// Only populate as many as we need to fill up anchor/non-anchor nodes.
     /// e.g., "regions" may have 5 but we may only need 2 regions for 3 node cluster.
@@ -201,8 +200,8 @@ impl Default for Resource {
             regions: vec![String::from("us-west-2")],
             s3_bucket: String::new(),
             ingress_ipv4_cidr: String::from("0.0.0.0/0"),
+            user_defined_ipv4_cidrs: vec![String::from("MY_IP"), String::from("0.0.0.0/0")],
             user_defined_ports: vec![String::from("22"), String::from("9090")],
-            user_defined_ipv4_cidr: String::from("0.0.0.0/0"),
 
             regional_resources: BTreeMap::new(),
 
@@ -409,8 +408,8 @@ pub struct DefaultSpecOption {
     pub auto_regions: u32,
 
     pub ingress_ipv4_cidr: String,
+    pub user_defined_ipv4_cidrs: Vec<String>,
     pub user_defined_ports: Vec<String>,
-    pub user_defined_ipv4_cidr: String,
     pub instance_mode: String,
     pub instance_size: String,
     pub instance_types: HashMap<String, Vec<String>>,
@@ -824,18 +823,27 @@ impl Spec {
         };
         log::info!("ingress IPv4 range {}", resource.ingress_ipv4_cidr);
 
-        if !opts.user_defined_ipv4_cidr.is_empty() {
-            resource.user_defined_ipv4_cidr = opts.user_defined_ipv4_cidr.clone();
+        let user_defined_ipv4_cidrs = if !opts.user_defined_ipv4_cidrs.is_empty() {
+            opts.user_defined_ipv4_cidrs.clone()
         } else {
-            log::info!("empty user_defined_ipv4_cidr, so default to public IP on the local host");
-            resource.user_defined_ipv4_cidr = if let Some(ip) = public_ip::addr().await {
-                log::info!("found public ip address {:?}", ip);
-                format!("{}/32", ip)
+            vec!["MY_IP".to_string(), "0.0.0.0/0".to_string()]
+        };
+        let mut resolved_user_defined_ipv4_cidrs = Vec::new();
+        for cidr in user_defined_ipv4_cidrs.iter() {
+            let resolved = if cidr == "MY_IP" {
+                if let Some(ip) = public_ip::addr().await {
+                    log::info!("resolving MY_IP... found public ip address {:?}", ip);
+                    format!("{}/32", ip)
+                } else {
+                    log::warn!("failed to get a public IP address -- default to 0.0.0.0/0");
+                    "0.0.0.0/0".to_string()
+                }
             } else {
-                log::warn!("failed to get a public IP address -- default to 0.0.0.0/0");
-                "0.0.0.0/0".to_string()
-            }
+                cidr.clone()
+            };
+            resolved_user_defined_ipv4_cidrs.push(resolved);
         }
+        resource.user_defined_ipv4_cidrs = resolved_user_defined_ipv4_cidrs;
 
         let mut upload_artifacts = UploadArtifacts {
             avalanched_local_bin: String::new(),

@@ -176,20 +176,20 @@ pub fn command() -> Command {
                 .num_args(1),
         )
         .arg(
+            Arg::new("USER_DEFINED_IPV4_CIDRS")
+                .long("user-defined-ipv4-cidrs")
+                .help("Define the CIDRs for user defined CIDRs to expose (must be same order as --user-defined-ports)")
+                .required(false)
+                .num_args(1)
+                .default_value("MY_IP,0.0.0.0/0"),
+        )
+        .arg(
             Arg::new("USER_DEFINED_PORTS")
                 .long("user-defined-ports")
-                .help("Define the ports to expose")
+                .help("Define the ports to expose (must be same order as --user-defined-ipv4-cidrs)")
                 .required(false)
                 .num_args(1)
                 .default_value("22,9090"),
-        )
-        .arg(
-            Arg::new("USER_DEFINED_IPV4_CIDR")
-                .long("user-defined-ipv4-cidr")
-                .help("Define the CIDR for user defined ports")
-                .required(false)
-                .num_args(1)
-                .default_value("0.0.0.0/0"),
         )
         .arg(
             Arg::new("INSTANCE_MODE")

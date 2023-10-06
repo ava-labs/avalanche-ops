@@ -75,6 +75,22 @@ async fn main() -> io::Result<()> {
             }
 
             let s = sub_matches
+                .get_one::<String>("USER_DEFINED_IPV4_CIDRS")
+                .unwrap_or(&String::new())
+                .clone();
+            let ss: Vec<&str> = s.split(',').collect();
+            let mut user_defined_ipv4_cidrs = Vec::new();
+            for p in ss.iter() {
+                let trimmed = p.trim().to_string();
+                if !trimmed.is_empty() {
+                    user_defined_ipv4_cidrs.push(p.trim().to_string());
+                }
+            }
+            if user_defined_ipv4_cidrs.is_empty() {
+                user_defined_ipv4_cidrs = vec![String::from("MY_IP"), String::from("0.0.0.0/0")]
+            }
+
+            let s = sub_matches
                 .get_one::<String>("USER_DEFINED_PORTS")
                 .unwrap_or(&String::from("22,9090"))
                 .clone();
@@ -140,11 +156,8 @@ async fn main() -> io::Result<()> {
                     .unwrap_or(&String::new())
                     .clone(),
 
+                user_defined_ipv4_cidrs,
                 user_defined_ports,
-                user_defined_ipv4_cidr: sub_matches
-                    .get_one::<String>("USER_DEFINED_IPV4_CIDR")
-                    .unwrap_or(&String::new())
-                    .clone(),
 
                 instance_mode: sub_matches
                     .get_one::<String>("INSTANCE_MODE")

@@ -709,8 +709,16 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 build_param("PublicSubnetCidr2", "10.0.128.0/19"),
                 build_param("PublicSubnetCidr3", "10.0.192.0/19"),
                 build_param(
+                    "UserDefinedPortIngressIpv4Range1",
+                    &spec.resource.user_defined_ipv4_cidrs[0],
+                ),
+                build_param(
                     "UserDefinedPort1",
                     &spec.resource.user_defined_ports[0].to_string(),
+                ),
+                build_param(
+                    "UserDefinedPortIngressIpv4Range2",
+                    &spec.resource.user_defined_ipv4_cidrs[1],
                 ),
                 build_param(
                     "UserDefinedPort2",
@@ -718,10 +726,6 @@ pub async fn execute(log_level: &str, spec_file_path: &str, skip_prompt: bool) -
                 ),
                 build_param("SshPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
                 build_param("HttpPortIngressIpv4Range", &spec.resource.ingress_ipv4_cidr),
-                build_param(
-                    "UserDefinedPortIngressIpv4Range",
-                    &spec.resource.user_defined_ipv4_cidr,
-                ),
                 build_param("StakingPortIngressIpv4Range", "0.0.0.0/0"),
                 build_param(
                     "StakingPort",
