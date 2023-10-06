@@ -1,11 +1,11 @@
 [package]
 name = "staking-key-cert-s3-downloader"
-version = "1.0.0-alpha.1" # https://github.com/ava-labs/avalanche-ops/releases
+version = "1.0.0-alpha.2" # https://github.com/ava-labs/avalanche-ops/releases
 edition = "2021"
 rust-version = "1.70"
 
 [dependencies]
-avalanche-types = { version = "0.1.2", features = [] } # https://crates.io/crates/avalanche-types
+avalanche-types = { version = "0.1.4", features = [] } # https://crates.io/crates/avalanche-types
 aws-manager = { version = "0.30.2", features = ["kms", "s3"] } # https://github.com/gyuho/aws-manager/tags
 clap = { version = "4.4.0", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 env_logger = "0.10.0"
