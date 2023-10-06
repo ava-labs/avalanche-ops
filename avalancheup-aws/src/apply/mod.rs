@@ -2844,13 +2844,8 @@ cat /tmp/{node_id}.crt
                 Print("\n\n\nSTEP(custom VM): sending SSM doc for chain-config updates\n\n"),
                 ResetColor
             )?;
-
-            let file_stem = Path::new(chain_config_file).file_stem().unwrap();
-            let chain_config_s3_key = format!(
-                "{}{}",
-                s3::append_slash(&spec.id),
-                file_stem.to_str().unwrap()
-            );
+            let chain_config_s3_key =
+                &avalanche_ops::aws::spec::StorageNamespace::ChainConfig(spec.id.clone()).encode();
 
             let avalanched_alias_args = format!(
                 "alias-chain --log-level info --chain-id {chain_id} --chain-name {alias}",
