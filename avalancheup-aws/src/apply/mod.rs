@@ -2832,7 +2832,7 @@ cat /tmp/{node_id}.crt
             .unwrap();
         log::info!("created a blockchain {blockchain_id} for subnet {created_subnet_id}");
 
-        if let Some(chain_config_file) = &vm_install.chain_config_file {
+        if let Some(_chain_config_file) = &vm_install.chain_config_file {
             //
             //
             //
