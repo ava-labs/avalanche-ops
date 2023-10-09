@@ -3590,18 +3590,37 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 );
                 for dev_machine_ip in dev_machine_ips.iter() {
                     log::info!("authorizing dev machine public IP {dev_machine_ip} to {sg}");
-                    let out = regional_ec2_manager
-                        .cli
-                        .authorize_security_group_ingress()
-                        .group_id(sg)
-                        .ip_protocol("tcp")
-                        .from_port(spec.avalanchego_config.http_port as i32)
-                        .to_port(spec.avalanchego_config.http_port as i32)
-                        .cidr_ip(format!("{}/32", dev_machine_ip))
-                        .send()
-                        .await
-                        .unwrap();
-                    log::info!("successfully authorized dev machine public IP {dev_machine_ip} to {sg} (output: {:?}", out);
+
+                    let mut success = false;
+                    for _ in 0..2 {
+                        match regional_ec2_manager
+                            .cli
+                            .authorize_security_group_ingress()
+                            .group_id(sg)
+                            .ip_protocol("tcp")
+                            .from_port(spec.avalanchego_config.http_port as i32)
+                            .to_port(spec.avalanchego_config.http_port as i32)
+                            .cidr_ip(format!("{}/32", dev_machine_ip))
+                            .send()
+                            .await
+                        {
+                            Ok(out) => {
+                                log::info!("successfully authorized dev machine public IP {dev_machine_ip} to {sg} (output: {:?}", out);
+                                success = true;
+                                break;
+                            }
+                            Err(e) => {
+                                log::warn!("failed to authorize security group ingress {}", e);
+                                sleep(Duration::from_secs(1)).await;
+                            }
+                        }
+                    }
+                    if !success {
+                        return Err(Error::new(
+                            ErrorKind::Other,
+                            "failed to authorize security group ingress",
+                        ));
+                    }
 
                     // rate limit
                     sleep(Duration::from_secs(1)).await;
