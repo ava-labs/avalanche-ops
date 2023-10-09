@@ -3228,6 +3228,8 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
         //
         //
         //
+        let mut ssh_commands = Vec::new();
+        let mut dev_machine_ips = Vec::new();
         for region in &spec.resource.regions {
             println!();
             log::info!("creating a dev machine in {region}");
@@ -3477,8 +3479,6 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                 }
             };
 
-            let mut ssh_commands = Vec::new();
-            let mut dev_machine_ips = Vec::new();
             for d in droplets {
                 // ssh -o "StrictHostKeyChecking no" -i [ec2_key_path] [user name]@[public IPv4/DNS name]
                 // aws ssm start-session --region [region] --target [instance ID]
@@ -3520,20 +3520,13 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
             }
             println!();
 
-            log::info!(
-                "recording dev machine IPs to spec file: {:?}",
-                dev_machine_ips
-            );
-            spec.dev_machine_ips = Some(dev_machine_ips);
-
+            spec.resource
+                .regional_resources
+                .insert(region.to_string(), regional_resource.clone());
             ssh_scp_manager::ssh::aws::Commands(ssh_commands.clone())
                 .sync(&regional_resource.ssh_commands_path_dev_machine)
                 .unwrap();
 
-            spec.resource
-                .regional_resources
-                .insert(region.to_string(), regional_resource);
-            spec.sync(spec_file_path)?;
             default_s3_manager
                 .put_object_with_retries(
                     spec_file_path,
@@ -3561,6 +3554,63 @@ default-spec --log-level=info --funded-keys={funded_keys} --region={region} --up
                     }
                     Err(e) => log::warn!("failed to run ssh command {}", e),
                 }
+            }
+        }
+        log::info!(
+            "recording all dev machine public IPs to spec file: {:?}",
+            dev_machine_ips
+        );
+        spec.dev_machine_ips = Some(dev_machine_ips.clone());
+        spec.sync(spec_file_path)?;
+
+        // now need to allow SSH access from dev machine to all nodes
+        // using dev machines' public IPs
+        for region in &spec.resource.regions {
+            println!();
+            log::info!("authorizing dev machine public IPs to nodes in {region}");
+            let regional_resource = spec
+                .resource
+                .regional_resources
+                .get(region)
+                .unwrap()
+                .clone();
+
+            let regional_shared_config = aws_manager::load_config(
+                Some(region.clone()),
+                Some(spec.profile_name.clone()),
+                Some(Duration::from_secs(30)),
+            )
+            .await;
+            let regional_ec2_manager = ec2::Manager::new(&regional_shared_config);
+
+            if let Some(sg) = &regional_resource.cloudformation_vpc_security_group_id {
+                log::info!(
+                    "authorizing dev machine public IPs to the security group {sg} for {} ips",
+                    dev_machine_ips.len()
+                );
+                for dev_machine_ip in dev_machine_ips.iter() {
+                    log::info!("authorizing dev machine public IP {dev_machine_ip} to {sg}");
+                    let out = regional_ec2_manager
+                        .cli
+                        .authorize_security_group_ingress()
+                        .group_id(sg)
+                        .ip_protocol("tcp")
+                        .from_port(spec.avalanchego_config.http_port as i32)
+                        .to_port(spec.avalanchego_config.http_port as i32)
+                        .cidr_ip(format!("{}/32", dev_machine_ip))
+                        .send()
+                        .await
+                        .unwrap();
+                    log::info!("successfully authorized dev machine public IP {dev_machine_ip} to {sg} (output: {:?}", out);
+
+                    // rate limit
+                    sleep(Duration::from_secs(1)).await;
+                }
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "dev-machine regional_resource.cloudformation_vpc_security_group_id not found",
+                ));
             }
         }
     }
