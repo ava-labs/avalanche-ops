@@ -15,7 +15,7 @@ permissions:
 jobs:
   static_analysis:
     name: Static analysis (lint)
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-22.04-16
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -67,7 +67,7 @@ jobs:
 
   unit_tests:
     name: Unit tests
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-22.04-16
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -101,7 +101,7 @@ jobs:
           # error while loading shared libraries: libssl.so.3: cannot open shared object file: No such file or directory
           # ref. https://github.com/sfackler/rust-openssl/issues/1748
           # ref. https://doc.rust-lang.org/nightly/rustc/platform-support.html
-          - os: ubuntu-20.04-16-cores
+          - os: ubuntu-20.04-16
             platform: linux
             target: x86_64-unknown-linux-gnu
 
@@ -110,7 +110,7 @@ jobs:
           #
           # may require manual builds without cross-linker for linux
           # https://users.rust-lang.org/t/cant-cross-compile-project-with-openssl/70922
-          - os: ubuntu-20.04-16-cores
+          - os: ubuntu-20.04-16
             platform: linux
             target: aarch64-unknown-linux-gnu
             use-cross: true
