@@ -20,7 +20,7 @@ aws-sdk-ssm = "0.30.0" # https://github.com/awslabs/aws-sdk-rust/releases
 clap = { version = "4.4.0", features = ["cargo", "derive"] } # https://github.com/clap-rs/clap/releases
 compress-manager = "0.0.10"
 crossterm = "0.27.0"
-dialoguer = "0.10.4"
+dialoguer = "0.11.0"
 dir-manager = "0.0.1"
 env_logger = "0.10.0"
 id-manager = "0.0.3"
