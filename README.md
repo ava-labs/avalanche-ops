@@ -38,7 +38,6 @@ Distributed systems are full of subtle edge cases. The fact that such event or b
 - 🚫 NOT implementing any client-side load generation (to be done in Avalanche client/node projects)
 - 🚫 NOT implementing any Avalanche-specific test cases (focus on infrastructure setups)
 - 🚫 NOT using Kubernetes, prefers physical machines (or cloud VMs)
-- 🚫 **NOT production ready yet** (under heavy development)
 
 ## Workflow
 
