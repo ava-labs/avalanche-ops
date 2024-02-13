@@ -340,6 +340,17 @@ pub fn command() -> Command {
                 .default_value("custom"),
         )
         .arg(
+            Arg::new("STAKING_AMOUNT_IN_AVAX")
+                .long("staking-amount-in-avax")
+                .help(
+                    "Sets the staking amount in P-chain AVAX (not in nAVAX) for primary network validator",
+                )
+                .required(false)
+                .num_args(1)
+                .value_parser(value_parser!(u64))
+                .default_value("2000"),
+        )
+        .arg(
             Arg::new("VOLUME_SIZE_IN_GB")
                 .long("volume-size-in-gb")
                 .help("Sets initial volume size in GB")

@@ -115,6 +115,9 @@ async fn main() -> io::Result<()> {
                     .get_one::<String>("NETWORK_NAME")
                     .unwrap_or(&String::new())
                     .clone(),
+                staking_amount_in_avax: *sub_matches
+                    .get_one::<u64>("STAKING_AMOUNT_IN_AVAX")
+                    .unwrap_or(&2000),
 
                 arch_type: sub_matches
                     .get_one::<String>("ARCH_TYPE")

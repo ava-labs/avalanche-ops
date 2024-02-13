@@ -98,6 +98,10 @@ pub struct Spec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefunded_keys: Option<Vec<key::secp256k1::Info>>,
 
+    /// For primary network.
+    #[serde(default)]
+    pub staking_amount_in_avax: u64,
+
     /// Represents the configuration for "avalanchego".
     /// Set as if run in remote machines.
     /// For instance, "config-file" must be the path valid
@@ -395,6 +399,7 @@ pub struct RegionMachineId {
 pub struct DefaultSpecOption {
     pub log_level: String,
     pub network_name: String,
+    pub staking_amount_in_avax: u64,
 
     pub arch_type: String,
     pub os_type: String,
@@ -1071,6 +1076,12 @@ impl Spec {
 
                 prefunded_keys: Some(prefunded_keys_info),
 
+                staking_amount_in_avax: if opts.staking_amount_in_avax > 0 {
+                    opts.staking_amount_in_avax
+                } else {
+                    2000
+                },
+
                 avalanchego_config,
                 coreth_chain_config,
                 avalanchego_genesis_template,
@@ -1535,6 +1546,8 @@ avalanchego_config:
   consensus-accepted-frontier-gossip-peer-size: 10
   network-compression-type: gzip
 
+staking_amount_in_avax: 2000
+
 coreth_chain_config:
   coreth-admin-api-enabled: true
   offline-pruning-enabled: false
@@ -1638,6 +1651,8 @@ coreth_chain_config:
         primary_network_validate_period_in_days: 25,
 
         prefunded_keys: None,
+
+        staking_amount_in_avax: 2000,
 
         avalanchego_config,
         coreth_chain_config: coreth_chain_config::Config::default(),

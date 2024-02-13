@@ -2483,12 +2483,19 @@ cat /tmp/{node_id}.crt
                 .checked_add(Duration::from_millis(500 + random_manager::u64() % 100))
                 .unwrap();
 
+            let staking_amount_in_navax = if spec.staking_amount_in_avax > 0 {
+                units::cast_avax_to_xp_navax(primitive_types::U256::from(
+                    spec.staking_amount_in_avax,
+                ))
+            } else {
+                primitive_types::U256::from(2 * units::KILO_AVAX)
+            };
             handles.push(tokio::spawn(add_primary_network_permissionless_validator(
                 Arc::new(random_wait),
                 Arc::new(wallet_to_spend.clone()),
                 Arc::new(ids::node::Id::from_str(&node.node_id).unwrap()),
                 Arc::new(node.proof_of_possession.to_owned()),
-                Arc::new(2 * units::KILO_AVAX),
+                Arc::new(staking_amount_in_navax.as_u64()),
                 Arc::new(spec.primary_network_validate_period_in_days),
             )));
         }
