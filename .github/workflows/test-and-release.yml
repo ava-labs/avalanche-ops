@@ -110,14 +110,14 @@ jobs:
           #
           # may require manual builds without cross-linker for linux
           # https://users.rust-lang.org/t/cant-cross-compile-project-with-openssl/70922
-          - os: ubuntu-20.04-16
-            platform: linux
-            target: aarch64-unknown-linux-gnu
-            use-cross: true
+          # - os: ubuntu-20.04-16
+          #   platform: linux
+          #   target: aarch64-unknown-linux-gnu
+          #   use-cross: true
 
             # allow failures
             # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-preventing-a-specific-failing-matrix-job-from-failing-a-workflow-run
-            experimental: true
+            # experimental: true
 
           - os: macos-latest-large
             platform: darwin
