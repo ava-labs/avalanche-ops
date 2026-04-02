@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-22.04-16
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           toolchain: nightly
           profile: minimal
@@ -31,7 +31,7 @@ jobs:
       - name: Check Rust version
         run: rustc --version
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@81d053bdb0871dcd3f10763c8cc60d0adc41762b # v1
         with:
           cache-on-failure: true
 
@@ -70,10 +70,10 @@ jobs:
     runs-on: ubuntu-22.04-16
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           toolchain: stable
           profile: minimal
@@ -82,7 +82,7 @@ jobs:
       - name: Check Rust version
         run: rustc --version
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@81d053bdb0871dcd3f10763c8cc60d0adc41762b # v1
         with:
           cache-on-failure: true
 
@@ -129,7 +129,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
       # https://github.com/sharkdp/fd/blob/master/.github/workflows/CICD.yml
       # https://github.com/cross-rs/cross/wiki/Recipes#openssl
@@ -142,7 +142,7 @@ jobs:
           esac
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           profile: minimal
           toolchain: stable
@@ -169,7 +169,7 @@ jobs:
         run: echo "CARGO_CMD=cross" >> $GITHUB_ENV
 
       - name: Rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: ${{ matrix.job.os }}-${{ matrix.job.target }}
 
@@ -281,7 +281,7 @@ jobs:
       # https://github.com/softprops/action-gh-release
       # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
       - name: Release latest
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         if: ${{ github.ref == 'refs/heads/main' }}
         with:
           name: Latest release
@@ -311,7 +311,7 @@ jobs:
       # https://github.com/softprops/action-gh-release
       # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
       - name: Release tag
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: ${{ github.ref_name }}
