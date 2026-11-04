@@ -9,24 +9,25 @@ on:
       - "*"
   pull_request:
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   static_analysis:
+    permissions:
+      contents: read
     name: Static analysis (lint)
     runs-on: ubuntu-22.04-16
     steps:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          persist-credentials: false
 
       - name: Install Rust
-        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
+        shell: bash
+        run: |
+          rustup toolchain install nightly --profile minimal --component rustfmt --component clippy
+          rustup override set nightly
 
       - name: Check Rust version
         run: rustc --version
@@ -66,18 +67,21 @@ jobs:
   #       run: scripts/tests.unused.sh
 
   unit_tests:
+    permissions:
+      contents: read
     name: Unit tests
     runs-on: ubuntu-22.04-16
     steps:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          persist-credentials: false
 
       - name: Install Rust
-        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup override set stable
 
       - name: Check Rust version
         run: rustc --version
@@ -90,6 +94,8 @@ jobs:
         run: scripts/tests.unit.sh
 
   release:
+    permissions:
+      contents: write
     name: Release ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     needs: [static_analysis, unit_tests]
@@ -130,6 +136,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          persist-credentials: false
 
       # https://github.com/sharkdp/fd/blob/master/.github/workflows/CICD.yml
       # https://github.com/cross-rs/cross/wiki/Recipes#openssl
@@ -142,12 +150,12 @@ jobs:
           esac
 
       - name: Install Rust
-        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: ${{ matrix.job.target }}
-          override: true
+        shell: bash
+        env:
+          RUST_TARGET: ${{ matrix.job.target }}
+        run: |
+          rustup toolchain install stable --profile minimal --target "${RUST_TARGET}"
+          rustup override set stable
 
       - name: Show version information (Rust, cargo, GCC)
         shell: bash
@@ -281,15 +289,14 @@ jobs:
       # https://github.com/softprops/action-gh-release
       # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
       - name: Release latest
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         if: ${{ github.ref == 'refs/heads/main' }}
-        with:
-          name: Latest release
-          tag_name: latest
-          draft: false
-          prerelease: false
-          body: Latest builds from the last commit.
-          files: |
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: latest
+          RELEASE_NAME: Latest release
+          RELEASE_BODY: Latest builds from the last commit.
+          RELEASE_FILES: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
@@ -306,20 +313,37 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_staking_signer_key_s3_downloader_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_devnet_faucet }}
             ${{ steps.release_artifacts.outputs.file_name_devnet_faucet_tar_gz }}
+        run: |
+          set -eo pipefail
+          files=()
+          while IFS= read -r pattern; do
+            [ -n "$pattern" ] || continue
+            for f in $pattern; do
+              [ -e "$f" ] || { echo "::error::No file matches ${pattern}"; exit 1; }
+              files+=("$f")
+            done
+          done <<< "${RELEASE_FILES}"
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --title "${RELEASE_NAME}" --notes "${RELEASE_BODY}" --draft=false --prerelease=false
+            if [ ${#files[@]} -gt 0 ]; then
+              gh release upload "${RELEASE_TAG}" "${files[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
+            fi
+          else
+            gh release create "${RELEASE_TAG}" "${files[@]}" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --title "${RELEASE_NAME}" --notes "${RELEASE_BODY}"
+          fi
 
       # release only for tags
       # https://github.com/softprops/action-gh-release
       # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
       - name: Release tag
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         if: startsWith(github.ref, 'refs/tags/')
-        with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          body: Release builds for ${{ github.ref_name }}.
-          files: |
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_NAME: ${{ github.ref_name }}
+          RELEASE_BODY: Release builds for ${{ github.ref_name }}.
+          RELEASE_FILES: |
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms }}
             ${{ steps.release_artifacts.outputs.file_name_avalanche_kms_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_avalanched_aws }}
@@ -336,3 +360,21 @@ jobs:
             ${{ steps.release_artifacts.outputs.file_name_staking_signer_key_s3_downloader_tar_gz }}
             ${{ steps.release_artifacts.outputs.file_name_devnet_faucet }}
             ${{ steps.release_artifacts.outputs.file_name_devnet_faucet_tar_gz }}
+        run: |
+          set -eo pipefail
+          files=()
+          while IFS= read -r pattern; do
+            [ -n "$pattern" ] || continue
+            for f in $pattern; do
+              [ -e "$f" ] || { echo "::error::No file matches ${pattern}"; exit 1; }
+              files+=("$f")
+            done
+          done <<< "${RELEASE_FILES}"
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --title "${RELEASE_NAME}" --notes "${RELEASE_BODY}" --draft=false --prerelease=false
+            if [ ${#files[@]} -gt 0 ]; then
+              gh release upload "${RELEASE_TAG}" "${files[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
+            fi
+          else
+            gh release create "${RELEASE_TAG}" "${files[@]}" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --title "${RELEASE_NAME}" --notes "${RELEASE_BODY}"
+          fi
